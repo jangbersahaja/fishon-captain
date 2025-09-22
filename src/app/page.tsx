@@ -187,31 +187,33 @@ export default function ListYourBusinessPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           <Plan
             percent="10%"
-            name="Starter"
+            name="Basic"
             points={[
-              "Listing + lead capture",
-              "Basic placement",
-              "Support via email",
+              "Google and Facebook Ads",
+              "Dedicated account manager",
+              "Listing charter",
+              "24/7 support team",
+              "Reviews to build online reputation",
+              "Calendar to track booking",
+              "Direct communication with client",
+              "Tools to monitor performance",
+              "Apps to manage business on the go (coming soon)",
             ]}
           />
           <Plan
             percent="20%"
-            name="Growth"
+            name="Silver"
             highlight
             points={[
-              "Priority placement",
-              "Seasonal promos & content features",
-              "Support via email & WhatsApp",
+              "Everything in Basic",
+              "Top listing optimization",
+              "Charter ads",
             ]}
           />
           <Plan
             percent="30%"
-            name="Boost"
-            points={[
-              "Top placement in category",
-              "Dedicated promo campaigns",
-              "Early access to new tools",
-            ]}
+            name="Gold"
+            points={["Everything in Silver", "Video ads shooting every month"]}
           />
         </div>
         <p className="mt-3 text-xs text-neutral-500">
@@ -417,13 +419,16 @@ function Plan({
           : "border-neutral-200 bg-white",
       ].join(" ")}
     >
-      <div className="flex items-baseline justify-between">
+      <div className="flex justify-between items-end">
         <h3 className="text-lg md:text-xl font-semibold">{name}</h3>
-        <div
-          className="text-2xl md:text-3xl font-extrabold"
-          style={{ color: highlight ? BRAND : "inherit" }}
-        >
-          {percent}
+        <div className="flex flex-col items-center">
+          <div
+            className="text-2xl md:text-3xl font-extrabold"
+            style={{ color: highlight ? BRAND : "inherit" }}
+          >
+            {percent}
+          </div>
+          <span className="text-[10px] uppercase">Commission</span>
         </div>
       </div>
       <ul className="mt-3 space-y-2 text-sm md:text-base text-neutral-700">
