@@ -2,21 +2,21 @@ import type { Metadata } from "next";
 import FormSection from "./_components/FormSection";
 
 export const metadata: Metadata = {
-  title: "Register Your Charter | FishOn.my",
+  title: "Register Your Charter | Fishon.my",
   description:
-    "List your fishing charter on FishOn.my. Add trips, pricing, photos, boat details, policies, and more.",
+    "List your fishing charter on Fishon.my. Add trips, pricing, photos, boat details, policies, and more.",
   alternates: { canonical: "https://www.fishon.my/captains/register" },
   openGraph: {
-    title: "Register Your Charter | FishOn.my",
+    title: "Register Your Charter | Fishon.my",
     description:
       "Add your listing with trips, photos, boat details, and policies. Start getting bookings today.",
     url: "https://www.fishon.my/captains/register",
     type: "website",
-    siteName: "FishOn.my",
+    siteName: "Fishon.my",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Register Your Charter | FishOn.my",
+    title: "Register Your Charter | Fishon.my",
     description:
       "Add your listing with trips, photos, boat details, and policies.",
   },
@@ -39,7 +39,7 @@ export default function CharterRegisterPage() {
         <section className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-8 text-white shadow-lg mb-8">
           <div className="max-w-3xl space-y-3">
             <p className="text-sm uppercase tracking-[0.2em] text-white/70">
-              FishOn Charter Partner Program
+              Fishon Charter Partner Program
             </p>
             <h1 className="text-3xl font-bold sm:text-4xl">
               Share your charter details in minutes

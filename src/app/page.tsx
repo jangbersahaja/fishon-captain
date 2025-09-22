@@ -80,7 +80,7 @@ export default function ListYourBusinessPage() {
             Malaysia’s #1 online fishing charter booking platform
           </p>
           <h1 className="mt-2 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
-            List your <span style={{ color: BRAND }}>charter</span> on FishOn.my
+            List your <span style={{ color: BRAND }}>charter</span> on Fishon.my
           </h1>
           <p className="mt-3 text-neutral-700 text-base md:text-lg">
             Showcase trips, pricing and boat details. Reach anglers browsing by
@@ -96,7 +96,7 @@ export default function ListYourBusinessPage() {
               Register your charter
             </Link>
             <Link
-              href={`https://wa.me/${WHATSAPP_NUMBER}?text=Nak%20FishOn`}
+              href={`https://wa.me/${WHATSAPP_NUMBER}?text=Nak%20Fishon`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-5 py-3 font-semibold text-neutral-900 hover:bg-neutral-50 text-base"
@@ -337,7 +337,7 @@ export default function ListYourBusinessPage() {
                 Register your charter
               </Link>
               <Link
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=Nak%20FishOn`}
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=Nak%20Fishon`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-5 py-3 font-semibold text-white hover:bg-white/10 text-base"
