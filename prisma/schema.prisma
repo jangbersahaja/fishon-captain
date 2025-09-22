@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  captainProfile CaptainProfile?
+}
+
+model CaptainProfile {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  firstName     String
+  lastName      String
+  displayName   String
+  phone         String
+  bio           String
+  experienceYrs Int       @default(0)
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id])
+  charters      Charter[]
+}
+
+model Charter {
+  id            String             @id @default(cuid())
+  captainId     String
+  charterType   String
+  name          String
+  state         String
+  district      String
+  startingPoint String
+  postcode      String
+  latitude      Decimal?           @db.Decimal(10, 7)
+  longitude     Decimal?           @db.Decimal(10, 7)
+  description   String
+  pricingPlan   CharterPricingPlan @default(BASIC)
+  boatId        String?            @unique
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  boat          Boat?              @relation(fields: [boatId], references: [id])
+  captain       CaptainProfile     @relation(fields: [captainId], references: [id])
+  amenities     CharterAmenity[]
+  features      CharterFeature[]
+  media         CharterMedia[]
+  pickup        Pickup?
+  policies      Policies?
+  trips         Trip[]
+}
+
+model Boat {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  lengthFt  Int
+  capacity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  charter   Charter?
+}
+
+model Pickup {
+  id        String       @id @default(cuid())
+  charterId String       @unique
+  available Boolean      @default(false)
+  fee       Decimal?     @db.Decimal(10, 2)
+  notes     String?
+  charter   Charter      @relation(fields: [charterId], references: [id])
+  areas     PickupArea[]
+}
+
+model PickupArea {
+  id       String @id @default(cuid())
+  pickupId String
+  label    String
+  pickup   Pickup @relation(fields: [pickupId], references: [id])
+}
+
+model Policies {
+  id               String  @id @default(cuid())
+  charterId        String  @unique
+  licenseProvided  Boolean
+  catchAndKeep     Boolean
+  catchAndRelease  Boolean
+  childFriendly    Boolean
+  liveBaitProvided Boolean
+  alcoholAllowed   Boolean
+  smokingAllowed   Boolean
+  charter          Charter @relation(fields: [charterId], references: [id])
+}
+
+model CharterAmenity {
+  id        String  @id @default(cuid())
+  charterId String
+  label     String
+  charter   Charter @relation(fields: [charterId], references: [id])
+}
+
+model CharterFeature {
+  id        String  @id @default(cuid())
+  charterId String
+  label     String
+  charter   Charter @relation(fields: [charterId], references: [id])
+}
+
+model CharterMedia {
+  id         String    @id @default(cuid())
+  charterId  String
+  tripId     String?
+  kind       MediaKind
+  url        String
+  storageKey String
+  mimeType   String?
+  sizeBytes  Int?
+  width      Int?
+  height     Int?
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  charter    Charter   @relation(fields: [charterId], references: [id])
+  trip       Trip?     @relation(fields: [tripId], references: [id])
+}
+
+model Trip {
+  id            String          @id @default(cuid())
+  charterId     String
+  name          String
+  tripType      String
+  price         Decimal         @db.Decimal(10, 2)
+  durationHours Int
+  maxAnglers    Int
+  style         CharterStyle
+  description   String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  media         CharterMedia[]
+  charter       Charter         @relation(fields: [charterId], references: [id])
+  species       TripSpecies[]
+  startTimes    TripStartTime[]
+  techniques    TripTechnique[]
+}
+
+model TripStartTime {
+  id     String @id @default(cuid())
+  tripId String
+  value  String
+  trip   Trip   @relation(fields: [tripId], references: [id])
+}
+
+model TripSpecies {
+  id     String @id @default(cuid())
+  tripId String
+  value  String
+  trip   Trip   @relation(fields: [tripId], references: [id])
+}
+
+model TripTechnique {
+  id     String @id @default(cuid())
+  tripId String
+  value  String
+  trip   Trip   @relation(fields: [tripId], references: [id])
+}
+
+enum CharterPricingPlan {
+  BASIC
+  SILVER
+  GOLD
+}
+
+enum CharterStyle {
+  PRIVATE
+  SHARED
+}
+
+enum MediaKind {
+  CHARTER_PHOTO
+  CHARTER_VIDEO
+  CAPTAIN_AVATAR
+  TRIP_MEDIA
+}
