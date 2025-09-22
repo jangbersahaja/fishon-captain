@@ -22,38 +22,46 @@ export const metadata: Metadata = {
   },
 };
 
-export default function CharterRegisterPage() {
+export default function CaptainRegisterPage() {
   return (
-    <main className="min-h-screen flex flex-col bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
-        <section className="mb-8">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            Become Our First <span className="text-[#EC2227]">Charter</span>
-          </h1>
-          <p className="mt-3 max-w-3xl text-neutral-700">
-            Captain, get ready to set sail. Our website is almost here. Register
-            you interest now and get paid as soon as we launch out website.
-          </p>
-        </section>
+    <div className="p-6">
+      <h1 className="text-2xl font-semibold">Captain Registration</h1>
+      <p className="text-sm text-neutral-600">Guest</p>
 
-        <section className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-8 text-white shadow-lg mb-8">
-          <div className="max-w-3xl space-y-3">
-            <p className="text-sm uppercase tracking-[0.2em] text-white/70">
-              Fishon Charter Partner Program
-            </p>
-            <h1 className="text-3xl font-bold sm:text-4xl">
-              Share your charter details in minutes
+      {/* your registration flow here */}
+
+      <main className="min-h-screen flex flex-col bg-white">
+        <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
+          <section className="mb-8">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+              Become Our First <span className="text-[#EC2227]">Charter</span>
             </h1>
-            <p className="text-sm sm:text-base sm:leading-7 text-white/80">
-              We&apos;ll review your submission, craft a listing, and connect
-              you with anglers when we launch. All information is kept private
-              until you approve the final listing.
+            <p className="mt-3 max-w-3xl text-neutral-700">
+              Captain, get ready to set sail. Our website is almost here.
+              Register you interest now and get paid as soon as we launch out
+              website.
             </p>
-          </div>
-        </section>
+          </section>
 
-        <FormSection />
-      </div>
-    </main>
+          <section className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-8 text-white shadow-lg mb-8">
+            <div className="max-w-3xl space-y-3">
+              <p className="text-sm uppercase tracking-[0.2em] text-white/70">
+                Fishon Charter Partner Program
+              </p>
+              <h1 className="text-3xl font-bold sm:text-4xl">
+                Share your charter details in minutes
+              </h1>
+              <p className="text-sm sm:text-base sm:leading-7 text-white/80">
+                We&apos;ll review your submission, craft a listing, and connect
+                you with anglers when we launch. All information is kept private
+                until you approve the final listing.
+              </p>
+            </div>
+          </section>
+
+          <FormSection />
+        </div>
+      </main>
+    </div>
   );
 }

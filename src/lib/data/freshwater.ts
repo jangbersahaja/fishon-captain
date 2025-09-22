@@ -54,7 +54,7 @@ export const FRESH_WATER_SPECIES = [
   {
     id: "climbing-perch",
     english_name: "Climbing Perch",
-    local_name: "Keli",
+    local_name: "Puyu",
     image: ClimbingPerch,
   },
   {
@@ -78,19 +78,19 @@ export const FRESH_WATER_SPECIES = [
   {
     id: "channa-maru",
     english_name: "Channa Maru",
-    local_name: "Kelah",
+    local_name: "Kerandang",
     image: ChannaMaru,
   },
   {
     id: "temensis",
     english_name: "Temensis",
-    local_name: "Patin",
+    local_name: "Ikan Temensis",
     image: Temensis,
   },
   {
     id: "mayan-cichlid",
     english_name: "Mayan Cichlid",
-    local_name: "Ikan Merah",
+    local_name: "Ikan Mayan",
     image: MayanCichlid,
   },
   {
@@ -120,25 +120,25 @@ export const FRESH_WATER_SPECIES = [
   {
     id: "chao-praya-catfish",
     english_name: "Chao Praya Catfish",
-    local_name: "Baung",
+    local_name: "Chao Phraya",
     image: ChaoPraya,
   },
   {
     id: "mekong-giant-catfish",
     english_name: "Mekong Giant Catfish",
-    local_name: "Baung",
+    local_name: "Mekong",
     image: MekongGiantCatfish,
   },
   {
     id: "redtail-catfish",
     english_name: "Redtail Catfish",
-    local_name: "Baung",
+    local_name: "Baung Ekor Merah",
     image: RedtailCatfish,
   },
   {
     id: "jaguar-cichlid",
     english_name: "Jaguar Cichlid",
-    local_name: "Ikan Merah",
+    local_name: "Jaguar",
     image: JaguarCichlid,
   },
   {

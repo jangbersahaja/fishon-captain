@@ -219,7 +219,7 @@ export const SALTWATER_SPECIES = [
   },
   {
     id: "mackerel-tuna",
-    english_name: "Mackerel-tuna",
+    english_name: "Mackerel Tuna",
     local_name: "Tongkol",
     image: Mackerel,
   },

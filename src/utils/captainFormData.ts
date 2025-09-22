@@ -191,10 +191,10 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
 ];
 
 export const CHARTER_TYPES = [
-  { value: "lake", label: "Lake" },
-  { value: "stream", label: "Stream & River" },
-  { value: "inshore", label: "Inshore / Mangrove" },
-  { value: "offshore", label: "Offshore / Bluewater" },
+  { value: "lake", label: "Lake / Dam" },
+  { value: "stream", label: "Stream / River" },
+  { value: "inshore", label: "Inshore / Island" },
+  { value: "offshore", label: "Offshore / Deepsea" },
 ];
 
 export const SPECIES_OPTIONS = [
@@ -245,18 +245,10 @@ export const AMENITIES_OPTIONS = [
 export const BOAT_FEATURE_OPTIONS = [
   "GPS",
   "Fishfinder",
-  "Cabin",
   "Toilet",
   "Ice box",
   "Trolling motor",
-  "Livewell",
-  "Cooler",
   "Sound system",
-  "Hardtop",
-  "Casting deck",
-  "Shade",
-  "Rod holders",
-  "Underwater lights",
 ];
 
 export const BOAT_TYPES = [

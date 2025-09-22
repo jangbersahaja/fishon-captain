@@ -38,7 +38,7 @@ export const SQUID_SPECIES = [
   },
   {
     id: "squid2",
-    english_name: "Squid (Type 2)",
+    english_name: "Squid",
     local_name: "Sotong Torak",
     image: Squid2,
   },

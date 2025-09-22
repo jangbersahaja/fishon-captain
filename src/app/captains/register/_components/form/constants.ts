@@ -11,8 +11,6 @@ export const policyOptions = [
   { key: "catchAndKeep" as const, label: "Catch & keep allowed" },
   { key: "catchAndRelease" as const, label: "Catch & release encouraged" },
   { key: "childFriendly" as const, label: "Child friendly" },
-  { key: "alcoholNotAllowed" as const, label: "No Alcohol" },
-  { key: "smokingNotAllowed" as const, label: "No Smoking" },
 ];
 
 export const pricingCards = [

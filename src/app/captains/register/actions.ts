@@ -479,3 +479,33 @@ function parseDurationHours(
   const match = duration.match(/([\d.]+)/);
   return match ? Math.round(Number(match[1])) : null;
 }
+
+export async function signInAction({
+  email,
+  password,
+}: {
+  email?: string;
+  password?: string;
+}) {
+  if (!email || !password) {
+    throw new Error("Email and password are required.");
+  }
+
+  // Example logic: Fetch user from the database
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new Error("No user found with this email.");
+  }
+
+  // Example password validation (replace with actual hashing logic)
+  const isValidPassword = password === user.passwordHash; // Replace with bcrypt or similar
+
+  if (!isValidPassword) {
+    throw new Error("Invalid password.");
+  }
+
+  return user;
+}
