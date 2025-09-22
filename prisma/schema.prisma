@@ -94,8 +94,8 @@ model Policies {
   catchAndRelease  Boolean
   childFriendly    Boolean
   liveBaitProvided Boolean
-  alcoholAllowed   Boolean
-  smokingAllowed   Boolean
+  alcoholNotAllowed   Boolean
+  smokingNotAllowed   Boolean
   charter          Charter @relation(fields: [charterId], references: [id])
 }
 

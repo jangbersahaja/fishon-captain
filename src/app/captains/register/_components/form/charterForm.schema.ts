@@ -35,8 +35,8 @@ const policiesSchema = z.object({
   catchAndRelease: z.boolean(),
   childFriendly: z.boolean(),
   liveBaitProvided: z.boolean(),
-  alcoholAllowed: z.boolean(),
-  smokingAllowed: z.boolean(),
+  alcoholNotAllowed: z.boolean(), // Updated key
+  smokingNotAllowed: z.boolean(), // Updated key
 });
 
 export const charterFormSchema = z.object({

@@ -61,8 +61,8 @@ export function createDefaultCharterFormValues(): CharterFormValues {
       catchAndRelease: true,
       childFriendly: true,
       liveBaitProvided: false,
-      alcoholAllowed: false,
-      smokingAllowed: false,
+      alcoholNotAllowed: false,
+      smokingNotAllowed: false,
     },
     pickup: {
       available: false,

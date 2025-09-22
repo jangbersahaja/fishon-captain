@@ -39,8 +39,8 @@ export type Policies = {
   catchAndRelease?: boolean;
   childFriendly?: boolean;
   liveBaitProvided?: boolean;
-  alcoholAllowed?: boolean;
-  smokingAllowed?: boolean;
+  alcoholNotAllowed?: boolean;
+  smokingNotAllowed?: boolean;
 };
 
 export type Cancellation = {
@@ -300,8 +300,8 @@ export async function submitCharter(formData: FormData) {
               catchAndRelease: Boolean(payload.policies.catchAndRelease),
               childFriendly: Boolean(payload.policies.childFriendly),
               liveBaitProvided: Boolean(payload.policies.liveBaitProvided),
-              alcoholAllowed: Boolean(payload.policies.alcoholAllowed),
-              smokingAllowed: Boolean(payload.policies.smokingAllowed),
+              alcoholNotAllowed: Boolean(payload.policies.alcoholNotAllowed),
+              smokingNotAllowed: Boolean(payload.policies.smokingNotAllowed),
             },
           },
           trips: {
