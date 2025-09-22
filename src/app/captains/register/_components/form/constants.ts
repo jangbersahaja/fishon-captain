@@ -11,9 +11,8 @@ export const policyOptions = [
   { key: "catchAndKeep" as const, label: "Catch & keep allowed" },
   { key: "catchAndRelease" as const, label: "Catch & release encouraged" },
   { key: "childFriendly" as const, label: "Child friendly" },
-  { key: "liveBaitProvided" as const, label: "Live bait provided" },
-  { key: "alcoholAllowed" as const, label: "Alcohol allowed" },
-  { key: "smokingAllowed" as const, label: "Smoking allowed" },
+  { key: "alcoholNotAllowed" as const, label: "No Alcohol" },
+  { key: "smokingNotAllowed" as const, label: "No Smoking" },
 ];
 
 export const pricingCards = [
@@ -23,7 +22,7 @@ export const pricingCards = [
     percentage: "10%",
     accent: "bg-white",
     features: [
-      "Google, Facebook, Bing Ads",
+      "Google and Facebook Ads",
       "Dedicated account manager",
       "Listing charter",
       "24/7 support team",
