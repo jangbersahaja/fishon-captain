@@ -1,4 +1,5 @@
 import type { Charter } from "@/dummy/charter";
+import { SPECIES_BY_ID } from "@/lib/data/species";
 
 import type { CharterFormValues } from "../charterForm.schema";
 import { PREVIEW_PLACEHOLDER_IMAGES } from "../constants";
@@ -12,7 +13,7 @@ export function createPreviewCharter(
   const mediaUrls = media.map((item) => item.url).filter(Boolean);
   const images = mediaUrls.length ? mediaUrls : PREVIEW_PLACEHOLDER_IMAGES;
 
-  const locationParts = [values.district?.trim(), values.state?.trim()].filter(
+  const locationParts = [values.city?.trim(), values.state?.trim()].filter(
     Boolean
   ) as string[];
   const location = locationParts.length ? locationParts.join(", ") : "Malaysia";
@@ -62,9 +63,13 @@ export function createPreviewCharter(
     };
   });
 
-  const species = Array.from(
+  const speciesIds = Array.from(
     new Set((values.trips ?? []).flatMap((trip) => trip.targetSpecies ?? []))
   );
+  const species = speciesIds.map((id) => {
+    const item = SPECIES_BY_ID[id];
+    return item ? item.english_name : id;
+  });
   const techniques = Array.from(
     new Set((values.trips ?? []).flatMap((trip) => trip.techniques ?? []))
   );
@@ -147,7 +152,8 @@ export function createPreviewCharter(
       intro: captainIntro,
     },
     fishingType: (values.charterType || "lake") as Charter["fishingType"],
-    tier: values.pricingModel,
+    // Pricing/tier selection removed from form; default to basic tier
+    tier: "basic",
   };
 }
 

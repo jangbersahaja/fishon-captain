@@ -13,44 +13,6 @@ export const policyOptions = [
   { key: "childFriendly" as const, label: "Child friendly" },
 ];
 
-export const pricingCards = [
-  {
-    id: "basic" as const,
-    title: "Basic",
-    percentage: "10%",
-    accent: "bg-white",
-    features: [
-      "Google and Facebook Ads",
-      "Dedicated account manager",
-      "Listing charter",
-      "24/7 support team",
-      "Reviews to build online reputation",
-      "Calendar to track booking",
-      "Direct communication with client",
-      "Tools to monitor performance",
-      "Apps to manage business on the go (coming soon)",
-    ],
-  },
-  {
-    id: "silver" as const,
-    title: "Silver",
-    percentage: "20%",
-    accent: "bg-slate-50",
-    features: [
-      "Everything in Basic",
-      "Top listing optimization",
-      "Charter ads",
-    ],
-  },
-  {
-    id: "gold" as const,
-    title: "Gold",
-    percentage: "30%",
-    accent: "bg-amber-50",
-    features: ["Everything in Silver", "Video ads shooting every month"],
-  },
-];
-
 export const PREVIEW_PLACEHOLDER_IMAGES = [
   "/placeholder-1.jpg",
   "/placeholder-2.jpg",

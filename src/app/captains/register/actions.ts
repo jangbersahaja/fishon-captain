@@ -1,7 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-
 import {
   CharterPricingPlan,
   CharterStyle,
@@ -63,6 +61,7 @@ export type CharterPayload = {
     lastName: string;
     name: string;
     phone: string;
+    email: string; // Added email field
     experienceYears?: number;
     crewCount?: number;
     bio?: string;
@@ -71,7 +70,7 @@ export type CharterPayload = {
   charterType: string;
   name: string;
   locationState: string;
-  locationDistrict: string;
+  locationCity: string;
   location: string;
   address: string;
   postcode: string;
@@ -94,7 +93,6 @@ export type CharterPayload = {
   cancellation: Cancellation;
   languages: string[];
   boat: Boat;
-  pricingModel: string;
 };
 
 export async function submitCharter(formData: FormData) {
@@ -130,8 +128,8 @@ export async function submitCharter(formData: FormData) {
   if (!payload.location?.trim()) errors.location = "Location is required.";
   if (!payload.locationState?.trim())
     errors.locationState = "State is required.";
-  if (!payload.locationDistrict?.trim())
-    errors.locationDistrict = "District is required.";
+  if (!payload.locationCity?.trim())
+    errors.locationCity = "City/Town is required.";
   if (!payload.address?.trim()) errors.address = "Starting point is required.";
   if (!payload.postcode?.trim()) errors.postcode = "Postcode is required.";
   if (
@@ -156,8 +154,6 @@ export async function submitCharter(formData: FormData) {
   if (!payload.boat?.type?.trim()) errors.boatType = "Boat type is required.";
   if (!payload.boat?.length?.trim())
     errors.boatLength = "Boat length is required.";
-  if (!payload.pricingModel?.trim())
-    errors.pricingModel = "Select a pricing plan.";
 
   if (Object.keys(errors).length) {
     try {
@@ -171,7 +167,8 @@ export async function submitCharter(formData: FormData) {
     return { ok: false, errors };
   }
 
-  const pricingPlan = resolvePricingPlan(payload.pricingModel);
+  // Pricing model removed; default plan is BASIC for now
+  const pricingPlan = CharterPricingPlan.BASIC;
   const latitude = toDecimal(payload.coordinates?.lat);
   const longitude = toDecimal(payload.coordinates?.lng);
   const boatLengthFt = parseBoatLength(payload.boat.length) ?? 0;
@@ -180,7 +177,7 @@ export async function submitCharter(formData: FormData) {
     const { charter } = await prisma.$transaction(async (tx) => {
       const provisionalUser = await tx.user.create({
         data: {
-          email: `pending-${randomUUID()}@fishon.local`,
+          email: payload.operator.email,
           passwordHash: "",
         },
       });
@@ -265,7 +262,7 @@ export async function submitCharter(formData: FormData) {
           charterType: payload.charterType,
           name: payload.name,
           state: payload.locationState,
-          district: payload.locationDistrict,
+          city: payload.locationCity,
           startingPoint: payload.address,
           postcode: payload.postcode,
           latitude: latitude ?? undefined,
@@ -283,7 +280,10 @@ export async function submitCharter(formData: FormData) {
             ? {
                 create: {
                   available: true,
-                  fee: toDecimal(payload.pickup.fee) ?? undefined,
+                  fee:
+                    payload.pickup.fee !== undefined
+                      ? toDecimal(payload.pickup.fee)
+                      : undefined,
                   notes: payload.pickup.notes ?? null,
                   areas: {
                     create: (payload.pickup.areas ?? []).map((label) => ({
@@ -431,81 +431,26 @@ export async function markMediaTranscoded(params: {
       },
     });
 
-    if (result.count === 0) {
-      return {
-        ok: false,
-        error: `No CharterMedia found for storageKey: ${storageKey}`,
-      };
-    }
-
-    // Optionally revalidate the register page or any media-consuming paths
-    try {
-      revalidatePath("/captains/register");
-    } catch {}
-
-    return { ok: true, updated: result.count };
+    return { ok: true, count: result.count };
   } catch (error) {
     console.error("markMediaTranscoded error", error);
-    return { ok: false, error: "Failed to update media after transcode" };
+    return { ok: false, error: "Failed to mark media as transcoded." };
   }
 }
 
-function resolvePricingPlan(value: string): CharterPricingPlan {
-  switch (value?.toUpperCase()) {
-    case "SILVER":
-      return CharterPricingPlan.SILVER;
-    case "GOLD":
-      return CharterPricingPlan.GOLD;
-    default:
-      return CharterPricingPlan.BASIC;
-  }
+function toDecimal(value: number) {
+  return value ? new Prisma.Decimal(value) : null;
 }
 
-function toDecimal(value: number | null | undefined): Prisma.Decimal | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return new Prisma.Decimal(value);
+function parseBoatLength(length: string) {
+  const ft = parseFloat(length);
+  return !isNaN(ft) ? ft : null;
 }
 
-function parseBoatLength(length: string | null | undefined): number | null {
-  if (!length) return null;
-  const match = length.match(/([\d.]+)/);
-  return match ? Math.round(Number(match[1])) : null;
-}
-
-function parseDurationHours(
-  duration: string | null | undefined
-): number | null {
-  if (!duration) return null;
-  const match = duration.match(/([\d.]+)/);
-  return match ? Math.round(Number(match[1])) : null;
-}
-
-export async function signInAction({
-  email,
-  password,
-}: {
-  email?: string;
-  password?: string;
-}) {
-  if (!email || !password) {
-    throw new Error("Email and password are required.");
-  }
-
-  // Example logic: Fetch user from the database
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (!user) {
-    throw new Error("No user found with this email.");
-  }
-
-  // Example password validation (replace with actual hashing logic)
-  const isValidPassword = password === user.passwordHash; // Replace with bcrypt or similar
-
-  if (!isValidPassword) {
-    throw new Error("Invalid password.");
-  }
-
-  return user;
+function parseDurationHours(duration: string) {
+  const parts = duration.split(":");
+  if (parts.length !== 2) return null;
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  return !isNaN(hours) && !isNaN(minutes) ? hours + minutes / 60 : null;
 }

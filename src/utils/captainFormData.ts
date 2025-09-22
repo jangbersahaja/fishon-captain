@@ -1,6 +1,6 @@
 export type MalaysiaStateOption = {
   state: string;
-  districts: string[];
+  city: string[];
   coast?: boolean;
 };
 
@@ -8,12 +8,12 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Wilayah Persekutuan",
     coast: true,
-    districts: ["Kuala Lumpur", "Putrajaya", "Labuan"],
+    city: ["Kuala Lumpur", "Putrajaya", "Labuan"],
   },
   {
     state: "Johor",
     coast: true,
-    districts: [
+    city: [
       "Batu Pahat",
       "Johor Bahru",
       "Kluang",
@@ -29,7 +29,7 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Kedah",
     coast: true,
-    districts: [
+    city: [
       "Baling",
       "Bandar Baharu",
       "Kota Setar",
@@ -45,12 +45,12 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Melaka",
     coast: true,
-    districts: ["Melaka Tengah", "Alor Gajah", "Jasin"],
+    city: ["Melaka Tengah", "Alor Gajah", "Jasin"],
   },
   {
     state: "Pahang",
     coast: true,
-    districts: [
+    city: [
       "Kuantan",
       "Pekan",
       "Rompin",
@@ -62,7 +62,7 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Penang",
     coast: true,
-    districts: [
+    city: [
       "Timur Laut (George Town)",
       "Barat Daya",
       "Seberang Perai Utara",
@@ -73,7 +73,7 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Perak",
     coast: true,
-    districts: [
+    city: [
       "Kinta",
       "Larut, Matang & Selama",
       "Manjung",
@@ -89,7 +89,7 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Sabah",
     coast: true,
-    districts: [
+    city: [
       "Kota Kinabalu",
       "Sandakan",
       "Tawau",
@@ -120,12 +120,12 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Sarawak",
     coast: true,
-    districts: ["Kuching", "Miri", "Sibu", "Bintulu", "Limbang", "Sri Aman"],
+    city: ["Kuching", "Miri", "Sibu", "Bintulu", "Limbang", "Sri Aman"],
   },
   {
     state: "Perlis",
     coast: true,
-    districts: [
+    city: [
       "Kangar",
       "Kuala Perlis",
       "Arau",
@@ -136,7 +136,7 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   },
   {
     state: "Selangor",
-    districts: [
+    city: [
       "Gombak",
       "Hulu Langat",
       "Hulu Selangor",
@@ -150,7 +150,7 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   },
   {
     state: "Negeri Sembilan",
-    districts: [
+    city: [
       "Jelebu",
       "Jempol",
       "Kuala Pilah",
@@ -163,7 +163,7 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Terengganu",
     coast: true,
-    districts: [
+    city: [
       "Kuala Terengganu",
       "Dungun",
       "Hulu Terengganu",
@@ -175,7 +175,7 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Kelantan",
     coast: true,
-    districts: [
+    city: [
       "Bachok",
       "Gua Musang",
       "Jeli",
@@ -228,7 +228,6 @@ export const TECHNIQUE_OPTIONS = [
   "Jigging",
   "Eging",
   "Fly Fishing",
-  "Jigging",
   "Prawn Fishing",
   "Trolling",
 ];
@@ -261,7 +260,7 @@ export const BOAT_TYPES = [
   "Skiff",
   "Traditional Wooden",
   "Yacht",
-  "Other",
+  "Inflatable",
 ];
 
 export const TRIP_TYPE_OPTIONS = [

@@ -13,9 +13,9 @@ import type { CharterFormValues } from "./charterForm.schema";
 
 export const defaultTrip: () => CharterFormValues["trips"][number] = () => ({
   name: "",
-  tripType: TRIP_TYPE_OPTIONS[0]?.value ?? "",
+  tripType: "",
   price: Number.NaN,
-  durationHours: 4,
+  durationHours: 5,
   startTimes: [],
   maxAnglers: Number.NaN,
   charterStyle: "private",
@@ -25,9 +25,6 @@ export const defaultTrip: () => CharterFormValues["trips"][number] = () => ({
 });
 
 export function createDefaultCharterFormValues(): CharterFormValues {
-  const stateFallback = MALAYSIA_LOCATIONS[0];
-  const districtFallback = stateFallback.districts[0];
-
   return {
     operator: {
       firstName: "",
@@ -36,17 +33,21 @@ export function createDefaultCharterFormValues(): CharterFormValues {
       experienceYears: Number.NaN,
       bio: "",
       phone: "",
+      email: "",
       avatar: undefined,
     },
     charterType: CHARTER_TYPES[0]?.value ?? "",
     charterName: "",
-    state: stateFallback.state,
-    district: districtFallback,
+    state: "",
+    city: "",
     startingPoint: "",
+    placeId: undefined,
     postcode: "",
     latitude: Number.NaN,
     longitude: Number.NaN,
     description: "",
+    generatedDescription: undefined,
+    tone: "friendly",
     boat: {
       name: "",
       type: BOAT_TYPES[0] ?? "",
@@ -73,7 +74,6 @@ export function createDefaultCharterFormValues(): CharterFormValues {
     trips: [defaultTrip()],
     photos: [],
     videos: [],
-    pricingModel: "basic",
   };
 }
 

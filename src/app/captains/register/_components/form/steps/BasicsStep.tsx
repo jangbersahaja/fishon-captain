@@ -1,12 +1,16 @@
-import { useMemo, type ChangeEvent } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { Controller, type UseFormReturn } from "react-hook-form";
 
-import { Field } from "../components/Field";
-import { PhoneInput } from "../components/PhoneInput";
-import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
 import { charterFormOptions } from "../charterForm.defaults";
-import { inputClass } from "../constants";
 import type { CharterFormValues } from "../charterForm.schema";
+import { AddressAutocomplete } from "../components/AddressAutocomplete";
+import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
+import { Field } from "../components/Field";
+import { LocationMap } from "../components/LocationMap";
+import { PhoneInput } from "../components/PhoneInput";
+import { inputClass } from "../constants";
+import { usePlaceDetails } from "../hooks/usePlaceDetails";
+import { parseAddressComponents } from "../utils/parseAddressComponents";
 
 type BasicsStepProps = {
   form: UseFormReturn<CharterFormValues>;
@@ -14,7 +18,6 @@ type BasicsStepProps = {
   captainAvatarPreview: string | null;
   onAvatarChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onAvatarClear: () => void;
-  districtOptions: string[];
 };
 
 export function BasicsStep({
@@ -23,10 +26,16 @@ export function BasicsStep({
   captainAvatarPreview,
   onAvatarChange,
   onAvatarClear,
-  districtOptions,
 }: BasicsStepProps) {
-  const { register, control } = form;
+  const { register, control, setValue, watch } = form;
+  const latitude = watch("latitude");
+  const longitude = watch("longitude");
+  // watching latitude/longitude only; startingPoint and placeId not needed directly here
+  const [mapActive, setMapActive] = useState(false);
+  const { fetchDetails, loading: placeLoading } = usePlaceDetails();
   const { CHARTER_TYPES, MALAYSIA_LOCATIONS } = charterFormOptions;
+
+  // Plain city input (suggestions dropdown removed)
 
   const avatarButtonLabel = useMemo(
     () => (captainAvatarPreview ? "Change photo" : "Upload photo"),
@@ -36,7 +45,9 @@ export function BasicsStep({
   return (
     <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
       <header className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold text-slate-900">Basic Information</h2>
+        <h2 className="text-xl font-semibold text-slate-900">
+          Basic Information
+        </h2>
         <p className="text-sm text-slate-500">
           Tell us who to contact and where you depart from.
         </p>
@@ -111,6 +122,35 @@ export function BasicsStep({
           />
         </Field>
         <Field
+          label="Email"
+          error={fieldError("operator.email")}
+          hint="Enter a valid email address."
+        >
+          <input
+            type="email"
+            {...register("operator.email")}
+            className={inputClass}
+            placeholder="e.g. captain@example.com"
+          />
+        </Field>
+        <Field
+          label="Primary phone"
+          error={fieldError("operator.phone")}
+          hint="Include country code, e.g. +60 12-345 6789"
+        >
+          <Controller
+            control={control}
+            name="operator.phone"
+            render={({ field }) => (
+              <PhoneInput
+                {...field}
+                error={Boolean(fieldError("operator.phone"))}
+              />
+            )}
+          />
+        </Field>
+
+        <Field
           label="Captain/Operator name"
           error={fieldError("operator.displayName")}
         >
@@ -146,23 +186,6 @@ export function BasicsStep({
             placeholder="20+ years guiding in Langkawi. Specialist in offshore pelagics and family-friendly trips."
           />
         </Field>
-
-        <Field
-          label="Primary phone"
-          error={fieldError("operator.phone")}
-          hint="Include country code, e.g. +60 12-345 6789"
-        >
-          <Controller
-            control={control}
-            name="operator.phone"
-            render={({ field }) => (
-              <PhoneInput
-                {...field}
-                error={Boolean(fieldError("operator.phone"))}
-              />
-            )}
-          />
-        </Field>
       </div>
 
       <hr className="border-t my-6 border-neutral-200" />
@@ -188,23 +211,83 @@ export function BasicsStep({
         </Field>
       </div>
 
-      <Field
-        className="mt-8"
-        label="Description about charter"
-        error={fieldError("description")}
-      >
-        <AutoResizeTextarea
-          {...register("description")}
-          rows={4}
-          placeholder="Highlight the water, target species, and why guests love your trips."
-        />
-      </Field>
-
       <hr className="border-t my-6 border-neutral-200" />
 
       <h3 className="text-lg font-semibold text-slate-900">Location</h3>
 
-      <div className="mt-4 grid gap-5 sm:grid-cols-3">
+      <Field
+        className="mt-4"
+        label="Starting point address"
+        error={fieldError("startingPoint")}
+      >
+        {/* Replace plain input with autocomplete */}
+        <Controller
+          control={control}
+          name="startingPoint"
+          render={({ field }) => (
+            <AddressAutocomplete
+              value={field.value}
+              onChange={(val) => {
+                field.onChange(val);
+                if (!val) {
+                  setMapActive(false);
+                  setValue("placeId", undefined, { shouldDirty: true });
+                }
+              }}
+              onSelectSuggestion={async (s) => {
+                form.setValue("placeId", s.place_id, { shouldDirty: true });
+                const details = await fetchDetails(s.place_id);
+                if (details) {
+                  if (details.location) {
+                    setValue("latitude", details.location.lat, {
+                      shouldDirty: true,
+                    });
+                    setValue("longitude", details.location.lng, {
+                      shouldDirty: true,
+                    });
+                  }
+                  const parsed = parseAddressComponents(
+                    details.addressComponents
+                  );
+                  // Only auto-fill if the user has not touched these fields or they are blank
+                  if (parsed.state) {
+                    setValue("state", parsed.state, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }
+                  if (parsed.city) {
+                    // Only auto-fill city if user hasn't typed something different
+                    const currentCity = form.getValues("city");
+                    if (!currentCity?.trim()) {
+                      setValue("city", parsed.city, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }
+                  }
+                  if (parsed.postcode) {
+                    const currentPostcode = form.getValues("postcode");
+                    if (!currentPostcode?.trim()) {
+                      setValue("postcode", parsed.postcode, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }
+                  }
+                }
+                setMapActive(true);
+              }}
+              error={Boolean(fieldError("startingPoint"))}
+            />
+          )}
+        />
+        {placeLoading && (
+          <p className="mt-1 text-xs text-slate-500">Fetching coordinates…</p>
+        )}
+      </Field>
+
+      <div className="mt-8 grid gap-5 sm:grid-cols-3">
         <Field label="State" error={fieldError("state")}>
           <select {...register("state")} className={inputClass}>
             {MALAYSIA_LOCATIONS.map((item) => (
@@ -214,15 +297,12 @@ export function BasicsStep({
             ))}
           </select>
         </Field>
-        <Field label="District" error={fieldError("district")}
-          >
-          <select {...register("district")} className={inputClass}>
-            {districtOptions.map((district) => (
-              <option key={district} value={district}>
-                {district}
-              </option>
-            ))}
-          </select>
+        <Field label="City/Town" error={fieldError("city")}>
+          <input
+            {...register("city")}
+            className={inputClass}
+            placeholder="e.g. Langkawi"
+          />
         </Field>
         <Field label="Postcode" error={fieldError("postcode")}>
           <input
@@ -233,17 +313,18 @@ export function BasicsStep({
         </Field>
       </div>
 
-      <Field
-        className="mt-8"
-        label="Starting point address"
-        error={fieldError("startingPoint")}
-      >
-        <input
-          {...register("startingPoint")}
-          className={inputClass}
-          placeholder="Jetty or meeting point"
+      {/* Interactive map */}
+      <div className="mt-6">
+        <LocationMap
+          active={mapActive}
+          lat={Number.isFinite(latitude) ? latitude : null}
+          lng={Number.isFinite(longitude) ? longitude : null}
+          onChange={(lat, lng) => {
+            setValue("latitude", lat, { shouldDirty: true });
+            setValue("longitude", lng, { shouldDirty: true });
+          }}
         />
-      </Field>
+      </div>
 
       <div className="mt-8 grid gap-5 sm:grid-cols-2">
         <Field

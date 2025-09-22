@@ -241,7 +241,7 @@ export default function ListYourBusinessPage() {
                 <Award
                   Icon={ShieldCheck}
                   title="Best Spots"
-                  desc="Seasonally recognised destinations and charters."
+                  desc="Seasonally recognized destinations and charters."
                   accent
                 />
                 <Award
@@ -266,7 +266,7 @@ export default function ListYourBusinessPage() {
               <ul className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 md:h-6 md:w-6" />{" "}
-                  Seafarer ID / maritime licence (where applicable)
+                  Seafarer ID / maritime license (where applicable)
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 md:h-6 md:w-6" /> Boat

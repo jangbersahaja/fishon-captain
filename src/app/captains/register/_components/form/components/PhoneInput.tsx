@@ -79,15 +79,15 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
 
     const borderClass = error
       ? "border-red-500 focus-within:ring-red-200"
-      : "border-slate-200 focus-within:ring-slate-200";
+      : "border-slate-200 focus-within:ring-slate-300"; // Updated to match other fields
 
     return (
       <div
         className={clsx(
-          "flex items-center overflow-hidden rounded-xl border bg-white shadow-sm focus-within:ring-2",
+          "flex items-center overflow-hidden rounded-xl border bg-white shadow-sm focus-within:ring-2 transition",
           borderClass,
           disabled ? "bg-slate-50" : ""
-        )}
+        )} // Added transition for consistency
       >
         <select
           name={`${name}-country`}

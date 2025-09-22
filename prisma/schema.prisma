@@ -39,7 +39,7 @@ model Charter {
   charterType   String
   name          String
   state         String
-  district      String
+  city          String
   startingPoint String
   postcode      String
   latitude      Decimal?           @db.Decimal(10, 7)

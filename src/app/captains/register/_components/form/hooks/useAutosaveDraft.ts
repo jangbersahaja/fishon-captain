@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { CharterFormValues } from "../charterForm.schema";
 import type { DraftValues } from "../charterForm.draft";
+import type { CharterFormValues } from "../charterForm.schema";
 
 type UseAutosaveDraftOptions = {
   values: CharterFormValues;
@@ -15,7 +15,10 @@ type UseAutosaveDraftResult = {
   lastSavedAt: string | null;
   setLastSavedAt: (value: string | null) => void;
   persistDraft: (values?: CharterFormValues) => void;
-  initializeDraftState: (values: CharterFormValues, savedAt: string | null) => void;
+  initializeDraftState: (
+    values: CharterFormValues,
+    savedAt: string | null
+  ) => void;
 };
 
 export function useAutosaveDraft({

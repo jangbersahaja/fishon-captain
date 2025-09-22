@@ -1,13 +1,15 @@
-import { useCallback } from "react";
+import { SPECIES_CATEGORIES } from "@/lib/data/species";
+import { useCallback, useEffect, useState } from "react";
 import { useFieldArray, type UseFormReturn } from "react-hook-form";
 
-import { Field } from "../components/Field";
-import { ChipGrid } from "../components/ChipGrid";
-import { StartTimeInput } from "../components/StartTimeInput";
-import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
 import { charterFormOptions, defaultTrip } from "../charterForm.defaults";
-import { inputClass } from "../constants";
 import type { CharterFormValues } from "../charterForm.schema";
+import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
+import { ChipGrid } from "../components/ChipGrid";
+import { Field } from "../components/Field";
+import { SpeciesSelector } from "../components/SpeciesSelector";
+import { StartTimeInput } from "../components/StartTimeInput";
+import { inputClass } from "../constants";
 
 type TripsStepProps = {
   form: UseFormReturn<CharterFormValues>;
@@ -17,11 +19,33 @@ type TripArrayKey = "targetSpecies" | "techniques";
 
 export function TripsStep({ form }: TripsStepProps) {
   const { control, register, watch, formState } = form;
-  const {
-    TRIP_TYPE_OPTIONS,
-    SPECIES_OPTIONS,
-    TECHNIQUE_OPTIONS,
-  } = charterFormOptions;
+  const { TRIP_TYPE_OPTIONS, TECHNIQUE_OPTIONS } = charterFormOptions;
+
+  // Global active species tab across all trips with persistence
+  const STORAGE_KEY = "fishon.activeSpeciesTab";
+  const [activeSpeciesTab, setActiveSpeciesTab] = useState<string>(
+    SPECIES_CATEGORIES.SALTWATER
+  );
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      const categories = Object.values(SPECIES_CATEGORIES) as string[];
+      if (saved && categories.includes(saved)) {
+        setActiveSpeciesTab(
+          saved as (typeof SPECIES_CATEGORIES)[keyof typeof SPECIES_CATEGORIES]
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, activeSpeciesTab);
+    } catch {
+      /* ignore */
+    }
+  }, [activeSpeciesTab]);
 
   const { fields, append, remove, update } = useFieldArray({
     control,
@@ -73,7 +97,9 @@ export function TripsStep({ form }: TripsStepProps) {
   return (
     <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
       <header className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold text-slate-900">Trips & pricing</h2>
+        <h2 className="text-xl font-semibold text-slate-900">
+          Trips & pricing
+        </h2>
         <p className="text-sm text-slate-500">
           Outline each package you offer. We&apos;ll show these to anglers.
         </p>
@@ -92,11 +118,12 @@ export function TripsStep({ form }: TripsStepProps) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-md font-semibold text-slate-900">
                     Trip {index + 1}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Fill in the details below. Anglers will see this as a package.
+                    Fill in the details below. Anglers will see this as a
+                    package.
                   </p>
                 </div>
                 {fields.length > 1 && (
@@ -163,10 +190,13 @@ export function TripsStep({ form }: TripsStepProps) {
                       valueAsNumber: true,
                     })}
                     className={inputClass}
-                    placeholder="4"
+                    placeholder="5"
                   />
                 </Field>
-                <Field label="Max anglers" error={tripErrors?.maxAnglers?.message}>
+                <Field
+                  label="Max anglers"
+                  error={tripErrors?.maxAnglers?.message}
+                >
                   <input
                     type="number"
                     min={1}
@@ -178,7 +208,7 @@ export function TripsStep({ form }: TripsStepProps) {
                     placeholder="4"
                   />
                 </Field>
-                <Field label="Charter style" error={tripErrors?.charterStyle?.message}>
+                {/* <Field label="Charter style" error={tripErrors?.charterStyle?.message}>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm">
                       <input
@@ -199,7 +229,7 @@ export function TripsStep({ form }: TripsStepProps) {
                       Shared charter
                     </label>
                   </div>
-                </Field>
+                </Field> */}
               </div>
 
               <Field
@@ -227,19 +257,27 @@ export function TripsStep({ form }: TripsStepProps) {
                 />
               </Field>
 
-              <Field className="mt-4" label="Target species">
-                <ChipGrid
-                  options={SPECIES_OPTIONS}
-                  selected={trips?.[index]?.targetSpecies}
-                  onToggle={(value) => toggleTripArray(index, "targetSpecies", value)}
-                />
-              </Field>
-
-              <Field className="mt-4" label="Fishing techniques">
+              <Field className="mt-8" label="Fishing techniques">
                 <ChipGrid
                   options={TECHNIQUE_OPTIONS}
                   selected={trips?.[index]?.techniques}
-                  onToggle={(value) => toggleTripArray(index, "techniques", value)}
+                  onToggle={(value) =>
+                    toggleTripArray(index, "techniques", value)
+                  }
+                />
+              </Field>
+
+              <Field className="mt-8" label="Target species">
+                <SpeciesSelector
+                  value={trips?.[index]?.targetSpecies}
+                  activeTab={
+                    activeSpeciesTab as (typeof SPECIES_CATEGORIES)[keyof typeof SPECIES_CATEGORIES]
+                  }
+                  onActiveTabChange={(tab) => setActiveSpeciesTab(tab)}
+                  maxSelected={5}
+                  onChange={(next) =>
+                    update(index, { ...trips?.[index], targetSpecies: next })
+                  }
                 />
               </Field>
             </div>

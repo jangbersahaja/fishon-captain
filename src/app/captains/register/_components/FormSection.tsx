@@ -68,7 +68,7 @@ const STEP_SEQUENCE: FormStep[] = [
       "charterType",
       "charterName",
       "state",
-      "district",
+      "city",
       "startingPoint",
       "postcode",
       "latitude",
@@ -97,7 +97,7 @@ const STEP_SEQUENCE: FormStep[] = [
   {
     id: "media",
     label: "Media & Pricing",
-    fields: ["photos", "pricingModel"],
+    fields: ["photos", "description", "tone"],
   },
   {
     id: "review",
@@ -218,6 +218,7 @@ export default function FormSection() {
         lastName: values.operator.lastName,
         name: values.operator.displayName,
         phone: values.operator.phone,
+        email: values.operator.email,
         experienceYears: Number.isFinite(values.operator.experienceYears)
           ? values.operator.experienceYears
           : 0,
@@ -228,8 +229,8 @@ export default function FormSection() {
       charterType: values.charterType,
       name: values.charterName,
       locationState: values.state,
-      locationDistrict: values.district,
-      location: `${values.district}, ${values.state}`,
+      locationCity: values.city,
+      location: `${values.city}, ${values.state}`,
       address: values.startingPoint,
       postcode: values.postcode,
       coordinates: { lat: values.latitude, lng: values.longitude },
@@ -293,7 +294,6 @@ export default function FormSection() {
           : 1,
         features: values.boat.features,
       },
-      pricingModel: values.pricingModel,
     };
 
     try {
@@ -338,7 +338,7 @@ export default function FormSection() {
   const photos = watch("photos");
   const videos = watch("videos");
   const selectedState = watch("state");
-  const districtValue = watch("district");
+  const cityValue = watch("city");
   const captainAvatarFile = watch("operator.avatar");
 
   const photoPreviews = useMediaPreviews(photos as File[] | undefined);
@@ -445,20 +445,14 @@ export default function FormSection() {
       (item) => item.state === selectedState
     );
     if (!state) return;
-    if (!state.districts.includes(districtValue)) {
-      const fallback = state.districts[0] ?? "";
+    // Only auto-fill if city is blank; do NOT overwrite user edits
+    if (!cityValue?.trim()) {
+      const fallback = state.city[0] ?? "";
       if (fallback) {
-        setValue("district", fallback, { shouldValidate: true });
+        setValue("city", fallback, { shouldValidate: true });
       }
     }
-  }, [MALAYSIA_LOCATIONS, selectedState, districtValue, setValue]);
-
-  const districtOptions = useMemo(() => {
-    const state = MALAYSIA_LOCATIONS.find(
-      (option) => option.state === selectedState
-    );
-    return state?.districts ?? [];
-  }, [MALAYSIA_LOCATIONS, selectedState]);
+  }, [MALAYSIA_LOCATIONS, selectedState, cityValue, setValue]);
 
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -728,7 +722,6 @@ export default function FormSection() {
               captainAvatarPreview={captainAvatarPreview}
               onAvatarChange={handleAvatarChange}
               onAvatarClear={clearAvatar}
-              districtOptions={districtOptions}
             />
           )}
 

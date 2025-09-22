@@ -54,12 +54,17 @@ export const charterFormSchema = z.object({
       .min(1, "Phone number is required")
       .regex(/^[+]?[-\d\s()]{6,}$/u, "Enter a valid phone number"),
     avatar: fileSchema.optional(),
+    email: z
+      .string()
+      .email("Enter a valid email address")
+      .min(1, "Email is required"),
   }),
   charterType: z.string().min(1, "Select a charter type"),
   charterName: z.string().min(1, "Charter name is required"),
   state: z.string().min(1, "Select a state"),
-  district: z.string().min(1, "Select a district"),
-  startingPoint: z.string().min(1, "Starting point is required"),
+  city: z.string().min(1, "Enter a city/town"),
+  startingPoint: z.string().min(1, "Starting point is required"), // address full string from Places
+  placeId: z.string().optional(), // Optionally later we could add placeId if we want to persist it
   postcode: z.string().regex(/^\d{5}$/u, "Use a 5 digit postcode"),
   latitude: z
     .number()
@@ -69,7 +74,14 @@ export const charterFormSchema = z.object({
     .number()
     .min(-180, { message: "Longitude must be between -180 and 180" })
     .max(180, { message: "Longitude must be between -180 and 180" }),
-  description: z.string().min(1, "Describe your charter"),
+  // User editable final description (can start from auto-generated). Increase minimum length.
+  description: z
+    .string()
+    .min(40, "Description should be at least 40 characters"),
+  // Internal: last generated description baseline for personalization diff.
+  generatedDescription: z.string().optional(),
+  // Tone selection for generator.
+  tone: z.enum(["friendly", "adventurous", "professional"]).default("friendly"),
   boat: z.object({
     name: z.string().min(1, "Boat name is required"),
     type: z.string().min(1, "Boat type is required"),
@@ -104,9 +116,6 @@ export const charterFormSchema = z.object({
     .min(3, "Upload at least 3 photos")
     .max(15, "Maximum 15 photos"),
   videos: z.array(fileSchema).max(3, "Maximum 3 videos").optional().default([]),
-  pricingModel: z
-    .enum(["basic", "silver", "gold"])
-    .refine((val) => val !== undefined, { message: "Choose a pricing plan" }),
 });
 
 export type CharterFormValues = z.infer<typeof charterFormSchema>;
