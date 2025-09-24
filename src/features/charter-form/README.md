@@ -14,28 +14,31 @@ This directory encapsulates the entire multi‑step charter registration & editi
 Import public API via the barrel:
 
 ```ts
-import { charterFormSchema, createDefaultCharterFormValues } from '@features/charter-form';
+import {
+  charterFormSchema,
+  createDefaultCharterFormValues,
+} from "@features/charter-form";
 ```
 
 ## Analytics Events
 
-| Event | Payload | When |
-|-------|---------|------|
-| `step_view` | `{ step, index }` | User navigates to a step |
-| `step_complete` | `{ step, index }` | Step successfully validated and advanced |
-| `validation_errors` | `{ step, count }` | Validation failed on a step |
-| `draft_saved` | `{ server, version? }` | Draft persisted to server (explicit save) |
-| `conflict_resolution` | `{ serverVersion }` | Server version superseded local draft |
-| `finalize_attempt` | none | User submits final form |
-| `finalize_success` | `{ charterId }` | Finalization succeeded |
-| `media_upload_start` | `{ kind, pending }` | Media batch upload started |
-| `media_upload_complete` | `{ kind }` | Single media item finished uploading |
+| Event                   | Payload                | When                                      |
+| ----------------------- | ---------------------- | ----------------------------------------- |
+| `step_view`             | `{ step, index }`      | User navigates to a step                  |
+| `step_complete`         | `{ step, index }`      | Step successfully validated and advanced  |
+| `validation_errors`     | `{ step, count }`      | Validation failed on a step               |
+| `draft_saved`           | `{ server, version? }` | Draft persisted to server (explicit save) |
+| `conflict_resolution`   | `{ serverVersion }`    | Server version superseded local draft     |
+| `finalize_attempt`      | none                   | User submits final form                   |
+| `finalize_success`      | `{ charterId }`        | Finalization succeeded                    |
+| `media_upload_start`    | `{ kind, pending }`    | Media batch upload started                |
+| `media_upload_complete` | `{ kind }`             | Single media item finished uploading      |
 
 Enable console logging in development:
 
 ```ts
-import { enableCharterFormConsoleLogging } from '@features/charter-form/analytics';
-if (process.env.NODE_ENV === 'development') enableCharterFormConsoleLogging();
+import { enableCharterFormConsoleLogging } from "@features/charter-form/analytics";
+if (process.env.NODE_ENV === "development") enableCharterFormConsoleLogging();
 ```
 
 ## Error Handling Strategy
@@ -68,4 +71,5 @@ Utility tests live under `__tests__` (Vitest). Add new tests alongside new utili
 - E2E flow test (Playwright) to ensure navigation + finalize happy path.
 
 ---
+
 Maintainers: Update this README when modifying public API surface or analytics contract.

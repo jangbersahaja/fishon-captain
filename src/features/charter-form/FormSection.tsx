@@ -1152,7 +1152,10 @@ export default function FormSection() {
         );
         if (finalizeRes.ok) {
           await finalizeRes.json().catch(() => ({}));
-          emitCharterFormEvent({ type: "finalize_success", charterId: currentCharterId || "unknown" });
+          emitCharterFormEvent({
+            type: "finalize_success",
+            charterId: currentCharterId || "unknown",
+          });
           setSubmitState({
             type: "success",
             message: isEditing

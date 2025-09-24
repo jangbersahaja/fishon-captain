@@ -1,3 +1,4 @@
+export * from "./analytics";
 export * from "./charterForm.defaults";
 export * from "./charterForm.draft";
 export * from "./charterForm.schema";
@@ -8,4 +9,3 @@ export * from "./preview";
 export * from "./steps";
 export * from "./types";
 export * from "./utils";
-export * from "./analytics";

@@ -3,17 +3,148 @@ import AmenitiesCard from "@/components/charter/AmenitiesCard";
 import BoatCard from "@/components/charter/BoatCard";
 import BookingWidget from "@/components/charter/BookingWidget";
 import CaptainSection from "@/components/charter/CaptainSection";
-import dynamic from "next/dynamic";
-// Dynamically loaded heavy/interactive preview components (only needed in Review step)
-const CharterGallery = dynamic(() => import("@/components/charter/CharterGallery"), { ssr: false });
-const GuestFeedbackPanel = dynamic(() => import("@/components/charter/GuestFeedbackPanel"), { ssr: false });
-const LocationMap = dynamic(() => import("@/components/charter/LocationMap"), { ssr: false });
-const PoliciesInfoCard = dynamic(() => import("@/components/charter/PoliciesInfoCard"), { ssr: false });
-const ReviewsList = dynamic(() => import("@/components/charter/ReviewsList"), { ssr: false });
-const SpeciesTechniquesCard = dynamic(() => import("@/components/charter/SpeciesTechniquesCard"), { ssr: false });
 import type { Charter } from "@/dummy/charter";
+import { registerLazyGroup, trackLazyComponentLoad } from "@features/charter-form/analytics";
 import { PREVIEW_PLACEHOLDER_IMAGES } from "@features/charter-form/constants";
+import dynamic from "next/dynamic";
 import { buildMapEmbedSrc } from "./previewUtils";
+// Dynamically loaded heavy/interactive preview components (only needed in Review step)
+// Register group once (idempotent)
+registerLazyGroup("review_preview", [
+  "CharterGallery",
+  "GuestFeedbackPanel",
+  "LocationMap",
+  "PoliciesInfoCard",
+  "ReviewsList",
+  "SpeciesTechniquesCard",
+]);
+// Individual dynamic imports with timing instrumentation + group tracking
+const CharterGallery = dynamic(
+  async () => {
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    const mod = await import("@/components/charter/CharterGallery");
+    const ms =
+      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
+    trackLazyComponentLoad("review_preview", "CharterGallery", ms);
+    return mod;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="text-[10px] text-slate-400"
+        aria-label="CharterGallery loading"
+      >
+        Loading gallery…
+      </div>
+    ),
+  }
+);
+const GuestFeedbackPanel = dynamic(
+  async () => {
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    const mod = await import("@/components/charter/GuestFeedbackPanel");
+    const ms =
+      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
+    trackLazyComponentLoad("review_preview", "GuestFeedbackPanel", ms);
+    return mod;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="text-[10px] text-slate-400"
+        aria-label="GuestFeedbackPanel loading"
+      >
+        Loading feedback…
+      </div>
+    ),
+  }
+);
+const LocationMap = dynamic(
+  async () => {
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    const mod = await import("@/components/charter/LocationMap");
+    const ms =
+      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
+    trackLazyComponentLoad("review_preview", "LocationMap", ms);
+    return mod;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="text-[10px] text-slate-400"
+        aria-label="LocationMap loading"
+      >
+        Loading map…
+      </div>
+    ),
+  }
+);
+const PoliciesInfoCard = dynamic(
+  async () => {
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    const mod = await import("@/components/charter/PoliciesInfoCard");
+    const ms =
+      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
+    trackLazyComponentLoad("review_preview", "PoliciesInfoCard", ms);
+    return mod;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="text-[10px] text-slate-400"
+        aria-label="PoliciesInfoCard loading"
+      >
+        Loading policies…
+      </div>
+    ),
+  }
+);
+const ReviewsList = dynamic(
+  async () => {
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    const mod = await import("@/components/charter/ReviewsList");
+    const ms =
+      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
+    trackLazyComponentLoad("review_preview", "ReviewsList", ms);
+    return mod;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="text-[10px] text-slate-400"
+        aria-label="ReviewsList loading"
+      >
+        Loading reviews…
+      </div>
+    ),
+  }
+);
+const SpeciesTechniquesCard = dynamic(
+  async () => {
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    const mod = await import("@/components/charter/SpeciesTechniquesCard");
+    const ms =
+      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
+    trackLazyComponentLoad("review_preview", "SpeciesTechniquesCard", ms);
+    return mod;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="text-[10px] text-slate-400"
+        aria-label="SpeciesTechniquesCard loading"
+      >
+        Loading species & techniques…
+      </div>
+    ),
+  }
+);
 
 type PreviewPanelProps = { charter: Charter };
 

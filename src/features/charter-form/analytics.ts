@@ -11,7 +11,9 @@ export type AnalyticsEvent =
   | { type: "validation_errors"; step: string; count: number }
   | { type: "media_upload_start"; kind: "photo" | "video"; pending: number }
   | { type: "media_upload_complete"; kind: "photo" | "video" }
-  | { type: "conflict_resolution"; serverVersion: number };
+  | { type: "conflict_resolution"; serverVersion: number }
+  | { type: "lazy_component_loaded"; name: string; ms?: number; group?: string }
+  | { type: "preview_ready"; group: string; names: string[]; totalMs?: number };
 
 let subscriber: ((e: AnalyticsEvent) => void) | null = null;
 
@@ -26,6 +28,59 @@ export function emitCharterFormEvent(e: AnalyticsEvent) {
     subscriber?.(e);
   } catch {
     // swallow to avoid impacting UX
+  }
+}
+
+// --- Lazy group tracking ----------------------------------------------------
+// Some views (like the preview panel) comprise multiple lazy chunks. We expose
+// a lightweight tracker so that the app can emit a higher-level 'preview_ready'
+// event once all expected chunks for a group have loaded.
+
+type LazyGroupState = {
+  expected: Set<string>;
+  loaded: Set<string>;
+  start: number; // performance.now() when registered
+};
+
+const lazyGroups: Record<string, LazyGroupState> = {};
+
+export function registerLazyGroup(group: string, componentNames: string[]) {
+  if (lazyGroups[group]) return; // idempotent
+  lazyGroups[group] = {
+    expected: new Set(componentNames),
+    loaded: new Set(),
+    start: typeof performance !== "undefined" ? performance.now() : 0,
+  };
+}
+
+/**
+ * Mark a lazy component as loaded (with an optional measured ms). This will:
+ * 1. Emit a lazy_component_loaded event (with group attribution)
+ * 2. If all components in the group are now loaded, emit preview_ready.
+ */
+export function trackLazyComponentLoad(
+  group: string | undefined,
+  name: string,
+  ms?: number
+) {
+  emitCharterFormEvent({
+    type: "lazy_component_loaded",
+    name,
+    ms,
+    group,
+  });
+  if (!group) return;
+  const g = lazyGroups[group];
+  if (!g) return;
+  g.loaded.add(name);
+  if (g.loaded.size === g.expected.size) {
+    const end = typeof performance !== "undefined" ? performance.now() : g.start;
+    emitCharterFormEvent({
+      type: "preview_ready",
+      group,
+      names: Array.from(g.loaded.values()),
+      totalMs: end - g.start || undefined,
+    });
   }
 }
 
