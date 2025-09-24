@@ -1,6 +1,7 @@
 "use client";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useCharterDraft } from "@/utils/useCharterDraft";
+import { emitCharterFormEvent } from "@features/charter-form/analytics";
 import {
   charterFormOptions,
   createDefaultCharterFormValues,
@@ -22,20 +23,26 @@ import {
   StepProgress,
   type StepDefinition,
 } from "@features/charter-form/components/StepProgress";
-import { friendlyFieldLabel, FIELD_LABELS } from "@features/charter-form/fieldLabels";
+import {
+  FIELD_LABELS,
+  friendlyFieldLabel,
+} from "@features/charter-form/fieldLabels";
 import {
   useAutosaveDraft,
   useMediaPreviews,
 } from "@features/charter-form/hooks";
 import { createPreviewCharter } from "@features/charter-form/preview";
-import { emitCharterFormEvent } from "@features/charter-form/analytics";
-import { BasicsStep, ExperienceStep, MediaPricingStep, TripsStep } from "@features/charter-form/steps";
-import dynamic from "next/dynamic";
-const ReviewStep = dynamic(() => import("@features/charter-form/steps/ReviewStep").then(m => m.ReviewStep), { ssr: false });
+import {
+  BasicsStep,
+  ExperienceStep,
+  MediaPricingStep,
+  TripsStep,
+} from "@features/charter-form/steps";
 import type { StepKey } from "@features/charter-form/types";
 import { getFieldError } from "@features/charter-form/utils/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, Check, Loader2, Save, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
@@ -53,6 +60,11 @@ import {
   type Resolver,
   type SubmitHandler,
 } from "react-hook-form";
+const ReviewStep = dynamic(
+  () =>
+    import("@features/charter-form/steps/ReviewStep").then((m) => m.ReviewStep),
+  { ssr: false }
+);
 
 type FormStep = StepDefinition & {
   id: StepKey;
@@ -194,7 +206,11 @@ export default function FormSection() {
     }
     setDraftLoaded(true);
     setIsRestoringDraft(false);
-    emitCharterFormEvent({ type: "step_view", step: STEP_SEQUENCE[0].id, index: 0 });
+    emitCharterFormEvent({
+      type: "step_view",
+      step: STEP_SEQUENCE[0].id,
+      index: 0,
+    });
   }, [defaultState, initializeDraftState, loadDraft, reset]);
 
   // Fetch or create server draft (authenticated only) OR seed from existing charter when editing
@@ -934,6 +950,11 @@ export default function FormSection() {
           ? friendlyUnique
           : ["Please correct the highlighted fields before continuing."]
       );
+      emitCharterFormEvent({
+        type: "validation_errors",
+        step: STEP_SEQUENCE[currentStep].id,
+        count: friendlyUnique.length || 1,
+      });
       const first = errs[0];
       if (first) {
         const el = document.querySelector(
@@ -954,8 +975,16 @@ export default function FormSection() {
     setCurrentStep((prev) => {
       const next = Math.min(prev + 1, totalSteps - 1);
       if (next !== prev) {
-        emitCharterFormEvent({ type: "step_view", step: STEP_SEQUENCE[next].id, index: next });
-        emitCharterFormEvent({ type: "step_complete", step: STEP_SEQUENCE[prev].id, index: prev });
+        emitCharterFormEvent({
+          type: "step_view",
+          step: STEP_SEQUENCE[next].id,
+          index: next,
+        });
+        emitCharterFormEvent({
+          type: "step_complete",
+          step: STEP_SEQUENCE[prev].id,
+          index: prev,
+        });
       }
       return next;
     });
@@ -972,7 +1001,12 @@ export default function FormSection() {
   const handlePrev = useCallback(() => {
     setCurrentStep((p) => {
       const next = Math.max(p - 1, 0);
-      if (next !== p) emitCharterFormEvent({ type: "step_view", step: STEP_SEQUENCE[next].id, index: next });
+      if (next !== p)
+        emitCharterFormEvent({
+          type: "step_view",
+          step: STEP_SEQUENCE[next].id,
+          index: next,
+        });
       return next;
     });
     scrollToTop();
@@ -1057,6 +1091,7 @@ export default function FormSection() {
       }
       // Cover is implicitly the first item; no explicit indices needed
       try {
+        emitCharterFormEvent({ type: "finalize_attempt" });
         if (!serverDraftId) {
           setSubmitState({
             type: "error",
@@ -1117,6 +1152,7 @@ export default function FormSection() {
         );
         if (finalizeRes.ok) {
           await finalizeRes.json().catch(() => ({}));
+          emitCharterFormEvent({ type: "finalize_success", charterId: currentCharterId || "unknown" });
           setSubmitState({
             type: "success",
             message: isEditing
@@ -1161,6 +1197,7 @@ export default function FormSection() {
       reset,
       existingImages,
       existingVideos,
+      currentCharterId,
     ]
   );
   // Allow submission in edit mode even if no new photos were added, as long as existing images are available.
@@ -1244,7 +1281,11 @@ export default function FormSection() {
             saveServerDraftSnapshot().finally(() => {
               setCurrentStep((cur) => {
                 if (cur === idx) return cur;
-                emitCharterFormEvent({ type: "step_view", step: STEP_SEQUENCE[idx].id, index: idx });
+                emitCharterFormEvent({
+                  type: "step_view",
+                  step: STEP_SEQUENCE[idx].id,
+                  index: idx,
+                });
                 return idx;
               });
             });
@@ -1265,12 +1306,19 @@ export default function FormSection() {
                     type="button"
                     onClick={() => {
                       // naive attempt to focus by friendly label -> match input by aria-label or placeholder heuristic skipped for now
-                      const fieldKey = Object.entries(FIELD_LABELS).find(([, label]) => label === f)?.[0];
+                      const fieldKey = Object.entries(FIELD_LABELS).find(
+                        ([, label]) => label === f
+                      )?.[0];
                       if (fieldKey) {
                         const name = fieldKey.replace(/\./g, ".");
-                        const el = document.querySelector(`[name='${name}']`) as HTMLElement | null;
+                        const el = document.querySelector(
+                          `[name='${name}']`
+                        ) as HTMLElement | null;
                         if (el) {
-                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          el.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                          });
                           setTimeout(() => el.focus?.(), 300);
                         }
                       }
