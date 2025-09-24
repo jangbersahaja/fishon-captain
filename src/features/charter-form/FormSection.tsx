@@ -22,21 +22,18 @@ import {
   StepProgress,
   type StepDefinition,
 } from "@features/charter-form/components/StepProgress";
-import { friendlyFieldLabel } from "@features/charter-form/fieldLabels";
-import { getFieldError } from "@features/charter-form/utils/validation";
+import { friendlyFieldLabel, FIELD_LABELS } from "@features/charter-form/fieldLabels";
 import {
   useAutosaveDraft,
   useMediaPreviews,
 } from "@features/charter-form/hooks";
 import { createPreviewCharter } from "@features/charter-form/preview";
-import {
-  BasicsStep,
-  ExperienceStep,
-  MediaPricingStep,
-  ReviewStep,
-  TripsStep,
-} from "@features/charter-form/steps";
+import { emitCharterFormEvent } from "@features/charter-form/analytics";
+import { BasicsStep, ExperienceStep, MediaPricingStep, TripsStep } from "@features/charter-form/steps";
+import dynamic from "next/dynamic";
+const ReviewStep = dynamic(() => import("@features/charter-form/steps/ReviewStep").then(m => m.ReviewStep), { ssr: false });
 import type { StepKey } from "@features/charter-form/types";
+import { getFieldError } from "@features/charter-form/utils/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, Check, Loader2, Save, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -197,6 +194,7 @@ export default function FormSection() {
     }
     setDraftLoaded(true);
     setIsRestoringDraft(false);
+    emitCharterFormEvent({ type: "step_view", step: STEP_SEQUENCE[0].id, index: 0 });
   }, [defaultState, initializeDraftState, loadDraft, reset]);
 
   // Fetch or create server draft (authenticated only) OR seed from existing charter when editing
@@ -953,7 +951,14 @@ export default function FormSection() {
       n[currentStep] = true;
       return n;
     });
-    setCurrentStep((prev) => Math.min(prev + 1, totalSteps - 1));
+    setCurrentStep((prev) => {
+      const next = Math.min(prev + 1, totalSteps - 1);
+      if (next !== prev) {
+        emitCharterFormEvent({ type: "step_view", step: STEP_SEQUENCE[next].id, index: next });
+        emitCharterFormEvent({ type: "step_complete", step: STEP_SEQUENCE[prev].id, index: prev });
+      }
+      return next;
+    });
     scrollToTop();
   }, [
     currentStep,
@@ -965,7 +970,11 @@ export default function FormSection() {
     existingImages.length,
   ]);
   const handlePrev = useCallback(() => {
-    setCurrentStep((p) => Math.max(p - 1, 0));
+    setCurrentStep((p) => {
+      const next = Math.max(p - 1, 0);
+      if (next !== p) emitCharterFormEvent({ type: "step_view", step: STEP_SEQUENCE[next].id, index: next });
+      return next;
+    });
     scrollToTop();
   }, [scrollToTop]);
 
@@ -1232,7 +1241,13 @@ export default function FormSection() {
           clickable={isEditing}
           onStepClick={(idx) => {
             if (idx === currentStep) return;
-            saveServerDraftSnapshot().finally(() => setCurrentStep(idx));
+            saveServerDraftSnapshot().finally(() => {
+              setCurrentStep((cur) => {
+                if (cur === idx) return cur;
+                emitCharterFormEvent({ type: "step_view", step: STEP_SEQUENCE[idx].id, index: idx });
+                return idx;
+              });
+            });
           }}
         />
         <p className="text-[11px] text-slate-400">
@@ -1245,7 +1260,26 @@ export default function FormSection() {
             <p className="font-semibold mb-1">Please fix before continuing:</p>
             <ul className="list-disc pl-4 space-y-0.5">
               {stepErrorSummary.map((f, i) => (
-                <li key={f + "-" + i}>{f}</li>
+                <li key={f + "-" + i}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // naive attempt to focus by friendly label -> match input by aria-label or placeholder heuristic skipped for now
+                      const fieldKey = Object.entries(FIELD_LABELS).find(([, label]) => label === f)?.[0];
+                      if (fieldKey) {
+                        const name = fieldKey.replace(/\./g, ".");
+                        const el = document.querySelector(`[name='${name}']`) as HTMLElement | null;
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          setTimeout(() => el.focus?.(), 300);
+                        }
+                      }
+                    }}
+                    className="underline hover:text-red-800 focus:outline-none"
+                  >
+                    {f}
+                  </button>
+                </li>
               ))}
             </ul>
           </div>
