@@ -22,19 +22,19 @@ import {
 
 ## Analytics Events
 
-| Event                   | Payload                                 | When                                                       |
-| ----------------------- | --------------------------------------- | ---------------------------------------------------------- |
-| `step_view`             | `{ step, index }`                       | User navigates to a step (deduped within 800ms window)     |
-| `step_complete`         | `{ step, index }`                       | Step successfully validated and advanced                   |
-| `validation_errors`     | `{ step, count }`                       | Validation failed on a step                                |
-| `draft_saved`           | `{ server, version? }`                  | Draft persisted to server (explicit save)                  |
-| `conflict_resolution`   | `{ serverVersion }`                     | Server version superseded local draft                      |
-| `finalize_attempt`      | none                                    | User submits final form                                    |
-| `finalize_success`      | `{ charterId, ms? }`                    | Finalization succeeded (optional total duration)           |
-| `media_upload_start`    | `{ kind, pending }`                     | Media batch upload started                                 |
-| `media_upload_complete` | `{ kind }`                              | Single media item finished uploading                       |
-| `lazy_component_loaded` | `{ name, ms?, group? }`                 | A lazily loaded chunk finished loading                     |
-| `preview_ready`         | `{ group, names, totalMs? }`            | All registered lazy components for a group have completed  |
+| Event                   | Payload                      | When                                                      |
+| ----------------------- | ---------------------------- | --------------------------------------------------------- |
+| `step_view`             | `{ step, index }`            | User navigates to a step (deduped within 800ms window)    |
+| `step_complete`         | `{ step, index }`            | Step successfully validated and advanced                  |
+| `validation_errors`     | `{ step, count }`            | Validation failed on a step                               |
+| `draft_saved`           | `{ server, version? }`       | Draft persisted to server (explicit save)                 |
+| `conflict_resolution`   | `{ serverVersion }`          | Server version superseded local draft                     |
+| `finalize_attempt`      | none                         | User submits final form                                   |
+| `finalize_success`      | `{ charterId, ms? }`         | Finalization succeeded (duration auto-added if omitted)   |
+| `media_upload_start`    | `{ kind, pending }`          | Media batch upload started                                |
+| `media_upload_complete` | `{ kind, ms? }`              | Single media item finished (ms since last batch start)    |
+| `lazy_component_loaded` | `{ name, ms?, group? }`      | A lazily loaded chunk finished loading                    |
+| `preview_ready`         | `{ group, names, totalMs? }` | All registered lazy components for a group have completed |
 
 Enable console logging in development:
 
@@ -69,6 +69,7 @@ Utility tests live under `__tests__` (Vitest). Add new tests alongside new utili
 ## Future Ideas
 
 - Split heavy components (map, gallery) into more granular dynamic imports.
+- Soft perf budgets: dev console warns if a lazy chunk exceeds 1500ms load time.
 - Server round‑trip validation integration (mirror Zod schema compiled to JSON for server).
 - E2E flow test (Playwright) to ensure navigation + finalize happy path.
 

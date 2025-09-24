@@ -10,7 +10,7 @@ export type AnalyticsEvent =
   | { type: "finalize_success"; charterId: string; ms?: number }
   | { type: "validation_errors"; step: string; count: number }
   | { type: "media_upload_start"; kind: "photo" | "video"; pending: number }
-  | { type: "media_upload_complete"; kind: "photo" | "video" }
+  | { type: "media_upload_complete"; kind: "photo" | "video"; ms?: number }
   | { type: "conflict_resolution"; serverVersion: number }
   | { type: "lazy_component_loaded"; name: string; ms?: number; group?: string }
   | { type: "preview_ready"; group: string; names: string[]; totalMs?: number };
@@ -19,6 +19,9 @@ let subscriber: ((e: AnalyticsEvent) => void) | null = null;
 // Dedupe state for step_view
 const LAST_STEP_VIEW: { step?: string; index?: number; t?: number } = {};
 const STEP_VIEW_DEDUPE_WINDOW_MS = 800; // avoid noisy repeats when state re-renders
+let finalizeAttemptAt: number | null = null;
+const mediaUploadStartAt: Partial<Record<'photo' | 'video', number>> = {};
+const LAZY_COMPONENT_BUDGET_MS = 1500; // soft budget for a lazy chunk
 
 export function setCharterFormAnalyticsListener(
   fn: (e: AnalyticsEvent) => void
@@ -29,7 +32,8 @@ export function setCharterFormAnalyticsListener(
 export function emitCharterFormEvent(e: AnalyticsEvent) {
   try {
     if (e.type === "step_view") {
-      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const now =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
       if (
         LAST_STEP_VIEW.step === e.step &&
         LAST_STEP_VIEW.index === e.index &&
@@ -41,6 +45,19 @@ export function emitCharterFormEvent(e: AnalyticsEvent) {
       LAST_STEP_VIEW.step = e.step;
       LAST_STEP_VIEW.index = e.index;
       LAST_STEP_VIEW.t = now;
+    }
+    if (e.type === 'finalize_attempt') {
+      finalizeAttemptAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    } else if (e.type === 'finalize_success' && finalizeAttemptAt !== null && e.ms === undefined) {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      e.ms = Math.max(0, Math.round(now - finalizeAttemptAt));
+      finalizeAttemptAt = null;
+    }
+    if (e.type === 'media_upload_start') {
+      mediaUploadStartAt[e.kind] = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    } else if (e.type === 'media_upload_complete' && mediaUploadStartAt[e.kind] && e.ms === undefined) {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      e.ms = Math.max(0, Math.round(now - (mediaUploadStartAt[e.kind] as number)));
     }
     subscriber?.(e);
   } catch {
@@ -81,12 +98,14 @@ export function trackLazyComponentLoad(
   name: string,
   ms?: number
 ) {
-  emitCharterFormEvent({
-    type: "lazy_component_loaded",
-    name,
-    ms,
-    group,
-  });
+  emitCharterFormEvent({ type: "lazy_component_loaded", name, ms, group });
+  if (ms !== undefined && ms > LAZY_COMPONENT_BUDGET_MS) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        `[charter-form] Lazy component '${name}' exceeded budget (${ms}ms > ${LAZY_COMPONENT_BUDGET_MS}ms)`
+      );
+    }
+  }
   if (!group) return;
   const g = lazyGroups[group];
   if (!g) return;
