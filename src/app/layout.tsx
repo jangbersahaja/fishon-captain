@@ -1,5 +1,6 @@
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import Navbar from "@/components/Navbar";
+import { enableCharterFormConsoleLogging } from "@features/charter-form/analytics";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -30,6 +31,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  if (process.env.NODE_ENV === "development") {
+    // Initialize once (safe because component is a Server Component; guard keeps static evaluation harmless)
+    enableCharterFormConsoleLogging();
+  }
   return (
     <html lang="en">
       <body className={`${inter.className} h-full`}>
