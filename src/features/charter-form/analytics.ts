@@ -11,7 +11,12 @@ export type AnalyticsEvent =
   | { type: "validation_errors"; step: string; count: number }
   | { type: "media_upload_start"; kind: "photo" | "video"; pending: number }
   | { type: "media_upload_complete"; kind: "photo" | "video"; ms?: number }
-  | { type: "media_batch_complete"; kind: "photo" | "video"; count: number; ms?: number }
+  | {
+      type: "media_batch_complete";
+      kind: "photo" | "video";
+      count: number;
+      ms?: number;
+    }
   | { type: "conflict_resolution"; serverVersion: number }
   | { type: "lazy_component_loaded"; name: string; ms?: number; group?: string }
   | { type: "preview_ready"; group: string; names: string[]; totalMs?: number };
@@ -22,7 +27,11 @@ const LAST_STEP_VIEW: { step?: string; index?: number; t?: number } = {};
 const STEP_VIEW_DEDUPE_WINDOW_MS = 800; // avoid noisy repeats when state re-renders
 let finalizeAttemptAt: number | null = null;
 const mediaUploadStartAt: Partial<Record<"photo" | "video", number>> = {};
-interface MediaBatchState { pending: number; completed: number; start: number }
+interface MediaBatchState {
+  pending: number;
+  completed: number;
+  start: number;
+}
 const mediaBatch: Partial<Record<"photo" | "video", MediaBatchState>> = {};
 const DEFAULT_LAZY_BUDGET = 1500;
 const envBudget =
@@ -172,4 +181,22 @@ export function enableCharterFormConsoleLogging() {
   setCharterFormAnalyticsListener((e) => {
     console.debug("[charter-form:event]", e);
   });
+}
+
+// Test-only utility (exported for Vitest). Not for production use.
+export function __resetCharterFormAnalyticsForTests() {
+  subscriber = null;
+  LAST_STEP_VIEW.step = undefined;
+  LAST_STEP_VIEW.index = undefined;
+  LAST_STEP_VIEW.t = undefined;
+  finalizeAttemptAt = null;
+  (Object.keys(mediaUploadStartAt) as Array<keyof typeof mediaUploadStartAt>).forEach(
+    (k) => delete mediaUploadStartAt[k]
+  );
+  (Object.keys(mediaBatch) as Array<keyof typeof mediaBatch>).forEach(
+    (k) => delete mediaBatch[k]
+  );
+  (Object.keys(lazyGroups) as Array<keyof typeof lazyGroups>).forEach(
+    (k) => delete lazyGroups[k]
+  );
 }
