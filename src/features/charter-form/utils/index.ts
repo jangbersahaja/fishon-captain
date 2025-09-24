@@ -1,3 +1,3 @@
 export * from "./descriptionGenerator";
 export * from "./parseAddressComponents";
-export { getFieldError } from "./validation";
+export * from "./validation";

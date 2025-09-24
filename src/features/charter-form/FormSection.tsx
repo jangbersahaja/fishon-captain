@@ -23,6 +23,7 @@ import {
   type StepDefinition,
 } from "@features/charter-form/components/StepProgress";
 import { friendlyFieldLabel } from "@features/charter-form/fieldLabels";
+import { getFieldError } from "@features/charter-form/utils/validation";
 import {
   useAutosaveDraft,
   useMediaPreviews,
@@ -36,7 +37,6 @@ import {
   TripsStep,
 } from "@features/charter-form/steps";
 import type { StepKey } from "@features/charter-form/types";
-import { getFieldError } from "@features/charter-form/utils/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, Check, Loader2, Save, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
