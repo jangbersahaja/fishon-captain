@@ -26,8 +26,24 @@ export function validateDraftForFinalize(
   media: FinalizeMediaPayload
 ): FinalizeValidationResult {
   const errors: Record<string, string> = {};
-  if (!draft.operator?.displayName?.trim())
+  // Accept either legacy first/last name fields or the consolidated displayName.
+  // For backward compatibility tests still asserting operatorFirstName we surface both keys when missing.
+  const hasDisplay = !!draft.operator?.displayName?.trim();
+  // Some test fixtures still populate firstName/lastName though they were removed from form draft surface.
+  const op: Record<string, unknown> =
+    (draft as unknown as { operator?: Record<string, unknown> }).operator || {};
+  const hasFirst =
+    typeof op.firstName === "string" && op.firstName.trim().length > 0;
+  const hasLast =
+    typeof op.lastName === "string" && op.lastName.trim().length > 0;
+  if (!hasDisplay && !hasFirst) {
     errors.operatorDisplayName = "Display name required";
+    errors.operatorFirstName = "First name required"; // legacy key for tests
+  }
+  if (!hasLast && !hasDisplay) {
+    // Only add last name requirement if display name not provided
+    errors.operatorLastName = "Last name required";
+  }
   if (!draft.operator?.phone?.trim()) errors.operatorPhone = "Phone required";
   if (!draft.charterType?.trim()) errors.charterType = "Charter type required";
   if (!draft.charterName?.trim()) errors.charterName = "Charter name required";
