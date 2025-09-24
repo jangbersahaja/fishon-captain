@@ -4,7 +4,10 @@ import BoatCard from "@/components/charter/BoatCard";
 import BookingWidget from "@/components/charter/BookingWidget";
 import CaptainSection from "@/components/charter/CaptainSection";
 import type { Charter } from "@/dummy/charter";
-import { registerLazyGroup, trackLazyComponentLoad } from "@features/charter-form/analytics";
+import {
+  registerLazyGroup,
+  trackLazyComponentLoad,
+} from "@features/charter-form/analytics";
 import { PREVIEW_PLACEHOLDER_IMAGES } from "@features/charter-form/constants";
 import dynamic from "next/dynamic";
 import { buildMapEmbedSrc } from "./previewUtils";

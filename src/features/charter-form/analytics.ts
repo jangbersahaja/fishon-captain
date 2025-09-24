@@ -7,7 +7,7 @@ export type AnalyticsEvent =
   | { type: "step_complete"; step: string; index: number }
   | { type: "draft_saved"; server: boolean; version?: number | null }
   | { type: "finalize_attempt" }
-  | { type: "finalize_success"; charterId: string }
+  | { type: "finalize_success"; charterId: string; ms?: number }
   | { type: "validation_errors"; step: string; count: number }
   | { type: "media_upload_start"; kind: "photo" | "video"; pending: number }
   | { type: "media_upload_complete"; kind: "photo" | "video" }
@@ -16,6 +16,9 @@ export type AnalyticsEvent =
   | { type: "preview_ready"; group: string; names: string[]; totalMs?: number };
 
 let subscriber: ((e: AnalyticsEvent) => void) | null = null;
+// Dedupe state for step_view
+const LAST_STEP_VIEW: { step?: string; index?: number; t?: number } = {};
+const STEP_VIEW_DEDUPE_WINDOW_MS = 800; // avoid noisy repeats when state re-renders
 
 export function setCharterFormAnalyticsListener(
   fn: (e: AnalyticsEvent) => void
@@ -25,6 +28,20 @@ export function setCharterFormAnalyticsListener(
 
 export function emitCharterFormEvent(e: AnalyticsEvent) {
   try {
+    if (e.type === "step_view") {
+      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+      if (
+        LAST_STEP_VIEW.step === e.step &&
+        LAST_STEP_VIEW.index === e.index &&
+        LAST_STEP_VIEW.t !== undefined &&
+        now - LAST_STEP_VIEW.t < STEP_VIEW_DEDUPE_WINDOW_MS
+      ) {
+        return; // suppress duplicate rapid emission
+      }
+      LAST_STEP_VIEW.step = e.step;
+      LAST_STEP_VIEW.index = e.index;
+      LAST_STEP_VIEW.t = now;
+    }
     subscriber?.(e);
   } catch {
     // swallow to avoid impacting UX
@@ -40,6 +57,7 @@ type LazyGroupState = {
   expected: Set<string>;
   loaded: Set<string>;
   start: number; // performance.now() when registered
+  done?: boolean; // whether preview_ready has fired
 };
 
 const lazyGroups: Record<string, LazyGroupState> = {};
@@ -74,13 +92,16 @@ export function trackLazyComponentLoad(
   if (!g) return;
   g.loaded.add(name);
   if (g.loaded.size === g.expected.size) {
-    const end = typeof performance !== "undefined" ? performance.now() : g.start;
+    if (g.done) return; // already emitted preview_ready
+    const end =
+      typeof performance !== "undefined" ? performance.now() : g.start;
     emitCharterFormEvent({
       type: "preview_ready",
       group,
       names: Array.from(g.loaded.values()),
       totalMs: end - g.start || undefined,
     });
+    g.done = true;
   }
 }
 
