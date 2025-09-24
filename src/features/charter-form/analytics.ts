@@ -11,6 +11,7 @@ export type AnalyticsEvent =
   | { type: "validation_errors"; step: string; count: number }
   | { type: "media_upload_start"; kind: "photo" | "video"; pending: number }
   | { type: "media_upload_complete"; kind: "photo" | "video"; ms?: number }
+  | { type: "media_batch_complete"; kind: "photo" | "video"; count: number; ms?: number }
   | { type: "conflict_resolution"; serverVersion: number }
   | { type: "lazy_component_loaded"; name: string; ms?: number; group?: string }
   | { type: "preview_ready"; group: string; names: string[]; totalMs?: number };
@@ -20,8 +21,16 @@ let subscriber: ((e: AnalyticsEvent) => void) | null = null;
 const LAST_STEP_VIEW: { step?: string; index?: number; t?: number } = {};
 const STEP_VIEW_DEDUPE_WINDOW_MS = 800; // avoid noisy repeats when state re-renders
 let finalizeAttemptAt: number | null = null;
-const mediaUploadStartAt: Partial<Record<'photo' | 'video', number>> = {};
-const LAZY_COMPONENT_BUDGET_MS = 1500; // soft budget for a lazy chunk
+const mediaUploadStartAt: Partial<Record<"photo" | "video", number>> = {};
+interface MediaBatchState { pending: number; completed: number; start: number }
+const mediaBatch: Partial<Record<"photo" | "video", MediaBatchState>> = {};
+const DEFAULT_LAZY_BUDGET = 1500;
+const envBudget =
+  typeof process !== "undefined"
+    ? Number(process.env.NEXT_PUBLIC_CHARTER_FORM_LAZY_BUDGET_MS) || undefined
+    : undefined;
+const LAZY_COMPONENT_BUDGET_MS =
+  envBudget && envBudget > 0 ? envBudget : DEFAULT_LAZY_BUDGET; // soft budget for a lazy chunk
 
 export function setCharterFormAnalyticsListener(
   fn: (e: AnalyticsEvent) => void
@@ -46,18 +55,52 @@ export function emitCharterFormEvent(e: AnalyticsEvent) {
       LAST_STEP_VIEW.index = e.index;
       LAST_STEP_VIEW.t = now;
     }
-    if (e.type === 'finalize_attempt') {
-      finalizeAttemptAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    } else if (e.type === 'finalize_success' && finalizeAttemptAt !== null && e.ms === undefined) {
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (e.type === "finalize_attempt") {
+      finalizeAttemptAt =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+    } else if (
+      e.type === "finalize_success" &&
+      finalizeAttemptAt !== null &&
+      e.ms === undefined
+    ) {
+      const now =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
       e.ms = Math.max(0, Math.round(now - finalizeAttemptAt));
       finalizeAttemptAt = null;
     }
-    if (e.type === 'media_upload_start') {
-      mediaUploadStartAt[e.kind] = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    } else if (e.type === 'media_upload_complete' && mediaUploadStartAt[e.kind] && e.ms === undefined) {
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      e.ms = Math.max(0, Math.round(now - (mediaUploadStartAt[e.kind] as number)));
+    if (e.type === "media_upload_start") {
+      mediaUploadStartAt[e.kind] =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+      mediaBatch[e.kind] = {
+        pending: e.pending,
+        completed: 0,
+        start: mediaUploadStartAt[e.kind] as number,
+      };
+    } else if (e.type === "media_upload_complete") {
+      if (mediaUploadStartAt[e.kind] && e.ms === undefined) {
+        const now =
+          typeof performance !== "undefined" ? performance.now() : Date.now();
+        e.ms = Math.max(
+          0,
+          Math.round(now - (mediaUploadStartAt[e.kind] as number))
+        );
+      }
+      const batch = mediaBatch[e.kind];
+      if (batch) {
+        batch.completed += 1;
+        if (batch.completed >= batch.pending) {
+          const now =
+            typeof performance !== "undefined" ? performance.now() : Date.now();
+          const totalMs = Math.max(0, Math.round(now - batch.start));
+          emitCharterFormEvent({
+            type: "media_batch_complete",
+            kind: e.kind,
+            count: batch.pending,
+            ms: totalMs,
+          });
+          delete mediaBatch[e.kind];
+        }
+      }
     }
     subscriber?.(e);
   } catch {
@@ -100,7 +143,7 @@ export function trackLazyComponentLoad(
 ) {
   emitCharterFormEvent({ type: "lazy_component_loaded", name, ms, group });
   if (ms !== undefined && ms > LAZY_COMPONENT_BUDGET_MS) {
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== "production") {
       console.warn(
         `[charter-form] Lazy component '${name}' exceeded budget (${ms}ms > ${LAZY_COMPONENT_BUDGET_MS}ms)`
       );

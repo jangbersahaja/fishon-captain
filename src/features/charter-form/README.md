@@ -33,6 +33,7 @@ import {
 | `finalize_success`      | `{ charterId, ms? }`         | Finalization succeeded (duration auto-added if omitted)   |
 | `media_upload_start`    | `{ kind, pending }`          | Media batch upload started                                |
 | `media_upload_complete` | `{ kind, ms? }`              | Single media item finished (ms since last batch start)    |
+| `media_batch_complete`  | `{ kind, count, ms? }`       | Entire upload batch for kind finished                     |
 | `lazy_component_loaded` | `{ name, ms?, group? }`      | A lazily loaded chunk finished loading                    |
 | `preview_ready`         | `{ group, names, totalMs? }` | All registered lazy components for a group have completed |
 
@@ -70,6 +71,7 @@ Utility tests live under `__tests__` (Vitest). Add new tests alongside new utili
 
 - Split heavy components (map, gallery) into more granular dynamic imports.
 - Soft perf budgets: dev console warns if a lazy chunk exceeds 1500ms load time.
+  - Override with `NEXT_PUBLIC_CHARTER_FORM_LAZY_BUDGET_MS` env var.
 - Server round‑trip validation integration (mirror Zod schema compiled to JSON for server).
 - E2E flow test (Playwright) to ensure navigation + finalize happy path.
 
