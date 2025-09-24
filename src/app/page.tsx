@@ -89,7 +89,7 @@ export default function ListYourBusinessPage() {
           </p>
           <div className="pointer-events-auto mt-6 flex flex-wrap gap-3">
             <Link
-              href="/captains/register"
+              href="/auth?next=/captain/form"
               className="inline-flex items-center gap-2 rounded-xl bg-[#EC2227] px-5 py-3 font-semibold text-white shadow hover:opacity-95 text-base"
             >
               <FilePenLine className="h-5 w-5 md:h-6 md:w-6" aria-hidden />
@@ -332,7 +332,7 @@ export default function ListYourBusinessPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/captains/register"
+                href="/auth?next=/captain/form"
                 className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-[#EC2227] shadow hover:bg-white/90 text-base"
               >
                 <FilePenLine className="h-5 w-5 md:h-6 md:w-6" aria-hidden />

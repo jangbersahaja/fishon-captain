@@ -1,3 +1,4 @@
+import AuthSessionProvider from "@/components/AuthSessionProvider";
 import Navbar from "@/components/Navbar";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -32,8 +33,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} h-full`}>
-        <Navbar />
-        {children}
+        <AuthSessionProvider>
+          <Navbar />
+          {children}
+        </AuthSessionProvider>
       </body>
     </html>
   );

@@ -1,9 +1,11 @@
+import { env } from "@/lib/env";
+import { applySecurityHeaders } from "@/lib/headers";
 import { NextResponse } from "next/server";
 
 // Note: Ensure you have enabled Places API in Google Cloud Console and set GOOGLE_PLACES_API_KEY in env.
 // This endpoint keeps the API key server-side. Frontend calls: /api/places/autocomplete?input=Jetty+Langkawi
 
-const API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const API_KEY = env.GOOGLE_PLACES_API_KEY;
 
 if (!API_KEY) {
   // We don't throw at import time in production builds — runtime guard in handler.
@@ -19,14 +21,13 @@ export async function GET(request: Request) {
   const region = searchParams.get("region") ?? "my"; // default Malaysia
 
   if (!API_KEY) {
-    return NextResponse.json(
-      { error: "Server not configured" },
-      { status: 500 }
+    return applySecurityHeaders(
+      NextResponse.json({ error: "Server not configured" }, { status: 500 })
     );
   }
 
   if (!input || !input.trim()) {
-    return NextResponse.json({ predictions: [] });
+    return applySecurityHeaders(NextResponse.json({ predictions: [] }));
   }
 
   const params = new URLSearchParams({
@@ -43,7 +44,9 @@ export async function GET(request: Request) {
   try {
     const res = await fetch(url, { next: { revalidate: 60 } });
     if (!res.ok) {
-      return NextResponse.json({ error: "Upstream error" }, { status: 502 });
+      return applySecurityHeaders(
+        NextResponse.json({ error: "Upstream error" }, { status: 502 })
+      );
     }
     interface GoogleAutocompletePrediction {
       description: string;
@@ -60,9 +63,13 @@ export async function GET(request: Request) {
       types: p.types,
       structured_formatting: p.structured_formatting,
     }));
-    return NextResponse.json({ predictions }, { status: 200 });
+    return applySecurityHeaders(
+      NextResponse.json({ predictions }, { status: 200 })
+    );
   } catch (e) {
     console.error("Places autocomplete error", e);
-    return NextResponse.json({ error: "Request failed" }, { status: 500 });
+    return applySecurityHeaders(
+      NextResponse.json({ error: "Request failed" }, { status: 500 })
+    );
   }
 }

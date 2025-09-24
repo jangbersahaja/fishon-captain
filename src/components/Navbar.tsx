@@ -1,6 +1,7 @@
 "use client";
 
 import FishonLogo from "@/assets/img/logo/fishon-logo-white.png";
+import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,6 +14,7 @@ type NavbarProps = {
 export default function Navbar({ transparentOnTop = false }: NavbarProps) {
   const [open] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     if (!transparentOnTop) return;
@@ -51,9 +53,44 @@ export default function Navbar({ transparentOnTop = false }: NavbarProps) {
               fill
               className="object-contain"
               priority
+              sizes="width: 112px"
             />
           </span>
         </Link>
+        <div className="flex items-center gap-4 text-sm font-medium">
+          {status === "loading" ? null : session?.user ? (
+            <>
+              <Link
+                href="/captain"
+                className="hidden md:inline-flex items-center rounded-full border border-white/30 px-4 py-1.5 text-white/90 backdrop-blur transition hover:bg-white/10"
+              >
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="inline-flex items-center rounded-full bg-white/15 px-4 py-1.5 text-white shadow-sm ring-1 ring-white/30 transition hover:bg-white/25"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/auth?mode=signin"
+                className="inline-flex items-center rounded-full bg-white/15 px-4 py-1.5 text-white shadow-sm ring-1 ring-white/30 transition hover:bg-white/25"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/auth?mode=signup"
+                className="hidden md:inline-flex items-center rounded-full border border-white/40 px-4 py-1.5 text-white/90 backdrop-blur transition hover:bg-white/10"
+              >
+                Create account
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -1,3 +1,5 @@
+# FishOn Captain Registration
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -24,9 +26,6 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
 ## Deploy on Vercel
@@ -41,17 +40,37 @@ The captain registration form now supports Google Places-powered address suggest
 
 ### Environment Variables
 
-Add to `.env.local` (do NOT commit secrets):
+Copy `.env.example` to `.env.local` and fill in real, non-placeholder values. `.env.local` is git‑ignored.
 
+Run the environment sanity checker:
+
+```bash
+npm run check:env
 ```
-GOOGLE_PLACES_API_KEY=YOUR_SERVER_KEY   # server-side (Places Autocomplete & Details)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_BROWSER_KEY  # restricted browser key for Maps JS
+
+If any required variables are missing the script will exit non‑zero and list them. Placeholder detection warns if values look like defaults.
+
+Minimum required for local auth + maps:
+
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/dbname
+NEXTAUTH_SECRET=generate-a-random-long-string
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=browser-key
 ```
 
-Recommended key restrictions:
+Optional but recommended:
 
-- Server key: restrict by IP (if using a fixed server) + API restrictions (Places API, Place Details, _optional_ Geocoding later).
-- Browser key: restrict by HTTP referrers + API restrictions (Maps JavaScript API).
+```env
+GOOGLE_PLACES_API_KEY=server-restricted-key   # server-side Places Autocomplete & Details
+```
+
+Key restriction guidance:
+
+1. Browser Maps key: restrict by HTTP referrer (production domains) & APIs (Maps JavaScript API only).
+2. Server Places key: restrict by IP (if static) or at least by API endpoints (Places API). Separate from browser key.
+3. Rotate keys immediately if accidentally committed; the repository ignores `.env.local` by default.
 
 ### Flow
 
@@ -64,35 +83,158 @@ Recommended key restrictions:
 
 ### Relevant Files
 
-- `src/app/api/places/autocomplete/route.ts` – server proxy for Place Autocomplete.
-- `src/app/api/places/details/route.ts` – server proxy for Place Details (geometry).
-- `src/app/captains/register/_components/form/components/AddressAutocomplete.tsx` – input + suggestion list.
-- `src/app/captains/register/_components/form/hooks/usePlaceDetails.ts` – fetches geometry.
-- `src/app/captains/register/_components/form/components/LocationMap.tsx` – lazy-loaded Google Map with draggable marker.
-- `src/app/captains/register/_components/form/steps/BasicsStep.tsx` – integration wiring.
-
 ### Added Schema Fields
-
-- `placeId?: string` (optional – stored when a suggestion is chosen).
-- `latitude`, `longitude` auto-populated (user can fine-tune via map).
 
 ### Autofill Behavior
 
 When a starting point address is selected, the app now attempts to fill:
 
-- State (from administrative_area_level_1)
-- City/Town (administrative_area_level_2/3/locality match against known list of districts; stored internally as `city`)
-- Postcode (postal_code)
-
 If a component cannot be matched, the original user-selected values remain. Users can still manually adjust any field.
 
 ### Extending Further
 
-- Reverse geocode after manual marker drag to update the textual address.
-- Persist structured address components (jetty name, locality, etc.).
-- Add rate limiting / caching to autocomplete endpoint.
-- Add loading indicator in autocomplete list.
-
 ### Security Note
 
 If any API keys were accidentally committed, rotate them immediately in Google Cloud Console and update `.env.local`. Ensure `.env.local` is in `.gitignore`.
+
+## Charter Draft → Finalize Flow
+
+The captain registration process now supports resilient multi-session progress via a server-backed draft model. Authenticated users autosave each step; on final submission the existing draft is converted into a full Charter record. Unauthenticated users still use the legacy one-shot path (temporary fallback).
+
+### Why
+
+### Data Model
+
+`CharterDraft` (Prisma):
+
+### Lifecycle
+
+1. GET `/api/charter-drafts` → existing active draft or `null`.
+2. POST `/api/charter-drafts` → create new empty draft (if none).
+3. PATCH `/api/charter-drafts/:id` → debounced autosave (full sanitized snapshot). Includes `clientVersion` for conflict detection.
+4. Client uploads media directly to Blob only at final submit (current phase) and constructs `media` payload (image/video keys, order, cover index, optional avatar).
+5. POST `/api/charter-drafts/:id/finalize` with media JSON → server validates + persists Charter + marks draft SUBMITTED.
+
+### Conflict Handling
+
+If PATCH returns 409 (version mismatch), the client discards local unsaved changes (Phase 1 strategy) and overwrites with server snapshot. Future improvement: diff/merge UI.
+
+### Key Files
+
+### Validation Layers
+
+| Layer                               | Purpose                             |
+| ----------------------------------- | ----------------------------------- |
+| Zod schema (client)                 | Immediate user feedback             |
+| `validateDraftForFinalize` (server) | Guard rails & basic integrity       |
+| Database constraints                | Referential & uniqueness guarantees |
+
+### Media Ordering Logic
+
+1. Optional `imagesOrder` / `videosOrder` arrays (0..n-1 permutation). Invalid arrays (duplicates / gaps) are ignored.
+2. Optional cover index moved to front if valid (resulting media[0] = cover).
+
+### Legacy Path (Deprecation)
+
+`submitCharter` in `actions.ts` performs a one-shot mutation creating user + charter. It will be removed once all onboarding requires sign‑in and uses the finalize flow.
+
+Feature flag: set `LEGACY_SUBMIT_ENABLED=false` in `.env.local` to hard-disable the legacy endpoint and force users through authenticated draft/finalize.
+
+### Future Enhancements
+
+### Testing
+
+Run unit tests (including finalize coverage):
+
+```bash
+npm test
+```
+
+CI / single-run optimized reporter:
+
+```bash
+npm run test:ci
+```
+
+See `src/server/__tests__/charters.test.ts` for scenarios: validation failures, ordering, cover handling, pickup branch, style mapping.
+
+## Production Hardening Checklist
+
+Tracking items to reach production confidence for the draft → finalize pipeline:
+
+- [x] Core server validation (`validateDraftForFinalize`).
+- [x] Unit tests for charter creation edge cases.
+- [x] Integration test: finalize happy path + missing media.
+- [x] Added negative finalize tests: unauthorized, wrong owner, invalid status.
+- [x] Optimistic version check on finalize (reject if draft.version changed since client last synced via `x-draft-version` header).
+- [ ] Structured logging for finalize failures (validation vs DB vs unexpected).
+- [x] Rate limiting finalize (pluggable abstraction; memory 5/min per user).
+- [x] Structured logging for finalize successes & conflicts.
+- [x] Timing metrics (`withTiming`) for key finalize phases.
+- [x] Security headers unified via `applySecurityHeaders` (CSP, Referrer, Frame, PermissionsPolicy).
+- [ ] Centralize media parsing helpers (reduce inline duplication, ease auditing) (planned extraction from finalize route).
+- [ ] E2E (Playwright) flow: create draft → autosave → finalize → assert persisted charter & draft status.
+- [ ] Remove legacy `submitCharter` + `LEGACY_SUBMIT_ENABLED` flag post adoption window (see TODO in `actions.ts`).
+- [ ] Monitoring hooks / metrics (count finalize success/fail, avg time from first draft to finalize).
+- [ ] Alert on repeated validation failures (possible client regression or abuse).
+
+### Rate Limiter Abstraction
+
+`src/lib/rateLimiter.ts` provides a simple interface:
+
+```ts
+rateLimit({ key: `finalize:${userId}`, windowMs: 60_000, max: 5 });
+```
+
+Current store: in-memory (suitable for single-instance dev). To plug in Redis/Upstash implement `RateLimiterStore` and call `useRateLimiterStore(new RedisStore(...))` during app bootstrap (e.g. inside a server-only init module imported by routes needing it).
+
+Draft endpoints now also use the limiter:
+
+- `POST /api/charter-drafts` → 3 creations/min/user (reuses existing draft if present, so limit only applies to attempts to spawn new drafts).
+
+### Request Timing
+
+`withTiming(name, fn)` wraps async operations and logs:
+
+```json
+{
+  "msg": "request_timing",
+  "level": "debug",
+  "name": "finalize_transformAndCreate",
+  "ms": 12.34
+}
+```
+
+Finalize route phases instrumented:
+
+1. `finalize_fetchDraft`
+2. `finalize_transformAndCreate`
+3. `finalize_markSubmitted`
+
+Draft collection route phases instrumented:
+
+1. `drafts_getActive`
+2. `drafts_create`
+
+### Security Headers
+
+All API responses in health, places endpoints, draft PATCH/GET, and finalize now use `applySecurityHeaders` for a consistent baseline CSP and defensive headers.
+
+### Logging Conventions
+
+| Event               | Message                      | Metadata Keys                                 |
+| ------------------- | ---------------------------- | --------------------------------------------- |
+| Successful finalize | `finalize_success`           | userId, draftId, charterId                    |
+| Version conflict    | `finalize_version_conflict`  | userId, draftId, clientVersion, serverVersion |
+| Missing media       | `finalize_missing_media`     | userId, draftId                               |
+| Validation failure  | `finalize_validation_failed` | userId, draftId, errors                       |
+| Rate limited        | `finalize_rate_limited`      | userId, remaining                             |
+| Draft patched       | `draft_patched`              | id, version                                   |
+
+Consider redacting or hashing PII fields (emails) in future iterations.
+
+### Media Normalization
+
+`src/server/media.ts` now owns the Zod schema (`FinalizeMediaSchema`) and normalization logic (`normalizeFinalizeMedia`) used by the finalize endpoint. This reduces duplication and creates a single audit point for media constraints (counts, size/ordering fields). Future enhancements can add size / mime type validation here before persistence.
+
+Update this list as items are implemented.
