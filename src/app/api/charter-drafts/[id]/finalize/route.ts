@@ -6,11 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
 import { getRequestId } from "@/lib/requestId";
 import { withTiming } from "@/lib/requestTiming";
+import { diffObjects, writeAuditLog } from "@/server/audit";
 import {
   createCharterFromDraftData,
   type FinalizeMediaPayload,
 } from "@/server/charters";
-import { diffObjects, writeAuditLog } from "@/server/audit";
 import { FinalizeMediaSchema, normalizeFinalizeMedia } from "@/server/media";
 import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import { Prisma } from "@prisma/client";
@@ -165,7 +165,7 @@ export async function POST(
           const transformed = draft.data as unknown as DraftValues;
           const existingCharterId = draft.charterId!;
           const incomingImages = media?.images ?? [];
-            const incomingVideos = media?.videos ?? [];
+          const incomingVideos = media?.videos ?? [];
 
           // BEFORE snapshot for audit (broad include mirrors PATCH endpoint)
           const beforeSnapshot = await prisma.charter.findUnique({

@@ -1,6 +1,7 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
+import { diffObjects, writeAuditLog } from "@/server/audit";
 import { CharterStyle, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -24,7 +25,7 @@ const CharterUpdateSchema = z.object({
   charter: z
     .object({
       charterType: z.string().optional(),
-  name: z.string().optional(),
+      name: z.string().optional(),
       state: z.string().optional(),
       city: z.string().optional(),
       startingPoint: z.string().optional(),
@@ -32,14 +33,23 @@ const CharterUpdateSchema = z.object({
       latitude: z.number().nullable().optional(),
       longitude: z.number().nullable().optional(),
       description: z.string().optional(),
+      // "tone" is a client-only helper for description generation; accept & ignore.
       tone: z.string().optional(),
+    })
+    .optional(),
+  captain: z
+    .object({
+      displayName: z.string().optional(),
+      phone: z.string().optional(),
+      bio: z.string().optional(),
+      experienceYrs: z.number().int().optional(),
     })
     .optional(),
   boat: z
     .object({
       name: z.string().optional(),
       type: z.string().optional(),
-  lengthFt: z.number().int().nullable().optional(),
+      lengthFt: z.number().int().nullable().optional(),
       capacity: z.number().int().nullable().optional(),
       features: z.array(z.string()).optional(),
     })
@@ -101,7 +111,7 @@ export async function PATCH(
 
   const charter = await prisma.charter.findUnique({
     where: { id: charterId },
-    include: { captain: { select: { userId: true } } },
+    include: { captain: { select: { userId: true, id: true } } },
   });
   if (!charter || charter.captain.userId !== userId)
     return applySecurityHeaders(
@@ -129,14 +139,54 @@ export async function PATCH(
     );
   const data = parsed.data;
 
+  // Snapshot BEFORE (lean) for audit
+  const beforeSnapshot = await prisma.charter.findUnique({
+    where: { id: charterId },
+    include: {
+      boat: true,
+      amenities: true,
+      features: true,
+      policies: true,
+      pickup: { include: { areas: true } },
+      trips: { include: { startTimes: true, species: true, techniques: true } },
+      captain: {
+        select: {
+          displayName: true,
+          phone: true,
+          bio: true,
+          experienceYrs: true,
+          avatarUrl: true,
+        },
+      },
+    },
+  });
+
   // Collect mutations
   const tx: Prisma.PrismaPromise<unknown>[] = [];
 
   if (data.charter && Object.keys(data.charter).length) {
+    // Exclude non-persistent helper fields (tone) before persisting
+    if ("tone" in data.charter)
+      delete (data.charter as Record<string, unknown>)["tone"]; // defensive
     tx.push(
       prisma.charter.update({
         where: { id: charter.id },
         data: { ...data.charter },
+      })
+    );
+  }
+
+  if (data.captain && Object.keys(data.captain).length) {
+    // Need captain profile id; charter query included captain.id
+    tx.push(
+      prisma.captainProfile.update({
+        where: { id: charter.captain.id },
+        data: {
+          displayName: data.captain.displayName ?? undefined,
+          phone: data.captain.phone ?? undefined,
+          bio: data.captain.bio ?? undefined,
+          experienceYrs: data.captain.experienceYrs ?? undefined,
+        },
       })
     );
   }
@@ -170,21 +220,49 @@ export async function PATCH(
   }
 
   if (data.amenities) {
-    tx.push(prisma.charterAmenity.deleteMany({ where: { charterId } }));
-    if (data.amenities.length) {
+    const existing = await prisma.charterAmenity.findMany({
+      where: { charterId },
+      select: { label: true },
+    });
+    const existingSet = new Set(existing.map((a) => a.label));
+    const incomingSet = new Set(data.amenities);
+    const toRemove = existing.filter((a) => !incomingSet.has(a.label));
+    const toAdd = data.amenities.filter((l) => !existingSet.has(l));
+    if (toRemove.length) {
+      tx.push(
+        prisma.charterAmenity.deleteMany({
+          where: { charterId, label: { in: toRemove.map((r) => r.label) } },
+        })
+      );
+    }
+    if (toAdd.length) {
       tx.push(
         prisma.charterAmenity.createMany({
-          data: data.amenities.map((label) => ({ charterId, label })),
+          data: toAdd.map((label) => ({ charterId, label })),
         })
       );
     }
   }
   if (data.features) {
-    tx.push(prisma.charterFeature.deleteMany({ where: { charterId } }));
-    if (data.features.length) {
+    const existing = await prisma.charterFeature.findMany({
+      where: { charterId },
+      select: { label: true },
+    });
+    const existingSet = new Set(existing.map((a) => a.label));
+    const incomingSet = new Set(data.features);
+    const toRemove = existing.filter((a) => !incomingSet.has(a.label));
+    const toAdd = data.features.filter((l) => !existingSet.has(l));
+    if (toRemove.length) {
+      tx.push(
+        prisma.charterFeature.deleteMany({
+          where: { charterId, label: { in: toRemove.map((r) => r.label) } },
+        })
+      );
+    }
+    if (toAdd.length) {
       tx.push(
         prisma.charterFeature.createMany({
-          data: data.features.map((label) => ({ charterId, label })),
+          data: toAdd.map((label) => ({ charterId, label })),
         })
       );
     }
@@ -356,9 +434,14 @@ export async function PATCH(
         );
       }
     }
-    // Delete removed trips
+    // Delete removed trips (must delete children first to satisfy FK constraints)
     for (const et of existingTrips) {
       if (!keepIds.has(et.id)) {
+        tx.push(prisma.tripStartTime.deleteMany({ where: { tripId: et.id } }));
+        tx.push(prisma.tripSpecies.deleteMany({ where: { tripId: et.id } }));
+        tx.push(prisma.tripTechnique.deleteMany({ where: { tripId: et.id } }));
+        // In case there is trip-scoped media
+        tx.push(prisma.charterMedia.deleteMany({ where: { tripId: et.id } }));
         tx.push(prisma.trip.delete({ where: { id: et.id } }));
       }
     }
@@ -371,9 +454,52 @@ export async function PATCH(
   }
   await prisma.$transaction(tx);
 
+  // AFTER snapshot
+  const afterSnapshot = await prisma.charter.findUnique({
+    where: { id: charterId },
+    include: {
+      boat: true,
+      amenities: true,
+      features: true,
+      policies: true,
+      pickup: { include: { areas: true } },
+      trips: { include: { startTimes: true, species: true, techniques: true } },
+      captain: {
+        select: {
+          displayName: true,
+          phone: true,
+          bio: true,
+          experienceYrs: true,
+          avatarUrl: true,
+        },
+      },
+    },
+  });
+  if (afterSnapshot) {
+    const changedTop = diffObjects(beforeSnapshot, afterSnapshot);
+    writeAuditLog({
+      actorUserId: userId,
+      entityType: "charter",
+      entityId: charterId,
+      action: "update",
+      before: beforeSnapshot || undefined,
+      after: afterSnapshot,
+      changed: changedTop,
+    }).catch(() => {});
+  }
+
   const updated = await prisma.charter.findUnique({
     where: { id: charterId },
     include: {
+      captain: {
+        select: {
+          displayName: true,
+          phone: true,
+          bio: true,
+          experienceYrs: true,
+          avatarUrl: true,
+        },
+      },
       boat: true,
       amenities: true,
       features: true,
@@ -384,5 +510,62 @@ export async function PATCH(
   });
   return applySecurityHeaders(
     NextResponse.json({ ok: true, charter: updated })
+  );
+}
+
+// GET alias (same as /[id]/get) for convenience
+export async function GET(
+  req: Request,
+  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+) {
+  const paramsValue =
+    ctx.params instanceof Promise ? await ctx.params : ctx.params;
+  const charterId = paramsValue.id;
+  const session = await getServerSession(authOptions);
+  const userId = getUserId(session);
+  if (!userId)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "unauthorized" }, { status: 401 })
+    );
+  const charter = await prisma.charter.findUnique({
+    where: { id: charterId },
+    include: {
+      boat: true,
+      amenities: true,
+      features: true,
+      policies: true,
+      pickup: { include: { areas: true } },
+      trips: { include: { startTimes: true, species: true, techniques: true } },
+      captain: {
+        select: {
+          userId: true,
+          avatarUrl: true,
+          displayName: true,
+          phone: true,
+          bio: true,
+          experienceYrs: true,
+        },
+      },
+      media: {
+        select: { kind: true, url: true, sortOrder: true },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
+  if (!charter || charter.captain.userId !== userId)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "not_found" }, { status: 404 })
+    );
+  const images = charter.media
+    .filter((m) => m.kind === "CHARTER_PHOTO")
+    .map((m) => ({ name: m.sortOrder?.toString() || "image", url: m.url }));
+  const videos = charter.media
+    .filter((m) => m.kind === "CHARTER_VIDEO")
+    .map((m) => ({ name: m.sortOrder?.toString() || "video", url: m.url }));
+  return applySecurityHeaders(
+    NextResponse.json({
+      charter,
+      media: { images, videos, avatar: charter.captain.avatarUrl || null },
+    })
   );
 }

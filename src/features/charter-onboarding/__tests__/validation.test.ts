@@ -85,6 +85,8 @@ describe("validateDraftForFinalizeFeature", () => {
   it("requires names when displayName missing; aggregates legacy keys", () => {
     const draft = makeBaseDraft();
     (draft.operator as Record<string, unknown>)["firstName"] = "";
+    // Also clear lastName to trigger both first/last errors under new rule
+    (draft.operator as Record<string, unknown>)["lastName"] = "";
     (draft.operator as Record<string, unknown>)["displayName"] = "";
     const r = validateDraftForFinalizeFeature(draft, goodMedia);
     expect(r.ok).toBe(false);

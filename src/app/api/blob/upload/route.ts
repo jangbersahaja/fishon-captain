@@ -55,6 +55,8 @@ export async function POST(req: Request) {
     // Detect video files for transcoding
     const isVideo = /\.(mp4|mov|webm|ogg|avi|mkv)$/i.test(originalName);
 
+    const allowOverwriteRaw = form.get("overwrite");
+    const allowOverwrite = allowOverwriteRaw === "true";
     let key: string;
     if (docType === "charter_media") {
       if (isVideo && charterId) {
@@ -68,7 +70,12 @@ export async function POST(req: Request) {
         key = `charters/temp/${userId}/${timestamp}-${sanitized}`;
       }
     } else if (docType === "charter_avatar") {
-      key = `captains/${userId}/avatar/${sanitized}`;
+      // Stable location for avatar; add fingerprint if not allowing overwrite
+      if (allowOverwrite) {
+        key = `captains/${userId}/avatar/${sanitized}`;
+      } else {
+        key = `captains/${userId}/avatar/${timestamp}-${sanitized}`;
+      }
     } else {
       // For verification docs, add timestamp to avoid conflicts
       key = `verification/${userId}/${timestamp}-${sanitized}`;
@@ -77,6 +84,10 @@ export async function POST(req: Request) {
     const { url } = await put(key, file, {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
+      addRandomSuffix: false,
+      // allowOverwrite only meaningful for deterministic keys (avatar when overwrite=true)
+      // @vercel/blob put currently respects existing key unless allowOverwrite is passed; if API changes, adjust accordingly.
+      ...(allowOverwrite ? { overwrite: true as unknown as undefined } : {}),
     });
 
     // Queue transcoding job for videos
@@ -98,7 +109,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, url, key });
+    return NextResponse.json({ ok: true, url, key, overwrite: allowOverwrite });
   } catch (e: unknown) {
     console.error("Blob upload error", e);
     const errorMessage = e instanceof Error ? e.message : "Upload failed";

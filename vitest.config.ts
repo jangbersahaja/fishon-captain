@@ -3,10 +3,15 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: "node",
     include: [
       "src/server/__tests__/**/*.test.{ts,tsx}",
       "src/server/__tests__/**/*.test.ts",
+      "src/features/charter-onboarding/__tests__/**/*.test.{ts,tsx}",
+    ],
+    // Use node for server tests, jsdom for client feature tests
+    environmentMatchGlobs: [
+      ["src/server/__tests__/**", "node"],
+      ["src/features/charter-onboarding/__tests__/**", "jsdom"],
     ],
     setupFiles: [],
     globals: true,

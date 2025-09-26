@@ -319,3 +319,25 @@ model DraftNote {
   @@index([draftId])
   @@index([authorId])
 }
+
+// --------------------------------------
+// Audit Logging
+// --------------------------------------
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  actorUserId   String
+  entityType    String   // e.g. 'charter','boat','trip','captainProfile'
+  entityId      String
+  action        String   // e.g. 'update','create','delete'
+  before        Json?
+  after         Json?
+  changed       Json?    // list or map of changed field paths
+  correlationId String?
+  ip            String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+}
