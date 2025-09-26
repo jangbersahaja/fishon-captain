@@ -74,20 +74,15 @@ describe("validateDraftForFinalizeFeature", () => {
     const r = validateDraftForFinalizeFeature(draft, goodMedia);
     expect(r.ok).toBe(true);
   });
-
-  it("includes legacy operatorFirstName key even when displayName present but firstName missing", () => {
+  it("does not require first/last when displayName present", () => {
     const draft = makeBaseDraft();
     (draft.operator as Record<string, unknown>)["firstName"] = "";
+    (draft.operator as Record<string, unknown>)["lastName"] = "";
     const r = validateDraftForFinalizeFeature(draft, goodMedia);
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.errors.operatorFirstName).toBeDefined();
-      // displayName remains so operatorDisplayName should NOT appear
-      expect(r.errors.operatorDisplayName).toBeUndefined();
-    }
+    expect(r.ok).toBe(true);
   });
 
-  it("requires display name OR first name; if both missing surfaces both keys", () => {
+  it("requires names when displayName missing; aggregates legacy keys", () => {
     const draft = makeBaseDraft();
     (draft.operator as Record<string, unknown>)["firstName"] = "";
     (draft.operator as Record<string, unknown>)["displayName"] = "";
@@ -95,6 +90,7 @@ describe("validateDraftForFinalizeFeature", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.errors.operatorFirstName).toBeDefined();
+      expect(r.errors.operatorLastName).toBeDefined();
       expect(r.errors.operatorDisplayName).toBeDefined();
     }
   });
