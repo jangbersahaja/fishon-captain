@@ -38,30 +38,58 @@ export function useDraftSnapshot({
     currentStepRef.current = s;
   };
 
-  const saveServerDraftSnapshot = useCallback(async (): Promise<
-    number | null
-  > => {
+  // Build minimal diff object vs previous full snapshot
+  const buildPartialDiff = useCallback(function buildPartialDiff(prev: unknown, next: unknown): unknown {
+      if (prev === next) return undefined;
+      if (typeof prev !== "object" || prev === null || typeof next !== "object" || next === null) {
+        return next;
+      }
+      if (Array.isArray(prev) || Array.isArray(next)) {
+        if (JSON.stringify(prev) === JSON.stringify(next)) return undefined;
+        return next;
+      }
+      const pRec = prev as Record<string, unknown>;
+      const nRec = next as Record<string, unknown>;
+      const out: Record<string, unknown> = {};
+      let changed = false;
+      for (const key of Object.keys(nRec)) {
+        const diffChild = buildPartialDiff(pRec[key], nRec[key]);
+        if (diffChild !== undefined) {
+          out[key] = diffChild;
+          changed = true;
+        }
+      }
+      return changed ? out : undefined;
+    }, []);
+
+  const saveServerDraftSnapshot = useCallback(async (): Promise<number | null> => {
     if (isEditing) return null;
     if (!serverDraftId || serverVersion === null) return null;
     try {
       setServerSaving(true);
       const sanitized = sanitizeForDraft(form.getValues());
-      // Prepare stable payload for change detection
+      let previousFull: CharterFormValues | null = null;
+      if (lastPayloadRef.current) {
+        try {
+          const parsed = JSON.parse(lastPayloadRef.current) as { __full?: CharterFormValues };
+            previousFull = parsed.__full || null;
+        } catch {
+          previousFull = null;
+        }
+      }
+      const diff = previousFull ? buildPartialDiff(previousFull, sanitized) : sanitized;
+      if (diff === undefined) {
+        return serverVersion;
+      }
       const payloadObj = {
-        dataPartial: sanitized,
+        dataPartial: diff,
         clientVersion: serverVersion,
         currentStep: currentStepRef.current,
       };
-      const payloadStr = JSON.stringify(payloadObj);
-
-      // Skip network call if nothing changed since last successful snapshot
-      if (lastPayloadRef.current === payloadStr) {
-        return serverVersion; // return current version (unchanged)
-      }
       const res = await fetch(`/api/charter-drafts/${serverDraftId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: payloadStr,
+        body: JSON.stringify(payloadObj),
       });
       if (!res.ok) return null;
       const json = await res.json();
@@ -69,7 +97,7 @@ export function useDraftSnapshot({
         const newVersion: number = json.draft.version;
         setServerVersion(newVersion);
         setLastSavedAt(new Date().toISOString());
-        lastPayloadRef.current = payloadStr;
+        lastPayloadRef.current = JSON.stringify({ ...payloadObj, __full: sanitized });
         return newVersion;
       }
       return null;
@@ -87,6 +115,7 @@ export function useDraftSnapshot({
     setServerVersion,
     setLastSavedAt,
     setServerSaving,
+    buildPartialDiff,
   ]);
 
   saveServerDraftSnapshotRef.current = saveServerDraftSnapshot;
