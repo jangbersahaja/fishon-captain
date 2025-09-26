@@ -24,6 +24,7 @@ model User {
   accounts       Account[]
   sessions       Session[]
   drafts         CharterDraft[]
+  notesAuthored  DraftNote[]     @relation("UserDraftNotes")
 }
 
 model CaptainProfile {
@@ -56,6 +57,7 @@ model Charter {
   description   String
   pricingPlan   CharterPricingPlan @default(BASIC)
   boatId        String?            @unique
+  isActive      Boolean            @default(true)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   boat          Boat?              @relation(fields: [boatId], references: [id])
@@ -160,6 +162,7 @@ model CharterDraft {
 
   user          User        @relation(fields: [userId], references: [id])
   charter       Charter?    @relation(fields: [charterId], references: [id])
+  notes         DraftNote[]
   @@index([lastTouchedAt])
 }
 
@@ -299,4 +302,20 @@ enum VerificationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// --------------------------------------
+// Staff draft notes
+// --------------------------------------
+
+model DraftNote {
+  id        String      @id @default(cuid())
+  draftId   String
+  authorId  String
+  body      String
+  createdAt DateTime    @default(now())
+  draft     CharterDraft @relation(fields: [draftId], references: [id])
+  author    User         @relation("UserDraftNotes", fields: [authorId], references: [id])
+  @@index([draftId])
+  @@index([authorId])
 }

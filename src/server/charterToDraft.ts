@@ -1,4 +1,4 @@
-import type { DraftValues } from "@features/charter-form/charterForm.draft";
+import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 interface CharterFeature {
   label: string;
 }
@@ -134,7 +134,7 @@ export function mapCharterToDraftValues(params: {
       maxAnglers: typeof t.maxAnglers === "number" ? t.maxAnglers : Number.NaN,
       charterStyle: t.style === "SHARED" ? "shared" : "private",
       description: t.description || "",
-      targetSpecies: (t.species || []).map((s) => s.value),
+      species: (t.species || []).map((s) => s.value),
       techniques: (t.techniques || []).map((tech) => tech.value),
     })),
     // Media re-upload required during edit session, keep arrays empty in draft

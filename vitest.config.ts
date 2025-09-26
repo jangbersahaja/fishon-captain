@@ -14,6 +14,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Feature alias used throughout refactored charter form module
+      "@features": path.resolve(__dirname, "./src/features"),
     },
   },
 });

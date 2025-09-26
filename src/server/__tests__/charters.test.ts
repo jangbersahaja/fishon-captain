@@ -1,10 +1,10 @@
-import type { DraftValues } from "@features/charter-form/charterForm.draft";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import {
-  createCharterFromDraftData,
-  validateDraftForFinalize,
+  validateDraftForFinalizeFeature,
   type FinalizeMediaPayload,
-} from "../../server/charters";
+} from "@features/charter-onboarding/server/validation";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createCharterFromDraftData } from "../../server/charters";
 
 // Mock prisma
 vi.mock("@/lib/prisma", () => {
@@ -75,7 +75,7 @@ describe("createCharterFromDraftData", () => {
           maxAnglers: 4,
           charterStyle: "private",
           description: "A nice half day trip",
-          targetSpecies: ["Grouper"],
+          species: ["Grouper"],
           techniques: ["Jigging"],
           startTimes: ["07:00"],
         },
@@ -93,9 +93,13 @@ describe("createCharterFromDraftData", () => {
       draft: badDraft,
       media: { images: [], videos: [] },
     });
+    // With relaxed validation (displayName sufficient), firstName empty but displayName present should still fail due to missing media only.
     expect(result.ok).toBeFalsy();
     // @ts-expect-error runtime shape when !ok
-    expect(result.errors.operatorFirstName).toBeDefined();
+    expect(result.errors.images).toBeDefined();
+    // Should NOT include operatorFirstName now
+    // @ts-expect-error runtime shape when !ok
+    expect(result.errors.operatorFirstName).toBeUndefined();
   });
 
   it("creates charter successfully with valid data (order + cover applied)", async () => {
@@ -168,19 +172,42 @@ describe("createCharterFromDraftData", () => {
     expect(r.errors.trips).toBeDefined();
   });
 
-  it("validateDraftForFinalize aggregates multiple errors", () => {
+  it("validateDraftForFinalizeFeature aggregates multiple errors", () => {
     const bad = {
       ...baseDraft,
       operator: { ...baseDraft.operator, firstName: "" },
       amenities: [],
     } as DraftValues;
-    const vr = validateDraftForFinalize(bad, { images: [], videos: [] });
+    const vr = validateDraftForFinalizeFeature(bad, { images: [], videos: [] });
     expect(vr.ok).toBeFalsy();
     if (!vr.ok) {
+      // operatorFirstName no longer required if displayName present
       expect(Object.keys(vr.errors)).toEqual(
-        expect.arrayContaining(["operatorFirstName", "amenities", "images"])
+        expect.arrayContaining(["amenities", "images"])
       );
+      expect(vr.errors.operatorFirstName).toBeUndefined();
     }
+  });
+
+  it("allows displayName without first/last name", () => {
+    const minimal = {
+      ...baseDraft,
+      operator: {
+        ...baseDraft.operator,
+        firstName: "",
+        lastName: "",
+        displayName: "Captain Solo",
+      },
+    } as DraftValues;
+    const vr = validateDraftForFinalizeFeature(minimal, {
+      images: [
+        { name: "a.jpg", url: "u" },
+        { name: "b.jpg", url: "u" },
+        { name: "c.jpg", url: "u" },
+      ],
+      videos: [],
+    });
+    expect(vr.ok).toBeTruthy();
   });
 
   it("ignores invalid imagesOrder (duplicates) gracefully", async () => {

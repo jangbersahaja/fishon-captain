@@ -5,7 +5,7 @@ import { rateLimit } from "@/lib/rateLimiter";
 import { getRequestId } from "@/lib/requestId";
 import { withTiming } from "@/lib/requestTiming";
 import { createDraft, getActiveDraft } from "@/server/drafts";
-import { createDefaultCharterFormValues } from "@features/charter-form/charterForm.defaults";
+import { createDefaultCharterFormValues } from "@features/charter-onboarding/charterForm.defaults";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 

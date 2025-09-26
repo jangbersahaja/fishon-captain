@@ -46,35 +46,57 @@ export async function POST(req: Request) {
         ? docTypeRaw
         : "unknown";
 
-    // Build a readable, unique key
-    const original = (file.name || "file").replace(/\s+/g, "_");
-    const extMatch = original.match(/\.[A-Za-z0-9]+$/);
-    const ext = extMatch ? extMatch[0].toLowerCase() : "";
-    const rand = Math.random().toString(36).slice(2, 8);
+    // Sanitize filename for blob storage (preserve original name)
+    const originalName = file.name || "file";
+    const sanitized = originalName.replace(/[^\w\d.-]/g, "_").slice(0, 200);
     const timestamp = Date.now();
     const charterId = typeof charterIdRaw === "string" ? charterIdRaw : null;
 
+    // Detect video files for transcoding
+    const isVideo = /\.(mp4|mov|webm|ogg|avi|mkv)$/i.test(originalName);
+
     let key: string;
     if (docType === "charter_media") {
-      // Prefer charterId if provided; otherwise store under temp path
-      const safeName = `${docType}-${
-        charterId ?? `temp-${userId}`
-      }-${original}`.slice(0, 180);
-      key = charterId
-        ? `charters/${charterId}/media/${safeName}`
-        : `charters/temp/${userId}/${timestamp}-${rand}-${safeName}`;
+      if (isVideo && charterId) {
+        // Videos go to temp location for transcoding
+        key = `temp/${charterId}/original/${sanitized}`;
+      } else if (charterId) {
+        // Images go directly to final location
+        key = `charters/${charterId}/media/${sanitized}`;
+      } else {
+        // Fallback for missing charterId
+        key = `charters/temp/${userId}/${timestamp}-${sanitized}`;
+      }
     } else if (docType === "charter_avatar") {
-      const safeName = `charter_avatar-${userId}-${original}`.slice(0, 180);
-      key = `captains/${userId}/avatar/${safeName}`;
+      key = `captains/${userId}/avatar/${sanitized}`;
     } else {
-      const base = `${docType}-${timestamp}-${rand}${ext}`.replace(/\s+/g, "_");
-      key = `verification/${userId}/${base}`;
+      // For verification docs, add timestamp to avoid conflicts
+      key = `verification/${userId}/${timestamp}-${sanitized}`;
     }
 
     const { url } = await put(key, file, {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
+
+    // Queue transcoding job for videos
+    if (isVideo && charterId && docType === "charter_media") {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/jobs/transcode`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            originalKey: key,
+            originalUrl: url,
+            charterId,
+            filename: sanitized,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to queue transcode job:", error);
+        // Don't fail the upload if transcoding queue fails
+      }
+    }
 
     return NextResponse.json({ ok: true, url, key });
   } catch (e: unknown) {

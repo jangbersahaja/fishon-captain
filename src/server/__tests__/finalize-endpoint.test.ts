@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { DraftValues } from "@features/charter-form/charterForm.draft";
+import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import { getServerSession } from "next-auth";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -327,7 +327,7 @@ function baseDraft(): DraftValues {
         maxAnglers: 4,
         charterStyle: "private",
         description: "desc",
-        targetSpecies: ["Grouper"],
+        species: ["Grouper"],
         techniques: ["Jigging"],
         startTimes: ["07:00"],
       },

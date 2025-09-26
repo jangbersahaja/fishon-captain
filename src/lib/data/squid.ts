@@ -1,9 +1,9 @@
-import Octopus from "@/assets/img/species/squid/Kurita (Octopus).png";
-import BigfinReefSquid from "@/assets/img/species/squid/Mabang (Bigfin Reef Squid).png";
-import NeedleSquid from "@/assets/img/species/squid/Sotong Jarum (NeedleSquid).png";
-import Cuttlefish from "@/assets/img/species/squid/Sotong Katak (Cuttlefish).png";
-import Squid from "@/assets/img/species/squid/Sotong Ketupat (Squid).png";
-import Squid2 from "@/assets/img/species/squid/Sotong Torak (Squid).png";
+const Octopus = "/images/species/squid/Kurita (Octopus).png";
+const BigfinReefSquid = "/images/species/squid/Mabang (Bigfin Reef Squid).png";
+const NeedleSquid = "/images/species/squid/Sotong Jarum (NeedleSquid).png";
+const Cuttlefish = "/images/species/squid/Sotong Katak (Cuttlefish).png";
+const Squid = "/images/species/squid/Sotong Ketupat (Squid).png";
+const Squid2 = "/images/species/squid/Sotong Torak (Squid).png";
 
 export const SQUID_SPECIES = [
   {

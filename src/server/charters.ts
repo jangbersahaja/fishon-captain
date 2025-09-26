@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import type { DraftValues } from "@features/charter-form/charterForm.draft";
+import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
+import {
+  validateDraftForFinalizeFeature,
+  type FinalizeMediaPayload,
+} from "@features/charter-onboarding/server/validation";
 import {
   CharterPricingPlan,
   CharterStyle,
@@ -7,60 +11,8 @@ import {
   Prisma,
 } from "@prisma/client";
 
-export type FinalizeMediaPayload = {
-  images: Array<{ name: string; url: string }>;
-  videos: Array<{ name: string; url: string }>;
-  imagesOrder?: number[];
-  videosOrder?: number[];
-  imagesCoverIndex?: number;
-  videosCoverIndex?: number;
-  avatar?: { name: string; url: string } | null;
-};
-
-export type FinalizeValidationResult =
-  | { ok: true }
-  | { ok: false; errors: Record<string, string> };
-
-export function validateDraftForFinalize(
-  draft: DraftValues,
-  media: FinalizeMediaPayload
-): FinalizeValidationResult {
-  const errors: Record<string, string> = {};
-  // Accept either legacy first/last name fields or the consolidated displayName.
-  // For backward compatibility tests still asserting operatorFirstName we surface both keys when missing.
-  const hasDisplay = !!draft.operator?.displayName?.trim();
-  // Some test fixtures still populate firstName/lastName though they were removed from form draft surface.
-  const op: Record<string, unknown> =
-    (draft as unknown as { operator?: Record<string, unknown> }).operator || {};
-  const hasFirst =
-    typeof op.firstName === "string" && op.firstName.trim().length > 0;
-  const hasLast =
-    typeof op.lastName === "string" && op.lastName.trim().length > 0;
-  if (!hasDisplay && !hasFirst) {
-    errors.operatorDisplayName = "Display name required";
-    errors.operatorFirstName = "First name required"; // legacy key for tests
-  }
-  if (!hasLast && !hasDisplay) {
-    // Only add last name requirement if display name not provided
-    errors.operatorLastName = "Last name required";
-  }
-  if (!draft.operator?.phone?.trim()) errors.operatorPhone = "Phone required";
-  if (!draft.charterType?.trim()) errors.charterType = "Charter type required";
-  if (!draft.charterName?.trim()) errors.charterName = "Charter name required";
-  if (!draft.state?.trim()) errors.state = "State required";
-  if (!draft.city?.trim()) errors.city = "City required";
-  if (!draft.startingPoint?.trim())
-    errors.startingPoint = "Starting point required";
-  if (!draft.postcode?.toString()?.trim())
-    errors.postcode = "Postcode required";
-  if (!Array.isArray(draft.trips) || !draft.trips.length)
-    errors.trips = "At least one trip";
-  if (!Array.isArray(draft.amenities) || !draft.amenities.length)
-    errors.amenities = "At least one amenity";
-  if (!media.images || media.images.length < 3)
-    errors.images = "At least 3 photos";
-  return Object.keys(errors).length ? { ok: false, errors } : { ok: true };
-}
+// Backward compatibility named export (keep existing imports working during migration)
+export type { FinalizeMediaPayload };
 
 function toDecimal(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -95,7 +47,7 @@ export async function createCharterFromDraftData(params: {
   media: FinalizeMediaPayload;
 }) {
   const { userId, draft, media } = params;
-  const validated = validateDraftForFinalize(draft, media);
+  const validated = validateDraftForFinalizeFeature(draft, media);
   if (!validated.ok) return validated;
 
   const pricingPlan = CharterPricingPlan.BASIC; // future: dynamic
@@ -229,7 +181,7 @@ export async function createCharterFromDraftData(params: {
               create: (t.startTimes ?? []).map((value) => ({ value })),
             },
             species: {
-              create: (t.targetSpecies ?? []).map((value) => ({ value })),
+              create: (t.species ?? []).map((value) => ({ value })),
             },
             techniques: {
               create: (t.techniques ?? []).map((value) => ({ value })),

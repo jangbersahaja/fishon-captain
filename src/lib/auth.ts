@@ -139,7 +139,7 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
   },
-  // We rely on our custom /captains/register page handling sign in/up; omit pages.signIn
+  // We rely on our custom /auth page handling sign in/up; omit pages.signIn
 };
 
 export default authOptions;

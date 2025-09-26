@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 // Paths that require authentication
-const PROTECTED_PREFIXES = ["/captain", "/captains/onboarding", "/staff"];
+const PROTECTED_PREFIXES = ["/captain", "/staff"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -46,10 +46,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/captain/:path*",
-    "/captains/onboarding/:path*",
-    "/staff/:path*",
-    "/staff",
-  ],
+  matcher: ["/captain/:path*", "/staff/:path*", "/staff"],
 };

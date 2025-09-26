@@ -1,6 +1,5 @@
 "use client";
 
-import FishonLogo from "@/assets/img/logo/fishon-logo-white.png";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -48,7 +47,7 @@ export default function Navbar({ transparentOnTop = false }: NavbarProps) {
         >
           <span className="relative h-14 w-28">
             <Image
-              src={FishonLogo}
+              src="/images/logos/fishon-logo-white.png"
               alt="Fishon"
               fill
               className="object-contain"

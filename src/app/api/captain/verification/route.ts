@@ -2,6 +2,7 @@ import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { del } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
   > & {
     additionalAdd?: Uploaded;
     additionalRemove?: string;
+    additionalUpdateName?: { key: string; name: string };
     additional?: Uploaded[];
   };
   const data = body as Body;
@@ -88,6 +90,17 @@ export async function POST(req: Request) {
     const val = data[f];
     if (val && typeof val === "object") {
       const u = val as Uploaded;
+      // Prevent overwriting an approved (validated) document
+      const existing = row[f] as unknown as
+        | (Uploaded & {
+            status?: string;
+          })
+        | null;
+      if (existing && existing.status === "validated") {
+        return applySecurityHeaders(
+          NextResponse.json({ error: "locked" }, { status: 403 })
+        );
+      }
       updateData[f] = {
         key: u.key,
         url: u.url,
@@ -115,9 +128,47 @@ export async function POST(req: Request) {
 
   if (typeof data.additionalRemove === "string") {
     const key = data.additionalRemove as string;
+    // Prevent removal if the item is validated (approved)
+    const target = currentAdditional.find((x) => x.key === key) as
+      | (Uploaded & { status?: string })
+      | undefined;
+    if (target && target.status === "validated") {
+      return applySecurityHeaders(
+        NextResponse.json({ error: "locked" }, { status: 403 })
+      );
+    }
     const next = currentAdditional.filter((x) => x.key !== key);
     updateData.additional = next as Prisma.InputJsonValue;
     touched = true;
+    // Best-effort blob delete (server-side) when removing additional
+    if (key.startsWith(`verification/${userId}/`)) {
+      await del(key, { token: process.env.BLOB_READ_WRITE_TOKEN }).catch(
+        () => {}
+      );
+    }
+  }
+
+  // Update name of an item in additional by key
+  if (
+    data.additionalUpdateName &&
+    typeof data.additionalUpdateName === "object"
+  ) {
+    const maybe = data.additionalUpdateName as Record<string, unknown>;
+    const key = typeof maybe.key === "string" ? maybe.key : undefined;
+    const name = typeof maybe.name === "string" ? maybe.name : undefined;
+    if (key && name) {
+      const next = currentAdditional.map((x) =>
+        x.key === key
+          ? {
+              ...x,
+              name,
+              updatedAt: new Date().toISOString(),
+            }
+          : x
+      );
+      updateData.additional = next as Prisma.InputJsonValue;
+      touched = true;
+    }
   }
 
   // Full snapshot support
@@ -149,6 +200,74 @@ export async function POST(req: Request) {
     touched = true;
   }
 
+  // Define supported submit commands
+  type SubmitCommands = {
+    submitGovtId?: boolean;
+    submit?: (typeof singleFields)[number];
+    submitAdditional?: string[];
+  };
+  const commands: SubmitCommands = data as SubmitCommands;
+
+  // Submission commands: mark status as processing
+  // Submit both government ID sides together
+  if (!touched && commands.submitGovtId) {
+    const idFront = row.idFront as unknown as
+      | (Uploaded & {
+          status?: string;
+        })
+      | null;
+    const idBack = row.idBack as unknown as
+      | (Uploaded & {
+          status?: string;
+        })
+      | null;
+    if (!idFront || !idBack) {
+      return applySecurityHeaders(
+        NextResponse.json({ error: "missing_required" }, { status: 400 })
+      );
+    }
+    updateData.idFront = { ...idFront, status: "processing" } as Json;
+    updateData.idBack = { ...idBack, status: "processing" } as Json;
+    touched = true;
+  }
+
+  // Submit single field
+  const submitField = commands.submit;
+  if (
+    !touched &&
+    submitField &&
+    (singleFields as readonly string[]).includes(submitField)
+  ) {
+    const curr = row[
+      submitField as (typeof singleFields)[number]
+    ] as unknown as
+      | (Uploaded & {
+          status?: string;
+        })
+      | null;
+    if (!curr) {
+      return applySecurityHeaders(
+        NextResponse.json({ error: "not_found" }, { status: 404 })
+      );
+    }
+    updateData[submitField as (typeof singleFields)[number]] = {
+      ...curr,
+      status: "processing",
+    } as Json;
+    touched = true;
+  }
+
+  // Submit additional selected keys
+  const submitAdditional = commands.submitAdditional;
+  if (!touched && Array.isArray(submitAdditional)) {
+    const set = new Set(submitAdditional);
+    const next = currentAdditional.map((u) =>
+      set.has(u.key) ? ({ ...u, status: "processing" } as Uploaded) : u
+    );
+    updateData.additional = next as Prisma.InputJsonValue;
+    touched = true;
+  }
+
   if (touched) {
     await prisma.captainVerification.update({
       where: { userId },
@@ -157,4 +276,17 @@ export async function POST(req: Request) {
   }
 
   return applySecurityHeaders(NextResponse.json({ ok: true }));
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  const userId = getUserId(session);
+  if (!userId)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "unauthorized" }, { status: 401 })
+    );
+  const row = await prisma.captainVerification.findUnique({
+    where: { userId },
+  });
+  return applySecurityHeaders(NextResponse.json({ verification: row }));
 }

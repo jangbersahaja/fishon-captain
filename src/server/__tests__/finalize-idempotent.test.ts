@@ -168,7 +168,7 @@ function baseDraft() {
         maxAnglers: 4,
         charterStyle: "private",
         description: "desc",
-        targetSpecies: ["Grouper"],
+        species: ["Grouper"],
         techniques: ["Jigging"],
         startTimes: ["07:00"],
       },

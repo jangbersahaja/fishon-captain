@@ -3,12 +3,33 @@ export function applySecurityHeaders(res: Response): Response {
   const scriptSrc = isDev
     ? "script-src 'self' 'unsafe-inline'"
     : "script-src 'self'";
+  // Allow images/videos from Vercel Blob public host(s)
+  const vercelBlobWildcard = "https://*.public.blob.vercel-storage.com";
+  // Optionally allow a specific hostname via env if provided
+  const specificBlobHost = process.env.BLOB_HOSTNAME
+    ? `https://${process.env.BLOB_HOSTNAME}`
+    : null;
+  const imgSrc = [
+    "img-src 'self' data: blob:",
+    vercelBlobWildcard,
+    specificBlobHost,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const mediaSrc = [
+    "media-src 'self' blob:",
+    vercelBlobWildcard,
+    specificBlobHost,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const csp =
     [
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      imgSrc,
+      mediaSrc,
       "connect-src 'self'",
       "frame-ancestors 'none'",
     ].join("; ") + ";";

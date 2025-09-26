@@ -150,8 +150,26 @@ export function getEnv(): ServerEnvShape {
   return cached;
 }
 
-// Convenience exports for server code
-export const env = getEnv();
+// Test-only helper to force re-validation with mutated process.env. Not for runtime use.
+export function __resetEnvCacheForTests() {
+  cached = null;
+}
+
+// Convenience export for server code: lazy proxy so tests can mutate process.env before first access.
+export const env: ServerEnvShape = new Proxy(
+  {},
+  {
+    get(_t, p) {
+      return (getEnv() as unknown as Record<string, unknown>)[p as string];
+    },
+    ownKeys() {
+      return Reflect.ownKeys(getEnv() as unknown as Record<string, unknown>);
+    },
+    getOwnPropertyDescriptor() {
+      return { enumerable: true, configurable: true };
+    },
+  }
+) as ServerEnvShape;
 
 // For client components, only import the specific NEXT_PUBLIC_* vars directly
 // via process.env (Next.js inlines them). Do not re-export secrets through this module.

@@ -11,7 +11,7 @@ import {
   type FinalizeMediaPayload,
 } from "@/server/charters";
 import { FinalizeMediaSchema, normalizeFinalizeMedia } from "@/server/media";
-import type { DraftValues } from "@features/charter-form/charterForm.draft";
+import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -366,7 +366,7 @@ export async function POST(
                       create: (t.startTimes || []).map((value) => ({ value })),
                     },
                     species: {
-                      create: (t.targetSpecies || []).map((value) => ({
+                      create: (t.species || []).map((value) => ({
                         value,
                       })),
                     },

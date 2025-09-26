@@ -5,6 +5,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "ldpumtdoplh4cjvk.public.blob.vercel-storage.com",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

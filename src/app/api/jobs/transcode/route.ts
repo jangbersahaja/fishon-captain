@@ -10,13 +10,19 @@ const qstash = new Client({
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as {
+    originalKey?: string;
+    originalUrl?: string;
+    charterId?: string;
+    filename?: string;
+    // Legacy support
     key?: string;
     url?: string;
-    charterId?: string;
   } | null;
-  if (!body?.key) {
+
+  if (!body?.originalKey && !body?.key) {
     return NextResponse.json({ error: "Missing blob key" }, { status: 400 });
   }
+
   // Validate and ensure workerUrl has a valid scheme
   const workerUrl = process.env.NEXT_PUBLIC_SITE_URL
     ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/workers/transcode`
@@ -31,9 +37,17 @@ export async function POST(req: Request) {
     );
   }
 
+  // Normalize the payload for the worker
+  const payload = {
+    originalKey: body.originalKey || body.key,
+    originalUrl: body.originalUrl || body.url,
+    charterId: body.charterId,
+    filename: body.filename,
+  };
+
   await qstash.publishJSON({
     url: workerUrl,
-    body, // { key, url, charterId? }
+    body: payload,
   });
 
   return NextResponse.json({ ok: true });

@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma";
 import {
   sanitizeForDraft,
   type DraftValues,
-} from "@features/charter-form/charterForm.draft";
-import type { CharterFormValues } from "@features/charter-form/charterForm.schema";
+} from "@features/charter-onboarding/charterForm.draft";
+import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 

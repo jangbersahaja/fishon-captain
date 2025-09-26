@@ -123,11 +123,11 @@ If PATCH returns 409 (version mismatch), the client discards local unsaved chang
 
 ### Validation Layers
 
-| Layer                               | Purpose                             |
-| ----------------------------------- | ----------------------------------- |
-| Zod schema (client)                 | Immediate user feedback             |
-| `validateDraftForFinalize` (server) | Guard rails & basic integrity       |
-| Database constraints                | Referential & uniqueness guarantees |
+| Layer                                              | Purpose                             |
+| -------------------------------------------------- | ----------------------------------- |
+| Zod schema (client)                                | Immediate user feedback             |
+| `validateDraftForFinalizeFeature` (feature server) | Guard rails & basic integrity       |
+| Database constraints                               | Referential & uniqueness guarantees |
 
 ### Media Ordering Logic
 
@@ -162,7 +162,7 @@ See `src/server/__tests__/charters.test.ts` for scenarios: validation failures, 
 
 Tracking items to reach production confidence for the draft → finalize pipeline:
 
-- [x] Core server validation (`validateDraftForFinalize`).
+- [x] Core server validation (`validateDraftForFinalizeFeature`).
 - [x] Unit tests for charter creation edge cases.
 - [x] Integration test: finalize happy path + missing media.
 - [x] Added negative finalize tests: unauthorized, wrong owner, invalid status.
@@ -238,3 +238,49 @@ Consider redacting or hashing PII fields (emails) in future iterations.
 `src/server/media.ts` now owns the Zod schema (`FinalizeMediaSchema`) and normalization logic (`normalizeFinalizeMedia`) used by the finalize endpoint. This reduces duplication and creates a single audit point for media constraints (counts, size/ordering fields). Future enhancements can add size / mime type validation here before persistence.
 
 Update this list as items are implemented.
+
+## Feature-Scoped Server Module (Charter Form)
+
+Server logic directly tied to the multi‑step charter form now lives beside the client feature under:
+
+`src/features/charter-onboarding/server/`
+
+Contents:
+
+- `validation.ts` → `validateDraftForFinalizeFeature(draft, media)` (pure sync validation returning `{ ok:true } | { ok:false, errors }`).
+- `mapping.ts` → `mapCharterToDraftValuesFeature({ charter, captainProfile })` used by the draft-from-charter creation flow.
+- `diff.ts` (scaffold) → placeholder for future helpers computing minimal changes from draft back to charter (patch semantics / optimistic merge).
+
+Legacy counterparts (`src/server/charters.ts` validation fragment & `charterToDraft.ts`) have been inlined or removed; only the creation transaction remains in `server/charters.ts`.
+
+### Import Guidelines
+
+- Use `@features/charter-onboarding/server/validation` for validation in tests or new endpoints.
+- Avoid importing from `src/server/charters.ts` unless you need the full finalize creation (`createCharterFromDraftData`).
+
+### Rationale
+
+Co-locating domain‑specific server utilities with their UI & schema reduces cognitive overhead, eases future extraction to a package, and allows tighter, focused tests without pulling broader server concerns.
+
+## Analytics Instrumentation (Charter Form)
+
+File: `src/features/charter-onboarding/analytics.ts`
+
+Emitted events (subset):
+
+| Event                                                                   | Notes                                                                        |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `step_view`                                                             | Deduped within an 800ms window per step/index to suppress jitter re-renders. |
+| `step_complete`                                                         | User advances after passing client validation.                               |
+| `draft_saved`                                                           | Autosave; `server` flag indicates whether remote persisted.                  |
+| `finalize_attempt` / `finalize_success`                                 | Duration auto-injected if `ms` omitted.                                      |
+| `media_upload_start` / `media_upload_complete` / `media_batch_complete` | Per-type timing & grouped batch latency.                                     |
+| `lazy_component_loaded` / `preview_ready`                               | Track lazy chunk loads and aggregate readiness for preview groups.           |
+
+Testing utilities:
+
+- `__resetCharterFormAnalyticsForTests()` resets internal timers & dedupe state.
+- `stepViewDedupe.test.ts`, `finalizeTiming.test.ts`, `mediaBatch.test.ts`, and `lazyGroup.test.ts` exercise behavioral guarantees.
+
+To enable verbose console logging during local debugging you can temporarily call `enableCharterFormConsoleLogging()` early in a client entry (future enhancement: env flag binding).
+Set `NEXT_PUBLIC_CHARTER_FORM_DEBUG=1` in `.env.local` to auto-enable logging.

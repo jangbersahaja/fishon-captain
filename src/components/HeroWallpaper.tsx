@@ -1,5 +1,4 @@
 // src/components/HeroWallpaper.tsx
-import HeroWallPaper from "@/assets/img/hero/new-fishon-hero.png";
 import Image, { StaticImageData } from "next/image";
 import * as React from "react";
 
@@ -18,7 +17,7 @@ type Props = {
   children?: React.ReactNode;
 };
 
-const DEFAULT_IMG = HeroWallPaper;
+const DEFAULT_IMG = "/images/hero/hero-wallpaper.png";
 
 export default function HeroWallpaper({
   src = DEFAULT_IMG,

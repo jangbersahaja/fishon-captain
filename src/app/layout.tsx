@@ -1,6 +1,6 @@
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import Navbar from "@/components/Navbar";
-import { enableCharterFormConsoleLogging } from "@features/charter-form/analytics";
+import { enableCharterFormConsoleLogging } from "@features/charter-onboarding/analytics";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";

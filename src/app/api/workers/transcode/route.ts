@@ -49,8 +49,16 @@ export async function POST(req: NextRequest) {
 
   const target = process.env.EXTERNAL_WORKER_URL;
   if (!target) {
-    console.error("EXTERNAL_WORKER_URL not configured; skipping transcode");
-    return NextResponse.json({ ok: true, forwarded: false });
+    console.log("EXTERNAL_WORKER_URL not configured; using simple transcoding");
+    // Use our simple internal transcoding
+    const simpleWorkerUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/workers/transcode-simple`;
+    const resp = await fetch(simpleWorkerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const text = await resp.text();
+    return NextResponse.json({ ok: resp.ok, status: resp.status, body: text });
   }
 
   const resp = await fetch(target, {

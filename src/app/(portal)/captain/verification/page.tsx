@@ -1,0 +1,698 @@
+"use client";
+import {
+  AlertCircle,
+  CheckCircle2,
+  FileText,
+  IdCard,
+  Image as ImageIcon,
+  Info,
+  Loader2,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+
+type Uploaded = { key: string; url: string; name: string; updatedAt: string };
+type Statused = Uploaded & {
+  status?: "processing" | "validated";
+  validForPeriod?: { from?: string; to?: string };
+};
+type DocType =
+  | "idFront"
+  | "idBack"
+  | "captainLicense"
+  | "boatRegistration"
+  | "fishingLicense"
+  | "additional";
+
+function fmtDate(iso?: string) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return iso ?? "";
+  }
+}
+
+export default function VerificationPage() {
+  // Per-field uploaded refs
+  const [idFront, setIdFront] = useState<Statused | null>(null);
+  const [idBack, setIdBack] = useState<Statused | null>(null);
+  const [captainLicense, setCaptainLicense] = useState<Statused | null>(null);
+  const [boatReg, setBoatReg] = useState<Statused | null>(null);
+  const [fishingLicense, setFishingLicense] = useState<Statused | null>(null);
+  const [additionalDocs, setAdditionalDocs] = useState<Statused[]>([]);
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // Hydrate from server so we reflect current statuses and validity
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/captain/verification", { method: "GET" });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (cancelled) return;
+        type RowShape = {
+          idFront?: Statused | null;
+          idBack?: Statused | null;
+          captainLicense?: Statused | null;
+          boatRegistration?: Statused | null;
+          fishingLicense?: Statused | null;
+          additional?: Statused[];
+        } | null;
+        const row = json?.verification as RowShape;
+        if (!row) return;
+        setIdFront(row.idFront ?? null);
+        setIdBack(row.idBack ?? null);
+        setCaptainLicense(row.captainLicense ?? null);
+        setBoatReg(row.boatRegistration ?? null);
+        setFishingLicense(row.fishingLicense ?? null);
+        setAdditionalDocs(Array.isArray(row.additional) ? row.additional : []);
+      } catch {
+        // ignore errors
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Helpers
+  async function uploadFile(file: File, docType: DocType): Promise<Statused> {
+    const fd = new FormData();
+    fd.set("file", file);
+    fd.set("docType", docType);
+    const res = await fetch("/api/blob/upload", { method: "POST", body: fd });
+    if (!res.ok) throw new Error("upload_failed");
+    const j = (await res.json()) as { key: string; url: string };
+    return {
+      key: j.key,
+      url: j.url,
+      name: file.name,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async function deleteKey(key?: string) {
+    if (!key) return;
+    try {
+      await fetch("/api/blob/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+    } catch {
+      // non-blocking
+    }
+  }
+
+  async function saveField(payload: Record<string, unknown>) {
+    await fetch("/api/captain/verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  }
+
+  async function handleReplace(
+    field: string,
+    nextFile: File,
+    prev?: Statused | null,
+    onSet?: (u: Statused | null) => void
+  ) {
+    if (prev?.status === "validated") {
+      setMessage({
+        type: "error",
+        text: "This document is already validated and cannot be changed.",
+      });
+      return;
+    }
+    setLoading((s) => ({ ...s, [field]: true }));
+    setMessage(null);
+    try {
+      // Delete old first (best-effort)
+      if (prev?.key) await deleteKey(prev.key);
+      // Upload new
+      const up = await uploadFile(nextFile, field as DocType);
+      onSet?.(up);
+      await saveField({ [field]: up });
+    } catch {
+      setMessage({ type: "error", text: "Upload failed. Please try again." });
+    } finally {
+      setLoading((s) => ({ ...s, [field]: false }));
+    }
+  }
+
+  async function handleAdditionalAdd(files: File[]) {
+    if (!files.length) return;
+    setLoading((s) => ({ ...s, additional: true }));
+    setMessage(null);
+    try {
+      const uploads: Statused[] = [];
+      for (const f of files) {
+        const up = await uploadFile(f, "additional");
+        uploads.push(up);
+        await saveField({ additionalAdd: up });
+      }
+      setAdditionalDocs((arr) => [...arr, ...uploads]);
+    } catch {
+      setMessage({ type: "error", text: "Some files failed to upload." });
+    } finally {
+      setLoading((s) => ({ ...s, additional: false }));
+    }
+  }
+
+  async function handleAdditionalRemove(i: number) {
+    const item = additionalDocs[i];
+    if (!item) return;
+    if (item.status === "validated") {
+      setMessage({
+        type: "error",
+        text: "Validated document cannot be removed.",
+      });
+      return;
+    }
+    setLoading((s) => ({ ...s, additional: true }));
+    try {
+      await deleteKey(item.key);
+      setAdditionalDocs((arr) => arr.filter((_, idx) => idx !== i));
+      await saveField({ additionalRemove: item.key });
+    } finally {
+      setLoading((s) => ({ ...s, additional: false }));
+    }
+  }
+
+  return (
+    <div className="px-6 py-8 space-y-6">
+      <div className="flex items-center gap-2">
+        <IdCard className="h-5 w-5 text-slate-700" />
+        <h1 className="text-xl font-semibold text-slate-900">ID & Documents</h1>
+      </div>
+      <p className="text-sm text-slate-600">
+        Upload required identification and licenses to finish your registration.
+      </p>
+
+      {/* Guidance banner: prompt for both ID sides until uploaded */}
+      {(!idFront || !idBack) && (
+        <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-medium">Government ID required</p>
+            <p className="text-blue-800/80">
+              Please upload clear photos of the front and back of your ID to
+              proceed with verification.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {message && (
+        <div
+          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
+            message.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
+          {message.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          {message.text}
+        </div>
+      )}
+
+      <div className="space-y-6">
+        <Section
+          title="Government ID (required)"
+          description="Clear photo of the front and back of your ID."
+          updated={!!idFront && !!idBack}
+          processing={
+            idFront?.status === "processing" || idBack?.status === "processing"
+          }
+          startCollapsed
+        >
+          <FileInput
+            label="Front side"
+            required
+            existing={idFront}
+            onReplace={(f) => handleReplace("idFront", f, idFront, setIdFront)}
+            loading={!!loading["idFront"]}
+            accept="image/*"
+            capture="environment"
+            icon={<ImageIcon className="h-4 w-4" />}
+          />
+          <FileInput
+            label="Back side"
+            required
+            existing={idBack}
+            onReplace={(f) => handleReplace("idBack", f, idBack, setIdBack)}
+            loading={!!loading["idBack"]}
+            accept="image/*"
+            capture="environment"
+            icon={<ImageIcon className="h-4 w-4" />}
+          />
+          <div className="flex justify-end mt-2">
+            <button
+              type="button"
+              onClick={async () => {
+                setMessage(null);
+                if (!idFront || !idBack) {
+                  setMessage({
+                    type: "error",
+                    text: "Upload both front and back before submitting.",
+                  });
+                  return;
+                }
+                const res = await fetch("/api/captain/verification", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ submitGovtId: true }),
+                });
+                if (res.ok) {
+                  setIdFront((v) => (v ? { ...v, status: "processing" } : v));
+                  setIdBack((v) => (v ? { ...v, status: "processing" } : v));
+                  setMessage({ type: "success", text: "Submitted." });
+                } else {
+                  const err = await res.json().catch(() => ({}));
+                  setMessage({
+                    type: "error",
+                    text: err?.error || "Submit failed",
+                  });
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+            >
+              Save
+            </button>
+          </div>
+        </Section>
+
+        <Section
+          title="Captain license"
+          description="Upload an image or PDF."
+          updated={!!captainLicense}
+          processing={captainLicense?.status === "processing"}
+          startCollapsed
+        >
+          <FileInput
+            label="Captain license"
+            existing={captainLicense}
+            onReplace={(f) =>
+              handleReplace(
+                "captainLicense",
+                f,
+                captainLicense,
+                setCaptainLicense
+              )
+            }
+            loading={!!loading["captainLicense"]}
+            accept="image/*,application/pdf"
+            icon={<FileText className="h-4 w-4" />}
+          />
+          <SubmitRow
+            disabled={!captainLicense}
+            onSubmit={async () => {
+              const res = await fetch("/api/captain/verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ submit: "captainLicense" }),
+              });
+              if (res.ok) {
+                setCaptainLicense((v) =>
+                  v ? { ...v, status: "processing" } : v
+                );
+                setMessage({ type: "success", text: "Submitted." });
+              } else {
+                const err = await res.json().catch(() => ({}));
+                setMessage({
+                  type: "error",
+                  text: err?.error || "Submit failed",
+                });
+              }
+            }}
+          />
+        </Section>
+
+        <Section
+          title="Boat registration certificate"
+          description="Upload an image or PDF."
+          updated={!!boatReg}
+          processing={boatReg?.status === "processing"}
+          startCollapsed
+        >
+          <FileInput
+            label="Boat registration"
+            existing={boatReg}
+            onReplace={(f) =>
+              handleReplace("boatRegistration", f, boatReg, setBoatReg)
+            }
+            loading={!!loading["boatRegistration"]}
+            accept="image/*,application/pdf"
+            icon={<FileText className="h-4 w-4" />}
+          />
+          <SubmitRow
+            disabled={!boatReg}
+            onSubmit={async () => {
+              const res = await fetch("/api/captain/verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ submit: "boatRegistration" }),
+              });
+              if (res.ok) {
+                setBoatReg((v) => (v ? { ...v, status: "processing" } : v));
+                setMessage({ type: "success", text: "Submitted." });
+              } else {
+                const err = await res.json().catch(() => ({}));
+                setMessage({
+                  type: "error",
+                  text: err?.error || "Submit failed",
+                });
+              }
+            }}
+          />
+        </Section>
+
+        <Section
+          title="Fishing license"
+          description="Upload an image or PDF."
+          updated={!!fishingLicense}
+          processing={fishingLicense?.status === "processing"}
+          startCollapsed
+        >
+          <FileInput
+            label="Fishing license"
+            existing={fishingLicense}
+            onReplace={(f) =>
+              handleReplace(
+                "fishingLicense",
+                f,
+                fishingLicense,
+                setFishingLicense
+              )
+            }
+            loading={!!loading["fishingLicense"]}
+            accept="image/*,application/pdf"
+            icon={<FileText className="h-4 w-4" />}
+          />
+          <SubmitRow
+            disabled={!fishingLicense}
+            onSubmit={async () => {
+              const res = await fetch("/api/captain/verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ submit: "fishingLicense" }),
+              });
+              if (res.ok) {
+                setFishingLicense((v) =>
+                  v ? { ...v, status: "processing" } : v
+                );
+                setMessage({ type: "success", text: "Submitted." });
+              } else {
+                const err = await res.json().catch(() => ({}));
+                setMessage({
+                  type: "error",
+                  text: err?.error || "Submit failed",
+                });
+              }
+            }}
+          />
+        </Section>
+
+        <Section
+          title="Additional documents"
+          description="Upload any other relevant documents (images or PDFs). These are for your records and are not verified."
+          updated={additionalDocs.length > 0}
+          collapsible={false}
+        >
+          <MultiFileInput
+            label="Additional documents"
+            files={additionalDocs}
+            onAdd={(files) => handleAdditionalAdd(files)}
+            onRemove={(i) => handleAdditionalRemove(i)}
+            onRename={(key, name) =>
+              setAdditionalDocs((arr) =>
+                arr.map((it) => (it.key === key ? { ...it, name } : it))
+              )
+            }
+            loading={!!loading["additional"]}
+            accept="image/*,application/pdf"
+          />
+          {/* Additional documents are saved instantly; no verification step. */}
+        </Section>
+      </div>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  description,
+  children,
+  updated,
+  processing,
+  startCollapsed,
+  collapsible = true,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  updated?: boolean;
+  processing?: boolean;
+  startCollapsed?: boolean;
+  collapsible?: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(!!startCollapsed && !!updated);
+  // Auto-collapse when updated becomes true
+  useEffect(() => {
+    if (updated && collapsible) setCollapsed(true);
+  }, [updated, collapsible]);
+
+  const isCollapsed = collapsible ? collapsed : false;
+
+  return (
+    <div className="relative rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      {/* Top bar: title + optional updated badge + optional toggle */}
+      <div className="flex items-start justify-between gap-4">
+        {collapsible ? (
+          <button
+            type="button"
+            className="text-left"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-expanded={!isCollapsed}
+          >
+            <h2 className="font-medium text-slate-800">{title}</h2>
+            {!isCollapsed && description && (
+              <p className="mt-1 text-sm text-slate-500">{description}</p>
+            )}
+          </button>
+        ) : (
+          <div>
+            <h2 className="font-medium text-slate-800">{title}</h2>
+            {description && (
+              <p className="mt-1 text-sm text-slate-500">{description}</p>
+            )}
+          </div>
+        )}
+        {processing ? (
+          <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+            processing
+          </span>
+        ) : null}
+      </div>
+      {!isCollapsed && <div className="mt-4 grid gap-3">{children}</div>}
+    </div>
+  );
+}
+
+function FileInput({
+  label,
+  existing,
+  onReplace,
+  loading,
+  accept,
+  capture,
+  required,
+  icon,
+}: {
+  label: string;
+  existing: Statused | null;
+  onReplace: (file: File) => void;
+  loading?: boolean;
+  accept: string;
+  capture?: "user" | "environment";
+  required?: boolean;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-slate-700">
+          {label}
+          {required ? " *" : ""}
+        </span>
+        {loading ? (
+          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading…
+          </span>
+        ) : existing ? (
+          existing.status === "validated" ? (
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Validated
+              {existing.validForPeriod?.to ? (
+                <span className="ml-1 text-emerald-800/80">
+                  · Valid until: {fmtDate(existing.validForPeriod.to)}
+                </span>
+              ) : null}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs text-slate-600">
+              Updated on {fmtDate(existing.updatedAt)}
+            </span>
+          )
+        ) : (
+          <span className="text-xs text-slate-500">Not uploaded</span>
+        )}
+      </div>
+      <div className="mt-1 flex items-center gap-3">
+        <input
+          type="file"
+          accept={accept}
+          capture={capture}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onReplace(f);
+            // allow selecting same file again
+            e.currentTarget.value = "";
+          }}
+          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-full file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-100"
+          required={required && !existing}
+          disabled={existing?.status === "validated"}
+        />
+        {existing && (
+          <span className="text-xs text-slate-500 truncate max-w-[50%]">
+            {existing.name}
+          </span>
+        )}
+        {icon}
+      </div>
+    </label>
+  );
+}
+
+function MultiFileInput({
+  label,
+  files,
+  onAdd,
+  onRemove,
+  onRename,
+  loading,
+  accept,
+}: {
+  label: string;
+  files: Statused[];
+  onAdd: (files: File[]) => void;
+  onRemove: (index: number) => void;
+  onRename: (key: string, name: string) => void;
+  loading?: boolean;
+  accept: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-slate-700">{label}</span>
+        {loading ? (
+          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading…
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-1 flex flex-col gap-3">
+        <input
+          type="file"
+          accept={accept}
+          multiple
+          onChange={(e) => {
+            const list = Array.from(e.target.files ?? []);
+            if (list.length) onAdd(list);
+            e.currentTarget.value = "";
+          }}
+          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-full file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-100"
+        />
+        {files.length > 0 && (
+          <ul className="text-xs grid gap-2">
+            {files.map((f, i) => (
+              <li
+                key={f.key}
+                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <FileText className="h-4 w-4 text-slate-500" />
+                  <input
+                    type="text"
+                    defaultValue={f.name}
+                    placeholder="Document name"
+                    className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    onBlur={async (e) => {
+                      const name = e.currentTarget.value.trim();
+                      if (!name || name === f.name) return;
+                      // update parent state optimistically
+                      onRename(f.key, name);
+                      await fetch("/api/captain/verification", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          additionalUpdateName: { key: f.key, name },
+                        }),
+                      });
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRemove(i)}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SubmitRow({
+  disabled,
+  onSubmit,
+}: {
+  disabled?: boolean;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="flex justify-end mt-2">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onSubmit}
+        className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+      >
+        Save
+      </button>
+    </div>
+  );
+}
+
+// no SubmitAdditional, additional docs save instantly
