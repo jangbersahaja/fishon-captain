@@ -179,11 +179,12 @@ describe("useDraftSnapshot", () => {
 
   it("skips network when values unchanged between calls", async () => {
     const version = 5;
-    const fetchSpy = vi.fn(async () =>
-      new Response(
-        JSON.stringify({ draft: { id: "d1", version: version + 1 } }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ draft: { id: "d1", version: version + 1 } }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
     );
     global.fetch = fetchSpy as unknown as typeof fetch;
     const { hook } = setup({ isEditing: false, draftId: "d1", version });

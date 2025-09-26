@@ -13,7 +13,7 @@ export default defineConfig({
       ["src/server/__tests__/**", "node"],
       ["src/features/charter-onboarding/__tests__/**", "jsdom"],
     ],
-    setupFiles: [],
+    setupFiles: ["vitest.setup.ts"],
     globals: true,
   },
   resolve: {

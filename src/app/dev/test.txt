@@ -1,0 +1,169 @@
+Let’s walk the entire registration/edit flow methodically. Use this as a checklist while you click through. After you run it, just tell me where something diverges and I’ll jump in.
+
+## 1. Entry & Access Control
+New (onboarding) path:
+1. Sign in as a CAPTAIN user with no existing charter.
+2. Visit /captain/form
+   - Expect: Page loads first step (Basics). No redirect.
+   - Network: Initial GET /api/charter-drafts (to reuse existing) or POST /api/charter-drafts (to create new) should occur once.
+   - URL should not include ?editCharterId.
+Edit path:
+1. Pick an existing charter id (call it X).
+2. Visit /captain/form?editCharterId=X
+   - Expect: No calls to /api/charter-drafts; instead a single GET /api/charters/X.
+   - Draft autosave hint paragraph (tiny gray text) should NOT appear.
+   - Save buttons (green) present on steps (except review uses Save with dark button).
+Role redirect:
+1. Log in as STAFF or ADMIN → /captain/form
+   - Expect redirect to /staff (verify path you want—currently “/staff”).
+Unauthorized:
+1. Logged out → /captain/form
+   - Expect redirect to /auth?next=/captain/form
+
+## 2. Step 1 – Basics
+Fields: Operator Display Name, Experience Years, Bio (≥20 chars), Phone (regex), Charter Type, Charter Name, State, City, Starting Point (address), Postcode (5 digits), Latitude, Longitude, Description (≥40 chars), Tone (radio/select).
+Avatar:
+- Upload image: Should create a preview.
+- In edit mode: Avatar upload triggers immediate POST /api/blob/upload followed by PUT /api/captain/avatar.
+Validation checks (trigger by clicking Next):
+- Missing required: shows inline errors.
+- Non-5-digit postcode → error.
+- Latitude outside [-90, 90] or blank → error.
+- Description too short → error.
+- Phone fails regex → error.
+Advance:
+- On success: 
+  - New flow: PATCH /api/charter-drafts/:id (autosave).
+  - Edit flow: No PATCH yet (only on explicit Save), step changes.
+Analytics (if present): Expect “step_view” for next step and “step_complete” events (in code emits those).
+
+## 3. Step 2 – Experience
+Boat section: Name, Type, Length (positive), Capacity (≥1), Features (≥1).
+Amenities: Must select ≥1.
+Policies: Toggle booleans.
+Pickup:
+- Toggle available=true → Fee required (numeric). If left empty → validation error “Enter pickup fee”.
+- Areas: Add some strings (chips/search style).
+Validation:
+- Missing boat feature or amenity triggers error list at top of step on Next.
+Autosave:
+- New flow: Expect PATCH /api/charter-drafts/:id again with currentStep increment.
+- Edit flow: Still no network until Save.
+
+## 4. Step 3 – Trips & Pricing (structure naming confirmation)
+Each trip object now uses:
+- name, tripType, price, durationHours, startTimes[], maxAnglers, charterStyle (‘private’ | ‘shared’), description?, species[] (renamed from targetSpecies), techniques[].
+Checks:
+1. Changing Trip Type auto-fills name if blank.
+2. Adding start time: rejects invalid format, prevents duplicates.
+3. Techniques toggling: adds/removes pill.
+4. Species selector: Choose up to 5. Confirm underlying form state exposes trips[i].species (not targetSpecies) via React DevTools.
+5. Add Another Trip button duplicates base template.
+Validation on Next:
+- At least one trip.
+- Each trip: name present, tripType present, startTimes ≥1, price >=0, durationHours >=1, maxAnglers >=1.
+Autosave (new flow) fires PATCH again.
+
+## 5. Step 4 – Media & Description
+UI includes:
+- Description editor (should already have content from earlier).
+- Photo uploader: Must reach ≥3 total (existingImages + newly added) before submission allowed (for new flow).
+Behavior differences:
+New (draft) flow:
+- Selected photos remain “local” until final Submit (no immediate upload network requests—unless code changed elsewhere).
+Edit flow:
+- Each added photo triggers progressive upload: POST /api/blob/upload (xhr), then PUT /api/charters/:id/media to merge in new images.
+- Progress array updates; completed => 100; failures => -1.
+Videos:
+- Limit 3, size ≤ 200MB, duration ≤ 90s (approx check).
+- Edit flow: Same immediate upload & PUT to /api/charters/:id/media after batching each successful set.
+- Thumbnails: getThumbnailUrl invoked; preview shows placeholder then resolved image.
+
+Edge checks:
+1. Try adding >15 photos: Should clamp.
+2. Add 4 videos: 4th ignored (max 3).
+3. Video too big → excluded (quietly).
+4. Remove existing photo (if UI supports) – confirm order persistence if reorder performed (PUT /media).
+
+## 6. Review Step
+New (draft) flow:
+- Floating bottom bar: “Submit Charter”.
+- Click Submit triggers finalize flow:
+  - saveServerDraftSnapshot() (PATCH)
+  - POST /api/charter-drafts/:id/finalize with media payload including images[], videos[], avatar (if new).
+  - On success: redirect to /thank-you.
+- If <3 photos or validation errors remain: Should block with inline summary.
+Edit flow:
+- Bottom button reads “Save” (not “Submit Charter”).
+- Clicking Save:
+  - Calls saveEditChanges → PATCH /api/charters/:id with charter, boat, amenities, features, policies, pickup, trips arrays as appropriate.
+  - No calls to /api/charter-drafts or finalize.
+- Success message: “Saved changes”.
+- Remains on page (unless you choose to navigate away manually).
+
+## 7. Post-Save / Post-Submit Redirects
+New: /thank-you after finalize.
+Edit: Stays on form (or you may navigate elsewhere). Cancel button earlier steps returns /captain.
+
+## 8. Species Rename Verification
+- Confirm no remaining occurrences of targetSpecies in form data (inspect dev tools form state).
+- Network payload PATCH (edit) should include trips[i].species.
+- Finalize payload (new) server side will still map trips to creation of species via t.species.
+
+## 9. Draft Autosave vs Edit
+Network inspection (filter “charter-drafts”):
+- New flow: GET (optional) + POST (create) + periodic PATCH on Next or significant interactions.
+- Edit flow: zero charter-drafts calls.
+
+## 10. Validation Edge Cases
+Try each scenario (expect error messages):
+1. Basics: blank description (<40 chars).
+2. Experience: no amenities selected.
+3. Trips: trip with no startTimes.
+4. Media (new): only 2 photos → review step should block submission.
+5. Pickup: available true + fee cleared → error “Enter pickup fee”.
+
+## 11. Media Error Handling
+Force a photo upload failure (simulate offline or throttle abort):
+- In edit mode, failed photo slot should show progress -1 (or error state) and not be added to existingImages.
+Retry path (if provided) should call re-upload; otherwise you can remove and add again.
+
+## 12. Save Buttons Behavior
+Edit mode mid-step:
+- Green “Save” button (non-review steps) should:
+  - Disable during savingEdit.
+  - Show spinner (Loader2).
+  - Re-enable after response and show success message.
+Check no unhandled promise rejection in console.
+
+## 13. Data Integrity After Save / Submit
+Edit mode:
+- After Save, refresh page with ?editCharterId=X → fields should reflect changes (GET /api/charters/X).
+New flow:
+- After submission and redirect, navigating again to /captain/form (without editCharterId) when a charter exists should redirect to /captain (dashboard) due to guard.
+
+## 14. Pickup Areas & Species Empty Cases
+- Setting pickup available false hides fee requirement (fee can be null).
+- Species empty: preview should show “Target species will appear...” fallback.
+
+## 15. Cleanup Endpoint (Optional Manual Check)
+If you run POST /api/admin/cleanup-edit-drafts:
+- Should not affect onboarding draft currently in progress (it has no charterId).
+- With ?keepSubmitted=1 leaves submitted drafts referencing charters.
+
+## 16. Manual Quick Assertions (Console)
+In browser dev tools console after editing a trip:
+- window.__TEST_FORM_STATE__ (if you want, you can temporarily expose form.getValues() to debug; not currently implemented but easy to add if needed).
+Check network inspector for:
+- Edit Save: PATCH /api/charters/:id payload keys: charter, boat, amenities, features, policies, pickup, trips.
+
+## 17. Potential Issues to Watch
+- If Save in edit mode reports success but fields revert on reload: server PATCH mapping mismatch.
+- Trips species not persisting: verify server expects .species vs previous naming.
+- Cancel button still visible in new flow (should not show when not editing).
+- Progress hint accidentally hidden in new onboarding (should show unless editing).
+- Race condition: rapid clicking Next before autosave finishes (ensure no inconsistent version errors—should silently proceed).
+
+---
+
+Let me know which step (number + brief description) misbehaves or feels off, and I’ll drill straight into that code path. If you’d like, I can also add a lightweight debug hook to expose form state globally while you test—just say the word. Ready for your findings.

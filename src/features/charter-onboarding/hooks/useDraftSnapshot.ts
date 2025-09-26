@@ -39,30 +39,41 @@ export function useDraftSnapshot({
   };
 
   // Build minimal diff object vs previous full snapshot
-  const buildPartialDiff = useCallback(function buildPartialDiff(prev: unknown, next: unknown): unknown {
-      if (prev === next) return undefined;
-      if (typeof prev !== "object" || prev === null || typeof next !== "object" || next === null) {
-        return next;
+  const buildPartialDiff = useCallback(function buildPartialDiff(
+    prev: unknown,
+    next: unknown
+  ): unknown {
+    if (prev === next) return undefined;
+    if (
+      typeof prev !== "object" ||
+      prev === null ||
+      typeof next !== "object" ||
+      next === null
+    ) {
+      return next;
+    }
+    if (Array.isArray(prev) || Array.isArray(next)) {
+      if (JSON.stringify(prev) === JSON.stringify(next)) return undefined;
+      return next;
+    }
+    const pRec = prev as Record<string, unknown>;
+    const nRec = next as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    let changed = false;
+    for (const key of Object.keys(nRec)) {
+      const diffChild = buildPartialDiff(pRec[key], nRec[key]);
+      if (diffChild !== undefined) {
+        out[key] = diffChild;
+        changed = true;
       }
-      if (Array.isArray(prev) || Array.isArray(next)) {
-        if (JSON.stringify(prev) === JSON.stringify(next)) return undefined;
-        return next;
-      }
-      const pRec = prev as Record<string, unknown>;
-      const nRec = next as Record<string, unknown>;
-      const out: Record<string, unknown> = {};
-      let changed = false;
-      for (const key of Object.keys(nRec)) {
-        const diffChild = buildPartialDiff(pRec[key], nRec[key]);
-        if (diffChild !== undefined) {
-          out[key] = diffChild;
-          changed = true;
-        }
-      }
-      return changed ? out : undefined;
-    }, []);
+    }
+    return changed ? out : undefined;
+  },
+  []);
 
-  const saveServerDraftSnapshot = useCallback(async (): Promise<number | null> => {
+  const saveServerDraftSnapshot = useCallback(async (): Promise<
+    number | null
+  > => {
     if (isEditing) return null;
     if (!serverDraftId || serverVersion === null) return null;
     try {
@@ -71,13 +82,17 @@ export function useDraftSnapshot({
       let previousFull: CharterFormValues | null = null;
       if (lastPayloadRef.current) {
         try {
-          const parsed = JSON.parse(lastPayloadRef.current) as { __full?: CharterFormValues };
-            previousFull = parsed.__full || null;
+          const parsed = JSON.parse(lastPayloadRef.current) as {
+            __full?: CharterFormValues;
+          };
+          previousFull = parsed.__full || null;
         } catch {
           previousFull = null;
         }
       }
-      const diff = previousFull ? buildPartialDiff(previousFull, sanitized) : sanitized;
+      const diff = previousFull
+        ? buildPartialDiff(previousFull, sanitized)
+        : sanitized;
       if (diff === undefined) {
         return serverVersion;
       }
@@ -97,7 +112,10 @@ export function useDraftSnapshot({
         const newVersion: number = json.draft.version;
         setServerVersion(newVersion);
         setLastSavedAt(new Date().toISOString());
-        lastPayloadRef.current = JSON.stringify({ ...payloadObj, __full: sanitized });
+        lastPayloadRef.current = JSON.stringify({
+          ...payloadObj,
+          __full: sanitized,
+        });
         return newVersion;
       }
       return null;

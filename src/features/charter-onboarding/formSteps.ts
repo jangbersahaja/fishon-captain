@@ -5,6 +5,12 @@
  * and (c) reduce cognitive load inside the already large FormSection component.
  */
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
+import {
+  basicsStepSchema,
+  experienceStepSchema,
+  mediaPricingStepSchema,
+  tripsStepSchema,
+} from "@features/charter-onboarding/charterForm.schema";
 import type { StepDefinition } from "@features/charter-onboarding/components/StepProgress";
 import type { StepKey } from "@features/charter-onboarding/types";
 import type { FieldPath } from "react-hook-form";
@@ -75,3 +81,12 @@ export const STEP_SEQUENCE: FormStep[] = [
 export const REVIEW_STEP_INDEX = STEP_SEQUENCE.findIndex(
   (s) => s.id === "review"
 );
+
+// Map step id to its granular schema for per-step validation
+export const STEP_SCHEMAS = {
+  basics: basicsStepSchema,
+  experience: experienceStepSchema,
+  trips: tripsStepSchema,
+  media: mediaPricingStepSchema,
+  review: null, // no direct fields; review aggregates all
+} as const;

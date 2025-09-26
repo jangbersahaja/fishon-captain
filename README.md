@@ -2,6 +2,8 @@
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+> Audit Logging: See `README_AUDITLOG.md` for the `AuditLog` model migration template and helper usage (`writeAuditLog`, `auditWithDiff`, `diffObjects`).
+
 ## Getting Started
 
 First, run the development server:
