@@ -30,22 +30,21 @@ export function applySecurityHeaders(res: Response): Response {
     .filter(Boolean)
     .join(" ");
   // Allow XHR/web fetches to our origin + Google Maps (tile vector endpoints use maps.googleapis.com / *.googleapis.com)
-  const connectSrc = [
-    "connect-src 'self'",
-    GOOGLE_SCRIPT,
-    GOOGLE_STATIC,
-  ].join(" ");
+  const connectSrc = ["connect-src 'self'", GOOGLE_SCRIPT, GOOGLE_STATIC].join(
+    " "
+  );
 
   const styleSrc = "style-src 'self' 'unsafe-inline'"; // Google Maps injects inline styles
-  const csp = [
-    "default-src 'self'",
-    scriptSrc,
-    styleSrc,
-    imgSrc,
-    mediaSrc,
-    connectSrc,
-    "frame-ancestors 'none'",
-  ].join("; ") + ";";
+  const csp =
+    [
+      "default-src 'self'",
+      scriptSrc,
+      styleSrc,
+      imgSrc,
+      mediaSrc,
+      connectSrc,
+      "frame-ancestors 'none'",
+    ].join("; ") + ";";
   res.headers.set("Content-Security-Policy", csp);
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set("X-Content-Type-Options", "nosniff");

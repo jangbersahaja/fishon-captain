@@ -1,11 +1,14 @@
 // NOTE: Mock BEFORE importing modules that consume analytics so that the mocked
 // emitCharterFormEvent is the one bound inside submissionStrategies.ts.
-import { vi, describe, it, expect } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 vi.mock("@features/charter-onboarding/analytics", () => ({
   emitCharterFormEvent: vi.fn(),
 }));
 
-import { charterFormSchema, type CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
+import {
+  charterFormSchema,
+  type CharterFormValues,
+} from "@features/charter-onboarding/charterForm.schema";
 import { useCharterSubmission } from "@features/charter-onboarding/hooks/useCharterSubmission";
 import { finalizeDraftSubmission } from "@features/charter-onboarding/submissionStrategies";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +16,13 @@ import { act, renderHook } from "@testing-library/react";
 import { useForm } from "react-hook-form";
 
 const defaults = (): CharterFormValues => ({
-  operator: { displayName: "A", experienceYears: 1, bio: "Desc long enough for rules.", phone: "+1", avatar: undefined },
+  operator: {
+    displayName: "A",
+    experienceYears: 1,
+    bio: "Desc long enough for rules.",
+    phone: "+1",
+    avatar: undefined,
+  },
   charterType: "shared",
   charterName: "Name",
   state: "FL",
@@ -25,7 +34,13 @@ const defaults = (): CharterFormValues => ({
   description: "A valid description over forty characters in length here.",
   generatedDescription: undefined,
   tone: "friendly",
-  boat: { name: "Boat", type: "Center", lengthFeet: 20, capacity: 4, features: ["GPS"] },
+  boat: {
+    name: "Boat",
+    type: "Center",
+    lengthFeet: 20,
+    capacity: 4,
+    features: ["GPS"],
+  },
   amenities: ["Rods"],
   policies: {
     licenseProvided: true,
@@ -38,7 +53,18 @@ const defaults = (): CharterFormValues => ({
   },
   pickup: { available: false, fee: null, areas: [], notes: "" },
   trips: [
-    { name: "Trip", tripType: "inshore", price: 100, durationHours: 4, startTimes: ["07:00"], maxAnglers: 4, charterStyle: "private", description: "Trip", species: [], techniques: [] },
+    {
+      name: "Trip",
+      tripType: "inshore",
+      price: 100,
+      durationHours: 4,
+      startTimes: ["07:00"],
+      maxAnglers: 4,
+      charterStyle: "private",
+      description: "Trip",
+      species: [],
+      techniques: [],
+    },
   ],
   photos: [],
   videos: [],
@@ -46,25 +72,38 @@ const defaults = (): CharterFormValues => ({
 
 describe("useCharterSubmission analytics", () => {
   it("emits finalize_attempt and finalize_success events", async () => {
-    const { emitCharterFormEvent } = await import("@features/charter-onboarding/analytics");
+    const { emitCharterFormEvent } = await import(
+      "@features/charter-onboarding/analytics"
+    );
     const values = defaults();
     // Inject required photos
     const mk = (n: string) => new File(["x"], n, { type: "image/jpeg" });
     values.photos = [mk("a.jpg"), mk("b.jpg"), mk("c.jpg")];
 
-    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input.toString();
-      if (url.includes("/finalize")) {
-        return new Response(JSON.stringify({ charterId: "cid" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    global.fetch = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url.includes("/finalize")) {
+          return new Response(JSON.stringify({ charterId: "cid" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (url.includes("/charter-drafts/") && init?.method === "PATCH") {
+          return new Response(
+            JSON.stringify({ draft: { id: "d", version: 2 } }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+        if (url === "/api/blob/upload") {
+          return new Response(JSON.stringify({ key: "k", url: "u" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response("{}", { status: 200 });
       }
-      if (url.includes("/charter-drafts/") && init?.method === "PATCH") {
-        return new Response(JSON.stringify({ draft: { id: "d", version: 2 } }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      if (url === "/api/blob/upload") {
-        return new Response(JSON.stringify({ key: "k", url: "u" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      return new Response("{}", { status: 200 });
-    }) as unknown as typeof fetch;
+    ) as unknown as typeof fetch;
 
     const push = vi.fn();
     await finalizeDraftSubmission({
@@ -84,7 +123,9 @@ describe("useCharterSubmission analytics", () => {
     });
 
     type Ev = { type: string; [k: string]: unknown };
-    const calls: Ev[] = (emitCharterFormEvent as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0] as Ev);
+    const calls: Ev[] = (
+      emitCharterFormEvent as unknown as ReturnType<typeof vi.fn>
+    ).mock.calls.map((c) => c[0] as Ev);
     if (!calls.find((e) => e.type === "finalize_attempt")) {
       console.warn("[TEST DEBUG] analytics mock calls:", calls);
     }
@@ -95,8 +136,10 @@ describe("useCharterSubmission analytics", () => {
 
   it("edit path performs PATCH save (no finalize events or navigation)", async () => {
     // Reset analytics mock calls from prior test
-    const { emitCharterFormEvent } = await import("@features/charter-onboarding/analytics");
-    ;(emitCharterFormEvent as unknown as ReturnType<typeof vi.fn>).mockClear();
+    const { emitCharterFormEvent } = await import(
+      "@features/charter-onboarding/analytics"
+    );
+    (emitCharterFormEvent as unknown as ReturnType<typeof vi.fn>).mockClear();
     const form = renderHook(() =>
       useForm<CharterFormValues>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -107,7 +150,10 @@ describe("useCharterSubmission analytics", () => {
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
       if (url.includes("/api/charters/charter-1")) {
-        return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response("{}", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
       return new Response("{}", { status: 200 });
     }) as unknown as typeof fetch;
@@ -142,7 +188,9 @@ describe("useCharterSubmission analytics", () => {
     // In edit mode we only perform a PATCH save; no navigation or finalize events.
     expect(push).not.toHaveBeenCalled();
     type Ev = { type: string };
-    const events: Ev[] = (emitCharterFormEvent as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0] as Ev);
+    const events: Ev[] = (
+      emitCharterFormEvent as unknown as ReturnType<typeof vi.fn>
+    ).mock.calls.map((c) => c[0] as Ev);
     // No finalize events expected during edit save.
     expect(events.find((e) => e.type === "finalize_attempt")).toBeUndefined();
     expect(events.find((e) => e.type === "finalize_success")).toBeUndefined();

@@ -7,15 +7,16 @@ function normalizeNumber(value: unknown, fallback: number = Number.NaN) {
 
 export function sanitizeForDraft(values: CharterFormValues) {
   const { photos: _photos, videos: _videos, operator, ...rest } = values;
-  const { avatar: _avatar, ...operatorRest } = operator;
+  const { avatar: _avatar, avatarUrl, ...operatorRest } = operator;
 
+  // We still ignore raw photos/videos and avatar File objects for draft payload size, but we DO persist avatarUrl if present
   void _photos;
   void _videos;
   void _avatar;
 
   return {
     ...rest,
-    operator: { ...operatorRest },
+    operator: { ...operatorRest, avatarUrl },
     trips: (values.trips ?? []).map((trip) => ({ ...trip })),
     boat: { ...values.boat },
     pickup: { ...values.pickup },
@@ -24,6 +25,7 @@ export function sanitizeForDraft(values: CharterFormValues) {
 }
 
 export type DraftValues = ReturnType<typeof sanitizeForDraft>;
+export type { DraftValues as CharterDraftValuesType }; // alias to ensure named export tree-shakes safely
 
 export function hydrateDraftValues(
   defaults: CharterFormValues,
@@ -43,6 +45,7 @@ export function hydrateDraftValues(
     ),
     bio: draft.operator?.bio ?? defaults.operator.bio,
     avatar: undefined,
+    avatarUrl: draft.operator?.avatarUrl,
   };
 
   merged.latitude = normalizeNumber(

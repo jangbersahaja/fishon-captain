@@ -25,6 +25,7 @@ export interface UseCharterDataLoadResult {
   serverVersion: number | null;
   draftLoaded: boolean;
   setServerVersion: (v: number | null) => void;
+  savedCurrentStep: number | null;
 }
 
 export function useCharterDataLoad({
@@ -39,6 +40,7 @@ export function useCharterDataLoad({
   const [currentCharterId, setCurrentCharterId] = useState<string | null>(null);
   const [serverDraftId, setServerDraftId] = useState<string | null>(null);
   const [serverVersion, setServerVersion] = useState<number | null>(null);
+  const [savedCurrentStep, setSavedCurrentStep] = useState<number | null>(null);
   const fetchedRef = useRef(false);
 
   // Initialize baseline state
@@ -97,6 +99,27 @@ export function useCharterDataLoad({
             setServerDraftId(existingJson.draft.id);
             setServerVersion(existingJson.draft.version);
             setLastSavedAt(new Date().toISOString());
+            // Attempt to hydrate existing draft form data if present
+            try {
+              const draftData =
+                existingJson.draft.data ||
+                existingJson.draft.dataFull ||
+                existingJson.draft.dataPartial ||
+                null;
+              if (draftData && typeof draftData === "object") {
+                const defaults = createDefaultCharterFormValues();
+                const hydrated = hydrateDraftValues(defaults, draftData);
+                reset(hydrated, { keepDirty: false });
+              }
+              if (
+                typeof existingJson.draft.currentStep === "number" &&
+                existingJson.draft.currentStep >= 0
+              ) {
+                setSavedCurrentStep(existingJson.draft.currentStep);
+              }
+            } catch {
+              /* ignore hydration problems */
+            }
             return;
           }
         }
@@ -127,5 +150,6 @@ export function useCharterDataLoad({
     serverVersion,
     draftLoaded,
     setServerVersion,
+    savedCurrentStep,
   };
 }

@@ -109,7 +109,10 @@ export function LocationMap({
   useEffect(() => {
     if (!active) return;
     const handler = (ev: ErrorEvent) => {
-      if (typeof ev.message === "string" && ev.message.includes("Google Maps JavaScript API")) {
+      if (
+        typeof ev.message === "string" &&
+        ev.message.includes("Google Maps JavaScript API")
+      ) {
         if (DEBUG) console.error("[map] window error captured", ev.message);
         setScriptError(ev.message);
       }
@@ -126,7 +129,10 @@ export function LocationMap({
     }
     if (typeof window === "undefined") return;
     if (typeof (window as GWin).google === "undefined") {
-      if (DEBUG) console.warn("[map] google undefined after script load; retrying short delay");
+      if (DEBUG)
+        console.warn(
+          "[map] google undefined after script load; retrying short delay"
+        );
       // Sometimes the script 'load' fires before google namespace attached (rare); give a micro retry window.
       setTimeout(() => {
         if (typeof (window as GWin).google === "undefined") {
@@ -255,10 +261,15 @@ export function LocationMap({
                 console.group("[map debug]");
                 console.log("active", active, "loaded", loaded);
                 console.log("lat", lat, "lng", lng);
-                const el = document.querySelector('script[data-google-maps]');
+                const el = document.querySelector("script[data-google-maps]");
                 console.log("script tag", el?.getAttribute("src"));
-                interface GWin extends Window { google?: typeof google }
-                console.log("google defined?", typeof (window as GWin).google !== "undefined");
+                interface GWin extends Window {
+                  google?: typeof google;
+                }
+                console.log(
+                  "google defined?",
+                  typeof (window as GWin).google !== "undefined"
+                );
                 console.groupEnd();
               }}
               className="rounded border border-red-400 px-3 py-1 text-red-700 text-xs font-semibold hover:bg-red-100"

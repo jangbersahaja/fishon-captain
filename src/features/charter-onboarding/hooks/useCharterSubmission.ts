@@ -38,6 +38,10 @@ export interface UseCharterSubmissionArgs {
   ) => void;
   setLastSavedAt: (iso: string | null) => void;
   router: { push: (href: string) => void };
+  getUploadedMediaInfo?: (
+    file: File,
+    kind: "photo" | "video" | "avatar"
+  ) => { name: string; url: string } | null;
 }
 
 export interface UseCharterSubmissionResult {
@@ -65,6 +69,7 @@ export function useCharterSubmission({
   initializeDraftState,
   setLastSavedAt,
   router,
+  getUploadedMediaInfo,
 }: UseCharterSubmissionArgs): UseCharterSubmissionResult {
   const [submitState, setSubmitState] = useState<{
     type: "success" | "error";
@@ -116,6 +121,7 @@ export function useCharterSubmission({
           initializeDraftState,
           setLastSavedAt: (iso) => setLastSavedAt(iso),
           router,
+          getUploadedMediaInfo,
         });
       } catch (e) {
         setSubmitState({
@@ -137,6 +143,7 @@ export function useCharterSubmission({
       setLastSavedAt,
       router,
       saveEditChanges,
+      getUploadedMediaInfo,
     ]
   );
 

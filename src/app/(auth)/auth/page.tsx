@@ -34,6 +34,8 @@ export const metadata: Metadata = {
 //TODO: Validate "next" param to ensure it's a relative path within the app
 //TODO: Use a library to parse and validate "next" param against a whitelist of allowed paths
 //TODO: Change priority to use google account sign in
+//TODO: Email verification for normal sign up
+//TODO: When click register button from home switch to sign up tab
 //TODO: Add reCAPTCHA to prevent bot sign ups
 //TODO: Add rate limiting to prevent abuse
 //TODO: Add facebook sign in option

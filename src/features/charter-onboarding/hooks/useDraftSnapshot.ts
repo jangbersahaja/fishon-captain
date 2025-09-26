@@ -93,9 +93,8 @@ export function useDraftSnapshot({
       const diff = previousFull
         ? buildPartialDiff(previousFull, sanitized)
         : sanitized;
-      if (diff === undefined) {
-        return serverVersion;
-      }
+      // Always send first time (when lastPayloadRef null). If diff undefined (no change), skip.
+      if (diff === undefined) return serverVersion;
       const payloadObj = {
         dataPartial: diff,
         clientVersion: serverVersion,

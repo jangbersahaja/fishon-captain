@@ -53,6 +53,7 @@ export const charterFormSchema = z.object({
       .min(1, "Phone number is required")
       .regex(/^[+]?[-\d\s()]{6,}$/u, "Enter a valid phone number"),
     avatar: fileSchema.optional(),
+    avatarUrl: z.string().url().optional(),
   }),
   charterType: z.string().min(1, "Select a charter type"),
   charterName: z.string().min(1, "Charter name is required"),

@@ -105,6 +105,11 @@ export interface FinalizeArgs {
   initializeDraftState: (v: CharterFormValues, draftId: string | null) => void;
   setLastSavedAt: (iso: string | null) => void;
   router: { push: (href: string) => void };
+  /** Lookup for already uploaded media (create flow pre-upload on step advance) */
+  getUploadedMediaInfo?: (
+    file: File,
+    kind: "photo" | "video" | "avatar"
+  ) => { name: string; url: string } | null;
 }
 
 export async function finalizeDraftSubmission(args: FinalizeArgs) {
@@ -122,6 +127,7 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
     initializeDraftState,
     setLastSavedAt,
     router,
+    getUploadedMediaInfo,
   } = args;
   // Upload helper
   const uploadOriginalToBlob = async (
@@ -138,54 +144,56 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
     return { key: j.key, url: j.url };
   };
 
-  // Upload new photos/videos only
-  const photosUploaded = await Promise.all(
-    (values.photos ?? []).map(async (f) => {
+  // Photos / videos upload (skip files already pre-uploaded).
+  const photosPayload: { name: string; url: string }[] = [];
+  const videosPayload: { name: string; url: string }[] = [];
+  const maybeUploadSet = async (
+    files: File[] | undefined,
+    kind: "photo" | "video"
+  ) => {
+    if (!files || !files.length) return;
+    for (const f of files) {
+      const pre = getUploadedMediaInfo?.(f, kind);
+      if (pre) {
+        // Avoid duplicates by name
+        const arr = kind === "photo" ? photosPayload : videosPayload;
+        if (!arr.some((m) => m.name === pre.name)) arr.push(pre);
+        continue;
+      }
       try {
         const { key, url } = await uploadOriginalToBlob(f, {
           docType: "charter_media",
           charterId: currentCharterId,
         });
-        return { name: key, url };
-      } catch {
-        return null;
-      }
-    })
-  );
-  const videosUploaded = await Promise.all(
-    (values.videos ?? []).map(async (f) => {
-      try {
-        const { key, url } = await uploadOriginalToBlob(f, {
-          docType: "charter_media",
-          charterId: currentCharterId,
+        (kind === "photo" ? photosPayload : videosPayload).push({
+          name: key,
+          url,
         });
-        return { name: key, url };
       } catch {
-        return null;
+        /* swallow individual errors; user can retry by re-submitting */
       }
-    })
-  );
-  const photosPayload = photosUploaded.filter(Boolean) as {
-    name: string;
-    url: string;
-  }[];
-  const videosPayload = videosUploaded.filter(Boolean) as {
-    name: string;
-    url: string;
-  }[];
+    }
+  };
+  await maybeUploadSet(values.photos as File[] | undefined, "photo");
+  await maybeUploadSet(values.videos as File[] | undefined, "video");
 
   // Avatar (only during create)
   let avatarPayload: { name: string; url: string } | null | undefined =
     undefined;
   const avatarFile = values.operator.avatar;
   if (!isEditing && avatarFile instanceof File) {
-    try {
-      const { key, url } = await uploadOriginalToBlob(avatarFile, {
-        docType: "charter_avatar",
-      });
-      avatarPayload = { name: key, url };
-    } catch {
-      avatarPayload = undefined;
+    const pre = getUploadedMediaInfo?.(avatarFile, "avatar");
+    if (pre) {
+      avatarPayload = pre;
+    } else {
+      try {
+        const { key, url } = await uploadOriginalToBlob(avatarFile, {
+          docType: "charter_avatar",
+        });
+        avatarPayload = { name: key, url };
+      } catch {
+        avatarPayload = undefined;
+      }
     }
   }
 
