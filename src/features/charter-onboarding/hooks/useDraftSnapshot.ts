@@ -71,58 +71,113 @@ export function useDraftSnapshot({
   },
   []);
 
-  const saveServerDraftSnapshot = useCallback(async (): Promise<
-    number | null
-  > => {
+  // Simple queue to avoid overlapping PATCHes (which cause version conflicts)
+  const inFlightRef = useRef<Promise<number | null> | null>(null);
+
+  const saveServerDraftSnapshot = useCallback(async (): Promise<number | null> => {
     if (isEditing) return null;
     if (!serverDraftId || serverVersion === null) return null;
-    try {
-      setServerSaving(true);
-      const sanitized = sanitizeForDraft(form.getValues());
-      let previousFull: CharterFormValues | null = null;
-      if (lastPayloadRef.current) {
-        try {
-          const parsed = JSON.parse(lastPayloadRef.current) as {
-            __full?: CharterFormValues;
-          };
-          previousFull = parsed.__full || null;
-        } catch {
-          previousFull = null;
-        }
-      }
-      const diff = previousFull
-        ? buildPartialDiff(previousFull, sanitized)
-        : sanitized;
-      // Always send first time (when lastPayloadRef null). If diff undefined (no change), skip.
-      if (diff === undefined) return serverVersion;
-      const payloadObj = {
-        dataPartial: diff,
-        clientVersion: serverVersion,
-        currentStep: currentStepRef.current,
-      };
-      const res = await fetch(`/api/charter-drafts/${serverDraftId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadObj),
-      });
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (json?.draft) {
-        const newVersion: number = json.draft.version;
-        setServerVersion(newVersion);
-        setLastSavedAt(new Date().toISOString());
-        lastPayloadRef.current = JSON.stringify({
-          ...payloadObj,
-          __full: sanitized,
-        });
-        return newVersion;
-      }
-      return null;
-    } catch {
-      return null;
-    } finally {
-      setServerSaving(false);
+
+    // If a save is already in flight, chain after it
+    if (inFlightRef.current) {
+      return (inFlightRef.current = inFlightRef.current.then(() =>
+        saveServerDraftSnapshot()
+      ));
     }
+
+    const run = async (): Promise<number | null> => {
+      setServerSaving(true);
+      try {
+        const sanitized = sanitizeForDraft(form.getValues());
+        // Rehydrate previous full snapshot (last successful)
+        let previousFull: CharterFormValues | null = null;
+        if (lastPayloadRef.current) {
+          try {
+            const parsed = JSON.parse(lastPayloadRef.current) as {
+              __full?: CharterFormValues;
+            };
+            previousFull = parsed.__full || null;
+          } catch {
+            previousFull = null;
+          }
+        }
+        const buildAndMaybePatch = async (
+          baseFull: CharterFormValues | null,
+          clientVer: number,
+          attempt: number
+        ): Promise<number | null> => {
+          const diff = baseFull ? buildPartialDiff(baseFull, sanitized) : sanitized;
+            if (diff === undefined) {
+              return clientVer; // nothing to do
+            }
+            const payloadObj = {
+              dataPartial: diff,
+              clientVersion: clientVer,
+              currentStep: currentStepRef.current,
+            };
+            const res = await fetch(`/api/charter-drafts/${serverDraftId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payloadObj),
+            });
+            if (res.status === 409) {
+              // Version conflict: fetch server, merge, retry once
+              if (attempt > 0) return null; // already retried
+              interface ConflictResponse { server?: { version?: number; data?: CharterFormValues }; }
+              let conflictJson: ConflictResponse | null = null;
+              try {
+                conflictJson = await res.json();
+              } catch {
+                return null;
+              }
+              if (conflictJson?.server?.version) {
+                const serverDraft = conflictJson.server!;
+                const serverVer: number = serverDraft.version;
+                // Update version state so future saves align
+                setServerVersion(serverVer);
+                setLastSavedAt(new Date().toISOString());
+                // Update previous snapshot reference with server full data
+                if (serverDraft.data) {
+                  lastPayloadRef.current = JSON.stringify({
+                    __full: serverDraft.data,
+                  });
+                }
+                return buildAndMaybePatch(
+                  serverDraft.data as CharterFormValues,
+                  serverVer,
+                  attempt + 1
+                );
+              }
+              return null;
+            }
+            if (!res.ok) return null;
+            const json = await res.json();
+            if (json?.draft) {
+              const newVersion: number = json.draft.version;
+              setServerVersion(newVersion);
+              setLastSavedAt(new Date().toISOString());
+              lastPayloadRef.current = JSON.stringify({
+                ...payloadObj,
+                __full: sanitized,
+              });
+              return newVersion;
+            }
+            return null;
+        };
+
+        return await buildAndMaybePatch(previousFull, serverVersion, 0);
+      } catch {
+        return null;
+      } finally {
+        setServerSaving(false);
+      }
+    };
+
+    const p = run();
+    inFlightRef.current = p.finally(() => {
+      if (inFlightRef.current === p) inFlightRef.current = null;
+    });
+    return inFlightRef.current;
   }, [
     isEditing,
     serverDraftId,
