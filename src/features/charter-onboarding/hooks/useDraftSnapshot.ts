@@ -9,10 +9,13 @@ export interface UseDraftSnapshotArgs {
   isEditing: boolean;
   serverDraftId: string | null;
   serverVersion: number | null;
-  currentStep: number;
+  /** initial step (optional) */
+  initialStep?: number;
   setServerVersion: (v: number | null) => void;
   setLastSavedAt: (iso: string | null) => void;
   setServerSaving: (b: boolean) => void;
+  /** optional debounce ms for PATCH throttling (future enhancement) */
+  debounceMs?: number;
 }
 
 export function useDraftSnapshot({
@@ -20,7 +23,7 @@ export function useDraftSnapshot({
   isEditing,
   serverDraftId,
   serverVersion,
-  currentStep,
+  initialStep = 0,
   setServerVersion,
   setLastSavedAt,
   setServerSaving,
@@ -28,6 +31,11 @@ export function useDraftSnapshot({
   const saveServerDraftSnapshotRef = useRef<() => Promise<number | null>>(
     async () => null
   );
+  const currentStepRef = useRef<number>(initialStep);
+
+  const setCurrentStep = (s: number) => {
+    currentStepRef.current = s;
+  };
 
   const saveServerDraftSnapshot = useCallback(async (): Promise<
     number | null
@@ -43,7 +51,7 @@ export function useDraftSnapshot({
         body: JSON.stringify({
           dataPartial: sanitized,
           clientVersion: serverVersion,
-          currentStep,
+          currentStep: currentStepRef.current,
         }),
       });
       if (!res.ok) return null;
@@ -65,7 +73,7 @@ export function useDraftSnapshot({
     serverDraftId,
     serverVersion,
     form,
-    currentStep,
+    currentStepRef,
     setServerVersion,
     setLastSavedAt,
     setServerSaving,
@@ -73,5 +81,5 @@ export function useDraftSnapshot({
 
   saveServerDraftSnapshotRef.current = saveServerDraftSnapshot;
 
-  return { saveServerDraftSnapshot, saveServerDraftSnapshotRef };
+  return { saveServerDraftSnapshot, saveServerDraftSnapshotRef, setCurrentStep };
 }

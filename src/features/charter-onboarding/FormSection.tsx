@@ -169,7 +169,7 @@ export default function FormSection() {
     isEditing,
     serverDraftId,
     serverVersion,
-    currentStep: 0,
+    initialStep: 0,
     setServerVersion,
     setLastSavedAt: (iso) => setLastSavedAt(iso),
     setServerSaving,
@@ -197,6 +197,7 @@ export default function FormSection() {
 
   // Rebind snapshot with real step each change (the hook reads currentStep from closure when called)
   useEffect(() => {
+    draftSnapshot.setCurrentStep(currentStep);
     draftSnapshot.saveServerDraftSnapshotRef.current = () =>
       draftSnapshot.saveServerDraftSnapshot();
   }, [currentStep, draftSnapshot]);
