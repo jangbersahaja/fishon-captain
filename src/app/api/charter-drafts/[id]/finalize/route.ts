@@ -10,6 +10,7 @@ import {
   createCharterFromDraftData,
   type FinalizeMediaPayload,
 } from "@/server/charters";
+import { diffObjects, writeAuditLog } from "@/server/audit";
 import { FinalizeMediaSchema, normalizeFinalizeMedia } from "@/server/media";
 import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import { Prisma } from "@prisma/client";
@@ -164,9 +165,34 @@ export async function POST(
           const transformed = draft.data as unknown as DraftValues;
           const existingCharterId = draft.charterId!;
           const incomingImages = media?.images ?? [];
-          const incomingVideos = media?.videos ?? [];
+            const incomingVideos = media?.videos ?? [];
+
+          // BEFORE snapshot for audit (broad include mirrors PATCH endpoint)
+          const beforeSnapshot = await prisma.charter.findUnique({
+            where: { id: existingCharterId },
+            include: {
+              boat: true,
+              amenities: true,
+              features: true,
+              policies: true,
+              pickup: { include: { areas: true } },
+              trips: {
+                include: { startTimes: true, species: true, techniques: true },
+              },
+              captain: {
+                select: {
+                  displayName: true,
+                  phone: true,
+                  bio: true,
+                  experienceYrs: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+          });
+
           const updated = await prisma.$transaction(async (tx) => {
-            // Fetch charter including current media for reuse decision
+            // Fetch charter including current media for reuse decision & auth
             const existing = await tx.charter.findUnique({
               where: { id: existingCharterId },
               select: {
@@ -191,15 +217,12 @@ export async function POST(
               incomingImages.length === 0 && incomingVideos.length === 0;
 
             if (!reuseExistingMedia && incomingImages.length === 0) {
-              // Disallow updating to zero images (must keep >=3 or reuse).
               throw new Error("missing_media");
             }
             if (reuseExistingMedia && existingPhotoCount < 3) {
-              // Can't reuse because existing charter itself has insufficient media (data integrity guard)
               throw new Error("missing_media");
             }
 
-            // Update captain basics
             await tx.captainProfile.update({
               where: { userId },
               data: {
@@ -214,7 +237,6 @@ export async function POST(
               },
             });
 
-            // Update boat
             if (existing.boatId) {
               await tx.boat.update({
                 where: { id: existing.boatId },
@@ -231,7 +253,6 @@ export async function POST(
               });
             }
 
-            // Replace nested relation sets (except media if reusing)
             await tx.charterAmenity.deleteMany({
               where: { charterId: existingCharterId },
             });
@@ -241,7 +262,6 @@ export async function POST(
             await tx.policies.deleteMany({
               where: { charterId: existingCharterId },
             });
-            // Pickup has dependent PickupArea rows; delete areas first then pickup to avoid FK constraint errors.
             const existingPickup = await tx.pickup.findUnique({
               where: { charterId: existingCharterId },
               select: { id: true },
@@ -254,7 +274,6 @@ export async function POST(
                 where: { charterId: existingCharterId },
               });
             }
-            // Trip child relations (startTimes, species, techniques, trip media) must be cleared before trips.
             {
               const existingTrips = await tx.trip.findMany({
                 where: { charterId: existingCharterId },
@@ -262,7 +281,6 @@ export async function POST(
               });
               const tripIds = existingTrips.map((t) => t.id);
               if (tripIds.length) {
-                // Always clear trip-scoped media (even if reusing charter-level media) because trips are recreated.
                 await tx.charterMedia.deleteMany({
                   where: { tripId: { in: tripIds } },
                 });
@@ -399,6 +417,44 @@ export async function POST(
             });
             return { charterId: existingCharterId };
           });
+
+          // AFTER snapshot for audit
+          const afterSnapshot = await prisma.charter.findUnique({
+            where: { id: existingCharterId },
+            include: {
+              boat: true,
+              amenities: true,
+              features: true,
+              policies: true,
+              pickup: { include: { areas: true } },
+              trips: {
+                include: { startTimes: true, species: true, techniques: true },
+              },
+              captain: {
+                select: {
+                  displayName: true,
+                  phone: true,
+                  bio: true,
+                  experienceYrs: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+          });
+          if (afterSnapshot) {
+            const changedTop = diffObjects(beforeSnapshot, afterSnapshot);
+            writeAuditLog({
+              actorUserId: userId,
+              entityType: "charter",
+              entityId: existingCharterId,
+              action: "finalize_update",
+              before: beforeSnapshot || undefined,
+              after: afterSnapshot,
+              changed: changedTop,
+              correlationId: requestId,
+            }).catch(() => {});
+          }
+
           return { ok: true as const, charterId: updated.charterId };
         } catch (e) {
           if (e instanceof Error && e.message === "missing_media") {
@@ -488,6 +544,47 @@ export async function POST(
     requestId,
   });
   counter("finalize.success").inc();
+
+  // Audit AFTER successful finalize (create path only)
+  if (!draft.charterId) {
+    try {
+      const afterSnapshot = await prisma.charter.findUnique({
+        where: { id: result.charterId },
+        include: {
+          boat: true,
+          amenities: true,
+          features: true,
+          policies: true,
+          pickup: { include: { areas: true } },
+          trips: {
+            include: { startTimes: true, species: true, techniques: true },
+          },
+          captain: {
+            select: {
+              displayName: true,
+              phone: true,
+              bio: true,
+              experienceYrs: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      });
+      if (afterSnapshot) {
+        writeAuditLog({
+          actorUserId: userId,
+          entityType: "charter",
+          entityId: result.charterId,
+          action: "finalize_create",
+          after: afterSnapshot,
+          changed: diffObjects(undefined, afterSnapshot),
+          correlationId: requestId,
+        }).catch(() => {});
+      }
+    } catch {
+      /* swallow */
+    }
+  }
 
   return applySecurityHeaders(
     NextResponse.json({ ok: true, charterId: result.charterId, requestId })
