@@ -395,7 +395,7 @@ export default function FormSection() {
       const payload = {
         charter: {
           charterType: values.charterType,
-          charterName: values.charterName,
+          name: values.charterName, // Prisma field is 'name'
           state: values.state,
           city: values.city,
           startingPoint: values.startingPoint,
@@ -409,7 +409,7 @@ export default function FormSection() {
           ? {
               name: values.boat.name,
               type: values.boat.type,
-              lengthFeet: values.boat.lengthFeet ?? null,
+              lengthFt: values.boat.lengthFeet ?? null, // Prisma field lengthFt
               capacity: values.boat.capacity ?? null,
               features: values.boat.features || [],
             }

@@ -24,7 +24,7 @@ const CharterUpdateSchema = z.object({
   charter: z
     .object({
       charterType: z.string().optional(),
-      charterName: z.string().optional(),
+  name: z.string().optional(),
       state: z.string().optional(),
       city: z.string().optional(),
       startingPoint: z.string().optional(),
@@ -39,7 +39,7 @@ const CharterUpdateSchema = z.object({
     .object({
       name: z.string().optional(),
       type: z.string().optional(),
-      lengthFeet: z.number().int().nullable().optional(),
+  lengthFt: z.number().int().nullable().optional(),
       capacity: z.number().int().nullable().optional(),
       features: z.array(z.string()).optional(),
     })
@@ -149,7 +149,7 @@ export async function PATCH(
           data: {
             name: data.boat.name ?? undefined,
             type: data.boat.type ?? undefined,
-            lengthFt: data.boat.lengthFeet ?? undefined,
+            lengthFt: data.boat.lengthFt ?? undefined,
             capacity: data.boat.capacity ?? undefined,
           },
         })
@@ -160,7 +160,7 @@ export async function PATCH(
           data: {
             name: data.boat.name || "",
             type: data.boat.type || "",
-            lengthFt: data.boat.lengthFeet || 0,
+            lengthFt: data.boat.lengthFt || 0,
             capacity: data.boat.capacity || 0,
             charter: { connect: { id: charter.id } },
           },
