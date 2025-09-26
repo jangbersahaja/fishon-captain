@@ -64,7 +64,6 @@ export function useCharterFormSelectors<T>(
   selector: (env: CharterFormEnvironment) => T
 ): T {
   const env = useCharterForm();
-  // Simple approach (no deep memo). Could optimize with useSyncExternalStore if needed.
   return selector(env);
 }
 
