@@ -133,11 +133,12 @@ describe("useDraftSnapshot", () => {
 
   it("PATCHes and updates version + timestamps on success", async () => {
     const newVersion = 7;
-    const fetchSpy = vi.fn(async () =>
-      new Response(
-        JSON.stringify({ draft: { id: "d1", version: newVersion } }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ draft: { id: "d1", version: newVersion } }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
     );
     global.fetch = fetchSpy as unknown as typeof fetch;
     const { hook, setServerVersion, setLastSavedAt, setServerSaving } = setup({
@@ -174,5 +175,25 @@ describe("useDraftSnapshot", () => {
       async () => await hook.result.current.saveServerDraftSnapshot()
     );
     expect(result).toBeNull();
+  });
+
+  it("skips network when values unchanged between calls", async () => {
+    const version = 5;
+    const fetchSpy = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ draft: { id: "d1", version: version + 1 } }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    global.fetch = fetchSpy as unknown as typeof fetch;
+    const { hook } = setup({ isEditing: false, draftId: "d1", version });
+    await act(async () => {
+      await hook.result.current.saveServerDraftSnapshot();
+    });
+    await act(async () => {
+      await hook.result.current.saveServerDraftSnapshot();
+    });
+    // Only first call should hit network; second should be skipped
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

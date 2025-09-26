@@ -32,6 +32,7 @@ export function useDraftSnapshot({
     async () => null
   );
   const currentStepRef = useRef<number>(initialStep);
+  const lastPayloadRef = useRef<string | null>(null);
 
   const setCurrentStep = (s: number) => {
     currentStepRef.current = s;
@@ -45,14 +46,22 @@ export function useDraftSnapshot({
     try {
       setServerSaving(true);
       const sanitized = sanitizeForDraft(form.getValues());
+      // Prepare stable payload for change detection
+      const payloadObj = {
+        dataPartial: sanitized,
+        clientVersion: serverVersion,
+        currentStep: currentStepRef.current,
+      };
+      const payloadStr = JSON.stringify(payloadObj);
+
+      // Skip network call if nothing changed since last successful snapshot
+      if (lastPayloadRef.current === payloadStr) {
+        return serverVersion; // return current version (unchanged)
+      }
       const res = await fetch(`/api/charter-drafts/${serverDraftId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dataPartial: sanitized,
-          clientVersion: serverVersion,
-          currentStep: currentStepRef.current,
-        }),
+        body: payloadStr,
       });
       if (!res.ok) return null;
       const json = await res.json();
@@ -60,6 +69,7 @@ export function useDraftSnapshot({
         const newVersion: number = json.draft.version;
         setServerVersion(newVersion);
         setLastSavedAt(new Date().toISOString());
+        lastPayloadRef.current = payloadStr;
         return newVersion;
       }
       return null;
@@ -81,5 +91,9 @@ export function useDraftSnapshot({
 
   saveServerDraftSnapshotRef.current = saveServerDraftSnapshot;
 
-  return { saveServerDraftSnapshot, saveServerDraftSnapshotRef, setCurrentStep };
+  return {
+    saveServerDraftSnapshot,
+    saveServerDraftSnapshotRef,
+    setCurrentStep,
+  };
 }
