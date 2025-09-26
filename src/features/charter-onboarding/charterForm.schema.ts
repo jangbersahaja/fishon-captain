@@ -112,6 +112,25 @@ export const charterFormSchema = z.object({
     .min(3, "Upload at least 3 photos")
     .max(15, "Maximum 15 photos"),
   videos: z.array(fileSchema).max(3, "Maximum 3 videos").optional().default([]),
+  // Persisted (already uploaded) media metadata for draft reload (NOT validated as user input fields)
+  uploadedPhotos: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string().url(),
+      })
+    )
+    .optional()
+    .default([]),
+  uploadedVideos: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string().url(),
+      })
+    )
+    .optional()
+    .default([]),
 });
 
 export type CharterFormValues = z.infer<typeof charterFormSchema>;

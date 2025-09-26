@@ -6,7 +6,14 @@ function normalizeNumber(value: unknown, fallback: number = Number.NaN) {
 }
 
 export function sanitizeForDraft(values: CharterFormValues) {
-  const { photos: _photos, videos: _videos, operator, ...rest } = values;
+  const {
+    photos: _photos,
+    videos: _videos,
+    uploadedPhotos,
+    uploadedVideos,
+    operator,
+    ...rest
+  } = values;
   const { avatar: _avatar, avatarUrl, ...operatorRest } = operator;
 
   // We still ignore raw photos/videos and avatar File objects for draft payload size, but we DO persist avatarUrl if present
@@ -17,6 +24,8 @@ export function sanitizeForDraft(values: CharterFormValues) {
   return {
     ...rest,
     operator: { ...operatorRest, avatarUrl },
+    uploadedPhotos: [...(uploadedPhotos || [])],
+    uploadedVideos: [...(uploadedVideos || [])],
     trips: (values.trips ?? []).map((trip) => ({ ...trip })),
     boat: { ...values.boat },
     pickup: { ...values.pickup },
@@ -102,6 +111,23 @@ export function hydrateDraftValues(
 
   merged.photos = [];
   merged.videos = [];
+
+  // Restore uploaded media metadata arrays if present (keep existing default empty arrays otherwise)
+  type UploadedMeta = { name: string; url: string };
+  const dPhotos = (draft as unknown as { uploadedPhotos?: UploadedMeta[] })
+    .uploadedPhotos;
+  const dVideos = (draft as unknown as { uploadedVideos?: UploadedMeta[] })
+    .uploadedVideos;
+  if (Array.isArray(dPhotos)) {
+    (merged as unknown as { uploadedPhotos: UploadedMeta[] }).uploadedPhotos = [
+      ...dPhotos,
+    ];
+  }
+  if (Array.isArray(dVideos)) {
+    (merged as unknown as { uploadedVideos: UploadedMeta[] }).uploadedVideos = [
+      ...dVideos,
+    ];
+  }
 
   return merged;
 }

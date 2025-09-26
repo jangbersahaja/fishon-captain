@@ -321,6 +321,8 @@ export default function FormSection() {
               shouldDirty: true,
               shouldValidate: false,
             });
+            // Force immediate draft save to capture avatarUrl quickly
+            draftSnapshot.saveServerDraftSnapshot();
           }
         }
       }
@@ -345,10 +347,25 @@ export default function FormSection() {
             successfulVideoMetas.push({ name: meta.name, url: meta.url });
           else failedVideos.push(videos[idx]);
         });
-        if (successfulPhotoMetas.length)
+        if (successfulPhotoMetas.length) {
           setExistingImages((prev) => [...prev, ...successfulPhotoMetas]);
-        if (successfulVideoMetas.length)
+          // Append to persisted uploadedPhotos array
+          const prevPersisted = form.getValues("uploadedPhotos") || [];
+          form.setValue(
+            "uploadedPhotos",
+            [...prevPersisted, ...successfulPhotoMetas],
+            { shouldDirty: true, shouldValidate: false }
+          );
+        }
+        if (successfulVideoMetas.length) {
           setExistingVideos((prev) => [...prev, ...successfulVideoMetas]);
+          const prevPersistedV = form.getValues("uploadedVideos") || [];
+          form.setValue(
+            "uploadedVideos",
+            [...prevPersistedV, ...successfulVideoMetas],
+            { shouldDirty: true, shouldValidate: false }
+          );
+        }
         // Keep only failed files in form so user can retry
         if (
           successfulPhotoMetas.length ||
@@ -360,6 +377,10 @@ export default function FormSection() {
           failedVideos.length !== videos.length
         )
           form.setValue("videos", failedVideos, { shouldValidate: true });
+        if (successfulPhotoMetas.length || successfulVideoMetas.length) {
+          // Save draft snapshot to persist newly uploaded media metadata promptly
+          draftSnapshot.saveServerDraftSnapshot();
+        }
         const failCount = failedPhotos.length + failedVideos.length;
         if (failCount > 0) {
           setMediaUploadError(
@@ -371,7 +392,7 @@ export default function FormSection() {
       }
       void avatarMeta; // mapping retained for finalize
     },
-    [form, isEditing, setExistingImages, setExistingVideos]
+    [form, isEditing, setExistingImages, setExistingVideos, draftSnapshot]
   );
 
   // Wrap original handleNext to inject post-step upload
