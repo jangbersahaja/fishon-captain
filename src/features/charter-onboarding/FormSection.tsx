@@ -243,10 +243,20 @@ export default function FormSection() {
       try {
         if (editCharterId) {
           // EDIT MODE: load charter directly, no draft usage
-          const res = await fetch(`/api/charters/${editCharterId}`, {
+          // NOTE: GET handler currently lives at /api/charters/[id]/get
+          const res = await fetch(`/api/charters/${editCharterId}/get`, {
             method: "GET",
           });
-          if (!res.ok) return;
+          if (!res.ok) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn(
+                "Edit charter fetch failed",
+                editCharterId,
+                res.status
+              );
+            }
+            return;
+          }
           const json = await res.json();
           if (cancelled) return;
           if (json.charter) {
