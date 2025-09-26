@@ -110,6 +110,7 @@ export function useCharterDataLoad({
                 const defaults = createDefaultCharterFormValues();
                 const hydrated = hydrateDraftValues(defaults, draftData);
                 reset(hydrated, { keepDirty: false });
+                // Fire-and-forget event so FormSection media manager can pick up persisted uploaded media via form values
               }
               if (
                 typeof existingJson.draft.currentStep === "number" &&

@@ -50,6 +50,9 @@ interface BoatRecord {
   lengthFt: number;
   capacity: number;
 }
+interface CharterCaptainProfilePartial {
+  avatarUrl?: string | null;
+}
 interface CharterFull {
   charterType: string;
   name: string;
@@ -66,6 +69,7 @@ interface CharterFull {
   policies: CharterPolicyFlags | null;
   pickup: (PickupRecord & { areas: PickupArea[] }) | null;
   trips: TripRecord[];
+  captain?: CharterCaptainProfilePartial;
 }
 
 export function mapCharterToDraftValuesFeature(params: {
@@ -81,12 +85,13 @@ export function mapCharterToDraftValuesFeature(params: {
   const boat = charter.boat || ({} as BoatRecord);
   const policies = charter.policies || ({} as CharterPolicyFlags);
   const pickup = charter.pickup || null;
-  return {
+  const draft: DraftValues = {
     operator: {
       displayName: captainProfile.displayName || "",
       experienceYears: captainProfile.experienceYrs ?? 0,
       bio: captainProfile.bio || "",
       phone: captainProfile.phone || "",
+      avatarUrl: charter.captain?.avatarUrl || undefined,
     },
     charterType: charter.charterType || "",
     charterName: charter.name || "",
@@ -140,7 +145,10 @@ export function mapCharterToDraftValuesFeature(params: {
     })),
     photos: [],
     videos: [],
-  } as DraftValues;
+    uploadedPhotos: [],
+    uploadedVideos: [],
+  } as unknown as DraftValues; // ensure shape matches evolving DraftValues type
+  return draft;
 }
 
 // Temporary backward compatibility re-export under legacy name (if something still imports directly after barrel usage).

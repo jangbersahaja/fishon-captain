@@ -126,6 +126,31 @@ export function useCharterMediaManager({
     return (existingImages?.length || 0) + localCount;
   }, [photos, existingImages]);
 
+  // Hydrate persisted uploaded media metadata (create flow draft restore)
+  useEffect(() => {
+    if (existingImages.length === 0) {
+      const persisted = form.getValues("uploadedPhotos") as
+        | Array<{ name: string; url: string }>
+        | undefined;
+      if (persisted && persisted.length) {
+        setExistingImages(persisted);
+      }
+    }
+    if (existingVideos.length === 0) {
+      const persistedV = form.getValues("uploadedVideos") as
+        | Array<{ name: string; url: string }>
+        | undefined;
+      if (persistedV && persistedV.length) {
+        setExistingVideos(persistedV);
+      }
+    }
+    const avatarUrl = form.getValues("operator.avatarUrl");
+    if (avatarUrl && !isEditing) {
+      setCaptainAvatarPreview(avatarUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const isMediaUploading = useMemo(() => {
     if (!isEditing) return false;
     const pBusy = photoProgress.some((p) => p >= 0 && p < 100);
