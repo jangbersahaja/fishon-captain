@@ -2,6 +2,7 @@
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
+import { counter } from "@/lib/metrics";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
@@ -100,6 +101,15 @@ export async function POST(req: Request) {
     });
 
     // Queue transcoding job for videos
+    if (isVideo && !charterId) {
+      // Instrumentation: video upload attempted without charterId (cannot queue transcode)
+      counter("video_upload_missing_charterId").inc();
+      console.warn(
+        "[upload] video uploaded without charterId – will NOT transcode",
+        { originalName, key }
+      );
+    }
+
     if (isVideo && charterId && docType === "charter_media") {
       // Create or upsert a temporary DB record referencing the original temp key so UI can reflect pending state
       try {
@@ -131,13 +141,22 @@ export async function POST(req: Request) {
             userId,
           }),
         });
+        counter("video_transcode_jobs_queued").inc();
       } catch (error) {
         console.error("Failed to queue transcode job:", error);
+        counter("video_transcode_jobs_queue_fail").inc();
         // Don't fail the upload if transcoding queue fails
       }
     }
 
-    return NextResponse.json({ ok: true, url, key, overwrite: allowOverwrite });
+    return NextResponse.json({
+      ok: true,
+      url,
+      key,
+      overwrite: allowOverwrite,
+      queuedTranscode: Boolean(isVideo && charterId),
+      missingCharterId: Boolean(isVideo && !charterId),
+    });
   } catch (e: unknown) {
     console.error("Blob upload error", e);
     const errorMessage = e instanceof Error ? e.message : "Upload failed";
