@@ -184,10 +184,25 @@ export function useCharterSubmission({
           existingImages,
           existingVideos,
         });
+        // Show toast feedback (success)
+        pushToast({
+          id: "charter-finalize",
+          type: "success",
+            message: "Charter submitted",
+          replace: true,
+          autoDismiss: 3000,
+        });
       } catch (e) {
         setSubmitState({
           type: "error",
           message: e instanceof Error ? e.message : "Something went wrong",
+        });
+        pushToast({
+          id: "charter-finalize",
+          type: "error",
+          message:
+            e instanceof Error ? e.message : "Failed to submit charter",
+          replace: true,
         });
         if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
           console.error("[submission] finalize error", e);
@@ -215,6 +230,7 @@ export function useCharterSubmission({
       getUploadedMediaInfo,
       existingImages,
       existingVideos,
+      pushToast,
     ]
   );
 
