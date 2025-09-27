@@ -216,10 +216,18 @@ function inferWaterType(ctx: GenerationContext): "fresh" | "salt" | "mixed" {
 const VERB_VARIANTS = {
   target: ["target", "work toward", "focus on", "chase"],
   adjust: ["adjust", "pivot", "adapt", "tune"],
-  present: ["present to", "show baits to", "feed offerings to", "work edges for"],
+  present: [
+    "present to",
+    "show baits to",
+    "feed offerings to",
+    "work edges for",
+  ],
 };
 
-function pickVar(key: keyof typeof VERB_VARIANTS, priorBase?: string | undefined) {
+function pickVar(
+  key: keyof typeof VERB_VARIANTS,
+  priorBase?: string | undefined
+) {
   const variants = VERB_VARIANTS[key];
   if (!priorBase) return pick(variants);
   const lower = priorBase.toLowerCase();
@@ -230,7 +238,7 @@ function pickVar(key: keyof typeof VERB_VARIANTS, priorBase?: string | undefined
 function extractTechniques(values: CharterFormValues): string[] {
   const all: string[] = [];
   (values.trips || []).forEach((t) => {
-    const maybe = (t as unknown) as { techniques?: unknown };
+    const maybe = t as unknown as { techniques?: unknown };
     if (Array.isArray(maybe.techniques)) {
       maybe.techniques.forEach((tech) => {
         if (typeof tech === "string") all.push(tech);
@@ -240,7 +248,10 @@ function extractTechniques(values: CharterFormValues): string[] {
   return Array.from(new Set(all.map((t) => t.toLowerCase())));
 }
 
-function buildTechniqueLine(values: CharterFormValues, tone: Tone): string | undefined {
+function buildTechniqueLine(
+  values: CharterFormValues,
+  tone: Tone
+): string | undefined {
   const techniques = extractTechniques(values);
   if (!techniques.length) return undefined;
   const fly = techniques.some((t) => /fly/.test(t));
@@ -248,11 +259,21 @@ function buildTechniqueLine(values: CharterFormValues, tone: Tone): string | und
   const pop = techniques.some((t) => /pop|topwater/.test(t));
   const list = techniques.slice(0, 5).join(", ");
   if (tone === "professional") {
-    return `Technique mix (${list}) is applied selectively to efficiency test the pattern${fly ? ", with careful line management for fly presentations" : ""}.`;
+    return `Technique mix (${list}) is applied selectively to efficiency test the pattern${
+      fly ? ", with careful line management for fly presentations" : ""
+    }.`;
   } else if (tone === "adventurous") {
-    return `We rotate through ${list} to trigger reaction bites${pop ? ", especially on surface chaos when light allows" : ""}.`;
+    return `We rotate through ${list} to trigger reaction bites${
+      pop ? ", especially on surface chaos when light allows" : ""
+    }.`;
   }
-  return `We can try ${list}${fly ? "—even a little fly work if conditions behave" : ""}${bait ? ", or keep it simple with natural bait when that’s what they want" : ""}.`;
+  return `We can try ${list}${
+    fly ? "—even a little fly work if conditions behave" : ""
+  }${
+    bait
+      ? ", or keep it simple with natural bait when that’s what they want"
+      : ""
+  }.`;
 }
 
 function toneBridge(tone: Tone) {
@@ -365,12 +386,20 @@ export function generateCharterDescription(values: CharterFormValues): string {
   let conditionsPlaceholder = "";
   if (includePlaceholders) {
     const starts = new Set<string>();
-    (values.trips || []).forEach((t) => (t.startTimes || []).forEach((s) => starts.add(s)));
-    if (starts.size > 1) conditionsPlaceholder = " [[Add a note about seasonal pattern or today’s conditions]]";
+    (values.trips || []).forEach((t) =>
+      (t.startTimes || []).forEach((s) => starts.add(s))
+    );
+    if (starts.size > 1)
+      conditionsPlaceholder =
+        " [[Add a note about seasonal pattern or today’s conditions]]";
   }
-  const paragraph2Full = [captainLine, paragraph2 + speciesExpectation, techniqueLine, conditionsPlaceholder]
+  const paragraph2a = [captainLine, paragraph2]
     .filter(Boolean)
     .join(" ");
+  const paragraph2b = [speciesExpectation.trim(), techniqueLine, conditionsPlaceholder]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
   // Paragraph 3 – Boat, gear, comfort
   const boat = boatSummary(ctx);
@@ -415,8 +444,10 @@ export function generateCharterDescription(values: CharterFormValues): string {
   const paragraph4 = [policy, licenseRules, closer].filter(Boolean).join(" ");
 
   if (isShortForm) {
-    // Compact 3-paragraph variant for simpler charters
-    return [opener, paragraph2Full, paragraph4].filter(Boolean).join("\n\n");
+    // Compact variant still splits approach vs detail if detail exists
+    return [opener, paragraph2a, paragraph2b || undefined, paragraph4]
+      .filter(Boolean)
+      .join("\n\n");
   }
 
   // Longer form: optionally add a pacing paragraph if longer trips are available
@@ -434,9 +465,14 @@ export function generateCharterDescription(values: CharterFormValues): string {
     }
   }
 
+  const para2bWithAnecdote = paragraph2b
+    ? paragraph2b + anecdotePlaceholder
+    : (includePlaceholders ? anecdotePlaceholder.trim() : "");
+
   let result = [
     opener,
-    paragraph2Full + anecdotePlaceholder,
+    paragraph2a,
+    para2bWithAnecdote || undefined,
     paragraph3,
     pacingParagraph,
     paragraph4,
