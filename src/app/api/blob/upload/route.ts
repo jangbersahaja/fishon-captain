@@ -1,8 +1,8 @@
 // app/api/blob/upload/route.ts
 import authOptions from "@/lib/auth";
+import { counter } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
-import { counter } from "@/lib/metrics";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
@@ -100,13 +100,17 @@ export async function POST(req: Request) {
       ...(allowOverwrite ? { overwrite: true as unknown as undefined } : {}),
     });
 
-    // Queue transcoding job for videos
-    if (isVideo && !charterId) {
-      // Instrumentation: video upload attempted without charterId (cannot queue transcode)
-      counter("video_upload_missing_charterId").inc();
-      console.warn(
-        "[upload] video uploaded without charterId – will NOT transcode",
-        { originalName, key }
+    // Enforce charterId for video uploads so we can run temp->transcode pipeline
+    if (isVideo && docType === "charter_media" && !charterId) {
+      counter("video_upload_rejected_missing_charterId").inc();
+      return NextResponse.json(
+        {
+          ok: false,
+            error: "video_requires_charterId",
+            message:
+            "Video uploads require a charterId (ensure charter is loaded before uploading).",
+        },
+        { status: 400 }
       );
     }
 
@@ -149,14 +153,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({
-      ok: true,
-      url,
-      key,
-      overwrite: allowOverwrite,
-      queuedTranscode: Boolean(isVideo && charterId),
-      missingCharterId: Boolean(isVideo && !charterId),
-    });
+    return NextResponse.json({ ok: true, url, key, overwrite: allowOverwrite });
   } catch (e: unknown) {
     console.error("Blob upload error", e);
     const errorMessage = e instanceof Error ? e.message : "Upload failed";

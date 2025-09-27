@@ -339,9 +339,9 @@ export function useCharterMediaManager({
   const addPhotoFiles = useCallback(
     async (fileList: File[]) => {
       if (!fileList.length) return;
-      if (isEditing && !currentCharterId) {
+      if (!currentCharterId) {
         console.warn(
-          "[media] blocked video upload until charterId is available to ensure temp->transcode pipeline"
+          "[media] blocked video upload: charterId not yet available (charter must exist before uploading videos)"
         );
         return;
       }
@@ -580,7 +580,7 @@ export function useCharterMediaManager({
         const addCount = Math.min(within.length, 3 - base);
         return [...prev, ...Array(addCount).fill(0)];
       });
-  if (isEditing && currentCharterId && within.length) {
+  if (currentCharterId && within.length) {
         const uploaded: Array<{ name: string; url: string }> = [];
         const base = current.length;
         for (let idx = 0; idx < within.length; idx++) {
