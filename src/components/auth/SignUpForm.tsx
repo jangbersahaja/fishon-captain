@@ -1,6 +1,7 @@
 "use client";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { feedbackTokens } from "@/config/designTokens";
 
 export default function SignUpForm({ next }: { next: string }) {
   const [firstName, setFirstName] = useState("");
@@ -57,12 +58,12 @@ export default function SignUpForm({ next }: { next: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+        <div className={`rounded-md px-3 py-2 text-xs ${feedbackTokens.error.subtle}`}>
           {error}
         </div>
       )}
       {accountCreated && !error && (
-        <div className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+        <div className={`rounded-md px-3 py-2 text-xs ${feedbackTokens.success.subtle}`}>
           Account created! Redirecting…
         </div>
       )}

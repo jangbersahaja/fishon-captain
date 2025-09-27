@@ -1,6 +1,7 @@
 "use client";
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { feedbackTokens } from "@/config/designTokens";
 
 export default function SignInForm({ next }: { next: string }) {
   const [email, setEmail] = useState("");
@@ -64,7 +65,7 @@ export default function SignInForm({ next }: { next: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+        <div className={`rounded-md px-3 py-2 text-xs ${feedbackTokens.error.subtle}`}>
           {error}
         </div>
       )}
@@ -102,7 +103,7 @@ export default function SignInForm({ next }: { next: string }) {
         </>
       )}
       {oauthOnly && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className={`rounded-md px-3 py-2 text-xs ${feedbackTokens.warning.subtle}`}>
           This email was created with Google. Use the button below to continue.
         </div>
       )}

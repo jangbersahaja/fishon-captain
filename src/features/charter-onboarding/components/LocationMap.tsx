@@ -1,5 +1,6 @@
 "use client";
 import clsx from "clsx";
+import { feedbackTokens } from "@/config/designTokens";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -246,7 +247,7 @@ export function LocationMap({
     return (
       <div
         className={clsx(
-          "h-72 w-full rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700 flex flex-col gap-3",
+          `h-72 w-full rounded-xl p-4 text-sm flex flex-col gap-3 ${feedbackTokens.error.subtle}`,
           className
         )}
       >
@@ -271,7 +272,7 @@ export function LocationMap({
               setLoaded(false);
               injectScript();
             }}
-            className="rounded bg-red-600 px-3 py-1 text-white text-xs font-semibold hover:bg-red-500"
+            className={`rounded px-3 py-1 text-xs font-semibold ${feedbackTokens.error.solid} hover:brightness-110`}
           >
             Retry
           </button>
@@ -283,7 +284,7 @@ export function LocationMap({
                 "_blank"
               )
             }
-            className="rounded border border-red-400 px-3 py-1 text-red-700 text-xs font-semibold hover:bg-red-100"
+            className={`rounded px-3 py-1 text-xs font-semibold ${feedbackTokens.error.outline} hover:bg-red-50`}
           >
             Manage API Keys
           </button>
@@ -305,7 +306,7 @@ export function LocationMap({
                 );
                 console.groupEnd();
               }}
-              className="rounded border border-red-400 px-3 py-1 text-red-700 text-xs font-semibold hover:bg-red-100"
+              className={`rounded px-3 py-1 text-xs font-semibold ${feedbackTokens.error.outline} hover:bg-red-50`}
             >
               Debug Log
             </button>

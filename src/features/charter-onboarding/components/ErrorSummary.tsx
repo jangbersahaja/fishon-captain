@@ -1,6 +1,7 @@
 "use client";
 import { FIELD_LABELS } from "@features/charter-onboarding/fieldLabels";
 import React from "react";
+import { feedbackTokens } from "@/config/designTokens";
 
 export interface ErrorSummaryProps {
   errors: string[];
@@ -9,7 +10,7 @@ export interface ErrorSummaryProps {
 export const ErrorSummary: React.FC<ErrorSummaryProps> = ({ errors }) => {
   if (!errors || errors.length === 0) return null;
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+    <div className={`rounded-xl p-3 text-xs ${feedbackTokens.error.subtle}`}>
       <p className="font-semibold mb-1">Please fix before continuing:</p>
       <ul className="list-disc pl-4 space-y-0.5">
         {errors.map((f, i) => (
@@ -29,7 +30,7 @@ export const ErrorSummary: React.FC<ErrorSummaryProps> = ({ errors }) => {
                   setTimeout(() => el.focus?.(), 300);
                 }
               }}
-              className="underline hover:text-red-800 focus:outline-none"
+              className="underline hover:opacity-80 focus:outline-none"
             >
               {f}
             </button>
