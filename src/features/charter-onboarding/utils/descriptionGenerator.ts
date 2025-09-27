@@ -137,7 +137,8 @@ function amenitiesLine(ctx: GenerationContext) {
   if (!ctx.amenities.length)
     return "Standard safety gear and tackle are ready when you arrive.";
   const sample = ctx.amenities.slice(0, 5);
-  const tail = ctx.amenities.length > sample.length ? " (with a few more on request)" : "";
+  const tail =
+    ctx.amenities.length > sample.length ? " (with a few more on request)" : "";
   return `Gear and onboard extras often include ${oxford(sample)}${tail}.`;
 }
 
@@ -182,10 +183,20 @@ function licenseAndRules(ctx: GenerationContext) {
   const liveBaitProvided = policies.liveBaitProvided;
   const alcoholNotAllowed = policies.alcoholNotAllowed;
   const smokingNotAllowed = policies.smokingNotAllowed;
-  if (licenseProvided) lines.push("Fishing license coverage is handled for you (no paperwork scramble)." );
-  if (liveBaitProvided) lines.push("Live bait is sourced when it meaningfully improves the bite window." );
-  if (alcoholNotAllowed) lines.push("Alcohol restrictions apply—focus stays on fishing and safety." );
-  if (smokingNotAllowed) lines.push("No smoking onboard—helps keep the deck clean and family friendly." );
+  if (licenseProvided)
+    lines.push(
+      "Fishing license coverage is handled for you (no paperwork scramble)."
+    );
+  if (liveBaitProvided)
+    lines.push(
+      "Live bait is sourced when it meaningfully improves the bite window."
+    );
+  if (alcoholNotAllowed)
+    lines.push("Alcohol restrictions apply—focus stays on fishing and safety.");
+  if (smokingNotAllowed)
+    lines.push(
+      "No smoking onboard—helps keep the deck clean and family friendly."
+    );
   return lines.join(" ");
 }
 
@@ -201,15 +212,47 @@ function inferWaterType(ctx: GenerationContext): "fresh" | "salt" | "mixed" {
   return "mixed"; // default to mixed so wording stays neutral
 }
 
-// Verb variation pools
+// Verb variation pools + technique extraction
 const VERB_VARIANTS = {
   target: ["target", "work toward", "focus on", "chase"],
   adjust: ["adjust", "pivot", "adapt", "tune"],
   present: ["present to", "show baits to", "feed offerings to", "work edges for"],
 };
 
-function pickVar(key: keyof typeof VERB_VARIANTS) {
-  return pick(VERB_VARIANTS[key]);
+function pickVar(key: keyof typeof VERB_VARIANTS, priorBase?: string | undefined) {
+  const variants = VERB_VARIANTS[key];
+  if (!priorBase) return pick(variants);
+  const lower = priorBase.toLowerCase();
+  const unused = variants.filter((v) => !lower.includes(v));
+  return pick(unused.length ? unused : variants);
+}
+
+function extractTechniques(values: CharterFormValues): string[] {
+  const all: string[] = [];
+  (values.trips || []).forEach((t) => {
+    const maybe = (t as unknown) as { techniques?: unknown };
+    if (Array.isArray(maybe.techniques)) {
+      maybe.techniques.forEach((tech) => {
+        if (typeof tech === "string") all.push(tech);
+      });
+    }
+  });
+  return Array.from(new Set(all.map((t) => t.toLowerCase())));
+}
+
+function buildTechniqueLine(values: CharterFormValues, tone: Tone): string | undefined {
+  const techniques = extractTechniques(values);
+  if (!techniques.length) return undefined;
+  const fly = techniques.some((t) => /fly/.test(t));
+  const bait = techniques.some((t) => /(bait|live bait)/.test(t));
+  const pop = techniques.some((t) => /pop|topwater/.test(t));
+  const list = techniques.slice(0, 5).join(", ");
+  if (tone === "professional") {
+    return `Technique mix (${list}) is applied selectively to efficiency test the pattern${fly ? ", with careful line management for fly presentations" : ""}.`;
+  } else if (tone === "adventurous") {
+    return `We rotate through ${list} to trigger reaction bites${pop ? ", especially on surface chaos when light allows" : ""}.`;
+  }
+  return `We can try ${list}${fly ? "—even a little fly work if conditions behave" : ""}${bait ? ", or keep it simple with natural bait when that’s what they want" : ""}.`;
 }
 
 function toneBridge(tone: Tone) {
@@ -229,7 +272,10 @@ export function generateCharterDescription(values: CharterFormValues): string {
   const ctx = buildContext(values);
   const waterType = inferWaterType(ctx);
   const includePlaceholders = !ctx.generatedDescription; // first generation only
-  const userEdited = !!ctx.generatedDescription && !!ctx.description && ctx.description !== ctx.generatedDescription;
+  const userEdited =
+    !!ctx.generatedDescription &&
+    !!ctx.description &&
+    ctx.description !== ctx.generatedDescription;
 
   // Determine layout complexity (shorter vs fuller narrative)
   const tripDurations = ctx.trips
@@ -276,14 +322,16 @@ export function generateCharterDescription(values: CharterFormValues): string {
   const speciesList = oxford(ctx.species);
   const dur = durationsPhrase(ctx.trips);
   let approach: string;
-  const targetVerb = pickVar("target");
-  const adjustVerb = pickVar("adjust");
-  const presentVerb = pickVar("present");
-  const waterFlavor = waterType === "fresh"
-    ? "working banks, timber, and quiet pockets"
-    : waterType === "salt"
-    ? "running channels, setting drifts, and probing contour changes"
-    : "covering productive structure and transitional edges";
+  const priorBase = ctx.generatedDescription;
+  const targetVerb = pickVar("target", priorBase);
+  const adjustVerb = pickVar("adjust", priorBase);
+  const presentVerb = pickVar("present", priorBase);
+  const waterFlavor =
+    waterType === "fresh"
+      ? "working banks, timber, and quiet pockets"
+      : waterType === "salt"
+      ? "running channels, setting drifts, and probing contour changes"
+      : "covering productive structure and transitional edges";
   if (tone === "adventurous") {
     approach = `Expect an active rhythm ${waterFlavor}—${presentVerb} for ${speciesList} with ${dur} to match your pace.`;
   } else if (tone === "professional") {
@@ -313,7 +361,14 @@ export function generateCharterDescription(values: CharterFormValues): string {
       )} keeps everyone smiling.`;
     }
   }
-  const paragraph2Full = [captainLine, paragraph2 + speciesExpectation]
+  const techniqueLine = buildTechniqueLine(values, tone);
+  let conditionsPlaceholder = "";
+  if (includePlaceholders) {
+    const starts = new Set<string>();
+    (values.trips || []).forEach((t) => (t.startTimes || []).forEach((s) => starts.add(s)));
+    if (starts.size > 1) conditionsPlaceholder = " [[Add a note about seasonal pattern or today’s conditions]]";
+  }
+  const paragraph2Full = [captainLine, paragraph2 + speciesExpectation, techniqueLine, conditionsPlaceholder]
     .filter(Boolean)
     .join(" ");
 
@@ -349,8 +404,12 @@ export function generateCharterDescription(values: CharterFormValues): string {
   // Paragraph 4 – Policies + call to action + personalization placeholder
   const policy = policyNarrative(ctx);
   const closerBase = pick(BASE_CLOSERS[tone]);
-  const placeholderAddon = includePlaceholders ? " [[Add a short personal welcome or promise]]" : "";
-  const anecdotePlaceholder = includePlaceholders ? " [[Add a one-line recent catch or guest reaction]]" : "";
+  const placeholderAddon = includePlaceholders
+    ? " [[Add a short personal welcome or promise]]"
+    : "";
+  const anecdotePlaceholder = includePlaceholders
+    ? " [[Add a one-line recent catch or guest reaction]]"
+    : "";
   const closer = closerBase + placeholderAddon;
   const licenseRules = licenseAndRules(ctx);
   const paragraph4 = [policy, licenseRules, closer].filter(Boolean).join(" ");
@@ -375,13 +434,22 @@ export function generateCharterDescription(values: CharterFormValues): string {
     }
   }
 
-  let result = [opener, paragraph2Full + anecdotePlaceholder, paragraph3, pacingParagraph, paragraph4]
+  let result = [
+    opener,
+    paragraph2Full + anecdotePlaceholder,
+    paragraph3,
+    pacingParagraph,
+    paragraph4,
+  ]
     .filter(Boolean)
     .join("\n\n");
 
   // If user already edited, strip placeholders completely
   if (userEdited) {
-    result = result.replace(/\n?\[\[[^\]]+\]\]\n?/g, " ").replace(/ {2,}/g, " ").trim();
+    result = result
+      .replace(/\n?\[\[[^\]]+\]\]\n?/g, " ")
+      .replace(/ {2,}/g, " ")
+      .trim();
   }
   return result;
 }
