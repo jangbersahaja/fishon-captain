@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import type { Toast } from "./ToastTypes";
+import { feedbackTokens } from "@/config/designTokens";
 
 interface AnchorRegistration {
   id: string;
@@ -263,10 +264,10 @@ const ToastViewport: React.FC<ViewportProps> = ({
 };
 
 const typeStyles: Record<string, string> = {
-  success: "bg-emerald-600 text-white",
-  error: "bg-red-600 text-white",
-  info: "bg-slate-800 text-white",
-  progress: "bg-slate-700 text-white",
+  success: feedbackTokens.success.solid,
+  error: feedbackTokens.error.solid,
+  info: feedbackTokens.info.solid,
+  progress: feedbackTokens.progress.solid,
 };
 
 const ToastItem: React.FC<{ toast: Toast; onDismiss: () => void }> = ({
