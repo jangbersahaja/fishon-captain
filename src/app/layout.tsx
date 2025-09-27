@@ -1,7 +1,7 @@
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import Navbar from "@/components/Navbar";
-import { ToastProvider } from "@/components/toast/ToastContext";
 import OfflineBanner from "@/components/OfflineBanner";
+import { ToastProvider } from "@/components/toast/ToastContext";
 import { enableCharterFormConsoleLogging } from "@features/charter-onboarding/analytics";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
