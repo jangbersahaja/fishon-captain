@@ -9,13 +9,18 @@
  *  - Provide triggerSubmit (invoked by confirmation dialog)
  *  - Maintain submit state & saving flags
  */
+import { useToasts } from "@/components/toast/ToastContext";
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import {
   finalizeDraftSubmission,
   patchEditCharter,
 } from "@features/charter-onboarding/submissionStrategies";
-import { useCallback, useState, type FormEvent, type FormEventHandler } from "react";
-import { useToasts } from "@/components/toast/ToastContext";
+import {
+  useCallback,
+  useState,
+  type FormEvent,
+  type FormEventHandler,
+} from "react";
 import type { SubmitHandler, UseFormReturn } from "react-hook-form";
 
 export interface UseCharterSubmissionArgs {
@@ -83,19 +88,56 @@ export function useCharterSubmission({
     if (!isEditing || !currentCharterId) return;
     setSavingEdit(true);
     try {
-      pushToast({ id: "charter-edit", type: "progress", message: "Saving…", replace: true });
+      pushToast({
+        id: "charter-edit",
+        type: "progress",
+        message: "Saving…",
+        replace: true,
+      });
       const { ok } = await patchEditCharter({
         charterId: currentCharterId,
         values: form.getValues(),
         setLastSavedAt: (iso) => setLastSavedAt(iso),
       });
       if (ok) {
-        pushToast({ id: "charter-edit", type: "success", message: "Saved changes", replace: true, autoDismiss: 2200 });
+        pushToast({
+          id: "charter-edit",
+          type: "success",
+          message: "Saved changes",
+          replace: true,
+          autoDismiss: 2200,
+        });
       } else {
-        pushToast({ id: "charter-edit", type: "error", message: "Save failed", replace: true, actions: [ { label: "Retry", onClick: () => { void saveEditChanges(); } } ] });
+        pushToast({
+          id: "charter-edit",
+          type: "error",
+          message: "Save failed",
+          replace: true,
+          actions: [
+            {
+              label: "Retry",
+              onClick: () => {
+                void saveEditChanges();
+              },
+            },
+          ],
+        });
       }
     } catch {
-      pushToast({ id: "charter-edit", type: "error", message: "Save error", replace: true, actions: [ { label: "Retry", onClick: () => { void saveEditChanges(); } } ] });
+      pushToast({
+        id: "charter-edit",
+        type: "error",
+        message: "Save error",
+        replace: true,
+        actions: [
+          {
+            label: "Retry",
+            onClick: () => {
+              void saveEditChanges();
+            },
+          },
+        ],
+      });
     } finally {
       setSavingEdit(false);
     }

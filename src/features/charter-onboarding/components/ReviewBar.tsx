@@ -1,9 +1,9 @@
 "use client";
+import { useToasts } from "@/components/toast/ToastContext";
 import { useCharterFormSelectors } from "@features/charter-onboarding/context/CharterFormContext";
 import { logFormDebug } from "@features/charter-onboarding/debug";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import React from "react";
-import { useToasts } from "@/components/toast/ToastContext";
 
 export interface ReviewBarProps {
   active: boolean;
@@ -33,7 +33,10 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
     if (!active) return; // register only when visible
     if (!barRef.current) return;
     const el = barRef.current;
-    const unregister = registerBottomAnchor("review-bar", () => el.offsetHeight);
+    const unregister = registerBottomAnchor(
+      "review-bar",
+      () => el.offsetHeight
+    );
     const ro = new ResizeObserver(() => {
       // trigger re-registration logic by re-registering height (simple approach)
       unregister();
@@ -53,7 +56,10 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
     setShow(false);
   }, [active]);
   return (
-  <div ref={barRef} className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-4">
+    <div
+      ref={barRef}
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-4"
+    >
       <div className="pointer-events-auto mx-auto w-full max-w-xl px-4">
         <div
           className={`rounded-2xl bg-white/90 backdrop-blur border border-slate-200 shadow-lg p-4 flex flex-col gap-3 transform-gpu transition-all duration-300 ease-out ${
