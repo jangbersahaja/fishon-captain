@@ -15,11 +15,11 @@
  *  - BLOB_READ_WRITE_TOKEN
  *  - NEXT_PUBLIC_SITE_URL (for consistent URL prefix if needed)
  */
-import { prisma } from "@/lib/prisma";
-import { del, list, put } from "@vercel/blob";
-import { extractLegacyFilename } from "@/server/mediaPath";
 import { counter } from "@/lib/metrics";
+import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/server/audit";
+import { extractLegacyFilename } from "@/server/mediaPath";
+import { del, list, put } from "@vercel/blob";
 
 const DRY_RUN = process.env.RUN !== "apply";
 
@@ -40,8 +40,8 @@ async function main() {
   for (const row of legacy) {
     const userId = row.charter.captain.userId;
     if (!userId) continue;
-  const filename = extractLegacyFilename(row.storageKey);
-  if (!filename) continue;
+    const filename = extractLegacyFilename(row.storageKey);
+    if (!filename) continue;
     const targetKey = `captains/${userId}/media/${filename}`;
     if (targetKey === row.storageKey) continue; // already migrated (unlikely)
     // Skip if target already exists to avoid overwriting
@@ -103,7 +103,9 @@ async function main() {
         after: { storageKey: targetKey },
         changed: ["storageKey", "url"],
         correlationId: `legacy-migrate-${row.id}`,
-      }).catch(() => {/* swallow */});
+      }).catch(() => {
+        /* swallow */
+      });
     } catch (e) {
       console.error("migrate error", { key: row.storageKey, error: e });
       cErrors.inc();

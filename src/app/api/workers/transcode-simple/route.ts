@@ -11,6 +11,7 @@ type TranscodePayload = {
   charterId: string;
   filename: string;
   userId?: string; // optional for backward compatibility; if absent derive via charter
+  metadata?: { durationSeconds?: number; width?: number; height?: number };
 };
 
 // Simple video compression and thumbnail generation
@@ -91,8 +92,8 @@ export async function POST(req: Request) {
       );
     }
 
-  const { originalKey, originalUrl, charterId, filename } = body;
-  let { userId } = body;
+    const { originalKey, originalUrl, charterId, filename, metadata } = body;
+    let { userId } = body;
 
     console.log("Starting transcode for:", filename);
 
@@ -117,22 +118,24 @@ export async function POST(req: Request) {
           select: { captain: { select: { userId: true } } },
         });
         userId = charter?.captain.userId;
-      } catch {/* ignore */}
+      } catch {
+        /* ignore */
+      }
     }
     // Generate final storage keys (captain-scoped media path)
     const finalKey = userId
       ? `captains/${userId}/media/${filename}`
       : `charters/${charterId}/media/${filename}`; // fallback legacy
     const thumbnailKey = thumbnail
-      ? (userId
-          ? `captains/${userId}/thumbnails/${filename.replace(
-              /\.[^.]+$/,
-              ".jpg"
-            )}`
-          : `charters/${charterId}/thumbnails/${filename.replace(
-              /\.[^.]+$/,
-              ".jpg"
-            )}`)
+      ? userId
+        ? `captains/${userId}/thumbnails/${filename.replace(
+            /\.[^.]+$/,
+            ".jpg"
+          )}`
+        : `charters/${charterId}/thumbnails/${filename.replace(
+            /\.[^.]+$/,
+            ".jpg"
+          )}`
       : null;
 
     // Upload compressed video to final location
@@ -164,14 +167,20 @@ export async function POST(req: Request) {
       }
     }
 
-    // Persist final video location in DB by replacing the temp/original record
+    // Persist final video location & metadata (replace temp record if exists)
     try {
       const updated = await prisma.charterMedia.updateMany({
         where: { charterId, storageKey: originalKey, kind: "CHARTER_VIDEO" },
-        data: { url: finalUrl, storageKey: finalKey },
+        data: {
+          url: finalUrl,
+          storageKey: finalKey,
+          thumbnailUrl: thumbnailUrl || undefined,
+          durationSeconds: metadata?.durationSeconds,
+          width: metadata?.width,
+          height: metadata?.height,
+        },
       });
       if (updated.count === 0) {
-        // If no existing temp record, create a new one at the end
         await prisma.charter.update({
           where: { id: charterId },
           data: {
@@ -181,13 +190,17 @@ export async function POST(req: Request) {
                 url: finalUrl,
                 storageKey: finalKey,
                 sortOrder: 999,
+                thumbnailUrl: thumbnailUrl || undefined,
+                durationSeconds: metadata?.durationSeconds,
+                width: metadata?.width,
+                height: metadata?.height,
               },
             },
           },
         });
       }
     } catch (error) {
-      console.warn("Failed to persist final video in DB:", error);
+      console.warn("Failed to persist final video in DB (typed path):", error);
     }
 
     // Clean up original file

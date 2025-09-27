@@ -137,6 +137,10 @@ model CharterMedia {
   sizeBytes  Int?
   width      Int?
   height     Int?
+  // Optional persisted thumbnail for videos (or generated image variants)
+  thumbnailUrl String? @map("thumbnail_url")
+  // Basic video metadata (duration in seconds) if available
+  durationSeconds Int? @map("duration_seconds")
   sortOrder  Int       @default(0)
   createdAt  DateTime  @default(now())
   charter    Charter   @relation(fields: [charterId], references: [id])

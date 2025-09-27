@@ -88,7 +88,12 @@ export function useCharterMediaManager({
     Array<{ name: string; url: string }>
   >([]);
   const [existingVideos, setExistingVideos] = useState<
-    Array<{ name: string; url: string }>
+    Array<{
+      name: string;
+      url: string;
+      thumbnailUrl?: string;
+      durationSeconds?: number;
+    }>
   >([]);
   const [captainAvatarPreview, setCaptainAvatarPreview] = useState<
     string | null
@@ -115,15 +120,18 @@ export function useCharterMediaManager({
   const photoPreviews = useMediaPreviews(mergedPhotos);
   const videoPreviewsBase = useMediaPreviews(mergedVideos);
   const { getThumbnailUrl } = useVideoThumbnails(currentCharterId);
-  const videoPreviews = useMemo(
-    () =>
-      videoPreviewsBase.map((v) => ({
+  const videoPreviews = useMemo(() => {
+    return videoPreviewsBase.map((v) => {
+      // If existing video already has persisted thumbnailUrl, prefer it
+      const existingMatch = existingVideos.find((ev) => ev.url === v.url);
+      return {
         ...v,
-        // Normalize null to undefined to align with optional field typing
-        thumbnailUrl: getThumbnailUrl(v.url) || undefined,
-      })),
-    [videoPreviewsBase, getThumbnailUrl]
-  );
+        thumbnailUrl:
+          existingMatch?.thumbnailUrl || getThumbnailUrl(v.url) || undefined,
+        durationSeconds: existingMatch?.durationSeconds,
+      };
+    });
+  }, [videoPreviewsBase, getThumbnailUrl, existingVideos]);
 
   const combinedPhotoCount = useMemo(() => {
     const localCount = Array.isArray(photos) ? photos.length : 0;

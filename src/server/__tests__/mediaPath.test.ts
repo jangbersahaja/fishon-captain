@@ -1,5 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { extractLegacyFilename, LEGACY_CHARTER_MEDIA_FILENAME_REGEX } from "@/server/mediaPath";
+import {
+  extractLegacyFilename,
+  LEGACY_CHARTER_MEDIA_FILENAME_REGEX,
+} from "@/server/mediaPath";
+import { describe, expect, it } from "vitest";
 
 describe("legacy media path helpers", () => {
   it("extracts filename from legacy charter path", () => {

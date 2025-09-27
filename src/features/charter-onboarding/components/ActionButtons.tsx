@@ -25,12 +25,9 @@ export const ActionButtons: React.FC = () => {
     })
   );
   const serverDraftId = useCharterFormSelectors((s) => s.serverDraftId);
-  const { isMediaUploading, canSubmitMedia, avatarUploading } =
-    useCharterFormSelectors((s) => ({
-      isMediaUploading: s.media?.isMediaUploading ?? false,
-      canSubmitMedia: s.media?.canSubmitMedia ?? false,
-      avatarUploading: s.media?.avatarUploading ?? false,
-    }));
+  const { avatarUploading } = useCharterFormSelectors((s) => ({
+    avatarUploading: s.media?.avatarUploading ?? false,
+  }));
   // In edit mode we do not depend on a serverDraftId, so only block when actively saving or uploading avatar.
   const nextDisabled =
     serverSaving || avatarUploading || (!isEditing && !serverDraftId); // block navigation during avatar upload (create flow only)
@@ -137,9 +134,7 @@ export const ActionButtons: React.FC = () => {
         <Tooltip content={savingEdit ? "Saving…" : "Save"}>
           <button
             type="button"
-            disabled={
-              savingEdit || serverSaving || isMediaUploading || !canSubmitMedia
-            }
+            disabled={savingEdit || serverSaving}
             aria-label="Save"
             onClick={saveEditChanges}
             className="inline-flex items-center justify-center rounded-full bg-emerald-600 p-3 text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600"

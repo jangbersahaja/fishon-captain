@@ -1,5 +1,6 @@
 // app/api/blob/upload/route.ts
 import authOptions from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
 
     const allowOverwriteRaw = form.get("overwrite");
     const allowOverwrite = allowOverwriteRaw === "true";
-  let key: string;
+    let key: string;
     if (docType === "charter_media") {
       if (isVideo && charterId) {
         // Videos go to temp location for transcoding (charter-scoped for uniqueness)
@@ -81,6 +82,14 @@ export async function POST(req: Request) {
       key = `verification/${userId}/${timestamp}-${sanitized}`;
     }
 
+    // Defensive: reject any newly crafted legacy charter-scoped media path for images (should not happen via above logic)
+    if (!isVideo && /charters\/.+\/media\//.test(key)) {
+      return NextResponse.json(
+        { error: "legacy_media_path_forbidden", key },
+        { status: 400 }
+      );
+    }
+
     const { url } = await put(key, file, {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
@@ -92,6 +101,24 @@ export async function POST(req: Request) {
 
     // Queue transcoding job for videos
     if (isVideo && charterId && docType === "charter_media") {
+      // Create or upsert a temporary DB record referencing the original temp key so UI can reflect pending state
+      try {
+        await prisma.charterMedia.create({
+          data: {
+            charterId,
+            kind: "CHARTER_VIDEO",
+            url, // original temp URL (will be replaced after transcode)
+            storageKey: key,
+            sortOrder: 999, // appended; ordering can be adjusted after finalization
+          },
+        });
+      } catch (err) {
+        // If record exists (e.g., retry), ignore
+        console.warn(
+          "Temp video record create failed (possible duplicate)",
+          err
+        );
+      }
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/jobs/transcode`, {
           method: "POST",

@@ -38,7 +38,14 @@ export async function GET(
         },
       },
       media: {
-        select: { kind: true, url: true, sortOrder: true },
+        select: {
+          kind: true,
+          url: true,
+          sortOrder: true,
+          thumbnailUrl: true,
+          durationSeconds: true,
+          storageKey: true,
+        },
         orderBy: { sortOrder: "asc" },
       },
     },
@@ -53,7 +60,13 @@ export async function GET(
     .map((m) => ({ name: m.sortOrder?.toString() || "image", url: m.url }));
   const videos = charter.media
     .filter((m) => m.kind === "CHARTER_VIDEO")
-    .map((m) => ({ name: m.sortOrder?.toString() || "video", url: m.url }));
+    .map((m) => ({
+      name: m.sortOrder?.toString() || "video",
+      url: m.url,
+      thumbnailUrl: m.thumbnailUrl || undefined,
+      durationSeconds: m.durationSeconds || undefined,
+      storageKey: m.storageKey,
+    }));
   // Default cover index to 0 (first image) for now; future: store in DB
   const imagesCoverIndex = images.length > 0 ? 0 : null;
   return applySecurityHeaders(

@@ -7,7 +7,26 @@ import { z } from "zod";
 export const MediaFileSchema = z.object({
   // 'name' is used as a storage key; allow longer keys to accommodate
   // directory prefixes (e.g., charters/<id>/media/<file>). Keep generous cap.
-  name: z.string().min(1).max(512),
+  name: z
+    .string()
+    .min(1)
+    .max(512)
+    .refine(
+      (val) => {
+        // Allow avatar & verification docs to pass (they have other prefixes)
+        if (val.startsWith("captains/") && val.includes("/avatar/"))
+          return true;
+        if (val.startsWith("verification/")) return true;
+        // Enforce new pattern for charter media & videos: captains/<userId>/media/
+        if (val.startsWith("captains/") && val.includes("/media/")) return true;
+        // Temp upload video originals (legacy) begin with temp/<charterId>/original/ and are allowed only during processing
+        if (val.startsWith("temp/") && val.includes("/original/")) return true;
+        // Allow legacy existing stored media (charters/<id>/media/) for backward compatibility display, but discourage creation
+        if (val.startsWith("charters/") && val.includes("/media/")) return true;
+        return false;
+      },
+      { message: "Invalid storage key path pattern" }
+    ),
   url: z.string().url(),
   mimeType: z.string().min(3).max(128).optional(),
   sizeBytes: z
