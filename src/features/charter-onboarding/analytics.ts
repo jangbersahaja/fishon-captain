@@ -6,8 +6,20 @@ export type AnalyticsEvent =
   | { type: "step_view"; step: string; index: number }
   | { type: "step_complete"; step: string; index: number }
   | { type: "draft_saved"; server: boolean; version?: number | null }
-  | { type: "finalize_attempt" }
-  | { type: "finalize_success"; charterId: string; ms?: number }
+  | {
+      type: "finalize_attempt";
+      images?: number;
+      videos?: number;
+      trips?: number;
+    }
+  | {
+      type: "finalize_success";
+      charterId: string;
+      ms?: number;
+      images?: number;
+      videos?: number;
+      trips?: number;
+    }
   | { type: "validation_errors"; step: string; count: number }
   | { type: "media_upload_start"; kind: "photo" | "video"; pending: number }
   | { type: "media_upload_complete"; kind: "photo" | "video"; ms?: number }

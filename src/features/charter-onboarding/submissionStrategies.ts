@@ -110,6 +110,9 @@ export interface FinalizeArgs {
     file: File,
     kind: "photo" | "video" | "avatar"
   ) => { name: string; url: string } | null;
+  /** Pre-uploaded media that lives in existingImages state (create flow). */
+  existingImages?: { name: string; url: string }[];
+  existingVideos?: { name: string; url: string }[];
 }
 
 export async function finalizeDraftSubmission(args: FinalizeArgs) {
@@ -128,6 +131,8 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
     setLastSavedAt,
     router,
     getUploadedMediaInfo,
+    existingImages = [],
+    existingVideos = [],
   } = args;
   // Upload helper
   const uploadOriginalToBlob = async (
@@ -147,6 +152,25 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
   // Photos / videos upload (skip files already pre-uploaded).
   const photosPayload: { name: string; url: string }[] = [];
   const videosPayload: { name: string; url: string }[] = [];
+
+  // Seed payload with already-uploaded media in create flow (not editing). These were
+  // uploaded earlier then moved from form.photos -> existingImages to keep the UI clean.
+  if (!isEditing) {
+    if (existingImages.length) {
+      for (const img of existingImages) {
+        if (!photosPayload.some((p) => p.name === img.name)) {
+          photosPayload.push(img);
+        }
+      }
+    }
+    if (existingVideos.length) {
+      for (const vid of existingVideos) {
+        if (!videosPayload.some((v) => v.name === vid.name)) {
+          videosPayload.push(vid);
+        }
+      }
+    }
+  }
   const maybeUploadSet = async (
     files: File[] | undefined,
     kind: "photo" | "video"
@@ -197,7 +221,12 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
     }
   }
 
-  emitCharterFormEvent({ type: "finalize_attempt" });
+  emitCharterFormEvent({
+    type: "finalize_attempt",
+    images: photosPayload.length,
+    videos: videosPayload.length,
+    trips: Array.isArray(values.trips) ? values.trips.length : 0,
+  });
   if (!serverDraftId) {
     setSubmitState({
       type: "error",
@@ -224,6 +253,7 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
           videos: videosPayload,
           imagesOrder: photosPayload.map((_, i) => i),
           videosOrder: videosPayload.map((_, i) => i),
+          imagesCoverIndex: 0,
           ...(avatarPayload !== undefined ? { avatar: avatarPayload } : {}),
         },
       }),
@@ -234,6 +264,9 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
     emitCharterFormEvent({
       type: "finalize_success",
       charterId: currentCharterId || "unknown",
+      images: photosPayload.length,
+      videos: videosPayload.length,
+      trips: Array.isArray(values.trips) ? values.trips.length : 0,
     });
     setSubmitState({
       type: "success",
@@ -248,6 +281,19 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
     router.push(isEditing ? "/captain" : "/thank-you");
   } else {
     const err = await finalizeRes.json().catch(() => ({}));
+    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+      console.error("[submission] finalize 400", {
+        status: finalizeRes.status,
+        err,
+        payload: {
+          images: photosPayload.map((p) => p.name),
+          videos: videosPayload.map((v) => v.name),
+          avatar: avatarPayload?.name,
+        },
+        headersSent: headers,
+        versionForFinalize,
+      });
+    }
     setSubmitState({
       type: "error",
       message:
