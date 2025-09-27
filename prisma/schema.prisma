@@ -145,6 +145,9 @@ model CharterMedia {
   createdAt  DateTime  @default(now())
   charter    Charter   @relation(fields: [charterId], references: [id])
   trip       Trip?     @relation(fields: [tripId], references: [id])
+  // Link back to PendingMedia once consumed (optional)
+  pendingMediaId String?   @unique
+  pendingMedia   PendingMedia? @relation("PendingToCharter", fields: [pendingMediaId], references: [id])
 }
 
 // --------------------------------------
@@ -271,6 +274,49 @@ enum MediaKind {
   CHARTER_VIDEO
   CAPTAIN_AVATAR
   TRIP_MEDIA
+}
+
+// --------------------------------------
+// Pending Media (staging before charter association)
+// --------------------------------------
+
+enum PendingMediaStatus {
+  QUEUED       // video queued for transcode OR image queued for optional transform
+  TRANSCODING  // worker actively processing (video)
+  READY        // final asset (image or transcoded video) available
+  FAILED       // processing failed; error field populated
+}
+
+model PendingMedia {
+  id              String             @id @default(cuid())
+  userId          String
+  charterId       String?            // becomes non-null when attached (editing or after finalize)
+  kind            String             // "IMAGE" | "VIDEO" (string for forward compatibility)
+  originalKey     String
+  originalUrl     String
+  finalKey        String?
+  finalUrl        String?
+  thumbnailKey    String?
+  thumbnailUrl    String?
+  status          PendingMediaStatus
+  sizeBytes       Int?
+  mimeType        String?
+  width           Int?
+  height          Int?
+  durationSeconds Int?
+  error           String?
+  correlationId   String?
+  consumedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Optional linkage once consumed
+  charterMediaId  String?            @unique
+  charterMedia    CharterMedia?      @relation("PendingToCharter")
+
+  @@index([userId, status])
+  @@index([charterId])
+  @@index([createdAt])
 }
 
 // --------------------------------------
