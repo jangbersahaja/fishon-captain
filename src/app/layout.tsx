@@ -1,4 +1,5 @@
 import AuthSessionProvider from "@/components/AuthSessionProvider";
+import { ToastProvider } from "@/components/toast/ToastContext";
 import Navbar from "@/components/Navbar";
 import { enableCharterFormConsoleLogging } from "@features/charter-onboarding/analytics";
 import type { Metadata } from "next";
@@ -39,8 +40,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} h-full`}>
         <AuthSessionProvider>
-          <Navbar />
-          {children}
+          <ToastProvider>
+            <Navbar />
+            {children}
+          </ToastProvider>
         </AuthSessionProvider>
       </body>
     </html>

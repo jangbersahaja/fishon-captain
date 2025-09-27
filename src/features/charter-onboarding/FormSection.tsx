@@ -298,9 +298,7 @@ export default function FormSection() {
     if (submitState.type === "success") {
       const t = setTimeout(() => {
         // Only clear if still success (avoid wiping out a newer error)
-        setSubmitState((cur) =>
-          cur && cur.type === "success" ? null : cur
-        );
+        setSubmitState((cur) => (cur && cur.type === "success" ? null : cur));
       }, 2500);
       return () => clearTimeout(t);
     }
@@ -768,20 +766,7 @@ export default function FormSection() {
             <div className="text-sm text-slate-500">
               Step {currentStep + 1} of {totalSteps} · {activeStep.label}
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <ActionButtons />
-              {isEditing && submitState && submitState.message && (
-                <span
-                  key={submitState.message + submitState.type}
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium shadow-sm transition-all
-                  ${submitState.type === "success" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-red-100 text-red-700 border border-red-200"}`}
-                  aria-live="polite"
-                >
-                  {submitState.type === "success" ? "✓" : "⚠"}
-                  <span className="ml-1">{submitState.message}</span>
-                </span>
-              )}
-            </div>
+            <ActionButtons />
           </div>
           {lastSavedAt && !isEditing && (
             <p className="text-[10px] text-right text-slate-400">

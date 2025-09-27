@@ -14,12 +14,8 @@ import {
   finalizeDraftSubmission,
   patchEditCharter,
 } from "@features/charter-onboarding/submissionStrategies";
-import {
-  useCallback,
-  useState,
-  type FormEvent,
-  type FormEventHandler,
-} from "react";
+import { useCallback, useState, type FormEvent, type FormEventHandler } from "react";
+import { useToasts } from "@/components/toast/ToastContext";
 import type { SubmitHandler, UseFormReturn } from "react-hook-form";
 
 export interface UseCharterSubmissionArgs {
@@ -80,27 +76,30 @@ export function useCharterSubmission({
   } | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const { push: pushToast } = useToasts();
 
   // Live charter edit PATCH
   const saveEditChanges = useCallback(async () => {
     if (!isEditing || !currentCharterId) return;
     setSavingEdit(true);
     try {
+      pushToast({ id: "charter-edit", type: "progress", message: "Saving…", replace: true });
       const { ok } = await patchEditCharter({
         charterId: currentCharterId,
         values: form.getValues(),
         setLastSavedAt: (iso) => setLastSavedAt(iso),
       });
-      setSubmitState({
-        type: ok ? "success" : "error",
-        message: ok ? "Saved changes" : "Save failed",
-      });
+      if (ok) {
+        pushToast({ id: "charter-edit", type: "success", message: "Saved changes", replace: true, autoDismiss: 2200 });
+      } else {
+        pushToast({ id: "charter-edit", type: "error", message: "Save failed", replace: true, actions: [ { label: "Retry", onClick: () => { void saveEditChanges(); } } ] });
+      }
     } catch {
-      setSubmitState({ type: "error", message: "Save error" });
+      pushToast({ id: "charter-edit", type: "error", message: "Save error", replace: true, actions: [ { label: "Retry", onClick: () => { void saveEditChanges(); } } ] });
     } finally {
       setSavingEdit(false);
     }
-  }, [isEditing, currentCharterId, form, setLastSavedAt]);
+  }, [isEditing, currentCharterId, form, setLastSavedAt, pushToast]);
 
   // Finalize or edit save
   const onSubmit = useCallback(
@@ -114,7 +113,7 @@ export function useCharterSubmission({
       }
       setSubmitState(null);
       if (isEditing) {
-        await saveEditChanges();
+        await saveEditChanges(); // toast handles feedback
         return;
       }
       try {
