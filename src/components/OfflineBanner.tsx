@@ -1,8 +1,8 @@
 "use client";
-import { useOnlineStatusBanner } from "@/hooks/useOnlineStatusBanner";
-import { useEffect, useState } from "react";
-import { offlineQueue } from "@/lib/offlineQueue";
 import { feedbackTokens } from "@/config/designTokens";
+import { useOnlineStatusBanner } from "@/hooks/useOnlineStatusBanner";
+import { offlineQueue } from "@/lib/offlineQueue";
+import { useEffect, useState } from "react";
 
 export default function OfflineBanner() {
   const { online } = useOnlineStatusBanner();
@@ -30,7 +30,10 @@ export default function OfflineBanner() {
       className={`fixed inset-x-0 top-0 z-[70] flex items-center justify-between gap-4 px-4 py-2 text-xs font-medium shadow-md ${feedbackTokens.warning.solid}`}
     >
       <span className="truncate">
-        Offline. {queued > 0 ? `${queued} pending action${queued === 1 ? "" : "s"}.` : "Changes queued."}
+        Offline.{" "}
+        {queued > 0
+          ? `${queued} pending action${queued === 1 ? "" : "s"}.`
+          : "Changes queued."}
       </span>
       <div className="flex items-center gap-2">
         {queued > 0 && (

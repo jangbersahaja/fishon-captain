@@ -33,6 +33,7 @@ import { ErrorSummary } from "@features/charter-onboarding/components/ErrorSumma
 import { ReviewBar } from "@features/charter-onboarding/components/ReviewBar";
 import { StepSwitch } from "@features/charter-onboarding/components/StepSwitch";
 import dynamic from "next/dynamic";
+import { feedbackTokens } from "@/config/designTokens";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
@@ -690,13 +691,17 @@ export default function FormSection() {
         className={`space-y-10 px-4 pt-6 max-w-5xl mx-auto ${bottomPaddingClass}`}
       >
         {isEditing && (
-          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-slate-700">
+          <div
+            className={`rounded-xl px-4 py-3 text-xs ${feedbackTokens.info.subtle}`}
+          >
             <p className="font-semibold text-slate-800">Editing live charter</p>
             <p className="mt-0.5">Submit again to apply your updates.</p>
           </div>
         )}
         {!isEditing && !serverDraftId && (
-          <div className="rounded-xl border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
+          <div
+            className={`rounded-xl px-4 py-3 text-sm ${feedbackTokens.warning.subtle}`}
+          >
             <p className="font-semibold">Sign in required</p>
             <p>Sign in to save your progress on the server.</p>
           </div>
@@ -748,12 +753,16 @@ export default function FormSection() {
           />
           {isReviewStep && <ReviewStep charter={previewCharter} />}
           {submitState?.type === "error" && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div
+              className={`rounded-2xl px-4 py-3 text-sm ${feedbackTokens.error.subtle}`}
+            >
               {submitState.message}
             </div>
           )}
           {mediaUploadError && !isEditing && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-[11px] text-amber-700">
+            <div
+              className={`rounded-2xl px-4 py-2 text-[11px] ${feedbackTokens.warning.subtle}`}
+            >
               {mediaUploadError}
             </div>
           )}

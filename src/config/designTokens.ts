@@ -20,6 +20,7 @@ export const feedbackTokens = {
   },
   progress: {
     solid: "bg-slate-700 text-white",
+    subtle: "border border-slate-200 bg-slate-100 text-slate-600",
   },
 } as const;
 

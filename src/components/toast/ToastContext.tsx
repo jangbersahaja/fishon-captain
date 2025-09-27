@@ -1,4 +1,5 @@
 "use client";
+import { feedbackTokens } from "@/config/designTokens";
 import React, {
   createContext,
   useCallback,
@@ -9,7 +10,6 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import type { Toast } from "./ToastTypes";
-import { feedbackTokens } from "@/config/designTokens";
 
 interface AnchorRegistration {
   id: string;
