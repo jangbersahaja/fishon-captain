@@ -99,16 +99,31 @@ export const ToastProvider: React.FC<ProviderProps> = ({
           // Progressive enhancement: subtle haptic (mobile) or vibration if supported
           try {
             if (typeof window !== "undefined") {
-              const navAny = navigator as unknown as { vibrate?: (p: number | number[]) => void };
+              const navAny = navigator as unknown as {
+                vibrate?: (p: number | number[]) => void;
+              };
               if (typeof navAny.vibrate === "function") {
                 navAny.vibrate(15);
               } else if (
-                typeof (window as unknown as { webkit?: { messageHandlers?: { haptic?: { postMessage: (m: string) => void } } } }).webkit?.messageHandlers?.haptic?.postMessage ===
-                "function"
+                typeof (
+                  window as unknown as {
+                    webkit?: {
+                      messageHandlers?: {
+                        haptic?: { postMessage: (m: string) => void };
+                      };
+                    };
+                  }
+                ).webkit?.messageHandlers?.haptic?.postMessage === "function"
               ) {
-                (window as unknown as { webkit: { messageHandlers: { haptic: { postMessage: (m: string) => void } } } }).webkit.messageHandlers.haptic.postMessage(
-                  "success"
-                );
+                (
+                  window as unknown as {
+                    webkit: {
+                      messageHandlers: {
+                        haptic: { postMessage: (m: string) => void };
+                      };
+                    };
+                  }
+                ).webkit.messageHandlers.haptic.postMessage("success");
               }
             }
           } catch {
@@ -189,7 +204,7 @@ export const ToastProvider: React.FC<ProviderProps> = ({
       if (parsed.ts && Date.now() - parsed.ts < 6 * 60 * 1000) {
         push({
           id: "persisted-error",
-            type: "error",
+          type: "error",
           message: parsed.message,
           sticky: true,
         });
