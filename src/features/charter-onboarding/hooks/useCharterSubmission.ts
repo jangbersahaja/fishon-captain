@@ -93,7 +93,9 @@ export function useCharterSubmission({
     const effectiveId = currentCharterId || fallbackEditCharterId;
     if (!effectiveId) {
       if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-        console.warn("[submission] saveEditChanges aborted: no charter id available");
+        console.warn(
+          "[submission] saveEditChanges aborted: no charter id available"
+        );
       }
       pushToast({
         id: "charter-edit",
@@ -105,11 +107,15 @@ export function useCharterSubmission({
     }
     // Guard against overwriting live charter with mostly default values if hydration hasn't populated key fields yet.
     const vals = form.getValues();
-    const sentinelPopulated = Boolean(vals.charterName || vals.city || vals.description);
+    const sentinelPopulated = Boolean(
+      vals.charterName || vals.city || vals.description
+    );
     if (!currentCharterId && effectiveId && !sentinelPopulated) {
       // We only have fallback id but core fields look unhydrated -> still race, show same toast.
       if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-        console.warn("[submission] fallback id present but form appears unhydrated; blocking save to avoid clobber");
+        console.warn(
+          "[submission] fallback id present but form appears unhydrated; blocking save to avoid clobber"
+        );
       }
       pushToast({
         id: "charter-edit",
@@ -174,7 +180,14 @@ export function useCharterSubmission({
     } finally {
       setSavingEdit(false);
     }
-  }, [isEditing, currentCharterId, fallbackEditCharterId, form, setLastSavedAt, pushToast]);
+  }, [
+    isEditing,
+    currentCharterId,
+    fallbackEditCharterId,
+    form,
+    setLastSavedAt,
+    pushToast,
+  ]);
 
   // Finalize or edit save
   const onSubmit = useCallback(

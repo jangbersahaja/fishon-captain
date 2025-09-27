@@ -42,6 +42,8 @@ export const ToastProvider: React.FC<ProviderProps> = ({
   defaultOffset = 16,
 }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Persist last error toast id + payload across route changes (session scope)
+  const lastErrorRef = useRef<Toast | null>(null);
   const anchorsRef = useRef<AnchorRegistration[]>([]);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -94,6 +96,36 @@ export const ToastProvider: React.FC<ProviderProps> = ({
           ) {
             return prev; // ignore duplicate
           }
+          // Progressive enhancement: subtle haptic (mobile) or vibration if supported
+          try {
+            if (typeof window !== "undefined") {
+              const navAny = navigator as unknown as { vibrate?: (p: number | number[]) => void };
+              if (typeof navAny.vibrate === "function") {
+                navAny.vibrate(15);
+              } else if (
+                typeof (window as unknown as { webkit?: { messageHandlers?: { haptic?: { postMessage: (m: string) => void } } } }).webkit?.messageHandlers?.haptic?.postMessage ===
+                "function"
+              ) {
+                (window as unknown as { webkit: { messageHandlers: { haptic: { postMessage: (m: string) => void } } } }).webkit.messageHandlers.haptic.postMessage(
+                  "success"
+                );
+              }
+            }
+          } catch {
+            /* ignore haptic errors */
+          }
+        }
+        // Persist last error toast to sessionStorage
+        if (toast.type === "error") {
+          lastErrorRef.current = toast;
+          try {
+            sessionStorage.setItem(
+              "last_error_toast",
+              JSON.stringify({ message: toast.message, ts: Date.now() })
+            );
+          } catch {
+            /* ignore */
+          }
         }
         let next = [toast, ...prev];
         if (next.length > maxToasts) next = next.slice(0, maxToasts);
@@ -143,6 +175,30 @@ export const ToastProvider: React.FC<ProviderProps> = ({
   }, [toasts]);
 
   const offset = computeDynamicOffset();
+
+  // On mount, rehydrate last error toast if present
+  useEffect(() => {
+    if (!mounted) return;
+    if (toasts.some((t) => t.type === "error")) return; // already have one
+    try {
+      const raw = sessionStorage.getItem("last_error_toast");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { message?: string; ts?: number };
+      if (!parsed.message) return;
+      // Only restore if within last 6 minutes to avoid stale noise
+      if (parsed.ts && Date.now() - parsed.ts < 6 * 60 * 1000) {
+        push({
+          id: "persisted-error",
+            type: "error",
+          message: parsed.message,
+          sticky: true,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   return (
     <ToastContext.Provider

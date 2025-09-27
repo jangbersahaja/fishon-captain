@@ -1,6 +1,7 @@
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import Navbar from "@/components/Navbar";
 import { ToastProvider } from "@/components/toast/ToastContext";
+import { useOnlineStatusBanner } from "@/hooks/useOnlineStatusBanner";
 import { enableCharterFormConsoleLogging } from "@features/charter-onboarding/analytics";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -42,10 +43,22 @@ export default function RootLayout({
         <AuthSessionProvider>
           <ToastProvider>
             <Navbar />
+            <OfflineBanner />
             {children}
           </ToastProvider>
         </AuthSessionProvider>
       </body>
     </html>
+  );
+}
+
+// Client-only inline component for offline status
+function OfflineBanner() {
+  const { online } = useOnlineStatusBanner();
+  if (online) return null;
+  return (
+    <div className="fixed inset-x-0 top-0 z-[70] flex items-center justify-center bg-amber-600 px-4 py-2 text-center text-xs font-medium text-white shadow-md">
+      <span className="truncate">You are offline. Changes will retry when connection is restored.</span>
+    </div>
   );
 }
