@@ -162,7 +162,8 @@ export function useCharterMediaManager({
     const vBusy = videoProgress.some((p) => p >= 0 && p < 100);
     return pBusy || vBusy;
   }, [photoProgress, videoProgress, isEditing]);
-  const canSubmitMedia = combinedPhotoCount >= 3;
+  // Relax minimum photo requirement when editing: existing listing can be saved with any current photo count.
+  const canSubmitMedia = isEditing ? true : combinedPhotoCount >= 3;
 
   // Avatar handling - now includes immediate upload and draft save for both editing and new drafts
   const handleAvatarChange = useCallback(
@@ -406,6 +407,58 @@ export function useCharterMediaManager({
               setPhotoProgress([]);
             }, HOLD_MS);
           }
+        } else if (isEditing && !currentCharterId) {
+          // Edge case: editing flag true but charterId not yet available (hydration race). Fallback to draft-style immediate blob upload
+          // to avoid blocking user with perpetual 0% progress entries.
+          if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+            console.warn("[media] editing without charterId – falling back to immediate upload path");
+          }
+          const uploaded: Array<{ name: string; url: string }> = [];
+          const base = current.length;
+          for (let idx = 0; idx < incoming.length; idx++) {
+            const f = incoming[idx];
+            const fd = new FormData();
+            fd.set("file", f);
+            fd.set("docType", "charter_media");
+            try {
+              const { key, url } = await uploadWithProgress(fd, (p) => {
+                if (!shouldUpdateProgress(lastPhotoProgressRef, base + idx, p))
+                  return;
+                setPhotoProgress((prev) => {
+                  const arr = [...prev];
+                  const pos = base + idx;
+                  if (pos >= 0 && pos < arr.length) arr[pos] = p;
+                  return arr;
+                });
+              });
+              uploaded.push({ name: key, url });
+              setPhotoProgress((prev) => {
+                const arr = [...prev];
+                const pos = base + idx;
+                if (pos >= 0 && pos < arr.length) arr[pos] = 100;
+                return arr;
+              });
+            } catch {
+              setPhotoProgress((prev) => {
+                const arr = [...prev];
+                const pos = base + idx;
+                if (pos >= 0 && pos < arr.length) arr[pos] = -1;
+                return arr;
+              });
+            }
+          }
+          if (uploaded.length) {
+            setTimeout(() => {
+              setExistingImages((prev) => [...prev, ...uploaded]);
+              const prevPersisted = form.getValues("uploadedPhotos") || [];
+              setValue("uploadedPhotos", [...prevPersisted, ...uploaded], {
+                shouldDirty: true,
+                shouldValidate: false,
+              });
+              setValue("photos", [], { shouldValidate: true });
+              setPhotoProgress([]);
+            }, HOLD_MS);
+          }
         } else if (!isEditing) {
           // Create flow: upload immediately with progress even without charterId so UI isn't stuck.
           const uploaded: Array<{ name: string; url: string }> = [];
@@ -560,6 +613,56 @@ export function useCharterMediaManager({
           });
           setTimeout(() => {
             setExistingVideos((prev) => [...prev, ...uploaded]);
+            setValue("videos", [], { shouldValidate: true });
+            setVideoProgress([]);
+          }, HOLD_MS);
+        }
+      } else if (isEditing && !currentCharterId && within.length) {
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.warn("[media] editing without charterId (videos) – immediate upload fallback");
+        }
+        const uploaded: Array<{ name: string; url: string }> = [];
+        const base = current.length;
+        for (let idx = 0; idx < within.length; idx++) {
+          const f = within[idx];
+          const fd = new FormData();
+            fd.set("file", f);
+            fd.set("docType", "charter_media");
+          try {
+            const { key, url } = await uploadWithProgress(fd, (p) => {
+              if (!shouldUpdateProgress(lastVideoProgressRef, base + idx, p))
+                return;
+              setVideoProgress((prev) => {
+                const arr = [...prev];
+                const pos = base + idx;
+                if (pos >= 0 && pos < arr.length) arr[pos] = p;
+                return arr;
+              });
+            });
+            uploaded.push({ name: key, url });
+            setVideoProgress((prev) => {
+              const arr = [...prev];
+              const pos = base + idx;
+              if (pos >= 0 && pos < arr.length) arr[pos] = 100;
+              return arr;
+            });
+          } catch {
+            setVideoProgress((prev) => {
+              const arr = [...prev];
+              const pos = base + idx;
+              if (pos >= 0 && pos < arr.length) arr[pos] = -1;
+              return arr;
+            });
+          }
+        }
+        if (uploaded.length) {
+          setTimeout(() => {
+            setExistingVideos((prev) => [...prev, ...uploaded]);
+            const prevPersistedV = form.getValues("uploadedVideos") || [];
+            setValue("uploadedVideos", [...prevPersistedV, ...uploaded], {
+              shouldDirty: true,
+              shouldValidate: false,
+            });
             setValue("videos", [], { shouldValidate: true });
             setVideoProgress([]);
           }, HOLD_MS);

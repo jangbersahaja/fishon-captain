@@ -85,7 +85,27 @@ export function useCharterSubmission({
 
   // Live charter edit PATCH
   const saveEditChanges = useCallback(async () => {
-    if (!isEditing || !currentCharterId) return;
+    if (!isEditing) return; // not applicable
+    if (!currentCharterId) {
+      if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        console.warn("[submission] saveEditChanges called without charterId (hydration race)");
+      }
+      pushToast({
+        id: "charter-edit",
+        type: "error",
+        message: "Charter not ready yet. Please try again in a moment.",
+        replace: true,
+        actions: [
+          {
+            label: "Retry",
+            onClick: () => {
+              void saveEditChanges();
+            },
+          },
+        ],
+      });
+      return;
+    }
     setSavingEdit(true);
     try {
       pushToast({
@@ -188,7 +208,7 @@ export function useCharterSubmission({
         pushToast({
           id: "charter-finalize",
           type: "success",
-            message: "Charter submitted",
+          message: "Charter submitted",
           replace: true,
           autoDismiss: 3000,
         });
@@ -200,8 +220,7 @@ export function useCharterSubmission({
         pushToast({
           id: "charter-finalize",
           type: "error",
-          message:
-            e instanceof Error ? e.message : "Failed to submit charter",
+          message: e instanceof Error ? e.message : "Failed to submit charter",
           replace: true,
         });
         if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
