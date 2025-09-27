@@ -258,6 +258,7 @@ export default function FormSection() {
     form,
     isEditing,
     currentCharterId,
+    fallbackEditCharterId: editCharterId,
     serverDraftId,
     serverVersion,
     saveServerDraftSnapshot: () => draftSnapshot.saveServerDraftSnapshot(),

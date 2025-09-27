@@ -27,6 +27,8 @@ export interface UseCharterSubmissionArgs {
   form: UseFormReturn<CharterFormValues>;
   isEditing: boolean;
   currentCharterId: string | null;
+  /** Raw editCharterId from URL (fallback when currentCharterId not yet set by data loader). */
+  fallbackEditCharterId?: string | null;
   serverDraftId: string | null;
   serverVersion: number | null; // used only for finalize headers
   saveServerDraftSnapshot: () => Promise<number | null>;
@@ -63,6 +65,7 @@ export function useCharterSubmission({
   form,
   isEditing,
   currentCharterId,
+  fallbackEditCharterId = null,
   serverDraftId,
   serverVersion,
   saveServerDraftSnapshot,
@@ -86,23 +89,33 @@ export function useCharterSubmission({
   // Live charter edit PATCH
   const saveEditChanges = useCallback(async () => {
     if (!isEditing) return; // not applicable
-    if (!currentCharterId) {
+    // Prefer fully confirmed id but fall back to raw URL param if hydration succeeded elsewhere (fallback path) but hook didn't set currentCharterId.
+    const effectiveId = currentCharterId || fallbackEditCharterId;
+    if (!effectiveId) {
       if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-        console.warn("[submission] saveEditChanges called without charterId (hydration race)");
+        console.warn("[submission] saveEditChanges aborted: no charter id available");
       }
       pushToast({
         id: "charter-edit",
         type: "error",
         message: "Charter not ready yet. Please try again in a moment.",
         replace: true,
-        actions: [
-          {
-            label: "Retry",
-            onClick: () => {
-              void saveEditChanges();
-            },
-          },
-        ],
+      });
+      return;
+    }
+    // Guard against overwriting live charter with mostly default values if hydration hasn't populated key fields yet.
+    const vals = form.getValues();
+    const sentinelPopulated = Boolean(vals.charterName || vals.city || vals.description);
+    if (!currentCharterId && effectiveId && !sentinelPopulated) {
+      // We only have fallback id but core fields look unhydrated -> still race, show same toast.
+      if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        console.warn("[submission] fallback id present but form appears unhydrated; blocking save to avoid clobber");
+      }
+      pushToast({
+        id: "charter-edit",
+        type: "error",
+        message: "Loading charter details… please retry shortly.",
+        replace: true,
       });
       return;
     }
@@ -115,8 +128,8 @@ export function useCharterSubmission({
         replace: true,
       });
       const { ok } = await patchEditCharter({
-        charterId: currentCharterId,
-        values: form.getValues(),
+        charterId: effectiveId,
+        values: vals,
         setLastSavedAt: (iso) => setLastSavedAt(iso),
       });
       if (ok) {
@@ -161,7 +174,7 @@ export function useCharterSubmission({
     } finally {
       setSavingEdit(false);
     }
-  }, [isEditing, currentCharterId, form, setLastSavedAt, pushToast]);
+  }, [isEditing, currentCharterId, fallbackEditCharterId, form, setLastSavedAt, pushToast]);
 
   // Finalize or edit save
   const onSubmit = useCallback(

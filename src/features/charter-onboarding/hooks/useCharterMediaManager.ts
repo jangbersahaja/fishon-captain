@@ -411,7 +411,9 @@ export function useCharterMediaManager({
           // Edge case: editing flag true but charterId not yet available (hydration race). Fallback to draft-style immediate blob upload
           // to avoid blocking user with perpetual 0% progress entries.
           if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-            console.warn("[media] editing without charterId – falling back to immediate upload path");
+            console.warn(
+              "[media] editing without charterId – falling back to immediate upload path"
+            );
           }
           const uploaded: Array<{ name: string; url: string }> = [];
           const base = current.length;
@@ -619,15 +621,17 @@ export function useCharterMediaManager({
         }
       } else if (isEditing && !currentCharterId && within.length) {
         if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-          console.warn("[media] editing without charterId (videos) – immediate upload fallback");
+          console.warn(
+            "[media] editing without charterId (videos) – immediate upload fallback"
+          );
         }
         const uploaded: Array<{ name: string; url: string }> = [];
         const base = current.length;
         for (let idx = 0; idx < within.length; idx++) {
           const f = within[idx];
           const fd = new FormData();
-            fd.set("file", f);
-            fd.set("docType", "charter_media");
+          fd.set("file", f);
+          fd.set("docType", "charter_media");
           try {
             const { key, url } = await uploadWithProgress(fd, (p) => {
               if (!shouldUpdateProgress(lastVideoProgressRef, base + idx, p))
