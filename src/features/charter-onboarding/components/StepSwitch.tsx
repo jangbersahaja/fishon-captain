@@ -54,6 +54,14 @@ const TripsStep = dynamic(
   { ssr: false }
 );
 
+const DescriptionStep = dynamic(
+  () =>
+    import("@features/charter-onboarding/steps/DescriptionStep").then(
+      (m) => m.DescriptionStep
+    ),
+  { ssr: false }
+);
+
 export const StepSwitch: React.FC<StepSwitchProps> = (props) => {
   const { currentStep } = props;
   // Wrap fieldError to coerce null -> undefined if caller provided a looser function
@@ -77,10 +85,11 @@ export const StepSwitch: React.FC<StepSwitchProps> = (props) => {
     case 2:
       return <TripsStep form={props.form} />;
     case 3:
+      return <DescriptionStep form={props.form} fieldError={fe} />;
+    case 4:
       return (
         <MediaPricingStep
           form={props.form}
-          fieldError={fe}
           photoPreviews={props.normalizedPhotoPreviews}
           videoPreviews={props.normalizedVideoPreviews}
           onAddPhotoFiles={props.addPhotoFiles}

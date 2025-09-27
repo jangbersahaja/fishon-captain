@@ -11,10 +11,13 @@ export interface ReviewBarProps {
 
 export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
   const isEditing = useCharterFormSelectors((s) => s.isEditing);
-  const { savingEdit, serverSaving } = useCharterFormSelectors((s) => ({
-    savingEdit: s.submission?.savingEdit ?? false,
-    serverSaving: s.submission?.serverSaving ?? false,
-  }));
+  const { savingEdit, serverSaving, finalizing } = useCharterFormSelectors(
+    (s) => ({
+      savingEdit: s.submission?.savingEdit ?? false,
+      serverSaving: s.submission?.serverSaving ?? false,
+      finalizing: s.submission?.finalizing ?? false,
+    })
+  );
   const { handlePrev } = useCharterFormSelectors((s) => ({
     handlePrev: s.navigation?.handlePrev || (() => {}),
   }));
@@ -55,6 +58,7 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
               disabled={
                 savingEdit ||
                 serverSaving ||
+                finalizing ||
                 isMediaUploading ||
                 !canSubmitMedia
               }
@@ -63,13 +67,30 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
                 onPrimary();
               }}
               className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-900"
+              title={
+                !canSubmitMedia
+                  ? "Need at least 3 photos before submitting"
+                  : isMediaUploading
+                  ? "Uploads still in progress"
+                  : finalizing
+                  ? "Finalizing submission..."
+                  : savingEdit || serverSaving
+                  ? "Saving in progress"
+                  : undefined
+              }
             >
-              {savingEdit ? (
+              {savingEdit || finalizing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {savingEdit ? "Saving…" : isEditing ? "Save" : "Submit Charter"}
+              {savingEdit
+                ? "Saving…"
+                : finalizing
+                ? "Submitting…"
+                : isEditing
+                ? "Save"
+                : "Submit Charter"}
             </button>
           </div>
         </div>

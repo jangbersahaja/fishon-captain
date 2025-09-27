@@ -54,10 +54,17 @@ export async function GET(
   const videos = charter.media
     .filter((m) => m.kind === "CHARTER_VIDEO")
     .map((m) => ({ name: m.sortOrder?.toString() || "video", url: m.url }));
+  // Default cover index to 0 (first image) for now; future: store in DB
+  const imagesCoverIndex = images.length > 0 ? 0 : null;
   return applySecurityHeaders(
     NextResponse.json({
       charter,
-      media: { images, videos, avatar: charter.captain.avatarUrl || null },
+      media: {
+        images,
+        videos,
+        avatar: charter.captain.avatarUrl || null,
+        imagesCoverIndex,
+      },
     })
   );
 }

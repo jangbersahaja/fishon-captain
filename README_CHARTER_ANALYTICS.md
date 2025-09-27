@@ -6,20 +6,20 @@ Events are intentionally framework-agnostic JSON objects emitted through `emitCh
 
 ## Event Types
 
-| Event | When Emitted | Important Fields |
-|-------|--------------|------------------|
-| `step_view` | A step becomes active (debounced) | `step`, `index` |
-| `step_complete` | A step passes validation & user advances | `step`, `index` |
-| `draft_saved` | Server draft snapshot persisted | `server` (bool), `version` |
-| `finalize_attempt` | User initiates submission (before network finalize response) | `images`, `videos`, `trips` (counts) |
-| `finalize_success` | Finalize endpoint returns OK (charter created/updated) | `charterId`, latency `ms` auto-derived, `images`, `videos`, `trips` |
-| `validation_errors` | Validation blocking navigation | `step`, `count` |
-| `media_upload_start` | Batch of media files begins uploading | `kind`, `pending` |
-| `media_upload_complete` | Single media file finished uploading | `kind`, timing `ms` auto-attached |
-| `media_batch_complete` | All files in a started batch uploaded | `kind`, `count`, total `ms` |
-| `conflict_resolution` | Version conflict (server vs client draft) handled | `serverVersion` |
-| `lazy_component_loaded` | A lazily loaded component finished | `name`, `group?`, `ms?` (duration) |
-| `preview_ready` | All components in a lazy group loaded | `group`, `names[]`, `totalMs` |
+| Event                   | When Emitted                                                 | Important Fields                                                    |
+| ----------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `step_view`             | A step becomes active (debounced)                            | `step`, `index`                                                     |
+| `step_complete`         | A step passes validation & user advances                     | `step`, `index`                                                     |
+| `draft_saved`           | Server draft snapshot persisted                              | `server` (bool), `version`                                          |
+| `finalize_attempt`      | User initiates submission (before network finalize response) | `images`, `videos`, `trips` (counts)                                |
+| `finalize_success`      | Finalize endpoint returns OK (charter created/updated)       | `charterId`, latency `ms` auto-derived, `images`, `videos`, `trips` |
+| `validation_errors`     | Validation blocking navigation                               | `step`, `count`                                                     |
+| `media_upload_start`    | Batch of media files begins uploading                        | `kind`, `pending`                                                   |
+| `media_upload_complete` | Single media file finished uploading                         | `kind`, timing `ms` auto-attached                                   |
+| `media_batch_complete`  | All files in a started batch uploaded                        | `kind`, `count`, total `ms`                                         |
+| `conflict_resolution`   | Version conflict (server vs client draft) handled            | `serverVersion`                                                     |
+| `lazy_component_loaded` | A lazily loaded component finished                           | `name`, `group?`, `ms?` (duration)                                  |
+| `preview_ready`         | All components in a lazy group loaded                        | `group`, `names[]`, `totalMs`                                       |
 
 ## Newly Added Fields (Sept 2025)
 
@@ -45,11 +45,11 @@ The finalize payload now sets `imagesCoverIndex: 0`. This allows future UX chang
 ## Usage Pattern
 
 ```ts
-import { setCharterFormAnalyticsListener } from '@features/charter-onboarding/analytics';
+import { setCharterFormAnalyticsListener } from "@features/charter-onboarding/analytics";
 
 setCharterFormAnalyticsListener((e) => {
   // Forward to analytics backend
-  window.posthog?.capture('charter_form_event', e);
+  window.posthog?.capture("charter_form_event", e);
 });
 ```
 
@@ -80,7 +80,7 @@ Add a new union member to `AnalyticsEvent` in `analytics.ts` and emit via `emitC
 Example:
 
 ```ts
-import { __resetCharterFormAnalyticsForTests } from '@features/charter-onboarding/analytics';
+import { __resetCharterFormAnalyticsForTests } from "@features/charter-onboarding/analytics";
 
 beforeEach(() => __resetCharterFormAnalyticsForTests());
 ```
@@ -92,4 +92,5 @@ beforeEach(() => __resetCharterFormAnalyticsForTests());
 - Introduce anonymous session id for multi-tab attribution.
 
 ---
+
 Last updated: 2025-09-27

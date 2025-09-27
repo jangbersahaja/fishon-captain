@@ -14,6 +14,7 @@ import type { CharterFormValues } from "@features/charter-onboarding/charterForm
 import {
   basicsStepSchema,
   charterFormSchema,
+  descriptionStepSchema,
   experienceStepSchema,
   mediaPricingStepSchema,
   tripsStepSchema,
@@ -31,6 +32,10 @@ export interface UseStepNavigationArgs {
   isEditing: boolean;
   existingImagesCount: number; // used to bypass media step photo minimum when editing
   saveServerDraftSnapshot: () => Promise<number | null>;
+  /** direct setter so we can update snapshot step before saving */
+  setSnapshotCurrentStep: (n: number) => void;
+  /** prevent navigation while avatar is uploading on basics step */
+  avatarUploading?: boolean;
 }
 
 export interface UseStepNavigationResult {
@@ -52,6 +57,8 @@ export function useStepNavigation({
   isEditing,
   existingImagesCount,
   saveServerDraftSnapshot,
+  setSnapshotCurrentStep,
+  avatarUploading = false,
 }: UseStepNavigationArgs): UseStepNavigationResult {
   const totalSteps = STEP_SEQUENCE.length;
   const [currentStep, setCurrentStep] = useState(0);
@@ -138,28 +145,99 @@ export function useStepNavigation({
   );
 
   const handleNext = useCallback(async () => {
+    // Always log handleNext calls
+    console.log("[navigation] handleNext called", {
+      currentStep,
+      isEditing,
+      existingImagesCount,
+      avatarUploading,
+    });
+
+    // Block navigation if avatar is uploading on basics step (step 0)
+    if (currentStep === 0 && avatarUploading) {
+      console.log("[navigation] blocking navigation - avatar is uploading");
+      setStepErrorSummary(["Please wait for avatar upload to complete"]);
+      return;
+    }
+
     // Step schemas order must align with STEP_SEQUENCE
     const stepSchemas = [
       basicsStepSchema,
       experienceStepSchema,
       tripsStepSchema,
+      descriptionStepSchema, // swapped order: description before media
       mediaPricingStepSchema,
-      charterFormSchema,
+      charterFormSchema, // full form for review/fallback
     ];
     const activeSchema = stepSchemas[currentStep] || charterFormSchema;
     const values = form.getValues();
-    const canBypassMedia =
-      STEP_SEQUENCE[currentStep].id === "media" &&
-      isEditing &&
-      existingImagesCount >= 3;
+
+    console.log("[navigation] validating with schema", {
+      schemaIndex: currentStep,
+      hasSchema: !!activeSchema,
+      valueKeys: Object.keys(values || {}),
+    });
+    // Media step special handling: we now immediately upload media in create flow too.
+    // Validation schema only sees form.photos (local, not yet persisted) but after upload
+    // we move them into existingImages and clear photos -> causing false validation failures.
+    // Treat existingImagesCount as satisfying the photo minimum in BOTH create & edit flows.
+    const isMediaStep = STEP_SEQUENCE[currentStep].id === "media";
+    const photosInForm = Array.isArray(values.photos)
+      ? values.photos.length
+      : 0;
+    const effectivePhotoCount = existingImagesCount + photosInForm;
+    const canBypassMedia = isMediaStep && effectivePhotoCount >= 3;
     const parseResult = activeSchema.safeParse(values);
+    console.log("[navigation] validation result", {
+      success: parseResult.success,
+      errorCount: parseResult.success ? 0 : parseResult.error.issues.length,
+      canBypassMedia,
+    });
+
     if (!parseResult.success && !canBypassMedia) {
       const errs: string[] = [];
       for (const issue of parseResult.error.issues) {
+        console.log("[navigation] validation error", {
+          path: issue.path.join("."),
+          message: issue.message,
+          code: issue.code,
+        });
         const p = issue.path.join(".");
         if (p) errs.push(p);
       }
-      const friendly = Array.from(new Set(errs.map(friendlyFieldLabel)));
+      let friendly = Array.from(new Set(errs.map(friendlyFieldLabel)));
+      // Provide richer, context-aware messages on media step
+      if (isMediaStep) {
+        const detailed: string[] = [];
+        for (const issue of parseResult.error.issues) {
+          const root = issue.path[0];
+          if (root === "photos") {
+            if (issue.code === "too_small") {
+              detailed.push(
+                `Add at least 3 photos (you currently have ${effectivePhotoCount}).`
+              );
+            } else if (issue.code === "too_big") {
+              detailed.push(
+                `Maximum 15 photos allowed (you have ${effectivePhotoCount}). Remove some before continuing.`
+              );
+            } else {
+              detailed.push("One or more photos are invalid.");
+            }
+          } else if (root === "videos") {
+            if (issue.code === "too_big") {
+              const videosInForm = Array.isArray(values.videos)
+                ? values.videos.length
+                : 0;
+              detailed.push(
+                `Maximum 3 videos allowed (you selected ${videosInForm}). Remove extras before continuing.`
+              );
+            } else {
+              detailed.push("One or more videos are invalid.");
+            }
+          }
+        }
+        if (detailed.length) friendly = detailed;
+      }
       setStepErrorSummary(
         friendly.length
           ? friendly
@@ -191,29 +269,39 @@ export function useStepNavigation({
       return;
     }
     setStepErrorSummary(null);
+    const prevIndex = currentStep;
+    const nextIndex = Math.min(prevIndex + 1, totalSteps - 1);
+    if (nextIndex === prevIndex) return; // already at last
+    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+      console.log("[navigation] handleNext validated; preparing save", {
+        prevIndex,
+        nextIndex,
+      });
+    }
+    // Persist BEFORE UI advance so user can see saving spinner; step index for snapshot is nextIndex
+    setSnapshotCurrentStep(nextIndex);
     await saveServerDraftSnapshot();
-    // Mark current as completed and advance
+    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+      console.log("[navigation] save complete, advancing UI", { nextIndex });
+    }
+    // mark step complete
     setStepCompleted((prev) => {
       const n = [...prev];
-      n[currentStep] = true;
+      n[prevIndex] = true;
       return n;
     });
-    setCurrentStep((prev) => {
-      const next = Math.min(prev + 1, totalSteps - 1);
-      if (next !== prev) {
-        emitCharterFormEvent({
-          type: "step_view",
-          step: STEP_SEQUENCE[next].id,
-          index: next,
-        });
-        emitCharterFormEvent({
-          type: "step_complete",
-          step: STEP_SEQUENCE[prev].id,
-          index: prev,
-        });
-      }
-      return next;
+    emitCharterFormEvent({
+      type: "step_complete",
+      step: STEP_SEQUENCE[prevIndex].id,
+      index: prevIndex,
     });
+    emitCharterFormEvent({
+      type: "step_view",
+      step: STEP_SEQUENCE[nextIndex].id,
+      index: nextIndex,
+    });
+    // advance react state AFTER save
+    setCurrentStep(nextIndex);
     try {
       if (
         typeof window !== "undefined" &&
@@ -230,7 +318,9 @@ export function useStepNavigation({
     isEditing,
     existingImagesCount,
     saveServerDraftSnapshot,
+    setSnapshotCurrentStep,
     totalSteps,
+    avatarUploading,
   ]);
 
   return {

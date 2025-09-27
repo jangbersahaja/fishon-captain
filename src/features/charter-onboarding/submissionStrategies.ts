@@ -30,6 +30,8 @@ export async function patchEditCharter({
       phone: values.operator.phone,
       bio: values.operator.bio,
       experienceYrs: values.operator.experienceYears,
+      // Include avatarUrl when editing so live charter updates get propagated without separate endpoint.
+      avatarUrl: values.operator.avatarUrl || null,
     },
     boat: values.boat
       ? {
@@ -219,6 +221,10 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
         avatarPayload = undefined;
       }
     }
+  } else if (!isEditing && !avatarFile && values.operator.avatarUrl) {
+    // No file in form (maybe uploaded earlier in flow) but we have a persisted avatarUrl.
+    // Provide a synthetic name so backend can persist reference.
+    avatarPayload = { name: "avatar", url: values.operator.avatarUrl };
   }
 
   emitCharterFormEvent({

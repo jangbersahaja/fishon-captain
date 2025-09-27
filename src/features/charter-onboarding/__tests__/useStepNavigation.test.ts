@@ -20,6 +20,7 @@ const makeDefaults = (): CharterFormValues => ({
     bio: "Experienced captain with many years at sea providing great trips.",
     phone: "+60123456789",
     avatar: undefined,
+    avatarUrl: undefined,
   },
   charterType: "shared",
   charterName: "Test Charter",
@@ -73,6 +74,8 @@ const makeDefaults = (): CharterFormValues => ({
   ],
   photos: [],
   videos: [],
+  uploadedPhotos: [],
+  uploadedVideos: [],
 });
 
 describe("useStepNavigation", () => {
@@ -97,6 +100,7 @@ describe("useStepNavigation", () => {
           isEditing,
           existingImagesCount,
           saveServerDraftSnapshot,
+          setSnapshotCurrentStep: () => {},
         }),
         form,
       };
@@ -136,21 +140,27 @@ describe("useStepNavigation", () => {
   it("bypasses media minimum when editing with existing images", async () => {
     // Move to media step quickly by reusing handleNext sequentially
     const { hook } = setup(3, true); // editing with 3 existing images
-    // Simulate moving to media step index 3 (basics->experience->trips->media)
+    // Steps: 0 basics -> 1 experience -> 2 trips -> 3 media
+    // Because defaults are valid, each call should move exactly one step
     await act(async () => {
-      await hook.result.current.nav.handleNext();
-      await hook.result.current.nav.handleNext();
-      await hook.result.current.nav.handleNext();
+      await hook.result.current.nav.handleNext(); // 0 -> 1
     });
-    expect(hook.result.current.nav.currentStep).toBe(3);
-    // Media schema would normally require photos; ensure Next still works
     await act(async () => {
-      await hook.result.current.nav.handleNext();
+      await hook.result.current.nav.handleNext(); // 1 -> 2
     });
-    // Review step index should now be last
-    expect(
-      hook.result.current.nav.isReviewStep || hook.result.current.nav.isLastStep
-    ).toBe(true);
+    await act(async () => {
+      await hook.result.current.nav.handleNext(); // 2 -> 3 (media)
+    });
+    expect(hook.result.current.nav.currentStep).toBe(3); // media index
+    // Media schema would normally require photos; ensure Next still works (media -> description)
+    await act(async () => {
+      await hook.result.current.nav.handleNext(); // media -> description (4)
+    });
+    expect(hook.result.current.nav.currentStep).toBe(4);
+    await act(async () => {
+      await hook.result.current.nav.handleNext(); // description -> review
+    });
+    expect(hook.result.current.nav.isReviewStep).toBe(true);
   });
 
   it("emits step_view events on navigation", async () => {

@@ -3,6 +3,7 @@ export function applySecurityHeaders(res: Response): Response {
   // Google Maps domains we need to allow
   const GOOGLE_SCRIPT = "https://maps.googleapis.com"; // main JS loader
   const GOOGLE_STATIC = "https://maps.gstatic.com"; // supporting assets
+  const GOOGLE_FONTS = "https://fonts.googleapis.com"; // Google Fonts for Maps UI
   // Add 'unsafe-inline' in dev so dynamic Next scripts & React refresh work; optionally add 'strict-dynamic' later.
   const scriptSrc = isDev
     ? `script-src 'self' 'unsafe-inline' ${GOOGLE_SCRIPT} ${GOOGLE_STATIC}`
@@ -34,7 +35,7 @@ export function applySecurityHeaders(res: Response): Response {
     " "
   );
 
-  const styleSrc = "style-src 'self' 'unsafe-inline'"; // Google Maps injects inline styles
+  const styleSrc = `style-src 'self' 'unsafe-inline' ${GOOGLE_FONTS}`; // Google Maps injects inline styles and loads external fonts
   const csp =
     [
       "default-src 'self'",

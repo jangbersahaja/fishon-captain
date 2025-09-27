@@ -22,16 +22,21 @@ export interface CharterFormEnvironment {
   };
   submission?: {
     submitState: { type: "success" | "error"; message: string } | null;
+    setSubmitState?: (
+      v: { type: "success" | "error"; message: string } | null
+    ) => void;
     savingEdit: boolean;
     serverSaving: boolean;
     saveEditChanges: () => void | Promise<void>;
     triggerSubmit: () => void;
+    finalizing?: boolean;
   };
   media?: {
     isMediaUploading: boolean;
     canSubmitMedia: boolean;
     existingImagesCount: number;
     existingVideosCount: number;
+    avatarUploading: boolean;
   };
 }
 

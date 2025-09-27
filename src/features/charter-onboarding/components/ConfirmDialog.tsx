@@ -11,6 +11,7 @@ export interface ConfirmDialogProps {
   onCancel: () => void;
   onConfirm: () => void;
   busy: boolean; // disables confirm while async ops in flight
+  errorMessage?: string | null;
 }
 
 /**
@@ -24,6 +25,7 @@ export function ConfirmDialog({
   onCancel,
   onConfirm,
   busy,
+  errorMessage,
 }: ConfirmDialogProps) {
   const cancelRef = useCallback((el: HTMLButtonElement | null) => {
     if (el) setTimeout(() => el.focus(), 0);
@@ -95,11 +97,16 @@ export function ConfirmDialog({
         >
           {isEditing ? "Save changes?" : "Submit charter?"}
         </h2>
-        <p id="confirm-dialog-desc" className="text-sm text-slate-600 mb-4">
+        <p id="confirm-dialog-desc" className="text-sm text-slate-600 mb-3">
           {isEditing
             ? "Your live charter will be updated. Media processing (videos) may continue in background. Continue?"
-            : "We will review and reach out if anything else is needed. You can return later to make edits. Submit now?"}
+            : "We'll review and reach out if anything else is needed. You can still edit after submission."}
         </p>
+        {errorMessage && !busy && (
+          <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
+            {errorMessage}
+          </div>
+        )}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button
             ref={cancelRef}
@@ -112,10 +119,33 @@ export function ConfirmDialog({
           <button
             type="button"
             disabled={busy}
-            onClick={onConfirm}
+            onClick={() => {
+              if (busy) return;
+              onConfirm();
+            }}
             className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-900"
           >
-            {busy ? "Processing..." : isEditing ? "Save" : "Submit"}
+            {busy && (
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" className="opacity-25" />
+                <path d="M4 12a8 8 0 0 1 8-8" className="opacity-75" />
+              </svg>
+            )}
+            {busy
+              ? isEditing
+                ? "Saving..."
+                : "Submitting..."
+              : isEditing
+              ? "Save"
+              : "Submit"}
           </button>
         </div>
       </div>

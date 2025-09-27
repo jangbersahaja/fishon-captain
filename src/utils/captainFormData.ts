@@ -267,7 +267,7 @@ export const TRIP_TYPE_OPTIONS = [
   { value: "Half-Day Trip", label: "Half-Day Trip" },
   { value: "Full Day Trip", label: "Full Day Trip" },
   { value: "Night Trip", label: "Night Trip" },
-  { value: "Multiple Day Trip", label: "Custom · Multi-Day" },
+  { value: "Custom", label: "Custom" },
 ];
 
 export function toTitleCase(value: string) {

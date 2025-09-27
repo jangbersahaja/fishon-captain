@@ -30,13 +30,13 @@ const tripSchema = z.object({
 });
 
 const policiesSchema = z.object({
-  licenseProvided: z.boolean(),
-  catchAndKeep: z.boolean(),
-  catchAndRelease: z.boolean(),
-  childFriendly: z.boolean(),
-  liveBaitProvided: z.boolean(),
-  alcoholNotAllowed: z.boolean(), // Updated key
-  smokingNotAllowed: z.boolean(), // Updated key
+  licenseProvided: z.boolean().optional().default(false),
+  catchAndKeep: z.boolean().optional().default(false),
+  catchAndRelease: z.boolean().optional().default(false),
+  childFriendly: z.boolean().optional().default(false),
+  liveBaitProvided: z.boolean().optional().default(false),
+  alcoholNotAllowed: z.boolean().optional().default(false),
+  smokingNotAllowed: z.boolean().optional().default(false),
 });
 
 export const charterFormSchema = z.object({
@@ -70,6 +70,12 @@ export const charterFormSchema = z.object({
     .number()
     .min(-180, { message: "Longitude must be between -180 and 180" })
     .max(180, { message: "Longitude must be between -180 and 180" }),
+  // Languages captain can communicate in (scaffolding for future multi-language UI/description generation)
+  supportedLanguages: z
+    .array(z.string().min(2))
+    .optional()
+    .default(["Malay", "English"]) // Malay primary; English commonly second
+    .refine((arr) => arr.length > 0, "Select at least one language"),
   // User editable final description (can start from auto-generated). Increase minimum length.
   description: z
     .string()
@@ -86,9 +92,9 @@ export const charterFormSchema = z.object({
       .number()
       .int({ message: "Whole numbers only" })
       .min(1, { message: "At least 1 passenger" }),
-    features: z.array(z.string()).min(1, "Select at least one feature"),
+    features: z.array(z.string()).optional().default([]),
   }),
-  amenities: z.array(z.string()).min(1, "Select at least one amenity"),
+  amenities: z.array(z.string()).optional().default([]),
   policies: policiesSchema,
   pickup: z
     .object({
@@ -146,6 +152,7 @@ export const basicsStepSchema = charterFormSchema.pick({
   postcode: true,
   latitude: true,
   longitude: true,
+  supportedLanguages: true,
 });
 
 export const experienceStepSchema = charterFormSchema.pick({
@@ -160,6 +167,10 @@ export const tripsStepSchema = charterFormSchema.pick({ trips: true });
 export const mediaPricingStepSchema = charterFormSchema.pick({
   photos: true,
   videos: true,
+});
+
+// New dedicated description step schema (moved out of media step)
+export const descriptionStepSchema = charterFormSchema.pick({
   description: true,
   generatedDescription: true,
   tone: true,

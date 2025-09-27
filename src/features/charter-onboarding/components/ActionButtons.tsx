@@ -24,10 +24,16 @@ export const ActionButtons: React.FC = () => {
       saveEditChanges: s.submission?.saveEditChanges || (() => {}),
     })
   );
-  const { isMediaUploading, canSubmitMedia } = useCharterFormSelectors((s) => ({
-    isMediaUploading: s.media?.isMediaUploading ?? false,
-    canSubmitMedia: s.media?.canSubmitMedia ?? false,
-  }));
+  const serverDraftId = useCharterFormSelectors((s) => s.serverDraftId);
+  const { isMediaUploading, canSubmitMedia, avatarUploading } =
+    useCharterFormSelectors((s) => ({
+      isMediaUploading: s.media?.isMediaUploading ?? false,
+      canSubmitMedia: s.media?.canSubmitMedia ?? false,
+      avatarUploading: s.media?.avatarUploading ?? false,
+    }));
+  // In edit mode we do not depend on a serverDraftId, so only block when actively saving or uploading avatar.
+  const nextDisabled =
+    serverSaving || avatarUploading || (!isEditing && !serverDraftId); // block navigation during avatar upload (create flow only)
   return (
     <div className="flex flex-wrap justify-end gap-3">
       {isEditing && (
@@ -72,25 +78,57 @@ export const ActionButtons: React.FC = () => {
         </Tooltip>
       )}
       {!isLastStep && (
-        <Tooltip content={serverSaving ? "Saving…" : "Next"}>
+        <Tooltip
+          content={
+            serverSaving
+              ? "Saving…"
+              : avatarUploading
+              ? "Uploading avatar…"
+              : "Next"
+          }
+        >
           <button
             type="button"
             onClick={handleNext}
-            disabled={serverSaving}
-            aria-label={serverSaving ? "Saving" : "Next"}
+            disabled={nextDisabled}
+            aria-label={
+              serverSaving
+                ? "Saving"
+                : avatarUploading
+                ? "Uploading avatar"
+                : !serverDraftId
+                ? "Preparing"
+                : "Next"
+            }
             className="inline-flex items-center justify-center rounded-full bg-slate-900 p-3 text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-900"
           >
-            {serverSaving ? (
+            {serverSaving || avatarUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : !isEditing && !serverDraftId ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <ArrowRight className="h-4 w-4" />
             )}
-            <span className="sr-only">{serverSaving ? "Saving" : "Next"}</span>
+            <span className="sr-only">
+              {serverSaving
+                ? "Saving"
+                : avatarUploading
+                ? "Uploading avatar"
+                : !isEditing && !serverDraftId
+                ? "Preparing"
+                : "Next"}
+            </span>
             <span
               aria-hidden
               className="hidden md:ml-2 md:inline text-[11px] font-medium"
             >
-              {serverSaving ? "Saving" : "Next"}
+              {serverSaving
+                ? "Saving"
+                : avatarUploading
+                ? "Uploading…"
+                : !isEditing && !serverDraftId
+                ? "Preparing draft…"
+                : "Next"}
             </span>
           </button>
         </Tooltip>

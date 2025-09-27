@@ -22,6 +22,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
 } from "react";
@@ -40,6 +41,7 @@ export interface UseCharterMediaManagerResult {
   captainAvatarPreview: string | null;
   handleAvatarChange: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
   clearAvatar: () => void;
+  avatarUploading: boolean;
   // Existing (server) media collections
   existingImages: Array<{ name: string; url: string }>;
   existingVideos: Array<{ name: string; url: string }>;
@@ -81,6 +83,7 @@ export function useCharterMediaManager({
   // Progress & persistent media
   const [photoProgress, setPhotoProgress] = useState<number[]>([]);
   const [videoProgress, setVideoProgress] = useState<number[]>([]);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [existingImages, setExistingImages] = useState<
     Array<{ name: string; url: string }>
   >([]);
@@ -95,6 +98,7 @@ export function useCharterMediaManager({
   const photos = watch("photos");
   const videos = watch("videos");
   const captainAvatarFile = watch("operator.avatar");
+  const avatarUrl = watch("operator.avatarUrl");
 
   // Merge existing (server) + new (local) for previews
   const mergedPhotos = useMemo(() => {
@@ -144,8 +148,9 @@ export function useCharterMediaManager({
         setExistingVideos(persistedV);
       }
     }
+    // Initialize avatar preview from saved avatarUrl (both editing and new drafts)
     const avatarUrl = form.getValues("operator.avatarUrl");
-    if (avatarUrl && !isEditing) {
+    if (avatarUrl) {
       setCaptainAvatarPreview(avatarUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,16 +164,24 @@ export function useCharterMediaManager({
   }, [photoProgress, videoProgress, isEditing]);
   const canSubmitMedia = combinedPhotoCount >= 3;
 
-  // Avatar handling (includes immediate upload when editing)
+  // Avatar handling - now includes immediate upload and draft save for both editing and new drafts
   const handleAvatarChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
+
+      setAvatarUploading(true);
       try {
         if (!file.type.startsWith("image/")) {
           setValue("operator.avatar", file, { shouldValidate: true });
           return;
         }
+
+        console.log("[avatar] processing upload", {
+          name: file.name,
+          size: file.size,
+        });
+
         const { resizeImageFile } = await import("@/utils/resizeImage");
         const resized = await resizeImageFile(file, {
           square: true,
@@ -176,29 +189,52 @@ export function useCharterMediaManager({
           mimeType: "image/webp",
           nameSuffix: "-avatar",
         });
+
+        // Store the file object for form validation
         setValue("operator.avatar", resized, { shouldValidate: true });
-        if (isEditing) {
-          const fd = new FormData();
-          fd.set("file", resized);
-          fd.set("docType", "charter_avatar");
-          const up = await fetch("/api/blob/upload", {
-            method: "POST",
-            body: fd,
+
+        // Immediately upload to blob storage for both editing and new drafts
+        console.log("[avatar] uploading to blob storage");
+        const fd = new FormData();
+        fd.set("file", resized);
+        fd.set("docType", "charter_avatar");
+
+        const up = await fetch("/api/blob/upload", {
+          method: "POST",
+          body: fd,
+        });
+
+        if (up.ok) {
+          const { url } = await up.json();
+          console.log("[avatar] upload successful", { url });
+
+          // Update avatarUrl in form state for draft persistence
+          setValue("operator.avatarUrl", url, {
+            shouldDirty: true,
+            shouldValidate: false,
           });
-          if (up.ok) {
-            const { url } = await up.json();
+
+          if (isEditing) {
+            // For editing mode, also update the captain profile directly
             await fetch("/api/captain/avatar", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ url, deleteKey: null }),
             });
-            onAvatarUploaded?.(url);
           }
+
+          // Notify parent component to trigger draft save
+          onAvatarUploaded?.(url);
+        } else {
+          console.error("[avatar] upload failed", { status: up.status });
+          // Keep the file object for form submission upload as fallback
         }
-      } catch {
+      } catch (error) {
+        console.error("[avatar] processing failed:", error);
         // fallback: keep original file
         setValue("operator.avatar", file, { shouldValidate: true });
       } finally {
+        setAvatarUploading(false);
         event.target.value = "";
       }
     },
@@ -223,6 +259,16 @@ export function useCharterMediaManager({
     }
     if (!isEditing) setCaptainAvatarPreview(null);
   }, [captainAvatarFile, isEditing]);
+
+  // Sync avatar preview with saved avatarUrl (from draft or server)
+  useEffect(() => {
+    // Only set preview from URL if there's no file selected
+    if (!captainAvatarFile && avatarUrl) {
+      setCaptainAvatarPreview(avatarUrl);
+    } else if (!captainAvatarFile && !avatarUrl) {
+      setCaptainAvatarPreview(null);
+    }
+  }, [avatarUrl, captainAvatarFile]);
 
   // Generic helper to perform xhr upload with progress callback
   const uploadWithProgress = useCallback(
@@ -262,6 +308,25 @@ export function useCharterMediaManager({
     []
   );
 
+  // Throttle progress updates to avoid rapid re-renders for tiny files
+  const lastPhotoProgressRef = useRef<Record<number, number>>({});
+  const lastVideoProgressRef = useRef<Record<number, number>>({});
+  const shouldUpdateProgress = (
+    ref: React.MutableRefObject<Record<number, number>>,
+    idx: number,
+    _p: number
+  ) => {
+    const now = performance.now();
+    const last = ref.current[idx] ?? 0;
+    if (now - last > 70 || _p === 0 || _p === 100) {
+      ref.current[idx] = now;
+      return true;
+    }
+    return false;
+  };
+
+  const HOLD_MS = 250; // time to allow 100% state to visually settle before switching collections
+
   const addPhotoFiles = useCallback(
     async (fileList: File[]) => {
       if (!fileList.length) return;
@@ -299,6 +364,8 @@ export function useCharterMediaManager({
             fd.set("charterId", currentCharterId);
             try {
               const { key, url } = await uploadWithProgress(fd, (p) => {
+                if (!shouldUpdateProgress(lastPhotoProgressRef, base + idx, p))
+                  return;
                 setPhotoProgress((prev) => {
                   const arr = [...prev];
                   const pos = base + idx;
@@ -333,9 +400,59 @@ export function useCharterMediaManager({
                 },
               }),
             });
-            setExistingImages((prev) => [...prev, ...uploaded]);
-            setValue("photos", [], { shouldValidate: true });
-            setPhotoProgress([]);
+            setTimeout(() => {
+              setExistingImages((prev) => [...prev, ...uploaded]);
+              setValue("photos", [], { shouldValidate: true });
+              setPhotoProgress([]);
+            }, HOLD_MS);
+          }
+        } else if (!isEditing) {
+          // Create flow: upload immediately with progress even without charterId so UI isn't stuck.
+          const uploaded: Array<{ name: string; url: string }> = [];
+          const base = current.length;
+          for (let idx = 0; idx < incoming.length; idx++) {
+            const f = incoming[idx];
+            const fd = new FormData();
+            fd.set("file", f);
+            fd.set("docType", "charter_media");
+            try {
+              const { key, url } = await uploadWithProgress(fd, (p) => {
+                if (!shouldUpdateProgress(lastPhotoProgressRef, base + idx, p))
+                  return;
+                setPhotoProgress((prev) => {
+                  const arr = [...prev];
+                  const pos = base + idx;
+                  if (pos >= 0 && pos < arr.length) arr[pos] = p;
+                  return arr;
+                });
+              });
+              uploaded.push({ name: key, url });
+              setPhotoProgress((prev) => {
+                const arr = [...prev];
+                const pos = base + idx;
+                if (pos >= 0 && pos < arr.length) arr[pos] = 100;
+                return arr;
+              });
+            } catch {
+              setPhotoProgress((prev) => {
+                const arr = [...prev];
+                const pos = base + idx;
+                if (pos >= 0 && pos < arr.length) arr[pos] = -1;
+                return arr;
+              });
+            }
+          }
+          if (uploaded.length) {
+            setTimeout(() => {
+              setExistingImages((prev) => [...prev, ...uploaded]);
+              const prevPersisted = form.getValues("uploadedPhotos") || [];
+              setValue("uploadedPhotos", [...prevPersisted, ...uploaded], {
+                shouldDirty: true,
+                shouldValidate: false,
+              });
+              setValue("photos", [], { shouldValidate: true });
+              setPhotoProgress([]);
+            }, HOLD_MS);
           }
         }
       } catch {
@@ -352,6 +469,7 @@ export function useCharterMediaManager({
       uploadWithProgress,
       existingImages,
       existingVideos,
+      form,
     ]
   );
 
@@ -404,6 +522,8 @@ export function useCharterMediaManager({
           fd.set("charterId", currentCharterId);
           try {
             const { key, url } = await uploadWithProgress(fd, (p) => {
+              if (!shouldUpdateProgress(lastVideoProgressRef, base + idx, p))
+                return;
               setVideoProgress((prev) => {
                 const arr = [...prev];
                 const pos = base + idx;
@@ -438,9 +558,58 @@ export function useCharterMediaManager({
               },
             }),
           });
-          setExistingVideos((prev) => [...prev, ...uploaded]);
-          setValue("videos", [], { shouldValidate: true });
-          setVideoProgress([]);
+          setTimeout(() => {
+            setExistingVideos((prev) => [...prev, ...uploaded]);
+            setValue("videos", [], { shouldValidate: true });
+            setVideoProgress([]);
+          }, HOLD_MS);
+        }
+      } else if (!isEditing && within.length) {
+        const uploaded: Array<{ name: string; url: string }> = [];
+        const base = current.length;
+        for (let idx = 0; idx < within.length; idx++) {
+          const f = within[idx];
+          const fd = new FormData();
+          fd.set("file", f);
+          fd.set("docType", "charter_media");
+          try {
+            const { key, url } = await uploadWithProgress(fd, (p) => {
+              if (!shouldUpdateProgress(lastVideoProgressRef, base + idx, p))
+                return;
+              setVideoProgress((prev) => {
+                const arr = [...prev];
+                const pos = base + idx;
+                if (pos >= 0 && pos < arr.length) arr[pos] = p;
+                return arr;
+              });
+            });
+            uploaded.push({ name: key, url });
+            setVideoProgress((prev) => {
+              const arr = [...prev];
+              const pos = base + idx;
+              if (pos >= 0 && pos < arr.length) arr[pos] = 100;
+              return arr;
+            });
+          } catch {
+            setVideoProgress((prev) => {
+              const arr = [...prev];
+              const pos = base + idx;
+              if (pos >= 0 && pos < arr.length) arr[pos] = -1;
+              return arr;
+            });
+          }
+        }
+        if (uploaded.length) {
+          setTimeout(() => {
+            setExistingVideos((prev) => [...prev, ...uploaded]);
+            const prevPersistedV = form.getValues("uploadedVideos") || [];
+            setValue("uploadedVideos", [...prevPersistedV, ...uploaded], {
+              shouldDirty: true,
+              shouldValidate: false,
+            });
+            setValue("videos", [], { shouldValidate: true });
+            setVideoProgress([]);
+          }, HOLD_MS);
         }
       }
     },
@@ -452,6 +621,7 @@ export function useCharterMediaManager({
       uploadWithProgress,
       existingImages,
       existingVideos,
+      form,
     ]
   );
 
@@ -574,41 +744,169 @@ export function useCharterMediaManager({
   );
 
   const retryPhoto = useCallback(
-    (i: number) => {
+    async (i: number) => {
+      const offset = i - existingImages.length;
+      const current = (watch("photos") ?? []) as File[];
+      if (offset < 0 || offset >= current.length) return;
       setPhotoProgress((prev) => {
         const arr = [...prev];
-        if (
-          i - existingImages.length >= 0 &&
-          i - existingImages.length < arr.length
-        ) {
-          arr[i - existingImages.length] = 0;
-        }
+        if (offset >= 0 && offset < arr.length) arr[offset] = 0;
         return arr;
       });
+      const file = current[offset];
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("docType", "charter_media");
+      if (isEditing && currentCharterId) fd.set("charterId", currentCharterId);
+      try {
+        const { key, url } = await uploadWithProgress(fd, (p) => {
+          if (!shouldUpdateProgress(lastPhotoProgressRef, offset, p)) return;
+          setPhotoProgress((prev) => {
+            const arr = [...prev];
+            if (offset >= 0 && offset < arr.length) arr[offset] = p;
+            return arr;
+          });
+        });
+        setPhotoProgress((prev) => {
+          const arr = [...prev];
+          if (offset >= 0 && offset < arr.length) arr[offset] = 100;
+          return arr;
+        });
+        if (isEditing && currentCharterId) {
+          await fetch(`/api/charters/${currentCharterId}/media`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              media: {
+                images: [...existingImages, { name: key, url }],
+                videos: existingVideos,
+              },
+            }),
+          });
+          setTimeout(() => {
+            setExistingImages((prev) => [...prev, { name: key, url }]);
+            const nextLocal = current.filter((_, idx) => idx !== offset);
+            setValue("photos", nextLocal, { shouldValidate: true });
+            setPhotoProgress([]);
+          }, HOLD_MS);
+        } else if (!isEditing) {
+          setTimeout(() => {
+            setExistingImages((prev) => [...prev, { name: key, url }]);
+            const prevPersisted = form.getValues("uploadedPhotos") || [];
+            setValue("uploadedPhotos", [...prevPersisted, { name: key, url }], {
+              shouldDirty: true,
+              shouldValidate: false,
+            });
+            const nextLocal = current.filter((_, idx) => idx !== offset);
+            setValue("photos", nextLocal, { shouldValidate: true });
+            setPhotoProgress([]);
+          }, HOLD_MS);
+        }
+      } catch {
+        setPhotoProgress((prev) => {
+          const arr = [...prev];
+          if (offset >= 0 && offset < arr.length) arr[offset] = -1;
+          return arr;
+        });
+      }
     },
-    [existingImages.length]
+    [
+      watch,
+      existingImages,
+      existingVideos,
+      isEditing,
+      currentCharterId,
+      uploadWithProgress,
+      form,
+      setValue,
+    ]
   );
 
   const retryVideo = useCallback(
-    (i: number) => {
+    async (i: number) => {
+      const offset = i - existingVideos.length;
+      const current = (watch("videos") ?? []) as File[];
+      if (offset < 0 || offset >= current.length) return;
       setVideoProgress((prev) => {
         const arr = [...prev];
-        if (
-          i - existingVideos.length >= 0 &&
-          i - existingVideos.length < arr.length
-        ) {
-          arr[i - existingVideos.length] = 0;
-        }
+        if (offset >= 0 && offset < arr.length) arr[offset] = 0;
         return arr;
       });
+      const file = current[offset];
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("docType", "charter_media");
+      if (isEditing && currentCharterId) fd.set("charterId", currentCharterId);
+      try {
+        const { key, url } = await uploadWithProgress(fd, (p) => {
+          if (!shouldUpdateProgress(lastVideoProgressRef, offset, p)) return;
+          setVideoProgress((prev) => {
+            const arr = [...prev];
+            if (offset >= 0 && offset < arr.length) arr[offset] = p;
+            return arr;
+          });
+        });
+        setVideoProgress((prev) => {
+          const arr = [...prev];
+          if (offset >= 0 && offset < arr.length) arr[offset] = 100;
+          return arr;
+        });
+        if (isEditing && currentCharterId) {
+          await fetch(`/api/charters/${currentCharterId}/media`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              media: {
+                images: existingImages,
+                videos: [...existingVideos, { name: key, url }],
+              },
+            }),
+          });
+          setTimeout(() => {
+            setExistingVideos((prev) => [...prev, { name: key, url }]);
+            const nextLocal = current.filter((_, idx) => idx !== offset);
+            setValue("videos", nextLocal, { shouldValidate: true });
+            setVideoProgress([]);
+          }, HOLD_MS);
+        } else if (!isEditing) {
+          setTimeout(() => {
+            setExistingVideos((prev) => [...prev, { name: key, url }]);
+            const prevPersistedV = form.getValues("uploadedVideos") || [];
+            setValue(
+              "uploadedVideos",
+              [...prevPersistedV, { name: key, url }],
+              { shouldDirty: true, shouldValidate: false }
+            );
+            const nextLocal = current.filter((_, idx) => idx !== offset);
+            setValue("videos", nextLocal, { shouldValidate: true });
+            setVideoProgress([]);
+          }, HOLD_MS);
+        }
+      } catch {
+        setVideoProgress((prev) => {
+          const arr = [...prev];
+          if (offset >= 0 && offset < arr.length) arr[offset] = -1;
+          return arr;
+        });
+      }
     },
-    [existingVideos.length]
+    [
+      watch,
+      existingImages,
+      existingVideos,
+      isEditing,
+      currentCharterId,
+      uploadWithProgress,
+      form,
+      setValue,
+    ]
   );
 
   return {
     captainAvatarPreview,
     handleAvatarChange,
     clearAvatar,
+    avatarUploading,
     existingImages,
     existingVideos,
     setExistingImages,

@@ -30,6 +30,7 @@ export interface UseCharterSubmissionArgs {
   serverVersion: number | null; // used only for finalize headers
   saveServerDraftSnapshot: () => Promise<number | null>;
   existingImages: { name: string; url: string }[]; // for bypass logic & finalize merge
+  existingVideos?: { name: string; url: string }[];
   defaultState: CharterFormValues;
   clearDraft: () => void;
   initializeDraftState: (
@@ -47,6 +48,7 @@ export interface UseCharterSubmissionArgs {
 export interface UseCharterSubmissionResult {
   submitState: { type: "success" | "error"; message: string } | null;
   savingEdit: boolean;
+  finalizing: boolean;
   setSubmitState: React.Dispatch<
     React.SetStateAction<{ type: "success" | "error"; message: string } | null>
   >;
@@ -64,6 +66,7 @@ export function useCharterSubmission({
   serverVersion,
   saveServerDraftSnapshot,
   existingImages,
+  existingVideos = [],
   defaultState,
   clearDraft,
   initializeDraftState,
@@ -76,6 +79,7 @@ export function useCharterSubmission({
     message: string;
   } | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   // Live charter edit PATCH
   const saveEditChanges = useCallback(async () => {
@@ -101,12 +105,26 @@ export function useCharterSubmission({
   // Finalize or edit save
   const onSubmit = useCallback(
     async (values: CharterFormValues) => {
+      if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        console.log("[submission] onSubmit invoked", {
+          isEditing,
+          haveDraft: !!serverDraftId,
+          valuesKeys: Object.keys(values || {}),
+        });
+      }
       setSubmitState(null);
       if (isEditing) {
         await saveEditChanges();
         return;
       }
       try {
+        setFinalizing(true);
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.log("[submission] starting finalize", {
+            draftId: serverDraftId,
+            haveServerVersion: serverVersion !== null,
+          });
+        }
         await finalizeDraftSubmission({
           values,
           isEditing,
@@ -122,12 +140,22 @@ export function useCharterSubmission({
           setLastSavedAt: (iso) => setLastSavedAt(iso),
           router,
           getUploadedMediaInfo,
+          existingImages,
+          existingVideos,
         });
       } catch (e) {
         setSubmitState({
           type: "error",
           message: e instanceof Error ? e.message : "Something went wrong",
         });
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.error("[submission] finalize error", e);
+        }
+      } finally {
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.log("[submission] finalize end");
+        }
+        setFinalizing(false);
       }
     },
     [
@@ -144,6 +172,8 @@ export function useCharterSubmission({
       router,
       saveEditChanges,
       getUploadedMediaInfo,
+      existingImages,
+      existingVideos,
     ]
   );
 
@@ -151,7 +181,19 @@ export function useCharterSubmission({
   const handleFormSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      if (isEditing && existingImages.length >= 3) {
+      const photosInForm = Array.isArray(form.getValues().photos)
+        ? (form.getValues().photos as unknown[]).length
+        : 0;
+      const haveSufficientExisting = existingImages.length >= 3;
+      // Bypass when editing OR when create flow already uploaded photos moved to existingImages
+      if ((isEditing || haveSufficientExisting) && photosInForm < 3) {
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.log("[submission] bypass form.handleSubmit photo min", {
+            isEditing,
+            existingImages: existingImages.length,
+            photosInForm,
+          });
+        }
         void onSubmit(form.getValues());
         return;
       }
@@ -163,18 +205,37 @@ export function useCharterSubmission({
   );
 
   const triggerSubmit = useCallback(() => {
-    if (isEditing && existingImages.length >= 3) {
+    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+      console.log("[submission] triggerSubmit", {
+        isEditing,
+        existingImages: existingImages.length,
+        draftId: serverDraftId,
+      });
+    }
+    const photosInForm = Array.isArray(form.getValues().photos)
+      ? (form.getValues().photos as unknown[]).length
+      : 0;
+    const haveSufficientExisting = existingImages.length >= 3;
+    if ((isEditing || haveSufficientExisting) && photosInForm < 3) {
+      if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        console.log("[submission] triggerSubmit bypass", {
+          isEditing,
+          existingImages: existingImages.length,
+          photosInForm,
+        });
+      }
       void onSubmit(form.getValues());
       return;
     }
     return form.handleSubmit(
       onSubmit as SubmitHandler<CharterFormValues>
     )() as unknown as void;
-  }, [form, onSubmit, isEditing, existingImages.length]);
+  }, [form, onSubmit, isEditing, existingImages.length, serverDraftId]);
 
   return {
     submitState,
     savingEdit,
+    finalizing,
     setSubmitState,
     saveEditChanges,
     onSubmit,

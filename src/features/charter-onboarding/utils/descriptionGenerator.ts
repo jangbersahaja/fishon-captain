@@ -16,6 +16,7 @@ interface GenerationContext {
   captainName?: string;
   experienceYears?: number;
   species: string[];
+  supportedLanguages?: string[];
   boat: {
     type?: string;
     lengthFeet?: number;
@@ -52,6 +53,9 @@ export function buildContext(values: CharterFormValues): GenerationContext {
       ? (values.operator?.experienceYears as number)
       : undefined,
     species: Array.from(speciesSet).slice(0, 6),
+    supportedLanguages: values.supportedLanguages
+      ?.map((l) => l.trim())
+      .filter(Boolean),
     boat: {
       type: values.boat?.type,
       lengthFeet: (Number.isFinite(values.boat?.lengthFeet)
@@ -287,6 +291,89 @@ function toneBridge(tone: Tone) {
   }
 }
 
+function languageNarrative(
+  ctx: GenerationContext,
+  tone: Tone
+): string | undefined {
+  const langs = (ctx.supportedLanguages || [])
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (!langs.length) return undefined;
+  // Normalise case (Title Case first letter only) for display
+  const norm = langs.map((l) => l.charAt(0).toUpperCase() + l.slice(1));
+  let unique = Array.from(new Set(norm.map((l) => l.replace(/\s+/g, " "))));
+  // Reorder to prefer Malay first if present, then others except English, then English last
+  unique = unique.sort((a, b) => {
+    const al = a.toLowerCase();
+    const bl = b.toLowerCase();
+    const rank = (v: string) => (v === "malay" ? 0 : v === "english" ? 2 : 1); // middle bucket for other languages
+    const ra = rank(al);
+    const rb = rank(bl);
+    if (ra !== rb) return ra - rb;
+    return al.localeCompare(bl);
+  });
+
+  const hasMalay = unique.some((l) => l.toLowerCase() === "malay");
+  const hasEnglish = unique.some((l) => l.toLowerCase() === "english");
+
+  // New baseline: if only Malay, do not add a line (common / assumed)
+  if (unique.length === 1 && hasMalay) return undefined;
+
+  // Special phrasing for exactly Malay + English (very common): keep concise
+  if (unique.length === 2 && hasMalay && hasEnglish) {
+    switch (tone) {
+      case "professional":
+        return "Operations conducted primarily in Malay, with English available as required.";
+      case "adventurous":
+        return "We run trips in Malay—with English dropped in whenever it helps keep momentum.";
+      default:
+        return "Primarily Malay guiding with English support when needed.";
+    }
+  }
+
+  // If Malay + English + others OR no Malay (foreign-run) we display full list
+  let display: string;
+  if (unique.length <= 3) display = oxford(unique);
+  else display = `${unique.slice(0, 3).join(", ")} and more`;
+
+  // If set is Malay + (English + extra) we can emphasise bilingual + additional
+  if (hasMalay && hasEnglish && unique.length > 2) {
+    switch (tone) {
+      case "professional":
+        return `Malay (primary) and English plus additional languages (${display}) available to suit guest preference.`;
+      case "adventurous":
+        return `Malay first, English anytime—extra languages covered too (${display}).`;
+      default:
+        return `Malay primary, English and ${display.replace(
+          /^Malay,?\s*/i,
+          ""
+        )}.`;
+    }
+  }
+
+  // English-only (uncommon locally) now worth stating explicitly
+  if (unique.length === 1 && hasEnglish) {
+    switch (tone) {
+      case "professional":
+        return "Trips conducted in English.";
+      case "adventurous":
+        return "Guiding in English throughout.";
+      default:
+        return "English language guiding.";
+    }
+  }
+
+  // Generic multi-language fall-back
+  switch (tone) {
+    case "professional":
+      return `Trips can be conducted in ${display} to align with guest preferences.`;
+    case "adventurous":
+      return `We can guide in ${display} so everyone stays dialed in.`;
+    default:
+      return `Guiding available in ${display}.`;
+  }
+}
+
 // --- Main Generation -------------------------------------------------------
 export function generateCharterDescription(values: CharterFormValues): string {
   const tone = (values.tone as Tone) || "friendly";
@@ -393,10 +480,12 @@ export function generateCharterDescription(values: CharterFormValues): string {
       conditionsPlaceholder =
         " [[Add a note about seasonal pattern or today’s conditions]]";
   }
-  const paragraph2a = [captainLine, paragraph2]
-    .filter(Boolean)
-    .join(" ");
-  const paragraph2b = [speciesExpectation.trim(), techniqueLine, conditionsPlaceholder]
+  const paragraph2a = [captainLine, paragraph2].filter(Boolean).join(" ");
+  const paragraph2b = [
+    speciesExpectation.trim(),
+    techniqueLine,
+    conditionsPlaceholder,
+  ]
     .filter(Boolean)
     .join(" ")
     .trim();
@@ -441,7 +530,10 @@ export function generateCharterDescription(values: CharterFormValues): string {
     : "";
   const closer = closerBase + placeholderAddon;
   const licenseRules = licenseAndRules(ctx);
-  const paragraph4 = [policy, licenseRules, closer].filter(Boolean).join(" ");
+  const langLine = languageNarrative(ctx, tone);
+  const paragraph4 = [policy, langLine, licenseRules, closer]
+    .filter(Boolean)
+    .join(" ");
 
   if (isShortForm) {
     // Compact variant still splits approach vs detail if detail exists
@@ -467,7 +559,9 @@ export function generateCharterDescription(values: CharterFormValues): string {
 
   const para2bWithAnecdote = paragraph2b
     ? paragraph2b + anecdotePlaceholder
-    : (includePlaceholders ? anecdotePlaceholder.trim() : "");
+    : includePlaceholders
+    ? anecdotePlaceholder.trim()
+    : "";
 
   let result = [
     opener,

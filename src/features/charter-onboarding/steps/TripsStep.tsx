@@ -26,10 +26,13 @@ export function TripsStep({ form }: TripsStepProps) {
   const { control, register, watch, formState } = form;
   const { TRIP_TYPE_OPTIONS, TECHNIQUE_OPTIONS } = charterFormOptions;
 
+  const trips = watch("trips");
+  const boatCapacity = watch("boat.capacity");
+
   // Global active species tab across all trips with persistence
   const STORAGE_KEY = "fishon.activeSpeciesTab";
   const [activeSpeciesTab, setActiveSpeciesTab] = useState<string>(
-    SPECIES_CATEGORIES.SALTWATER
+    SPECIES_CATEGORIES.FRESHWATER
   );
   useEffect(() => {
     try {
@@ -56,8 +59,6 @@ export function TripsStep({ form }: TripsStepProps) {
     control,
     name: "trips",
   });
-
-  const trips = watch("trips");
 
   const toggleTripArray = useCallback(
     (index: number, key: TripArrayKey, value: string) => {
@@ -150,13 +151,20 @@ export function TripsStep({ form }: TripsStepProps) {
                     onChange={(event) => {
                       const nextValue = event.target.value;
                       const current = trips?.[index];
+                      const isCustom = nextValue === "Custom";
                       update(index, {
                         ...current,
                         tripType: nextValue,
-                        name: current?.name || nextValue,
+                        name: isCustom ? current?.name || "" : nextValue,
+                        maxAnglers:
+                          current?.maxAnglers ||
+                          (Number.isFinite(boatCapacity)
+                            ? boatCapacity
+                            : Number.NaN),
                       });
                     }}
                   >
+                    <option value="">Select trip type</option>
                     {TRIP_TYPE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -169,6 +177,17 @@ export function TripsStep({ form }: TripsStepProps) {
                     {...register(`trips.${index}.name` as const)}
                     className={inputClass}
                     placeholder="e.g. Half-day mangrove"
+                    disabled={trips?.[index]?.tripType !== "Custom"}
+                    style={{
+                      backgroundColor:
+                        trips?.[index]?.tripType !== "Custom"
+                          ? "#f8f9fa"
+                          : "white",
+                      cursor:
+                        trips?.[index]?.tripType !== "Custom"
+                          ? "not-allowed"
+                          : "text",
+                    }}
                   />
                 </Field>
                 <Field label="Price (MYR)" error={tripErrors?.price?.message}>
@@ -184,6 +203,29 @@ export function TripsStep({ form }: TripsStepProps) {
                   />
                 </Field>
                 <Field
+                  label="Max anglers"
+                  error={tripErrors?.maxAnglers?.message}
+                  hint={
+                    Number.isFinite(boatCapacity)
+                      ? `Default from boat capacity: ${boatCapacity}`
+                      : undefined
+                  }
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    {...register(`trips.${index}.maxAnglers` as const, {
+                      valueAsNumber: true,
+                    })}
+                    className={inputClass}
+                    placeholder={
+                      Number.isFinite(boatCapacity) ? String(boatCapacity) : "4"
+                    }
+                  />
+                </Field>
+
+                <Field
                   label="Duration (Hour)"
                   error={tripErrors?.durationHours?.message}
                 >
@@ -196,21 +238,6 @@ export function TripsStep({ form }: TripsStepProps) {
                     })}
                     className={inputClass}
                     placeholder="5"
-                  />
-                </Field>
-                <Field
-                  label="Max anglers"
-                  error={tripErrors?.maxAnglers?.message}
-                >
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    {...register(`trips.${index}.maxAnglers` as const, {
-                      valueAsNumber: true,
-                    })}
-                    className={inputClass}
-                    placeholder="4"
                   />
                 </Field>
               </div>

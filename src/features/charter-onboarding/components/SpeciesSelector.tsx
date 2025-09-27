@@ -20,8 +20,8 @@ type SpeciesSelectorProps = {
 };
 
 const TAB_ORDER: SpeciesCategory[] = [
-  SPECIES_CATEGORIES.SALTWATER,
   SPECIES_CATEGORIES.FRESHWATER,
+  SPECIES_CATEGORIES.SALTWATER,
   SPECIES_CATEGORIES.SQUID,
 ];
 const TAB_LABEL: Record<SpeciesCategory, string> = {
@@ -38,7 +38,7 @@ export function SpeciesSelector({
   maxSelected = 5,
 }: SpeciesSelectorProps) {
   const [uncontrolledTab, setUncontrolledTab] = useState<SpeciesCategory>(
-    SPECIES_CATEGORIES.SALTWATER
+    SPECIES_CATEGORIES.FRESHWATER
   );
   const activeTab = controlledTab ?? uncontrolledTab;
   const [queries, setQueries] = useState<Record<SpeciesCategory, string>>({

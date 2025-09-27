@@ -1,7 +1,8 @@
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Controller, type UseFormReturn } from "react-hook-form";
 
+import { Tooltip } from "@/components/ui/Tooltip";
 import { charterFormOptions } from "@features/charter-onboarding/charterForm.defaults";
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import {
@@ -34,8 +35,13 @@ export function BasicsStep({
   const { register, control, setValue, watch } = form;
   const latitude = watch("latitude");
   const longitude = watch("longitude");
-  // watching latitude/longitude only; startingPoint and placeId not needed directly here
+  const placeId = watch("placeId");
+  const startingPoint = watch("startingPoint");
   const [mapActive, setMapActive] = useState(false);
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const [refreshCooling, setRefreshCooling] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshCountRef = useRef(0);
   const { fetchDetails, loading: placeLoading } = usePlaceDetails();
   const { CHARTER_TYPES, MALAYSIA_LOCATIONS } = charterFormOptions;
   const { data: session } = useSession();
@@ -51,6 +57,13 @@ export function BasicsStep({
       }
     }
   }, [session?.user?.name, form]);
+
+  // Activate map if placeId is available from draft
+  useEffect(() => {
+    if (placeId && !mapActive) {
+      setMapActive(true);
+    }
+  }, [placeId, mapActive]);
 
   // Plain city input (suggestions dropdown removed)
 
@@ -208,6 +221,82 @@ export function BasicsStep({
             ))}
           </select>
         </Field>
+        <Field
+          label="Languages you can host in"
+          error={fieldError("supportedLanguages")}
+          hint="Select all languages you (or crew) can comfortably guide in."
+          className="sm:col-span-2"
+        >
+          <Controller
+            control={control}
+            name="supportedLanguages"
+            render={({ field }) => {
+              const value: string[] = field.value || [];
+              const ALL = [
+                "English",
+                "Malay",
+                "Mandarin",
+                "Cantonese",
+                "Hokkien",
+                "Tamil",
+                "Japanese",
+                "Korean",
+                "Thai",
+                "Indonesian",
+              ];
+              return (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {ALL.map((lang) => {
+                      const active = value.includes(lang);
+                      return (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => {
+                            const next = active
+                              ? value.filter((l) => l !== lang)
+                              : [...value, lang];
+                            field.onChange(next);
+                          }}
+                          className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                            active
+                              ? "border-sky-500 bg-sky-50 text-sky-700"
+                              : "border-neutral-300 bg-white text-slate-600 hover:border-slate-400"
+                          }`}
+                        >
+                          {lang}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Add another language (press Enter)"
+                    className={`${inputClass} w-full text-xs`}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const raw = (
+                          e.currentTarget as HTMLInputElement
+                        ).value.trim();
+                        if (raw && !value.includes(raw)) {
+                          field.onChange([...value, raw]);
+                        }
+                        (e.currentTarget as HTMLInputElement).value = "";
+                      }
+                    }}
+                  />
+                  {value.length > 0 && (
+                    <p className="text-xs text-slate-500">
+                      Selected: {value.join(", ")}
+                    </p>
+                  )}
+                </div>
+              );
+            }}
+          />
+        </Field>
       </div>
 
       <hr className="border-t my-6 border-neutral-200" />
@@ -314,7 +403,70 @@ export function BasicsStep({
 
       {/* Interactive map */}
       <div className="mt-6">
+        {startingPoint?.trim() && (
+          <div className="mb-2 flex justify-end">
+            <Tooltip
+              content={
+                refreshCooling
+                  ? "Please wait a moment…"
+                  : "Reload map tiles (use if map failed to appear)"
+              }
+            >
+              <button
+                type="button"
+                disabled={refreshCooling}
+                onClick={() => {
+                  // Diagnostics counter
+                  refreshCountRef.current += 1;
+                  if (process.env.NODE_ENV !== "production") {
+                    console.info(
+                      `[map-refresh] attempt #${refreshCountRef.current}`
+                    );
+                  }
+                  setRefreshing(true);
+                  setMapRefreshKey((k) => k + 1);
+                  if (!mapActive) setMapActive(true);
+                  setRefreshCooling(true);
+                  setTimeout(() => setRefreshCooling(false), 1000);
+                  // Brief spinner window (map init is fast; keep subtle)
+                  setTimeout(() => setRefreshing(false), 450);
+                }}
+                className={`group relative inline-flex h-7 w-7 items-center justify-center rounded-full border text-slate-600 transition focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  refreshCooling
+                    ? "border-slate-300 bg-slate-50"
+                    : "border-slate-300 bg-white hover:border-slate-400"
+                }`}
+                aria-label="Refresh map"
+              >
+                {refreshing ? (
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                ) : (
+                  // Refresh/rotate arrow icon (inline SVG)
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="h-4 w-4 stroke-slate-600 group-hover:stroke-slate-800"
+                    strokeWidth={1.6}
+                  >
+                    <path
+                      d="M3.5 10a6.5 6.5 0 0 1 11.06-4.596M16.5 10a6.5 6.5 0 0 1-11.06 4.596"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M14.56 3.75v3.2h-3.2M5.44 16.25v-3.2h3.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </button>
+            </Tooltip>
+          </div>
+        )}
         <LocationMap
+          key={mapRefreshKey}
           active={mapActive}
           lat={Number.isFinite(latitude) ? latitude : null}
           lng={Number.isFinite(longitude) ? longitude : null}

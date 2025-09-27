@@ -42,6 +42,7 @@ export function createDefaultCharterFormValues(): CharterFormValues {
     postcode: "",
     latitude: Number.NaN,
     longitude: Number.NaN,
+    supportedLanguages: ["Malay", "English"],
     description: "",
     generatedDescription: undefined,
     tone: "friendly",
@@ -56,8 +57,8 @@ export function createDefaultCharterFormValues(): CharterFormValues {
     policies: {
       licenseProvided: false,
       catchAndKeep: false,
-      catchAndRelease: true,
-      childFriendly: true,
+      catchAndRelease: false,
+      childFriendly: false,
       liveBaitProvided: false,
       alcoholNotAllowed: false,
       smokingNotAllowed: false,
@@ -71,6 +72,8 @@ export function createDefaultCharterFormValues(): CharterFormValues {
     trips: [defaultTrip()],
     photos: [],
     videos: [],
+    uploadedPhotos: [],
+    uploadedVideos: [],
   };
 }
 

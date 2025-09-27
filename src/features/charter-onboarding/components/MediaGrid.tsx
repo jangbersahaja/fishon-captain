@@ -55,7 +55,10 @@ export function MediaGrid({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item, index) => {
         const disabled =
-          typeof item.progress === "number" && item.progress < 100;
+          typeof item.progress === "number" &&
+          item.progress >= 0 &&
+          item.progress < 100;
+        const justCompleted = item.progress === 100; // used during HOLD_MS before list migration
         const isVideo =
           kind === "video" || /\.(mp4|mov|webm|ogg)$/iu.test(item.name || "");
         return (
@@ -65,7 +68,7 @@ export function MediaGrid({
               dragOver === index
                 ? "border-slate-400 ring-2 ring-slate-300"
                 : "border-neutral-200"
-            }`}
+            } ${justCompleted ? "animate-[fadeOut_0.25s_ease-in]" : ""}`}
             draggable={Boolean(onMove) && !disabled}
             onDragStart={(e) => {
               if (disabled || !onMove) return;
@@ -200,8 +203,21 @@ export function MediaGrid({
                 </div>
               )}
             {typeof item.progress === "number" && item.progress < 0 && (
-              <div className="absolute inset-0 bg-red-50/80 flex items-center justify-center text-xs text-red-700">
-                Upload failed
+              <div className="absolute inset-0 bg-red-50/90 flex flex-col items-center justify-center gap-2 text-xs text-red-700 p-3 text-center">
+                <span className="font-medium flex items-center gap-1">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm.75 5v6.25a.75.75 0 0 1-1.5 0V7a.75.75 0 0 1 1.5 0Zm-1.5 9.5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0Z" />
+                  </svg>
+                  Upload failed
+                </span>
+                <span className="text-[10px] text-red-500/70">
+                  Check connection & retry
+                </span>
               </div>
             )}
             <div className="px-3 pt-2">

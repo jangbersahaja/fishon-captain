@@ -133,9 +133,9 @@ export default function FormSection() {
     canSubmitMedia,
   } = media;
 
-  // Server draft snapshot (diff + redundancy) – editing mode bypass handled inside hook.
+  // Server draft snapshot (diff + redundancy) – bypassed in edit mode.
   const [serverSaving, setServerSaving] = useState(false);
-  const draftSnapshot = useDraftSnapshot({
+  const rawDraftSnapshot = useDraftSnapshot({
     form,
     isEditing,
     serverDraftId,
@@ -145,6 +145,17 @@ export default function FormSection() {
     setServerSaving,
     setLastSavedAt: (iso) => setLastSavedAt(iso),
   });
+  const draftSnapshot = useMemo(
+    () =>
+      isEditing
+        ? {
+            saveServerDraftSnapshot: async () => null,
+            saveServerDraftSnapshotRef: { current: async () => null },
+            setCurrentStep: () => {},
+          }
+        : rawDraftSnapshot,
+    [isEditing, rawDraftSnapshot]
+  );
 
   // Step navigation
   const navigation = useStepNavigation({
@@ -172,11 +183,12 @@ export default function FormSection() {
 
   // Rebind snapshot step each change
   useEffect(() => {
+    if (isEditing) return;
     draftSnapshot.setCurrentStep(currentStep);
     draftSnapshot.saveServerDraftSnapshotRef.current = () =>
       draftSnapshot.saveServerDraftSnapshot();
     logFormDebug("step_change", { currentStep });
-  }, [currentStep, draftSnapshot]);
+  }, [currentStep, draftSnapshot, isEditing]);
 
   // Restore previously saved step from draft once (create flow only)
   const restoredStepRef = useRef(false);
@@ -223,7 +235,7 @@ export default function FormSection() {
       isEditing ||
       !isDirty ||
       !serverDraftId ||
-      !draftSnapshot.saveServerDraftSnapshotRef.current
+      !draftSnapshot.saveServerDraftSnapshotRef?.current
     )
       return;
     draftSnapshot.saveServerDraftSnapshotRef
@@ -241,6 +253,7 @@ export default function FormSection() {
     handleFormSubmit,
     triggerSubmit,
     finalizing,
+    setSubmitState,
   } = useCharterSubmission({
     form,
     isEditing,
@@ -278,6 +291,21 @@ export default function FormSection() {
     captainAvatarPreview
   );
 
+  // Auto-clear transient edit save success after brief delay (avoid lingering on screen)
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!submitState) return;
+    if (submitState.type === "success") {
+      const t = setTimeout(() => {
+        // Only clear if still success (avoid wiping out a newer error)
+        setSubmitState((cur) =>
+          cur && cur.type === "success" ? null : cur
+        );
+      }, 2500);
+      return () => clearTimeout(t);
+    }
+  }, [isEditing, submitState, setSubmitState]);
+
   // Auto-fill city when empty on state change
   useAutofillCity(form);
 
@@ -285,6 +313,181 @@ export default function FormSection() {
     (path?: string) => getFieldError(errors as Record<string, unknown>, path),
     [errors]
   );
+
+  // Fallback hydration: if after initial render in edit mode core fields still blank, fetch & hydrate directly here.
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!editCharterId) return;
+    const current = form.getValues();
+    if (current.charterName) return; // already hydrated
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const still = form.getValues();
+        if (still.charterName) return; // got hydrated meanwhile
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.log(
+            "[FormSection fallback] triggering direct fetch hydration",
+            {
+              editCharterId,
+            }
+          );
+        }
+        const res = await fetch(`/api/charters/${editCharterId}/get`, {
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          console.warn("[FormSection fallback] fetch failed", res.status);
+          return;
+        }
+        const json = await res.json();
+        if (!json?.charter) {
+          console.warn("[FormSection fallback] no charter in response");
+          return;
+        }
+        const { mapCharterToDraftValuesFeature } = await import(
+          "@features/charter-onboarding/server/mapping"
+        );
+        const charter = json.charter;
+        const media = json.media;
+        const draftValues = mapCharterToDraftValuesFeature({
+          charter: charter as unknown as never,
+          captainProfile: {
+            displayName: charter.captain?.displayName || "",
+            phone: charter.captain?.phone || "",
+            bio: charter.captain?.bio || "",
+            experienceYrs: charter.captain?.experienceYrs || 0,
+          },
+          media: media,
+        }) as unknown as CharterFormValues;
+        if (cancelled) return;
+        form.reset(draftValues, { keepDirty: false });
+        // Also prime media manager state & avatar preview
+        if (media?.images?.length) {
+          setExistingImages(
+            media.images as Array<{ name: string; url: string }>
+          );
+          form.setValue(
+            "uploadedPhotos",
+            media.images as Array<{ name: string; url: string }>,
+            {
+              shouldDirty: false,
+              shouldValidate: false,
+            }
+          );
+        }
+        if (media?.videos?.length) {
+          setExistingVideos(
+            media.videos as Array<{ name: string; url: string }>
+          );
+          form.setValue(
+            "uploadedVideos",
+            media.videos as Array<{ name: string; url: string }>,
+            {
+              shouldDirty: false,
+              shouldValidate: false,
+            }
+          );
+        }
+        if (media?.avatar) {
+          form.setValue("operator.avatarUrl", media.avatar, {
+            shouldDirty: false,
+            shouldValidate: false,
+          });
+        }
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.log("[FormSection fallback] applied reset", {
+            charterName: draftValues.charterName,
+            city: draftValues.city,
+          });
+        }
+      } catch (e) {
+        console.error("[FormSection fallback] error", e);
+      }
+    }, 600); // allow primary hook ~600ms to hydrate first
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isEditing, editCharterId, form, setExistingImages, setExistingVideos]);
+
+  // Listen for diagnostic hydration patch events dispatched by useCharterDataLoad (edit mode)
+  useEffect(() => {
+    if (!isEditing) return; // only relevant in edit mode
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<Partial<CharterFormValues>>;
+      const detail = custom.detail || {};
+      if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        console.log(
+          "[FormSection] received charter-edit-hydrated event",
+          detail
+        );
+      }
+      // Apply each field via setValue to avoid full reset side-effects (touched/dirty flags)
+      (Object.entries(detail) as [keyof CharterFormValues, unknown][]).forEach(
+        ([key, value]) => {
+          try {
+            // @ts-expect-error dynamic assignment – keys are top-level scalar fields provided by patch
+            form.setValue(key, value, {
+              shouldDirty: false,
+              shouldValidate: false,
+            });
+          } catch (err) {
+            console.warn(
+              "[FormSection] failed to set field during hydration",
+              key,
+              err
+            );
+          }
+        }
+      );
+      // Trigger a debug snapshot log
+      if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        setTimeout(() => {
+          const snap = form.getValues();
+          console.log("[FormSection debug] post-hydration snapshot", {
+            charterName: snap.charterName,
+            city: snap.city,
+            latitude: snap.latitude,
+            longitude: snap.longitude,
+          });
+        }, 0);
+      }
+    };
+    document.addEventListener(
+      "charter-edit-hydrated",
+      handler as EventListener
+    );
+    return () =>
+      document.removeEventListener(
+        "charter-edit-hydrated",
+        handler as EventListener
+      );
+  }, [form, isEditing]);
+
+  // Debug: log current core values shortly after any reset/hydration cycle in edit mode
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG !== "1") return;
+    if (!isEditing) return;
+    // Defer to end of event loop so RHF internal state settled
+    const t = setTimeout(() => {
+      const snapshot = form.getValues();
+      console.log("[FormSection debug] snapshot", {
+        charterName: snapshot.charterName,
+        city: snapshot.city,
+        latitude: snapshot.latitude,
+        trip0: snapshot.trips?.[0]?.name,
+        operatorDisplayName: snapshot.operator?.displayName,
+      });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [
+    isEditing,
+    form,
+    formValues.charterName,
+    formValues.city,
+    formValues.latitude,
+  ]);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [mediaUploadError, setMediaUploadError] = useState<string | null>(null);
@@ -436,8 +639,16 @@ export default function FormSection() {
         newCurrentStep: currentStep + 1,
       });
     }
-    await uploadMediaIfLeavingMediaStep(prevStepId);
-  }, [handleNext, uploadMediaIfLeavingMediaStep, activeStep.id, currentStep]);
+    if (!isEditing) {
+      await uploadMediaIfLeavingMediaStep(prevStepId);
+    }
+  }, [
+    handleNext,
+    uploadMediaIfLeavingMediaStep,
+    activeStep.id,
+    currentStep,
+    isEditing,
+  ]);
 
   return (
     <CharterFormProvider
@@ -460,6 +671,7 @@ export default function FormSection() {
         },
         submission: {
           submitState,
+          setSubmitState,
           savingEdit,
           serverSaving,
           saveEditChanges,
@@ -556,7 +768,20 @@ export default function FormSection() {
             <div className="text-sm text-slate-500">
               Step {currentStep + 1} of {totalSteps} · {activeStep.label}
             </div>
-            <ActionButtons />
+            <div className="flex flex-col items-end gap-2">
+              <ActionButtons />
+              {isEditing && submitState && submitState.message && (
+                <span
+                  key={submitState.message + submitState.type}
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium shadow-sm transition-all
+                  ${submitState.type === "success" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-red-100 text-red-700 border border-red-200"}`}
+                  aria-live="polite"
+                >
+                  {submitState.type === "success" ? "✓" : "⚠"}
+                  <span className="ml-1">{submitState.message}</span>
+                </span>
+              )}
+            </div>
           </div>
           {lastSavedAt && !isEditing && (
             <p className="text-[10px] text-right text-slate-400">
@@ -653,3 +878,5 @@ const SaveStatusIndicator: React.FC<{
     </div>
   );
 };
+
+// Debugging aid: log form values on mount and after each render (hydration-safe)

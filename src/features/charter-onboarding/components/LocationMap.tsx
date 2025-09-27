@@ -48,22 +48,35 @@ export function LocationMap({
     }
     const s = document.createElement("script");
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    // Append channel and v for determinism & easier debugging.
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&v=weekly&channel=fishon-onboarding`;
+    // Use Google's recommended loading pattern with loading=async and callback
+    const callbackName = `initMap_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 11)}`;
+
+    // Set up the callback function
+    (window as unknown as Record<string, unknown>)[callbackName] = () => {
+      if (DEBUG) console.info("[map] script loaded via callback", s.src);
+      setScriptError(null);
+      setLoaded(true);
+      // Mark the script element so future mounts know it was loaded.
+      (s as unknown as { _loaded?: boolean })._loaded = true;
+      s.dataset.loaded = "1";
+      // Clean up the callback
+      delete (window as unknown as Record<string, unknown>)[callbackName];
+    };
+
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&v=weekly&channel=fishon-onboarding&loading=async&callback=${callbackName}`;
     s.async = true;
     s.defer = true;
     s.dataset.googleMaps = "true";
     s.dataset.retry = "1";
-    s.addEventListener("load", () => {
-      if (DEBUG) console.info("[map] script loaded", s.src);
-      setScriptError(null);
-      setLoaded(true);
-    });
     s.addEventListener("error", () => {
       if (DEBUG) console.error("[map] script tag error", s.src);
       setScriptError(
         "Failed to load Google Maps script (network or invalid key)."
       );
+      // Clean up the callback on error
+      delete (window as unknown as Record<string, unknown>)[callbackName];
     });
     document.head.appendChild(s);
   }, []);
@@ -79,25 +92,39 @@ export function LocationMap({
       "script[data-google-maps]"
     );
     if (existing) {
-      if (existing._loaded) {
+      // If script previously loaded OR google namespace already exists mark loaded.
+      if (existing._loaded || existing.dataset.loaded === "1") {
         setLoaded(true);
       } else {
-        existing.addEventListener(
-          "load",
-          () => {
-            setLoaded(true);
-          },
-          { once: true }
-        );
-        existing.addEventListener(
-          "error",
-          () => {
-            setScriptError(
-              "Failed to load Google Maps script (network or invalid key)."
-            );
-          },
-          { once: true }
-        );
+        interface GWin extends Window {
+          google?: typeof google;
+        }
+        const gwin = window as GWin;
+        if (typeof gwin.google !== "undefined" && gwin.google?.maps) {
+          // Defensive: script tag existed before component mount; treat as loaded.
+          (existing as ScriptEl)._loaded = true;
+          existing.dataset.loaded = "1";
+          setLoaded(true);
+        } else {
+          existing.addEventListener(
+            "load",
+            () => {
+              (existing as ScriptEl)._loaded = true;
+              existing.dataset.loaded = "1";
+              setLoaded(true);
+            },
+            { once: true }
+          );
+          existing.addEventListener(
+            "error",
+            () => {
+              setScriptError(
+                "Failed to load Google Maps script (network or invalid key)."
+              );
+            },
+            { once: true }
+          );
+        }
       }
       return;
     }
@@ -157,6 +184,12 @@ export function LocationMap({
       const map = new g.maps.Map(mapRef.current, {
         center,
         zoom: 13,
+        keyboardShortcuts: false,
+        streetView: null,
+        gestureHandling: "greedy",
+        disableDoubleClickZoom: true,
+        // Disable controls for a cleaner look
+        zoomControl: false,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,

@@ -72,6 +72,14 @@ interface CharterFull {
   captain?: CharterCaptainProfilePartial;
 }
 
+function safeNumber(value: unknown): number {
+  if (value === null || value === undefined) return Number.NaN;
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : Number.NaN;
+  const n = parseFloat(String(value));
+  return Number.isFinite(n) ? n : Number.NaN;
+}
+
 export function mapCharterToDraftValuesFeature(params: {
   charter: CharterFull;
   captainProfile: {
@@ -80,18 +88,25 @@ export function mapCharterToDraftValuesFeature(params: {
     bio: string;
     experienceYrs: number;
   };
+  media?: {
+    images?: { name: string; url: string }[];
+    videos?: { name: string; url: string }[];
+    avatar?: string | null;
+    imagesCoverIndex?: number;
+  };
 }): DraftValues {
-  const { charter, captainProfile } = params;
+  const { charter, captainProfile, media } = params;
   const boat = charter.boat || ({} as BoatRecord);
   const policies = charter.policies || ({} as CharterPolicyFlags);
   const pickup = charter.pickup || null;
+
   const draft: DraftValues = {
     operator: {
       displayName: captainProfile.displayName || "",
       experienceYears: captainProfile.experienceYrs ?? 0,
       bio: captainProfile.bio || "",
       phone: captainProfile.phone || "",
-      avatarUrl: charter.captain?.avatarUrl || undefined,
+      avatarUrl: media?.avatar || charter.captain?.avatarUrl || undefined,
     },
     charterType: charter.charterType || "",
     charterName: charter.name || "",
@@ -99,17 +114,16 @@ export function mapCharterToDraftValuesFeature(params: {
     city: charter.city || "",
     startingPoint: charter.startingPoint || "",
     postcode: charter.postcode || "",
-    latitude: charter.latitude ? Number(charter.latitude) : Number.NaN,
-    longitude: charter.longitude ? Number(charter.longitude) : Number.NaN,
+    latitude: safeNumber(charter.latitude),
+    longitude: safeNumber(charter.longitude),
     description: charter.description || "",
     generatedDescription: undefined,
     tone: "friendly",
     boat: {
       name: boat.name || "",
       type: boat.type || "",
-      lengthFeet:
-        typeof boat.lengthFt === "number" ? boat.lengthFt : Number.NaN,
-      capacity: typeof boat.capacity === "number" ? boat.capacity : Number.NaN,
+      lengthFeet: safeNumber(boat.lengthFt),
+      capacity: safeNumber(boat.capacity),
       features: (charter.features || []).map((f) => f.label),
     },
     amenities: (charter.amenities || []).map((a) => a.label),
@@ -125,7 +139,10 @@ export function mapCharterToDraftValuesFeature(params: {
     pickup: pickup
       ? {
           available: true,
-          fee: pickup.fee ? Number(pickup.fee) : null,
+          fee: (() => {
+            const n = safeNumber(pickup.fee);
+            return Number.isFinite(n) ? n : null;
+          })(),
           areas: (pickup.areas || []).map((a) => a.label),
           notes: pickup.notes || "",
         }
@@ -133,7 +150,7 @@ export function mapCharterToDraftValuesFeature(params: {
     trips: (charter.trips || []).map((t) => ({
       name: t.name || "",
       tripType: t.tripType || "",
-      price: t.price ? Number(t.price) : Number.NaN,
+      price: safeNumber(t.price),
       durationHours:
         typeof t.durationHours === "number" ? t.durationHours : Number.NaN,
       startTimes: (t.startTimes || []).map((st) => st.value),
@@ -145,13 +162,16 @@ export function mapCharterToDraftValuesFeature(params: {
     })),
     photos: [],
     videos: [],
-    uploadedPhotos: [],
-    uploadedVideos: [],
-  } as unknown as DraftValues; // ensure shape matches evolving DraftValues type
+    uploadedPhotos: media?.images || [],
+    uploadedVideos: media?.videos || [],
+    imagesCoverIndex:
+      typeof media?.imagesCoverIndex === "number" ? media.imagesCoverIndex : 0,
+  } as unknown as DraftValues;
+
+  if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+    console.log("[mapping] mapped draft values", draft);
+  }
   return draft;
 }
 
-// Temporary backward compatibility re-export under legacy name (if something still imports directly after barrel usage).
 export { mapCharterToDraftValuesFeature as mapCharterToDraftValues };
-
-// Future: add reverse mapping and partial diff utilities here.

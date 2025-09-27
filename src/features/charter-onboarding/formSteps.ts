@@ -7,6 +7,7 @@
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import {
   basicsStepSchema,
+  descriptionStepSchema,
   experienceStepSchema,
   mediaPricingStepSchema,
   tripsStepSchema,
@@ -51,11 +52,12 @@ export const STEP_SEQUENCE: FormStep[] = [
       "postcode",
       "latitude",
       "longitude",
+      "supportedLanguages",
     ],
   },
   {
     id: "experience",
-    label: "Boat & Logistic",
+    label: "Boat & Amenities",
     fields: [
       "boat.name",
       "boat.type",
@@ -70,9 +72,14 @@ export const STEP_SEQUENCE: FormStep[] = [
   },
   { id: "trips", label: "Trips & Availability", fields: ["trips"] },
   {
+    id: "description",
+    label: "Description",
+    fields: ["description", "generatedDescription", "tone"],
+  },
+  {
     id: "media",
-    label: "Media & Pricing",
-    fields: ["photos", "videos", "description", "tone"],
+    label: "Media Files",
+    fields: ["photos", "videos"],
   },
   { id: "review", label: "Preview", fields: [] },
 ];
@@ -88,5 +95,6 @@ export const STEP_SCHEMAS = {
   experience: experienceStepSchema,
   trips: tripsStepSchema,
   media: mediaPricingStepSchema,
+  description: descriptionStepSchema,
   review: null, // no direct fields; review aggregates all
 } as const;

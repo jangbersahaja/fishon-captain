@@ -1,15 +1,15 @@
+import React from "react";
+import { describe, it, expect } from "vitest";
+import { act } from "@testing-library/react";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   charterFormSchema,
   descriptionStepSchema,
   type CharterFormValues,
-} from "@features/charter-onboarding/charterForm.schema";
-import { DescriptionStep } from "@features/charter-onboarding/steps/DescriptionStep";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { act, renderHook } from "@testing-library/react";
-import React from "react";
+} from "../../charter-onboarding/charterForm.schema";
+import { DescriptionStep } from "../../charter-onboarding/steps/DescriptionStep";
 import { createRoot } from "react-dom/client";
-import { useForm } from "react-hook-form";
-import { beforeEach, describe, expect, it } from "vitest";
 
 // Build minimal valid defaults (focus on description-related fields)
 function makeDefaults(): CharterFormValues {
@@ -74,53 +74,47 @@ function makeDefaults(): CharterFormValues {
 }
 
 describe("DescriptionStep validation", () => {
-  let form: ReturnType<typeof useForm<CharterFormValues>>;
-
-  beforeEach(() => {
-    const { result } = renderHook(() =>
-      useForm<CharterFormValues>({
-        defaultValues: makeDefaults(),
-        resolver: zodResolver(charterFormSchema) as never,
-        mode: "onBlur",
-      })
-    );
-    form = result.current;
-  });
 
   it("fails descriptionStepSchema when description below min", () => {
-    const values = form.getValues();
+    const form = makeDefaults();
+    const values = form;
     const result = descriptionStepSchema.safeParse(values);
     expect(result.success).toBe(false);
     if (!result.success) {
       const messages = result.error.issues.map((i) => i.message);
-      expect(messages.some((m) => m.includes("40"))).toBe(true);
+      expect(messages.some((m: string) => m.includes("40"))).toBe(true);
     }
   });
 
   it("passes after updating description to >= 40 chars", () => {
-    act(() => {
-      form.setValue(
-        "description",
-        "A long enough charter description that exceeds forty characters.",
-        { shouldValidate: true }
-      );
-    });
-    const result = descriptionStepSchema.safeParse(form.getValues());
+    const values = makeDefaults();
+    values.description = "A long enough charter description that exceeds forty characters.";
+    const result = descriptionStepSchema.safeParse(values);
     expect(result.success).toBe(true);
   });
 
   it("renders character counter reflecting remaining chars", () => {
-    // Mount the component in a detached DOM root
     const el = document.createElement("div");
     document.body.appendChild(el);
     const root = createRoot(el);
+    const Wrapper: React.FC = () => {
+      const methods = useForm<CharterFormValues>({
+        defaultValues: makeDefaults(),
+        resolver: zodResolver(charterFormSchema) as never,
+      });
+      return (
+        <FormProvider {...methods}>
+          <DescriptionStep form={methods} />
+        </FormProvider>
+      );
+    };
     act(() => {
-      // Use React.createElement to avoid JSX in a .ts test file (keeps parser happy)
-      root.render(React.createElement(DescriptionStep, { form }));
+      root.render(<Wrapper />);
     });
-    // After initial auto-generate attempt, description may have changed; we ensure counter exists
     const counter = el.querySelector("span.tabular-nums");
     expect(counter).toBeTruthy();
-    root.unmount();
+    act(() => {
+      root.unmount();
+    });
   });
 });
