@@ -40,9 +40,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  if (!body?.key || !body?.url) {
+  // Accept either new (originalKey/originalUrl) or legacy (key/url) field names.
+  const originalKey = body.originalKey || body.key;
+  const originalUrl = body.originalUrl || body.url;
+  if (!originalKey || !originalUrl) {
     return NextResponse.json(
-      { ok: false, error: "Missing key/url" },
+      { ok: false, error: "Missing originalKey/originalUrl" },
       { status: 400 }
     );
   }
@@ -55,7 +58,13 @@ export async function POST(req: NextRequest) {
     const resp = await fetch(simpleWorkerUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        originalKey,
+        originalUrl,
+        charterId: body.charterId,
+        filename: body.filename,
+        userId: body.userId,
+      }),
     });
     const text = await resp.text();
     return NextResponse.json({ ok: resp.ok, status: resp.status, body: text });

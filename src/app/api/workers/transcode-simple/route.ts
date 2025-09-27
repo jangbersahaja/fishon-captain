@@ -10,6 +10,7 @@ type TranscodePayload = {
   originalUrl: string;
   charterId: string;
   filename: string;
+  userId?: string; // optional for backward compatibility; if absent derive via charter
 };
 
 // Simple video compression and thumbnail generation
@@ -90,7 +91,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { originalKey, originalUrl, charterId, filename } = body;
+  const { originalKey, originalUrl, charterId, filename } = body;
+  let { userId } = body;
 
     console.log("Starting transcode for:", filename);
 
@@ -107,13 +109,30 @@ export async function POST(req: Request) {
     const { compressedVideo, thumbnail } = await processVideo(originalBuffer);
     console.log("Compressed video size:", compressedVideo.byteLength);
 
-    // Generate final storage keys
-    const finalKey = `charters/${charterId}/media/${filename}`;
+    // Derive userId if not provided
+    if (!userId) {
+      try {
+        const charter = await prisma.charter.findUnique({
+          where: { id: charterId },
+          select: { captain: { select: { userId: true } } },
+        });
+        userId = charter?.captain.userId;
+      } catch {/* ignore */}
+    }
+    // Generate final storage keys (captain-scoped media path)
+    const finalKey = userId
+      ? `captains/${userId}/media/${filename}`
+      : `charters/${charterId}/media/${filename}`; // fallback legacy
     const thumbnailKey = thumbnail
-      ? `charters/${charterId}/thumbnails/${filename.replace(
-          /\.[^.]+$/,
-          ".jpg"
-        )}`
+      ? (userId
+          ? `captains/${userId}/thumbnails/${filename.replace(
+              /\.[^.]+$/,
+              ".jpg"
+            )}`
+          : `charters/${charterId}/thumbnails/${filename.replace(
+              /\.[^.]+$/,
+              ".jpg"
+            )}`)
       : null;
 
     // Upload compressed video to final location

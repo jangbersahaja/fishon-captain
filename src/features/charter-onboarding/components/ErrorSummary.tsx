@@ -1,7 +1,7 @@
 "use client";
+import { feedbackTokens } from "@/config/designTokens";
 import { FIELD_LABELS } from "@features/charter-onboarding/fieldLabels";
 import React from "react";
-import { feedbackTokens } from "@/config/designTokens";
 
 export interface ErrorSummaryProps {
   errors: string[];

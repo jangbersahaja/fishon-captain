@@ -57,17 +57,17 @@ export async function POST(req: Request) {
 
     const allowOverwriteRaw = form.get("overwrite");
     const allowOverwrite = allowOverwriteRaw === "true";
-    let key: string;
+  let key: string;
     if (docType === "charter_media") {
       if (isVideo && charterId) {
-        // Videos go to temp location for transcoding
+        // Videos go to temp location for transcoding (charter-scoped for uniqueness)
         key = `temp/${charterId}/original/${sanitized}`;
       } else if (charterId) {
-        // Images go directly to final location
-        key = `charters/${charterId}/media/${sanitized}`;
+        // Images now stored under captain (user) scope to decouple from charter lifecycle
+        key = `captains/${userId}/media/${timestamp}-${sanitized}`;
       } else {
-        // Fallback for missing charterId
-        key = `charters/temp/${userId}/${timestamp}-${sanitized}`;
+        // Fallback for missing charterId (still associate with user)
+        key = `captains/${userId}/media/temp-${timestamp}-${sanitized}`;
       }
     } else if (docType === "charter_avatar") {
       // Stable location for avatar; add fingerprint if not allowing overwrite
@@ -101,6 +101,7 @@ export async function POST(req: Request) {
             originalUrl: url,
             charterId,
             filename: sanitized,
+            userId,
           }),
         });
       } catch (error) {

@@ -49,8 +49,12 @@ export async function GET(
       charter.media
         .filter((video) => {
           const videoKey = video.storageKey || "";
-          // Only generate thumbnails for videos in the proper charter media path
-          return videoKey.startsWith(`charters/${charterId}/media/`);
+          // Accept either legacy charter-scoped or new captain-scoped paths
+          return (
+            videoKey.startsWith(`charters/${charterId}/media/`) ||
+            (charter.captain.userId &&
+              videoKey.startsWith(`captains/${charter.captain.userId}/media/`))
+          );
         })
         .map(async (video) => {
           const videoKey = video.storageKey || "";

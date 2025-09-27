@@ -9,6 +9,7 @@ type TranscodeCompletePayload = {
   transcodedVideoBuffer: ArrayBuffer;
   charterId: string;
   filename: string;
+  userId?: string;
   metadata?: {
     duration?: number;
     width?: number;
@@ -33,16 +34,22 @@ export async function POST(req: Request) {
       );
     }
 
-    const {
-      originalKey,
-      transcodedVideoBuffer,
-      charterId,
-      filename,
-      metadata,
-    } = body;
+  const { originalKey, transcodedVideoBuffer, charterId, filename, metadata } = body;
+  let { userId } = body;
 
     // Generate final storage key
-    const finalKey = `charters/${charterId}/media/${filename}`;
+    if (!userId) {
+      try {
+        const charter = await prisma.charter.findUnique({
+          where: { id: charterId },
+          select: { captain: { select: { userId: true } } },
+        });
+        userId = charter?.captain.userId;
+      } catch {/* ignore */}
+    }
+    const finalKey = userId
+      ? `captains/${userId}/media/${filename}`
+      : `charters/${charterId}/media/${filename}`;
 
     // Upload transcoded video to final location
     const { url: finalUrl } = await put(

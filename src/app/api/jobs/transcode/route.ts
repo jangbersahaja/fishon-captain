@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     originalUrl?: string;
     charterId?: string;
     filename?: string;
+    userId?: string;
     // Legacy support
     key?: string;
     url?: string;
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
     originalUrl: body.originalUrl || body.url,
     charterId: body.charterId,
     filename: body.filename,
+    userId: body.userId,
   };
 
   await qstash.publishJSON({
