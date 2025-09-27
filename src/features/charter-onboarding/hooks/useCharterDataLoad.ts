@@ -47,6 +47,8 @@ export function useCharterDataLoad({
   useEffect(() => {
     const defaults = createDefaultCharterFormValues();
     if (editCharterId) {
+      // Immediately mark editing so UI can hide create-mode banners while fetch in flight.
+      setEffectiveEditing(true);
       clearLocalDraft();
       initializeDraftState(defaults, null);
       setDraftLoaded(true);
@@ -64,7 +66,15 @@ export function useCharterDataLoad({
       try {
         if (editCharterId) {
           const res = await fetch(`/api/charters/${editCharterId}/get`);
-          if (!res.ok) return;
+          if (!res.ok) {
+            if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+              console.warn("[charterDataLoad] edit fetch failed", {
+                status: res.status,
+                editCharterId,
+              });
+            }
+            return;
+          }
           const json = await res.json();
           if (cancelled) return;
           if (json.charter) {
@@ -86,7 +96,6 @@ export function useCharterDataLoad({
               draftValues as DraftValues
             );
             reset(hydrated, { keepDirty: false });
-            setEffectiveEditing(true);
             setCurrentCharterId(editCharterId);
             setLastSavedAt(new Date().toISOString());
           }

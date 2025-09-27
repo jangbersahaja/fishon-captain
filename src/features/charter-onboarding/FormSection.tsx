@@ -28,6 +28,7 @@ import { getFieldError } from "@features/charter-onboarding/utils/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 // (Icons now handled in extracted components)
 import { ActionButtons } from "@features/charter-onboarding/components/ActionButtons";
+import { DraftDevPanel } from "@features/charter-onboarding/components/DraftDevPanel";
 import { ErrorSummary } from "@features/charter-onboarding/components/ErrorSummary";
 import { ReviewBar } from "@features/charter-onboarding/components/ReviewBar";
 import { StepSwitch } from "@features/charter-onboarding/components/StepSwitch";
@@ -97,11 +98,21 @@ export default function FormSection() {
   } = seed;
 
   // Media manager
-  const media = useCharterMediaManager({ form, isEditing, currentCharterId });
+  const media = useCharterMediaManager({
+    form,
+    isEditing,
+    currentCharterId,
+    onAvatarUploaded: (url) => {
+      console.log("[form] avatar uploaded, saving draft", { url });
+      // Immediately save draft when avatar is uploaded to persist avatarUrl
+      draftSnapshot.saveServerDraftSnapshot();
+    },
+  });
   const {
     captainAvatarPreview,
     handleAvatarChange,
     clearAvatar,
+    avatarUploading,
     existingImages,
     existingVideos,
     setExistingImages,
@@ -140,8 +151,12 @@ export default function FormSection() {
     form,
     isEditing,
     existingImagesCount: existingImages.length,
+    // IMPORTANT: invoke the ref function (was previously returning the function itself)
     saveServerDraftSnapshot: () =>
+      draftSnapshot.saveServerDraftSnapshotRef.current &&
       draftSnapshot.saveServerDraftSnapshotRef.current(),
+    setSnapshotCurrentStep: (n) => draftSnapshot.setCurrentStep(n),
+    avatarUploading,
   });
   const {
     currentStep,
@@ -179,6 +194,14 @@ export default function FormSection() {
 
   // First dirty change -> save draft snapshot (new user create flow only)
   const [initialDirtySaved, setInitialDirtySaved] = useState(false);
+  // Force an initial sync once draft id/version are present to establish lastPayloadRef
+  const initialServerSyncRef = useRef(false);
+  useEffect(() => {
+    if (initialServerSyncRef.current) return;
+    if (!serverDraftId || serverVersion === null || isEditing) return;
+    initialServerSyncRef.current = true;
+    draftSnapshot.saveServerDraftSnapshot();
+  }, [serverDraftId, serverVersion, isEditing, draftSnapshot]);
   const uploadedMediaMapRef = useRef<
     WeakMap<
       File,
@@ -217,6 +240,7 @@ export default function FormSection() {
     saveEditChanges,
     handleFormSubmit,
     triggerSubmit,
+    finalizing,
   } = useCharterSubmission({
     form,
     isEditing,
@@ -225,6 +249,7 @@ export default function FormSection() {
     serverVersion,
     saveServerDraftSnapshot: () => draftSnapshot.saveServerDraftSnapshot(),
     existingImages,
+    existingVideos,
     defaultState,
     clearDraft,
     initializeDraftState,
@@ -398,9 +423,21 @@ export default function FormSection() {
   // Wrap original handleNext to inject post-step upload
   const handleNextWithUpload = useCallback(async () => {
     const prevStepId = activeStep.id;
+    const prevIndex = currentStep;
+    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+      console.log("[form] handleNextWithUpload start", {
+        prevIndex,
+        prevStepId,
+      });
+    }
     await handleNext();
+    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+      console.log("[form] handleNextWithUpload after handleNext", {
+        newCurrentStep: currentStep + 1,
+      });
+    }
     await uploadMediaIfLeavingMediaStep(prevStepId);
-  }, [handleNext, uploadMediaIfLeavingMediaStep, activeStep.id]);
+  }, [handleNext, uploadMediaIfLeavingMediaStep, activeStep.id, currentStep]);
 
   return (
     <CharterFormProvider
@@ -427,12 +464,14 @@ export default function FormSection() {
           serverSaving,
           saveEditChanges,
           triggerSubmit,
+          finalizing,
         },
         media: {
           isMediaUploading,
           canSubmitMedia,
           existingImagesCount: existingImages.length,
           existingVideosCount: existingVideos.length,
+          avatarUploading,
         },
       }}
     >
@@ -445,7 +484,7 @@ export default function FormSection() {
             <p className="mt-0.5">Submit again to apply your updates.</p>
           </div>
         )}
-        {!serverDraftId && !isEditing && (
+        {!isEditing && !serverDraftId && (
           <div className="rounded-xl border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
             <p className="font-semibold">Sign in required</p>
             <p>Sign in to save your progress on the server.</p>
@@ -459,9 +498,11 @@ export default function FormSection() {
             clickable={isEditing}
             onStepClick={(idx) => {
               if (!isEditing || idx === currentStep) return;
+              // Persist intended target step first (empty diff save) so reload lands correctly.
+              draftSnapshot.setCurrentStep(idx);
               draftSnapshot
                 .saveServerDraftSnapshot()
-                .finally(() => gotoStep(idx));
+                .finally(() => gotoStep(idx, { force: true }));
             }}
           />
           {!isEditing && (
@@ -551,18 +592,22 @@ export default function FormSection() {
             isEditing={isEditing}
             onCancel={() => setShowConfirm(false)}
             onConfirm={() => {
-              setShowConfirm(false);
               logFormDebug("confirm_submit", {});
               triggerSubmit();
             }}
             busy={
+              finalizing ||
               isSubmitting ||
               serverSaving ||
               isMediaUploading ||
               !canSubmitMedia
             }
+            errorMessage={
+              submitState?.type === "error" ? submitState.message : null
+            }
           />
         )}
+        <DraftDevPanel draftId={serverDraftId} lastSavedAt={lastSavedAt} />
       </div>
     </CharterFormProvider>
   );
