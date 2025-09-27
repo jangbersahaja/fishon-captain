@@ -36,6 +36,72 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## Scripts
+
+| Script | Purpose |
+| ------ | ------- |
+| `scripts/check-env.ts` | Validates required environment variables for local/dev runtime. |
+| `scripts/migrate-legacy-charter-media-paths.ts` | One-off background migration to rewrite legacy `charters/<charterId>/media/*` blob paths into normalized `captains/<userId>/media/*` namespace (idempotent, dry-run by default). |
+
+### Legacy Media Path Migration
+
+Historical uploads stored assets under a charter-scoped prefix (`charters/<charterId>/media/...`). The platform now standardizes on a captain(user)-scoped path (`captains/<userId>/media/...`) to:
+
+- Enforce consistent validation rules (single allowed prefix going forward)
+- Enable per-user media quota & lifecycle policies
+- Simplify audit tagging and future CDN cache key strategies
+
+The migration script performs for each legacy row:
+
+1. Derive `userId` via charter → captain relation
+2. Compute target key `captains/<userId>/media/<filename>`
+3. Copy blob to new key (no random suffix) with public access
+4. Update `CharterMedia.storageKey` + `url`
+5. Attempt deletion of old blob (error tolerated & logged)
+
+Safety / Idempotence:
+
+- Dry-run unless `RUN=apply` env var provided
+- Skips if target already exists
+- Leaves original in place until DB successfully updated
+- Logs every planned (dry) or executed migration
+
+Run dry-run (preview only):
+
+```bash
+pnpm ts-node scripts/migrate-legacy-charter-media-paths.ts
+```
+
+Apply changes:
+
+```bash
+RUN=apply pnpm ts-node scripts/migrate-legacy-charter-media-paths.ts
+```
+
+Required env: `BLOB_READ_WRITE_TOKEN` (must allow list / put / delete for the involved prefixes).
+
+After successful migration:
+
+1. Tighten Zod validation to reject any new `charters/` keys entirely
+2. Remove temporary allowances in upload/replace routes
+3. (Optional) Emit audit log entries per migrated asset
+4. Add a one-time metric for number migrated to verify counts
+
+Rollback Strategy:
+
+- If an issue arises mid-migration, unaffected rows remain unchanged
+- Already migrated rows can be moved back by reversing from captain path (create a dedicated rescue script) if absolutely necessary
+- Keep legacy prefix acceptance in validation until post-migration verification passes
+
+Verification Checklist:
+
+- Row counts: `SELECT COUNT(*) FROM "CharterMedia" WHERE "storage_key" LIKE 'charters/%';` should reach 0
+- Spot check random assets (old & new URLs) still load
+- Confirm no new writes appear under legacy prefix after deploy freeze window
+
+Monitoring Enhancements (future): Add structured log ingestion for `legacy-media-migrate` events or expose ephemeral dashboard metric.
+
+
 ## Starting Point Autocomplete & Map
 
 The captain registration form now supports Google Places-powered address suggestions and an interactive map for refining coordinates.
