@@ -13,9 +13,8 @@ npm run dev
 # or
 yarn dev
 # or
-pnpm dev
-# or
-bun dev
+npm run dev
+# (yarn / bun also work if you prefer)
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -38,9 +37,9 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Scripts
 
-| Script | Purpose |
-| ------ | ------- |
-| `scripts/check-env.ts` | Validates required environment variables for local/dev runtime. |
+| Script                                          | Purpose                                                                                                                                                                          |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/check-env.ts`                          | Validates required environment variables for local/dev runtime.                                                                                                                  |
 | `scripts/migrate-legacy-charter-media-paths.ts` | One-off background migration to rewrite legacy `charters/<charterId>/media/*` blob paths into normalized `captains/<userId>/media/*` namespace (idempotent, dry-run by default). |
 
 ### Legacy Media Path Migration
@@ -69,13 +68,13 @@ Safety / Idempotence:
 Run dry-run (preview only):
 
 ```bash
-pnpm ts-node scripts/migrate-legacy-charter-media-paths.ts
+npx ts-node scripts/migrate-legacy-charter-media-paths.ts
 ```
 
 Apply changes:
 
 ```bash
-RUN=apply pnpm ts-node scripts/migrate-legacy-charter-media-paths.ts
+RUN=apply npx ts-node scripts/migrate-legacy-charter-media-paths.ts
 ```
 
 Required env: `BLOB_READ_WRITE_TOKEN` (must allow list / put / delete for the involved prefixes).
@@ -100,7 +99,6 @@ Verification Checklist:
 - Confirm no new writes appear under legacy prefix after deploy freeze window
 
 Monitoring Enhancements (future): Add structured log ingestion for `legacy-media-migrate` events or expose ephemeral dashboard metric.
-
 
 ## Starting Point Autocomplete & Map
 
