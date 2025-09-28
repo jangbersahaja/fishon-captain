@@ -547,7 +547,14 @@ export async function GET(
         },
       },
       media: {
-        select: { kind: true, url: true, sortOrder: true },
+        select: {
+          kind: true,
+          url: true,
+          sortOrder: true,
+          storageKey: true,
+          thumbnailUrl: true,
+          durationSeconds: true,
+        },
         orderBy: { sortOrder: "asc" },
       },
     },
@@ -556,12 +563,31 @@ export async function GET(
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found" }, { status: 404 })
     );
+  // IMPORTANT: use storageKey as the stable identifier (was previously sortOrder string which broke deletion)
   const images = charter.media
     .filter((m) => m.kind === "CHARTER_PHOTO")
-    .map((m) => ({ name: m.sortOrder?.toString() || "image", url: m.url }));
+    .map((m) => ({ name: m.storageKey, url: m.url }));
   const videos = charter.media
     .filter((m) => m.kind === "CHARTER_VIDEO")
-    .map((m) => ({ name: m.sortOrder?.toString() || "video", url: m.url }));
+    .map((m) => {
+      const meta: {
+        thumbnailUrl?: string | null;
+        durationSeconds?: number | null;
+      } = {
+        // Prisma select guarantees these fields exist (possibly undefined)
+        thumbnailUrl: (m as unknown as { thumbnailUrl?: string | null })
+          .thumbnailUrl,
+        durationSeconds: (
+          m as unknown as { durationSeconds?: number | null }
+        ).durationSeconds,
+      };
+      return {
+        name: m.storageKey,
+        url: m.url,
+        thumbnailUrl: meta.thumbnailUrl || undefined,
+        durationSeconds: meta.durationSeconds || undefined,
+      };
+    });
   return applySecurityHeaders(
     NextResponse.json({
       charter,
