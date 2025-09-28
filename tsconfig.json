@@ -12,6 +12,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "types": ["google.maps"],
     "incremental": true,
     "plugins": [
       {

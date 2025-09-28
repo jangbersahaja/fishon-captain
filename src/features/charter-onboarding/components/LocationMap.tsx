@@ -3,6 +3,8 @@ import { feedbackTokens } from "@/config/designTokens";
 import clsx from "clsx";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+// Types for Google Maps are provided by @types/google.maps via tsconfig "types" entry.
+// Runtime guard pattern below ensures we don't access google before script load.
 
 interface LocationMapProps {
   lat: number | null;
@@ -23,6 +25,7 @@ export function LocationMap({
   className,
 }: LocationMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
+  // Use `google.maps` types (ambient). At runtime before script load these references are null.
   const markerRef = useRef<google.maps.Marker | null>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const [loaded, setLoaded] = useState(false);

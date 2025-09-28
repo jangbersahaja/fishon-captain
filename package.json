@@ -45,6 +45,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/google.maps": "^3.55.9",
     "dotenv": "^16.4.5",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
