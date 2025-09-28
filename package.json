@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest",
     "test:ci": "vitest run --reporter=dot",
-    "check:env": "node scripts/check-env.js"
+    "check:env": "node scripts/check-env.js",
+    "typecheck": "tsc --noEmit",
+    "prebuild": "npm run check:env && npm run typecheck"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
