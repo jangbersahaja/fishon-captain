@@ -1,9 +1,62 @@
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { headers } from "next/headers";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+
+// Type for the complex charter query with all includes
+type CharterWithIncludes = Prisma.CharterGetPayload<{
+  include: {
+    captain: {
+      include: {
+        user: {
+          select: {
+            id: true;
+            email: true;
+            role: true;
+            createdAt: true;
+            updatedAt: true;
+            name: true;
+          };
+        };
+      };
+    };
+    boat: true;
+    amenities: true;
+    features: true;
+    media: true;
+    pickup: { include: { areas: true } };
+    policies: true;
+    trips: {
+      include: {
+        species: true;
+        startTimes: true;
+        techniques: true;
+        media: true;
+      };
+    };
+    draft: true;
+  };
+}>;
+
+// Type for captain verification query
+type CaptainVerificationSelect = Prisma.CaptainVerificationGetPayload<{
+  select: {
+    id: true;
+    userId: true;
+    idFront: true;
+    idBack: true;
+    captainLicense: true;
+    boatRegistration: true;
+    fishingLicense: true;
+    additional: true;
+    status: true;
+    createdAt: true;
+    updatedAt: true;
+  };
+}>;
 
 async function toggleActive(id: string, isActive: boolean) {
   const h = await headers();
@@ -35,7 +88,7 @@ export default async function StaffCharterDetailPage({
   if (!session?.user) redirect(`/auth?mode=signin&next=/staff/charters/${id}`);
   if (role !== "STAFF" && role !== "ADMIN") redirect("/captain");
 
-  const c = await prisma.charter.findUnique({
+  const c: CharterWithIncludes | null = await prisma.charter.findUnique({
     where: { id },
     include: {
       captain: {
@@ -80,7 +133,7 @@ export default async function StaffCharterDetailPage({
   }
 
   // Load captain verification for this charter's captain (if exists)
-  const verification = c.captain?.userId
+  const verification: CaptainVerificationSelect | null = c.captain?.userId
     ? await prisma.captainVerification.findUnique({
         where: { userId: c.captain.userId },
         select: {
@@ -569,11 +622,9 @@ export default async function StaffCharterDetailPage({
                     </div>
                     {t.techniques.length ? (
                       <ul className="list-inside list-disc text-sm text-slate-700">
-                        {t.techniques.map(
-                          (tech: { id: string; value: string }) => (
-                            <li key={tech.id}>{tech.value}</li>
-                          )
-                        )}
+                        {t.techniques.map((tech) => (
+                          <li key={tech.id}>{tech.value}</li>
+                        ))}
                       </ul>
                     ) : (
                       <div className="text-sm text-slate-600">—</div>
@@ -585,11 +636,9 @@ export default async function StaffCharterDetailPage({
                     </div>
                     {t.startTimes.length ? (
                       <ul className="list-inside list-disc text-sm text-slate-700">
-                        {t.startTimes.map(
-                          (st: { id: string; value: string }) => (
-                            <li key={st.id}>{st.value}</li>
-                          )
-                        )}
+                        {t.startTimes.map((st) => (
+                          <li key={st.id}>{st.value}</li>
+                        ))}
                       </ul>
                     ) : (
                       <div className="text-sm text-slate-600">—</div>
@@ -602,37 +651,31 @@ export default async function StaffCharterDetailPage({
                       Trip media: {t.media.length}
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {t.media.map(
-                        (m: {
-                          id: string;
-                          url: string;
-                          mimeType: string | null;
-                        }) => (
-                          <a
-                            key={m.id}
-                            href={m.url}
-                            target="_blank"
-                            className="group block overflow-hidden rounded-md border border-slate-200"
-                          >
-                            {m.mimeType?.startsWith("image/") ||
-                            isImage(m.url) ? (
-                              <div className="relative h-24 w-full">
-                                <Image
-                                  src={m.url}
-                                  alt={m.url}
-                                  fill
-                                  sizes="(max-width: 640px) 50vw, 25vw"
-                                  className="object-cover transition group-hover:opacity-90"
-                                />
-                              </div>
-                            ) : (
-                              <div className="flex h-24 w-full items-center justify-center bg-slate-50 text-xs text-slate-600">
-                                {m.mimeType || "file"}
-                              </div>
-                            )}
-                          </a>
-                        )
-                      )}
+                      {t.media.map((m) => (
+                        <a
+                          key={m.id}
+                          href={m.url}
+                          target="_blank"
+                          className="group block overflow-hidden rounded-md border border-slate-200"
+                        >
+                          {m.mimeType?.startsWith("image/") ||
+                          isImage(m.url) ? (
+                            <div className="relative h-24 w-full">
+                              <Image
+                                src={m.url}
+                                alt={m.url}
+                                fill
+                                sizes="(max-width: 640px) 50vw, 25vw"
+                                className="object-cover transition group-hover:opacity-90"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex h-24 w-full items-center justify-center bg-slate-50 text-xs text-slate-600">
+                              {m.mimeType || "file"}
+                            </div>
+                          )}
+                        </a>
+                      ))}
                     </div>
                   </div>
                 ) : null}
@@ -776,6 +819,7 @@ function isImage(nameOrUrl: string | undefined | null): boolean {
   );
 }
 
+// Enhanced DocData type with better type safety for verification documents
 type DocData = {
   key?: string;
   name: string;
@@ -789,52 +833,87 @@ type DocData = {
   updatedAt?: string | Date;
 };
 
+// Type guard to ensure we have valid DocData
+function isValidDocData(data: DocData | null): data is DocData {
+  return (
+    data !== null &&
+    typeof data.name === "string" &&
+    typeof data.url === "string"
+  );
+}
+
+// Enhanced toDoc function with better type safety and validation
 function toDoc(x: unknown): DocData | null {
   if (!x) return null;
+
   try {
+    // Handle simple string URL case
     if (typeof x === "string") {
-      return { name: x.split("/").pop() || x, url: x };
+      const result = { name: x.split("/").pop() || x, url: x };
+      return isValidDocData(result) ? result : null;
     }
+
+    // Handle object case with proper type checking
     if (typeof x === "object" && x !== null) {
       const o = x as Record<string, unknown>;
+
+      // Extract URL
       const urlVal = o.url ?? o.href;
-      const url: string | undefined =
-        typeof urlVal === "string" ? urlVal : undefined;
+      const url = typeof urlVal === "string" ? urlVal : undefined;
+
+      // Extract name
       const nameVal =
         o.name ?? (url ? String(url).split("/").pop() : undefined);
-      const name: string | undefined =
-        typeof nameVal === "string" ? nameVal : undefined;
+      const name = typeof nameVal === "string" ? nameVal : undefined;
+
+      // Early return if we don't have required fields
+      if (!url || !name) return null;
+
+      // Extract optional fields
       const keyVal = o.key ?? o.id ?? url;
       const key = typeof keyVal === "string" ? keyVal : url;
-      const status: string | undefined =
-        typeof o.status === "string" ? o.status : undefined;
-      const validForPeriod = (():
-        | { from?: string | Date; to?: string | Date; forever?: boolean }
-        | undefined => {
-        const v =
-          (o as Record<string, unknown>).validForPeriod ??
-          (o as Record<string, unknown>).valid;
+      const status = typeof o.status === "string" ? o.status : undefined;
+
+      // Extract valid period with better type safety
+      const validForPeriod = (() => {
+        const v = o.validForPeriod ?? o.valid;
         if (typeof v === "object" && v !== null) {
           const vv = v as Record<string, unknown>;
-          const from = vv.from as string | Date | undefined;
-          const to = vv.to as string | Date | undefined;
+          const from =
+            typeof vv.from === "string" || vv.from instanceof Date
+              ? vv.from
+              : undefined;
+          const to =
+            typeof vv.to === "string" || vv.to instanceof Date
+              ? vv.to
+              : undefined;
           const forever =
             typeof vv.forever === "boolean" ? vv.forever : undefined;
-          return { from, to, forever };
+
+          // Only return if at least one field is defined
+          if (from !== undefined || to !== undefined || forever !== undefined) {
+            return { from, to, forever };
+          }
         }
         return undefined;
       })();
-      const updatedAtVal =
-        (o as Record<string, unknown>).updatedAt ??
-        (o as Record<string, unknown>).updated;
+
+      // Extract updated date
+      const updatedAtVal = o.updatedAt ?? o.updated;
       const updatedAt =
         typeof updatedAtVal === "string" || updatedAtVal instanceof Date
           ? updatedAtVal
           : undefined;
-      return url && name
-        ? { key, name, url, status, validForPeriod, updatedAt }
-        : null;
+
+      const result = { key, name, url, status, validForPeriod, updatedAt };
+      return isValidDocData(result) ? result : null;
     }
-  } catch {}
+  } catch (error) {
+    // Better error handling - log in development
+    if (process.env.NODE_ENV === "development") {
+      console.warn("toDoc failed to parse document data:", error);
+    }
+  }
+
   return null;
 }
