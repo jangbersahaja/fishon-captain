@@ -35,6 +35,7 @@ type MediaPricingStepProps = {
   currentCharterId?: string | null;
   onVideoBlockingChange?: (blocking: boolean) => void;
   onReadyVideosChange?: (videos: { name: string; url: string }[]) => void;
+  seedVideos?: { name: string; url: string; thumbnailUrl?: string }[]; // new: hydrate existing DB videos
 };
 
 export function MediaPricingStep({
@@ -48,6 +49,7 @@ export function MediaPricingStep({
   currentCharterId,
   onVideoBlockingChange,
   onReadyVideosChange,
+  seedVideos,
 }: MediaPricingStepProps) {
   const { watch, setValue } = form;
   const [draggingPhotos, setDraggingPhotos] = useState(false);
@@ -228,11 +230,13 @@ export function MediaPricingStep({
               const ready = items
                 .filter((i) => i.status === "ready" && i.finalUrl)
                 .map((i) => ({
-                  name: i.finalKey || i.id, // prefer stable storage key
+                  // Preserve original filename (i.name) for display & downstream usage
+                  name: i.name,
                   url: i.finalUrl as string,
                 }));
               onReadyVideosChange?.(ready);
             }}
+            seedVideos={seedVideos}
           />
         </div>
       </div>

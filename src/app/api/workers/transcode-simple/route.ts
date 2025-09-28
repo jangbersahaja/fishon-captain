@@ -388,13 +388,26 @@ export async function POST(req: Request) {
         });
         if (updatedPending && !updatedPending.charterMediaId) {
           console.log("✅ TRANSCODE-SIMPLE: Creating charter media record");
+          let nextOrder = 0;
+          try {
+            const max = await prisma.charterMedia.aggregate({
+              where: { charterId },
+              _max: { sortOrder: true },
+            });
+            nextOrder = (max._max.sortOrder ?? -1) + 1;
+          } catch (e) {
+            console.warn(
+              "transcode-simple: failed computing next sortOrder, defaulting 0",
+              e
+            );
+          }
           const cm = await prisma.charterMedia.create({
             data: {
               charterId,
               kind: "CHARTER_VIDEO",
               url: finalUrl,
               storageKey: finalKey,
-              sortOrder: 999,
+              sortOrder: nextOrder,
               thumbnailUrl: thumbnailUrl || undefined,
               durationSeconds: metadata?.durationSeconds,
               width: metadata?.width,

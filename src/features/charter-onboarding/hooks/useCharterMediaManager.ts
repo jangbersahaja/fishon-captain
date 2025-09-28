@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
 } from "react";
@@ -212,6 +213,65 @@ export function useCharterMediaManager({
   const isMediaUploading = pendingImageIds.length > 0;
   const isVideoTranscoding = transcodingVideoCount > 0;
   const hasBlockingMedia = transcodingVideoCount > 0; // simple gate: any non-ready video blocks
+
+  // Debounced server-side persistence of ordering (fires on any structural change)
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSignatureRef = useRef<string>("__init");
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!currentCharterId) return; // can't persist without an id
+    // Prevent wiping existing media on initial edit load before hydration populated state
+    if (!hydratedRef.current) {
+      if (existingImages.length === 0 && existingVideos.length === 0) {
+        return; // still awaiting hydration
+      }
+      hydratedRef.current = true;
+    }
+    // Only persist when not actively uploading images; allow video transcoding items to be excluded until READY
+    const imagesPayload = existingImages.map((m) => ({
+      name: m.name,
+      url: m.url,
+    }));
+    const videosPayload = existingVideos
+      .filter(
+        (v) => !v.status || v.status === "ready" // only finalized items
+      )
+      .map((v) => ({
+        name: v.name,
+        url: v.url,
+        thumbnailUrl: v.thumbnailUrl,
+        durationSeconds: v.durationSeconds,
+      }));
+    const signature = JSON.stringify({ imagesPayload, videosPayload });
+    if (signature === lastSignatureRef.current) return; // no change
+    lastSignatureRef.current = signature;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      fetch(`/api/charters/${currentCharterId}/media`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          media: { images: imagesPayload, videos: videosPayload },
+          order: {
+            images: imagesPayload.map((_, i) => i),
+            videos: videosPayload.map((_, i) => i),
+          },
+        }),
+      })
+        .then((r) => {
+          if (r.ok)
+            dlog("media_order_persist_ok", {
+              images: imagesPayload.length,
+              videos: videosPayload.length,
+            });
+          else dlog("media_order_persist_fail_status", { status: r.status });
+        })
+        .catch((e) => dlog("media_order_persist_error", { error: String(e) }));
+    }, 700); // debounce 700ms
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [existingImages, existingVideos, currentCharterId, dlog]);
 
   // For now, allow submission even during video transcoding to not block users
   // Video will be attached once transcoding completes
@@ -688,7 +748,6 @@ export function useCharterMediaManager({
     if (input) input.value = "";
   }, [setValue]);
 
-  const noop = () => {};
   const empty: number[] = [];
 
   // Removal handlers
@@ -785,8 +844,36 @@ export function useCharterMediaManager({
     videoPreviews,
     addPhotoFiles,
     addVideoFiles,
-    reorderExistingPhotos: noop,
-    reorderExistingVideos: noop,
+    reorderExistingPhotos: useCallback(
+      (from: number, to: number) => {
+        if (from === to) return;
+        setExistingImages((prev) => {
+          if (from < 0 || to < 0 || from >= prev.length || to >= prev.length)
+            return prev;
+          const next = [...prev];
+          const [moved] = next.splice(from, 1);
+          next.splice(to, 0, moved);
+          dlog("photos_reordered", { from, to });
+          return next;
+        });
+      },
+      [dlog]
+    ),
+    reorderExistingVideos: useCallback(
+      (from: number, to: number) => {
+        if (from === to) return;
+        setExistingVideos((prev) => {
+          if (from < 0 || to < 0 || from >= prev.length || to >= prev.length)
+            return prev;
+          const next = [...prev];
+          const [moved] = next.splice(from, 1);
+          next.splice(to, 0, moved);
+          dlog("videos_reordered", { from, to });
+          return next;
+        });
+      },
+      [dlog]
+    ),
     removePhoto,
     removeVideo,
     retryPhoto,

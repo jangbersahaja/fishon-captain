@@ -88,7 +88,8 @@ export async function POST(req: Request) {
         return null;
       }
     })();
-    const base = reqOrigin || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const base =
+      reqOrigin || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const normalizedBase = base.replace(/\/$/, "");
     const jobUrl = `${normalizedBase}/api/jobs/transcode`;
     try {
@@ -125,7 +126,9 @@ export async function POST(req: Request) {
       if (!resp.ok || explicitBodyFail) {
         queueError =
           queueError ||
-          (!resp.ok ? `jobs_route_status_${resp.status}` : "jobs_route_body_not_ok");
+          (!resp.ok
+            ? `jobs_route_status_${resp.status}`
+            : "jobs_route_body_not_ok");
         console.warn("[video-upload] queue_route_non_ok", {
           status: resp.status,
           pendingMediaId: pending.id,
@@ -135,15 +138,27 @@ export async function POST(req: Request) {
         queued = true;
         console.log("[video-upload] queue_route_response", queueResponseBody);
         // If the jobs route executed a direct simple worker (local dev path), body may contain final fields
-        interface PossiblyDirectBody { direct?: boolean; body?: unknown }
-        const qBody: PossiblyDirectBody = typeof queueResponseBody === "object" && queueResponseBody
-          ? (queueResponseBody as PossiblyDirectBody)
-          : {};
+        interface PossiblyDirectBody {
+          direct?: boolean;
+          body?: unknown;
+        }
+        const qBody: PossiblyDirectBody =
+          typeof queueResponseBody === "object" && queueResponseBody
+            ? (queueResponseBody as PossiblyDirectBody)
+            : {};
         if (qBody.direct === true && typeof qBody.body === "string") {
           try {
-            interface ParsedInline { ok?: boolean; finalUrl?: string; finalKey?: string | null; thumbnailUrl?: string | null }
+            interface ParsedInline {
+              ok?: boolean;
+              finalUrl?: string;
+              finalKey?: string | null;
+              thumbnailUrl?: string | null;
+            }
             const parsedRaw = JSON.parse(qBody.body) as unknown;
-            const parsed: ParsedInline | null = parsedRaw && typeof parsedRaw === "object" ? (parsedRaw as ParsedInline) : null;
+            const parsed: ParsedInline | null =
+              parsedRaw && typeof parsedRaw === "object"
+                ? (parsedRaw as ParsedInline)
+                : null;
             if (parsed?.ok && parsed.finalUrl) {
               inlineFinal = {
                 finalUrl: parsed.finalUrl,
@@ -193,14 +208,14 @@ export async function POST(req: Request) {
         });
         try {
           const body = await workerResp.json();
-            if (body && body.ok && body.finalUrl) {
-              inlineFinal = {
-                finalUrl: body.finalUrl,
-                finalKey: body.finalKey || null,
-                thumbnailUrl: body.thumbnailUrl || null,
-                status: "READY",
-              };
-            }
+          if (body && body.ok && body.finalUrl) {
+            inlineFinal = {
+              finalUrl: body.finalUrl,
+              finalKey: body.finalKey || null,
+              thumbnailUrl: body.thumbnailUrl || null,
+              status: "READY",
+            };
+          }
         } catch {
           /* ignore parse for fallback */
         }

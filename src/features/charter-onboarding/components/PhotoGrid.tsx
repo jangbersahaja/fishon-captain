@@ -22,7 +22,6 @@ export function PhotoGrid({
   items,
   emptyLabel,
   onRemove,
-  onUpdateAlt,
   onMove,
   onRetry,
 }: PhotoGridProps) {
@@ -141,16 +140,7 @@ export function PhotoGrid({
                 </span>
               </div>
             )}
-            <div className="px-3 pt-2">
-              <input
-                type="text"
-                placeholder="Alt text (description)"
-                value={item.alt ?? ""}
-                onChange={(e) => onUpdateAlt?.(index, e.target.value)}
-                className="w-full rounded border border-neutral-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-300"
-                disabled={disabled}
-              />
-            </div>
+
             <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-600">
               <span className="truncate" title={item.name}>
                 {toDisplayName(item.name)}
@@ -169,9 +159,26 @@ export function PhotoGrid({
                   type="button"
                   onClick={() => onRemove(index)}
                   disabled={disabled}
-                  className="text-red-500 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Remove photo"
+                  title="Remove photo"
+                  className="text-slate-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed p-1 rounded transition-colors"
                 >
-                  Remove
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M8 6v12c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V6" />
+                    <path d="M10 10v6" />
+                    <path d="M14 10v6" />
+                    <path d="M9 6V4c0-.55.45-1 1-1h4c.55 0 1 .45 1 1v2" />
+                  </svg>
                 </button>
               </div>
             </div>

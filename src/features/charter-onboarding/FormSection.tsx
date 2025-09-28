@@ -153,6 +153,7 @@ export default function FormSection() {
     setServerSaving,
     setLastSavedAt: (iso) => setLastSavedAt(iso),
   });
+
   const draftSnapshot = useMemo(
     () =>
       isEditing
@@ -165,18 +166,17 @@ export default function FormSection() {
     [isEditing, rawDraftSnapshot]
   );
 
-  // Step navigation
   const navigation = useStepNavigation({
     form,
     isEditing,
     existingImagesCount: existingImages.length,
-    // IMPORTANT: invoke the ref function (was previously returning the function itself)
     saveServerDraftSnapshot: () =>
       draftSnapshot.saveServerDraftSnapshotRef.current &&
       draftSnapshot.saveServerDraftSnapshotRef.current(),
     setSnapshotCurrentStep: (n) => draftSnapshot.setCurrentStep(n),
     avatarUploading,
   });
+
   const {
     currentStep,
     isLastStep,
@@ -631,36 +631,36 @@ export default function FormSection() {
             onRetryVideo={retryVideo}
             currentCharterId={currentCharterId}
             onVideoBlockingChange={(b) => setVideoSectionBlocking(b)}
-            onReadyVideosChange={(ready) => {
-              // Bridge ready transcoded videos into existingVideos so finalize sees them.
-              if (!ready.length) return; // nothing new to integrate
-              setExistingVideos((prev) => {
-                // Fast path: if all ready names already exist unchanged, skip update (avoid loop)
-                let allPresent = true;
-                for (const r of ready) {
-                  const existing = prev.find((p) => p.name === r.name);
-                  if (!existing || existing.url !== r.url) {
-                    allPresent = false;
-                    break;
+            onReadyVideosChange={useCallback(
+              (ready: { name: string; url: string }[]) => {
+                if (!ready.length) return;
+                setExistingVideos((prev) => {
+                  if (
+                    prev.length === ready.length &&
+                    prev.every(
+                      (p, i) =>
+                        p.name === ready[i].name && p.url === ready[i].url
+                    )
+                  )
+                    return prev;
+                  const map = new Map(prev.map((v) => [v.name, v]));
+                  let changed = false;
+                  for (const r of ready) {
+                    const existing = map.get(r.name);
+                    if (!existing) {
+                      map.set(r.name, r);
+                      changed = true;
+                    } else if (existing.url !== r.url) {
+                      map.set(r.name, { ...existing, url: r.url });
+                      changed = true;
+                    }
                   }
-                }
-                if (allPresent) return prev; // no state change
-                const map = new Map(prev.map((v) => [v.name, v]));
-                let changed = false;
-                for (const r of ready) {
-                  const existing = map.get(r.name);
-                  if (!existing) {
-                    map.set(r.name, r);
-                    changed = true;
-                  } else if (existing.url !== r.url) {
-                    map.set(r.name, { ...existing, url: r.url });
-                    changed = true;
-                  }
-                }
-                if (!changed) return prev;
-                return Array.from(map.values());
-              });
-            }}
+                  return changed ? Array.from(map.values()) : prev;
+                });
+              },
+              [setExistingVideos]
+            )}
+            seedVideos={existingVideos}
           />
           {isReviewStep && <ReviewStep charter={previewCharter} />}
           {submitState?.type === "error" && (

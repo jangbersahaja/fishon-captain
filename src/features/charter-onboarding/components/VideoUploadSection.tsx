@@ -28,6 +28,14 @@ export interface SimpleVideoItem {
   queuedAt?: number;
   transcodingAt?: number;
   readyAt?: number;
+  origin?: "seed" | "upload"; // seeded from DB vs just uploaded
+  attemptedHoverCapture?: boolean; // avoid repeated captures
+  thumbPersisting?: boolean;
+  thumbSaved?: boolean;
+  thumbFadingIn?: boolean; // fade-in animation for hover-captured thumb
+  durationSeconds?: number;
+  thumbCaptureBlocked?: boolean; // CORS/security failure
+  thumbAttempts?: number; // capture tries
 }
 
 interface VideoUploadSectionProps {
@@ -35,6 +43,13 @@ interface VideoUploadSectionProps {
   max?: number;
   onBlockingChange?: (blocking: boolean) => void; // emits true if any queued/transcoding
   onItemsChange?: (items: SimpleVideoItem[]) => void; // upstream persistence hook
+  seedVideos?: {
+    name: string;
+    url: string;
+    thumbnailUrl?: string;
+    durationSeconds?: number;
+    storageKey?: string;
+  }[]; // existing ready videos from DB
 }
 
 export function VideoUploadSection({
@@ -42,8 +57,20 @@ export function VideoUploadSection({
   max = 5,
   onBlockingChange,
   onItemsChange,
+  seedVideos = [],
 }: VideoUploadSectionProps) {
   const [items, setItems] = useState<SimpleVideoItem[]>([]);
+  // Queue for batched thumbnail persistence (debounced)
+  const persistQueueRef = useRef<
+    {
+      storageKey: string;
+      dataUrl: string;
+      durationSeconds?: number;
+      id: string;
+      attempts: number;
+    }[]
+  >([]);
+  const persistTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const destroyed = useRef(false);
 
@@ -53,19 +80,53 @@ export function VideoUploadSection({
     console.log("[videoFlow]", phase, extra || "");
   }, []);
   const itemsRef = useRef<SimpleVideoItem[]>([]);
+  // Stable refs for callback props to avoid re-running effects due to identity churn
+  const onItemsChangeRef = useRef<typeof onItemsChange>(onItemsChange);
+  const onBlockingChangeRef = useRef<typeof onBlockingChange>(onBlockingChange);
+  useEffect(() => {
+    onItemsChangeRef.current = onItemsChange;
+  }, [onItemsChange]);
+  useEffect(() => {
+    onBlockingChangeRef.current = onBlockingChange;
+  }, [onBlockingChange]);
 
-  // Emit upstream changes and keep ref in sync for polling closure
+  // Emit upstream changes and keep ref in sync for polling closure.
+  // Depend ONLY on items; function identity changes are handled via refs to prevent effect loop.
   useEffect(() => {
     itemsRef.current = items;
-    onItemsChange?.(items);
+    onItemsChangeRef.current?.(items);
     const blocking = items.some(
       (i) =>
         i.status === "queued" ||
         i.status === "transcoding" ||
         i.status === "local"
     );
-    onBlockingChange?.(blocking);
-  }, [items, onBlockingChange, onItemsChange]);
+    onBlockingChangeRef.current?.(blocking);
+  }, [items]);
+
+  // Seed existing ready videos from DB on first mount (only if list is empty)
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current) return;
+    if (!itemsRef.current.length && seedVideos.length) {
+      const now = Date.now();
+      const seeded: SimpleVideoItem[] = seedVideos.map((v) => ({
+        id: v.storageKey || v.name,
+        name: v.name,
+        previewUrl: v.url,
+        finalUrl: v.url,
+        finalKey: v.storageKey || v.name,
+        thumbnailDataUrl: v.thumbnailUrl,
+        status: "ready",
+        readyAt: now,
+        origin: "seed",
+        durationSeconds: v.durationSeconds,
+      }));
+      setItems(seeded);
+      seededRef.current = true;
+      log("seed.apply", { count: seeded.length });
+    }
+  }, [seedVideos, log]);
 
   const captureFirstFrame = (file: File): Promise<string | undefined> => {
     return new Promise((resolve) => {
@@ -271,6 +332,217 @@ export function VideoUploadSection({
     setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
+  // Define persistence scheduler early (referenced by hover capture)
+  const schedulePersistFlush = useCallback(() => {
+    if (persistTimerRef.current) return; // already scheduled
+    persistTimerRef.current = setTimeout(async () => {
+      persistTimerRef.current = null;
+      if (!charterId) return;
+      const batch = persistQueueRef.current.splice(
+        0,
+        persistQueueRef.current.length
+      );
+      if (!batch.length) return;
+      for (const job of batch) {
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === job.id ? { ...it, thumbPersisting: true } : it
+          )
+        );
+        const attempt = async (): Promise<boolean> => {
+          try {
+            const resp = await fetch(
+              `/api/charters/${charterId}/media/video/thumbnail`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  storageKey: job.storageKey,
+                  dataUrl: job.dataUrl,
+                  durationSeconds: job.durationSeconds,
+                }),
+              }
+            );
+            const js = await resp.json().catch(() => null);
+            if (resp.ok && js && js.ok && js.thumbnailUrl) {
+              setItems((prev) =>
+                prev.map((it) =>
+                  it.id === job.id
+                    ? {
+                        ...it,
+                        thumbnailDataUrl: js.thumbnailUrl,
+                        thumbPersisting: false,
+                        thumbSaved: true,
+                        durationSeconds:
+                          js.durationSeconds || it.durationSeconds,
+                      }
+                    : it
+                )
+              );
+              return true;
+            }
+          } catch {
+            /* ignore */
+          }
+          return false;
+        };
+        let success = await attempt();
+        let delay = 400;
+        while (!success && job.attempts < 3) {
+          job.attempts += 1;
+          await new Promise((r) => setTimeout(r, delay));
+          success = await attempt();
+          delay *= 2;
+        }
+        if (!success) {
+          setItems((prev) =>
+            prev.map((it) =>
+              it.id === job.id ? { ...it, thumbPersisting: false } : it
+            )
+          );
+        }
+      }
+    }, 250);
+  }, [charterId]);
+
+  // Robust hover capture for existing READY videos without thumbnails (seeded or uploaded later with missing thumb)
+  const attemptHoverCapture = useCallback(
+    (video: SimpleVideoItem) => {
+      if (!video.finalUrl) return;
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === video.id
+            ? {
+                ...it,
+                attemptedHoverCapture: true,
+                thumbFadingIn: true,
+                thumbAttempts: (it.thumbAttempts || 0) + 1,
+              }
+            : it
+        )
+      );
+      log("capture.start", { id: video.id, url: video.finalUrl });
+      try {
+        const el = document.createElement("video");
+        el.muted = true;
+        el.playsInline = true;
+        el.preload = "metadata";
+        // Needed for canvas extraction from cross-origin (Blob) resources
+        // Enable CORS-safe drawing to canvas (if server sets appropriate headers)
+        el.crossOrigin = "anonymous";
+        let loaded = false;
+        const cleanup = () => {
+          try {
+            URL.revokeObjectURL(el.src);
+          } catch {}
+        };
+        const doCapture = () => {
+          if (loaded) return; // prevent double
+          loaded = true;
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = el.videoWidth || 320;
+            canvas.height = el.videoHeight || 180;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("no_ctx");
+            ctx.drawImage(el, 0, 0, canvas.width, canvas.height);
+            const data = canvas.toDataURL("image/jpeg", 0.65);
+            const duration =
+              el.duration && isFinite(el.duration)
+                ? Math.round(el.duration)
+                : undefined;
+            log("capture.success", { id: video.id, duration });
+            setItems((prev) =>
+              prev.map((it) =>
+                it.id === video.id
+                  ? {
+                      ...it,
+                      thumbnailDataUrl: data,
+                      durationSeconds: it.durationSeconds || duration,
+                    }
+                  : it
+              )
+            );
+            if (charterId && (video.finalKey || video.id)) {
+              persistQueueRef.current.push({
+                storageKey: video.finalKey || video.id,
+                dataUrl: data,
+                durationSeconds: duration,
+                id: video.id,
+                attempts: 0,
+              });
+              schedulePersistFlush();
+            }
+            setTimeout(() => {
+              setItems((prev) =>
+                prev.map((it) =>
+                  it.id === video.id ? { ...it, thumbFadingIn: false } : it
+                )
+              );
+            }, 30);
+          } catch (e) {
+            log("capture.canvas_error", { id: video.id, error: String(e) });
+            setItems((prev) =>
+              prev.map((it) =>
+                it.id === video.id
+                  ? { ...it, thumbFadingIn: false, thumbCaptureBlocked: true }
+                  : it
+              )
+            );
+          } finally {
+            cleanup();
+          }
+        };
+
+        const targetTime = 0.1;
+        const seekOrCapture = () => {
+          try {
+            el.currentTime = targetTime;
+          } catch {
+            doCapture();
+          }
+        };
+
+        el.onloadedmetadata = () => {
+          // If duration small just capture now
+          seekOrCapture();
+        };
+        el.onseeked = () => doCapture();
+        el.onerror = (ev) => {
+          log("capture.error", { id: video.id, ev });
+          setItems((prev) =>
+            prev.map((it) =>
+              it.id === video.id
+                ? { ...it, thumbFadingIn: false, thumbCaptureBlocked: true }
+                : it
+            )
+          );
+          cleanup();
+        };
+
+        // timeout fallback (5s)
+        setTimeout(() => {
+          if (!loaded) {
+            log("capture.timeout", { id: video.id });
+            doCapture();
+          }
+        }, 5000);
+
+        el.src = video.finalUrl;
+      } catch (e) {
+        log("capture.setup_failed", { id: video.id, error: String(e) });
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === video.id
+              ? { ...it, thumbFadingIn: false, thumbCaptureBlocked: true }
+              : it
+          )
+        );
+      }
+    },
+    [charterId, log, schedulePersistFlush]
+  );
+
   // Polling logic: query existing pending ids
   const poll = useCallback(async () => {
     const snapshot = itemsRef.current; // always use ref to avoid stale closure lint noise
@@ -376,16 +648,19 @@ export function VideoUploadSection({
     () => () => {
       destroyed.current = true;
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     },
     []
   );
+
+  // (schedulePersistFlush already declared earlier)
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-800">Videos</h3>
         <label className="text-xs font-medium cursor-pointer rounded border border-neutral-300 px-2 py-1 shadow-sm bg-white hover:bg-slate-50">
-          Add
+          Add Video
           <input
             type="file"
             multiple
@@ -397,83 +672,251 @@ export function VideoUploadSection({
         </label>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((v) => {
-          const showThumb =
-            v.thumbnailDataUrl &&
-            (v.status === "local" ||
-              v.status === "queued" ||
-              v.status === "transcoding" ||
-              v.status === "ready");
+        {items.map((v, index) => {
+          const showThumbArea =
+            v.status === "local" ||
+            v.status === "queued" ||
+            v.status === "transcoding" ||
+            v.status === "ready";
+          const hasRealThumb = !!v.thumbnailDataUrl;
           return (
             <div
               key={v.id}
-              className="relative rounded-lg border bg-white p-2 text-xs flex flex-col gap-2"
+              className="group relative rounded-2xl border bg-white text-xs flex flex-col cursor-move shadow-sm overflow-hidden"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("text/plain", String(index));
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const fromStr = e.dataTransfer.getData("text/plain");
+                const from = parseInt(fromStr, 10);
+                if (Number.isNaN(from) || from === index) return;
+                setItems((prev) => {
+                  if (from < 0 || from >= prev.length) return prev;
+                  const next = [...prev];
+                  const [moved] = next.splice(from, 1);
+                  next.splice(index, 0, moved);
+                  log("reorder", { from, to: index });
+                  return next;
+                });
+              }}
+              onMouseEnter={() => {
+                if (
+                  v.status === "ready" &&
+                  !v.thumbnailDataUrl &&
+                  !v.attemptedHoverCapture &&
+                  !v.thumbCaptureBlocked
+                ) {
+                  attemptHoverCapture(v);
+                }
+              }}
             >
-              <div className="relative h-32 w-full bg-slate-100 flex items-center justify-center overflow-hidden text-[10px] text-slate-500">
-                {showThumb && (
+              <div className="relative h-36 w-full bg-slate-100 flex items-center justify-center overflow-hidden text-[10px] text-slate-500">
+                {!hasRealThumb && showThumbArea && (
+                  <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300" />
+                )}
+                {showThumbArea && hasRealThumb && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={v.thumbnailDataUrl}
                     alt="thumb"
-                    className="absolute inset-0 object-cover"
+                    className={`absolute inset-0 object-cover transition-opacity duration-500 ${
+                      v.thumbFadingIn ? "opacity-0" : "opacity-100"
+                    }`}
                   />
                 )}
-                {!showThumb && (
+                {v.durationSeconds && (
+                  <span className="absolute top-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1 rounded">
+                    {Math.floor(v.durationSeconds / 60)
+                      .toString()
+                      .padStart(2, "0")}
+                    :{(v.durationSeconds % 60).toString().padStart(2, "0")}
+                  </span>
+                )}
+                {showThumbArea && !hasRealThumb && (
+                  <div className="flex flex-col items-center gap-1 text-slate-500/70">
+                    <div className="w-10 h-10 rounded bg-slate-300 flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-5 h-5 text-white/80"
+                      >
+                        <path d="M8.25 5.25v13.5L18 12 8.25 5.25Z" />
+                      </svg>
+                    </div>
+                    <span className="text-[9px] font-medium tracking-wide uppercase">
+                      {v.status === "ready" ? "Video" : v.status}
+                    </span>
+                  </div>
+                )}
+                {!showThumbArea && (
                   <span className="px-2 text-center">
                     {v.status === "failed" ? "Failed" : "Preparing"}
                   </span>
                 )}
-                {v.status === "ready" && v.finalUrl && (
-                  <span className="absolute bottom-1 right-1 rounded bg-emerald-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                    Ready
-                  </span>
-                )}
-                {v.status === "failed" && (
-                  <span className="absolute bottom-1 right-1 rounded bg-red-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                    Failed
-                  </span>
-                )}
-                {v.status === "transcoding" && (
-                  <span className="absolute bottom-1 right-1 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                    Transcoding
-                  </span>
-                )}
-                {v.status === "queued" && (
-                  <span className="absolute bottom-1 right-1 rounded bg-slate-500/80 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                    Queued
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <div className="truncate" title={v.name}>
-                  {v.name}
+                {/* Status badges replaced with icon chip at top-right */}
+                <div className="absolute top-1 right-1 flex items-center gap-1">
+                  {v.status === "ready" && (
+                    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-600/90 px-1 py-0.5 text-[10px] font-semibold text-white">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-3 h-3"
+                      >
+                        <path d="M9.53 16.28 5.28 12l1.06-1.06L9.53 14.4l8.13-8.13 1.06 1.06-9.19 9.19Z" />
+                      </svg>
+                      Ready
+                    </span>
+                  )}
+                  {v.status === "transcoding" && (
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-500/90 px-1 py-0.5 text-[10px] font-semibold text-white">
+                      <svg
+                        className="w-3 h-3 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        />
+                      </svg>
+                      Transcoding
+                    </span>
+                  )}
+                  {v.status === "queued" && (
+                    <span className="inline-flex items-center gap-1 rounded bg-slate-500/80 px-1 py-0.5 text-[10px] font-semibold text-white">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-3 h-3"
+                      >
+                        <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 3.25a.75.75 0 0 1 .75.75v5.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.5-2.02a.75.75 0 0 1-.37-.65V6a.75.75 0 0 1 .75-.75Z" />
+                      </svg>
+                      Queued
+                    </span>
+                  )}
+                  {v.status === "failed" && (
+                    <span className="inline-flex items-center gap-1 rounded bg-red-600/90 px-1 py-0.5 text-[10px] font-semibold text-white">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-3 h-3"
+                      >
+                        <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm.75 5v6.5a.75.75 0 0 1-1.5 0V7a.75.75 0 0 1 1.5 0Zm-1.5 9a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0Z" />
+                      </svg>
+                      Failed
+                    </span>
+                  )}
+                  {v.thumbPersisting && (
+                    <span className="inline-flex items-center gap-1 rounded bg-slate-700/70 px-1 py-0.5 text-[10px] font-semibold text-white">
+                      <svg
+                        className="w-3 h-3 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        />
+                      </svg>
+                      Saving
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+              </div>
+              <div className="flex items-center justify-between gap-1 px-2 py-2 border-t border-neutral-100 bg-white/60">
+                <span className="truncate pr-2" title={v.name}>
+                  {v.name}
+                </span>
+                <div className="flex items-center gap-1">
                   {v.status === "failed" && (
                     <button
                       type="button"
-                      onClick={() => {
-                        // Remove then re-add via file picker prompt (simplest retry UX at this stage)
-                        removeItem(v.id);
-                      }}
-                      className="text-amber-600 hover:underline"
+                      onClick={() => removeItem(v.id)}
+                      className="text-amber-600 hover:text-amber-700 p-1"
+                      aria-label="Retry upload"
+                      title="Retry upload"
                     >
-                      Retry
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-4.9 6h-2.02A7 7 0 1 0 12 5Z" />
+                      </svg>
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => removeItem(v.id)}
-                    className="text-red-600 hover:underline"
-                  >
-                    Remove
-                  </button>
+                  {v.origin !== "seed" && (
+                    <button
+                      type="button"
+                      onClick={() => removeItem(v.id)}
+                      className="text-slate-400 hover:text-red-600 p-1 transition-colors"
+                      aria-label="Remove video"
+                      title="Remove video"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="w-4 h-4"
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M8 6v12c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V6" />
+                        <path d="M10 10v6" />
+                        <path d="M14 10v6" />
+                        <path d="M9 6V4c0-.55.45-1 1-1h4c.55 0 1 .45 1 1v2" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="text-[10px] text-slate-400 flex flex-wrap gap-x-2 gap-y-0.5">
-                <span>Status: {v.status}</span>
-                {v.error && <span className="text-red-500">err:{v.error}</span>}
-              </div>
+              {v.error && (
+                <div className="px-2 pb-2 text-[10px] text-red-500 flex items-center gap-1">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-3 h-3"
+                  >
+                    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm.75 5v6.25a.75.75 0 0 1-1.5 0V7a.75.75 0 0 1 1.5 0Zm-1.5 9.5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0Z" />
+                  </svg>
+                  {v.error}
+                </div>
+              )}
             </div>
           );
         })}

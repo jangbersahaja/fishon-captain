@@ -31,6 +31,7 @@ export interface StepSwitchProps {
   currentCharterId: string | null;
   onVideoBlockingChange?: (blocking: boolean) => void;
   onReadyVideosChange?: (videos: { name: string; url: string }[]) => void;
+  seedVideos?: { name: string; url: string; thumbnailUrl?: string }[];
 }
 
 const MediaPricingStep = dynamic(
@@ -101,6 +102,7 @@ export const StepSwitch: React.FC<StepSwitchProps> = (props) => {
           currentCharterId={props.currentCharterId}
           onVideoBlockingChange={props.onVideoBlockingChange}
           onReadyVideosChange={props.onReadyVideosChange}
+          seedVideos={props.seedVideos}
         />
       );
     default:

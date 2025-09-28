@@ -117,22 +117,33 @@ export async function POST(req: Request) {
     if (isVideo && charterId && docType === "charter_media") {
       // Create or upsert a temporary DB record referencing the original temp key so UI can reflect pending state
       try {
-        await prisma.charterMedia.create({
-          data: {
-            charterId,
-            kind: "CHARTER_VIDEO",
-            url, // original temp URL (will be replaced after transcode)
-            storageKey: key,
-            sortOrder: 999, // appended; ordering can be adjusted after finalization
-          },
-        });
-      } catch (err) {
-        // If record exists (e.g., retry), ignore
-        console.warn(
-          "Temp video record create failed (possible duplicate)",
-          err
-        );
-      }
+        try {
+          let nextOrder = 0;
+          try {
+            const max = await prisma.charterMedia.aggregate({
+              where: { charterId },
+              _max: { sortOrder: true },
+            });
+            nextOrder = (max._max.sortOrder ?? -1) + 1;
+          } catch (e) {
+            console.warn("blob upload temp video: failed computing next sortOrder", e);
+          }
+          await prisma.charterMedia.create({
+            data: {
+              charterId,
+              kind: "CHARTER_VIDEO",
+              url, // original temp URL (will be replaced after transcode)
+              storageKey: key,
+              sortOrder: nextOrder,
+            },
+          });
+        } catch (err) {
+          console.warn(
+            "Temp video record create failed (possible duplicate after sortOrder logic)",
+            err
+          );
+        }
+  } catch {}
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/jobs/transcode`, {
           method: "POST",

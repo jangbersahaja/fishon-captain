@@ -49,13 +49,25 @@ export async function POST(req: Request) {
     let charterMediaId: string | null = null;
     if (charterId) {
       try {
+        // Compute next sortOrder (append semantics) instead of static 999
+        let nextOrder = 0;
+        try {
+          const max = await prisma.charterMedia.aggregate({
+            where: { charterId },
+            _max: { sortOrder: true },
+          });
+          nextOrder = (max._max.sortOrder ?? -1) + 1;
+        } catch (e) {
+          console.warn("photo upload: failed to compute next sortOrder, defaulting 0", e);
+        }
         const cm = await prisma.charterMedia.create({
           data: {
             charterId,
             kind: "CHARTER_PHOTO",
             url: putRes.url,
             storageKey,
-            sortOrder: 999,
+            sortOrder: nextOrder,
+            // original filename kept client-side; add field here if schema later supports it
           },
           select: { id: true },
         });
