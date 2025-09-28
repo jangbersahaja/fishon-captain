@@ -44,10 +44,11 @@ export default async function StaffCharterDetailPage({
             select: {
               id: true,
               email: true,
-              name: true,
               role: true,
               createdAt: true,
               updatedAt: true,
+              // prisma User model has optional name; include if present
+              name: true,
             },
           },
         },
@@ -302,6 +303,9 @@ export default async function StaffCharterDetailPage({
             <div>
               <span className="text-slate-500">Starting point:</span>{" "}
               {c.startingPoint}
+            </div>
+            <div>
+              <span className="text-slate-500">City:</span> {c.city}
             </div>
             <div>
               <span className="text-slate-500">Postcode:</span> {c.postcode}
