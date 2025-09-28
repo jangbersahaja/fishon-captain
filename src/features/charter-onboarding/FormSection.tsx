@@ -127,10 +127,9 @@ export default function FormSection() {
     addPhotoFiles,
     reorderExistingPhotos,
     removePhoto,
-    retryPhoto,
     isMediaUploading,
-  canSubmitMedia,
-  hasBlockingMedia,
+    canSubmitMedia,
+    hasBlockingMedia,
     // photoProgress,
     // videoProgress,
   } = media;
@@ -618,7 +617,6 @@ export default function FormSection() {
             existingImagesCount={existingImages.length}
             existingVideosCount={existingVideos.length}
             onReorderPhotos={reorderExistingPhotos}
-            onRetryPhoto={retryPhoto}
             currentCharterId={currentCharterId}
             onVideoBlockingChange={(b) => setVideoSectionBlocking(b)}
             onReadyVideosChange={useCallback(

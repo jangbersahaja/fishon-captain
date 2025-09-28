@@ -30,7 +30,6 @@ type MediaPricingStepProps = {
   onRemovePhoto: (index: number) => void;
   onRemoveVideo?: (index: number) => void; // legacy optional
   onReorderPhotos?: (from: number, to: number) => void; // still supported externally
-  onRetryPhoto?: (index: number) => void;
   onRetryVideo?: (index: number) => void;
   currentCharterId?: string | null;
   onVideoBlockingChange?: (blocking: boolean) => void;
@@ -45,7 +44,6 @@ export function MediaPricingStep({
   onAddPhotoFiles,
   onRemovePhoto,
   onReorderPhotos,
-  onRetryPhoto,
   currentCharterId,
   onVideoBlockingChange,
   onReadyVideosChange,
@@ -212,7 +210,7 @@ export function MediaPricingStep({
             onRemove={handleRemovePhoto}
             onUpdateAlt={handleUpdatePhotoAlt}
             onMove={handleMovePhoto}
-            onRetry={onRetryPhoto ? (i) => onRetryPhoto(i) : undefined}
+            // Retry removed; image uploads are atomic
           />
         </div>
 

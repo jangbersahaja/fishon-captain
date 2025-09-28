@@ -61,8 +61,6 @@ export interface UseCharterMediaManagerResult {
       }>
     >
   >;
-  photoProgress: number[];
-  videoProgress: number[];
   photoPreviews: Array<{ url: string; name?: string }>;
   videoPreviews: Array<{ url: string; name?: string; thumbnailUrl?: string }>;
   addPhotoFiles: (files: File[]) => Promise<void>;
@@ -71,8 +69,6 @@ export interface UseCharterMediaManagerResult {
   reorderExistingVideos: (from: number, to: number) => void;
   removePhoto: (index: number) => void;
   removeVideo: (index: number) => void;
-  retryPhoto: (index: number) => void;
-  retryVideo: (index: number) => void;
   isMediaUploading: boolean;
   canSubmitMedia: boolean;
   combinedPhotoCount: number;
@@ -147,13 +143,18 @@ export function useCharterMediaManager({
       })
         .then((r) => {
           if (!r.ok) {
-            dlog("deferred_delete_fail_status", { storageKey, status: r.status });
+            dlog("deferred_delete_fail_status", {
+              storageKey,
+              status: r.status,
+            });
             return;
           }
           processedDeleteKeysRef.current.add(storageKey);
           dlog("deferred_delete_ok", { storageKey });
         })
-        .catch((e) => dlog("deferred_delete_error", { storageKey, error: String(e) }));
+        .catch((e) =>
+          dlog("deferred_delete_error", { storageKey, error: String(e) })
+        );
     });
   }, [currentCharterId, deleteKeys, dlog]);
   const pendingAllIds = useMemo(
@@ -779,20 +780,21 @@ export function useCharterMediaManager({
     if (input) input.value = "";
   }, [setValue]);
 
-  const empty: number[] = [];
-
   // Removal handlers
   const removePhoto = useCallback(
     (index: number) => {
       setExistingImages((prev) => {
-        const target = prev[index];
-        if (target && currentCharterId) {
-          setDeleteKeys((s) => new Set(s).add(target.name));
+        const target = prev[index] as
+          | (typeof prev[number] & { storageKey?: string })
+          | undefined;
+        const key = target?.storageKey || target?.name;
+        if (key && currentCharterId) {
+          setDeleteKeys((s) => new Set(s).add(key));
           // Fire-and-forget server removal
           fetch(`/api/charters/${currentCharterId}/media/remove`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ storageKey: target.name }),
+            body: JSON.stringify({ storageKey: key }),
           }).catch((e) =>
             console.warn("[mediaManager] photo_remove_api_failed", e)
           );
@@ -806,13 +808,16 @@ export function useCharterMediaManager({
   const removeVideo = useCallback(
     (index: number) => {
       setExistingVideos((prev) => {
-        const target = prev[index];
-        if (target && currentCharterId && target.status === "ready") {
-          setDeleteKeys((s) => new Set(s).add(target.name));
+        const target = prev[index] as
+          | (typeof prev[number] & { storageKey?: string })
+          | undefined;
+        const key = target?.storageKey || target?.name;
+        if (key && currentCharterId && target?.status === "ready") {
+          setDeleteKeys((s) => new Set(s).add(key));
           fetch(`/api/charters/${currentCharterId}/media/remove`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ storageKey: target.name }),
+            body: JSON.stringify({ storageKey: key }),
           }).catch((e) =>
             console.warn("[mediaManager] video_remove_api_failed", e)
           );
@@ -839,26 +844,7 @@ export function useCharterMediaManager({
     [dlog, currentCharterId]
   );
 
-  // Retry stubs – future: re-initiate upload flow for failed items
-  const retryPhoto = useCallback(() => {
-    dlog("photo_retry_requested");
-    // No-op: photos upload atomically currently
-  }, [dlog]);
-  const retryVideo = useCallback(
-    (index: number) => {
-      setExistingVideos((prev) => {
-        const next = [...prev];
-        const target = next[index];
-        if (target && target.status === "failed") {
-          // For now just remove failed item; user can add again.
-          next.splice(index, 1);
-        }
-        return next;
-      });
-      dlog("video_retry_placeholder", { index });
-    },
-    [dlog]
-  );
+  // Retry handlers removed (legacy) – videos/photos upload atomically now
 
   return {
     captainAvatarPreview,
@@ -869,8 +855,6 @@ export function useCharterMediaManager({
     existingVideos,
     setExistingImages,
     setExistingVideos,
-    photoProgress: empty,
-    videoProgress: empty,
     photoPreviews,
     videoPreviews,
     addPhotoFiles,
@@ -907,8 +891,6 @@ export function useCharterMediaManager({
     ),
     removePhoto,
     removeVideo,
-    retryPhoto,
-    retryVideo,
     isMediaUploading,
     canSubmitMedia,
     combinedPhotoCount,

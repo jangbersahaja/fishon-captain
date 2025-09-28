@@ -21,7 +21,6 @@ export interface StepSwitchProps {
   existingImagesCount: number;
   existingVideosCount: number;
   onReorderPhotos: (from: number, to: number) => void;
-  onRetryPhoto: (index: number) => void;
   currentCharterId: string | null;
   onVideoBlockingChange?: (blocking: boolean) => void;
   onReadyVideosChange?: (videos: { name: string; url: string }[]) => void;
@@ -92,7 +91,6 @@ export const StepSwitch: React.FC<StepSwitchProps> = (props) => {
           onAddPhotoFiles={props.addPhotoFiles}
           onRemovePhoto={props.removePhoto}
           onReorderPhotos={props.onReorderPhotos}
-          onRetryPhoto={props.onRetryPhoto}
           currentCharterId={props.currentCharterId}
           onVideoBlockingChange={props.onVideoBlockingChange}
           onReadyVideosChange={props.onReadyVideosChange}
