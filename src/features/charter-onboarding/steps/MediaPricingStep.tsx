@@ -229,11 +229,20 @@ export function MediaPricingStep({
               // Derive ready videos (finalUrl present)
               const ready = items
                 .filter((i) => i.status === "ready" && i.finalUrl)
-                .map((i) => ({
-                  // Preserve original filename (i.name) for display & downstream usage
-                  name: i.name,
-                  url: i.finalUrl as string,
-                }));
+                .map((i) => {
+                  const candidate = i.finalUrl || i.previewUrl || i.name;
+                  let display = i.name;
+                  if (candidate) {
+                    try {
+                      const clean = candidate.split("?")[0];
+                      const segs = clean.split("/");
+                      display = decodeURIComponent(
+                        segs[segs.length - 1] || i.name
+                      );
+                    } catch {}
+                  }
+                  return { name: display, url: i.finalUrl as string };
+                });
               onReadyVideosChange?.(ready);
             }}
             seedVideos={seedVideos}

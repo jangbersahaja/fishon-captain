@@ -655,10 +655,31 @@ export function VideoUploadSection({
 
   // (schedulePersistFlush already declared earlier)
 
+  // Derive display name from URL path if provided (ignore numeric DB names)
+  const deriveDisplayName = (it: SimpleVideoItem): string => {
+    const candidate = it.finalUrl || it.previewUrl || it.localObjectUrl || it.name;
+    if (!candidate) return it.name;
+    try {
+      const clean = candidate.split("?")[0];
+      const segs = clean.split("/");
+      let last = segs[segs.length - 1] || it.name;
+      // Remove potential unique suffix patterns like -abc123xyz.mp4 only if original part present
+      // (Keep full if user intentionally had dashes.) We won't over-trim; just decode.
+      try {
+        last = decodeURIComponent(last);
+      } catch {}
+      return last;
+    } catch {
+      return it.name;
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-800">Videos</h3>
+        <h3 className="text-sm font-semibold text-slate-800">
+          Videos <span className="ml-1 text-xs text-slate-500">({items.length}/{max})</span>
+        </h3>
         <label className="text-xs font-medium cursor-pointer rounded border border-neutral-300 px-2 py-1 shadow-sm bg-white hover:bg-slate-50">
           Add Video
           <input
@@ -763,99 +784,47 @@ export function VideoUploadSection({
                 {/* Status badges replaced with icon chip at top-right */}
                 <div className="absolute top-1 right-1 flex items-center gap-1">
                   {v.status === "ready" && (
-                    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-600/90 px-1 py-0.5 text-[10px] font-semibold text-white">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="w-3 h-3"
-                      >
+                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-emerald-600/90 text-white" title="Ready">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
                         <path d="M9.53 16.28 5.28 12l1.06-1.06L9.53 14.4l8.13-8.13 1.06 1.06-9.19 9.19Z" />
                       </svg>
-                      Ready
                     </span>
                   )}
                   {v.status === "transcoding" && (
-                    <span className="inline-flex items-center gap-1 rounded bg-amber-500/90 px-1 py-0.5 text-[10px] font-semibold text-white">
-                      <svg
-                        className="w-3 h-3 animate-spin"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                        />
+                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-amber-500/90 text-white" title="Transcoding">
+                      <svg className="w-3.5 h-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                       </svg>
-                      Transcoding
                     </span>
                   )}
                   {v.status === "queued" && (
-                    <span className="inline-flex items-center gap-1 rounded bg-slate-500/80 px-1 py-0.5 text-[10px] font-semibold text-white">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="w-3 h-3"
-                      >
+                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-slate-500/80 text-white" title="Queued">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
                         <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 3.25a.75.75 0 0 1 .75.75v5.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.5-2.02a.75.75 0 0 1-.37-.65V6a.75.75 0 0 1 .75-.75Z" />
                       </svg>
-                      Queued
                     </span>
                   )}
                   {v.status === "failed" && (
-                    <span className="inline-flex items-center gap-1 rounded bg-red-600/90 px-1 py-0.5 text-[10px] font-semibold text-white">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="w-3 h-3"
-                      >
+                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-red-600/90 text-white" title="Failed">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
                         <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm.75 5v6.5a.75.75 0 0 1-1.5 0V7a.75.75 0 0 1 1.5 0Zm-1.5 9a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0Z" />
                       </svg>
-                      Failed
                     </span>
                   )}
                   {v.thumbPersisting && (
-                    <span className="inline-flex items-center gap-1 rounded bg-slate-700/70 px-1 py-0.5 text-[10px] font-semibold text-white">
-                      <svg
-                        className="w-3 h-3 animate-spin"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                        />
+                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-slate-700/70 text-white" title="Saving thumbnail">
+                      <svg className="w-3.5 h-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                       </svg>
-                      Saving
                     </span>
                   )}
                 </div>
               </div>
               <div className="flex items-center justify-between gap-1 px-2 py-2 border-t border-neutral-100 bg-white/60">
-                <span className="truncate pr-2" title={v.name}>
-                  {v.name}
+                <span className="truncate pr-2" title={deriveDisplayName(v)}>
+                  {deriveDisplayName(v)}
                 </span>
                 <div className="flex items-center gap-1">
                   {v.status === "failed" && (
@@ -876,32 +845,30 @@ export function VideoUploadSection({
                       </svg>
                     </button>
                   )}
-                  {v.origin !== "seed" && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(v.id)}
-                      className="text-slate-400 hover:text-red-600 p-1 transition-colors"
-                      aria-label="Remove video"
-                      title="Remove video"
+                  <button
+                    type="button"
+                    onClick={() => removeItem(v.id)}
+                    className="text-slate-400 hover:text-red-600 p-1 transition-colors"
+                    aria-label="Remove video"
+                    title="Remove video"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-4 h-4"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="w-4 h-4"
-                      >
-                        <path d="M3 6h18" />
-                        <path d="M8 6v12c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V6" />
-                        <path d="M10 10v6" />
-                        <path d="M14 10v6" />
-                        <path d="M9 6V4c0-.55.45-1 1-1h4c.55 0 1 .45 1 1v2" />
-                      </svg>
-                    </button>
-                  )}
+                      <path d="M3 6h18" />
+                      <path d="M8 6v12c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V6" />
+                      <path d="M10 10v6" />
+                      <path d="M14 10v6" />
+                      <path d="M9 6V4c0-.55.45-1 1-1h4c.55 0 1 .45 1 1v2" />
+                    </svg>
+                  </button>
                 </div>
               </div>
               {v.error && (

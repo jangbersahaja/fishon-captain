@@ -126,7 +126,10 @@ export async function POST(req: Request) {
             });
             nextOrder = (max._max.sortOrder ?? -1) + 1;
           } catch (e) {
-            console.warn("blob upload temp video: failed computing next sortOrder", e);
+            console.warn(
+              "blob upload temp video: failed computing next sortOrder",
+              e
+            );
           }
           await prisma.charterMedia.create({
             data: {
@@ -143,7 +146,7 @@ export async function POST(req: Request) {
             err
           );
         }
-  } catch {}
+      } catch {}
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/jobs/transcode`, {
           method: "POST",

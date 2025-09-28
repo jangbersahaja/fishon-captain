@@ -58,7 +58,10 @@ export async function POST(req: Request) {
           });
           nextOrder = (max._max.sortOrder ?? -1) + 1;
         } catch (e) {
-          console.warn("photo upload: failed to compute next sortOrder, defaulting 0", e);
+          console.warn(
+            "photo upload: failed to compute next sortOrder, defaulting 0",
+            e
+          );
         }
         const cm = await prisma.charterMedia.create({
           data: {
