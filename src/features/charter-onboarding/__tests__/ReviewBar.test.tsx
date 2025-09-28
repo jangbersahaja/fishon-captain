@@ -1,3 +1,4 @@
+import { ToastProvider } from "@/components/toast/ToastContext";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ReviewBar } from "../components/ReviewBar";
@@ -45,35 +46,41 @@ describe("ReviewBar", () => {
   });
   it("shows submit charter text when creating", () => {
     render(
-      <CharterFormProvider value={makeEnv()}>
-        <ReviewBar active onPrimary={() => {}} />
-      </CharterFormProvider>
+      <ToastProvider>
+        <CharterFormProvider value={makeEnv()}>
+          <ReviewBar active onPrimary={() => {}} />
+        </CharterFormProvider>
+      </ToastProvider>
     );
     expect(screen.getByText(/Submit Charter/i)).toBeInTheDocument();
   });
   it("shows save when editing", () => {
     render(
-      <CharterFormProvider value={makeEnv({ isEditing: true })}>
-        <ReviewBar active onPrimary={() => {}} />
-      </CharterFormProvider>
+      <ToastProvider>
+        <CharterFormProvider value={makeEnv({ isEditing: true })}>
+          <ReviewBar active onPrimary={() => {}} />
+        </CharterFormProvider>
+      </ToastProvider>
     );
     expect(screen.getByText(/Save$/i)).toBeInTheDocument();
   });
   it("disables primary button when media uploading", () => {
     render(
-      <CharterFormProvider
-        value={makeEnv({
-          media: {
-            isMediaUploading: true,
-            canSubmitMedia: false,
-            existingImagesCount: 0,
-            existingVideosCount: 0,
-            avatarUploading: false,
-          },
-        })}
-      >
-        <ReviewBar active onPrimary={() => {}} />
-      </CharterFormProvider>
+      <ToastProvider>
+        <CharterFormProvider
+          value={makeEnv({
+            media: {
+              isMediaUploading: true,
+              canSubmitMedia: false,
+              existingImagesCount: 0,
+              existingVideosCount: 0,
+              avatarUploading: false,
+            },
+          })}
+        >
+          <ReviewBar active onPrimary={() => {}} />
+        </CharterFormProvider>
+      </ToastProvider>
     );
     const btn = screen.getByRole("button", { name: /submit charter/i });
     expect(btn).toBeDisabled();

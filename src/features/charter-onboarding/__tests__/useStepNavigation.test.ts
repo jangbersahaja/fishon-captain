@@ -66,7 +66,9 @@ const makeDefaults = (): CharterFormValues => ({
   ],
   photos: [],
   videos: [],
-  supportedLanguages: [],
+  // Provide languages so basics step schema passes (schema requires at least one; form schema default would normally fill this in production code path)
+  // Tests use explicit defaultValues, so we must mirror runtime default.
+  supportedLanguages: ["Malay", "English"],
   uploadedPhotos: [],
   uploadedVideos: [],
 });
@@ -130,29 +132,27 @@ describe("useStepNavigation", () => {
     expect(nav.stepCompleted[0]).toBe(false);
   });
 
-  it("bypasses media minimum when editing with existing images", async () => {
-    // Move to media step quickly by reusing handleNext sequentially
-    const { hook } = setup(3, true); // editing with 3 existing images
-    // Steps: 0 basics -> 1 experience -> 2 trips -> 3 media
-    // Because defaults are valid, each call should move exactly one step
+  it("bypasses media photo minimum when sufficient existing images present", async () => {
+    // editing with 3 existing images should allow media step to pass even if form.photos empty
+    const { hook } = setup(3, true);
+    // Sequence (per STEP_SEQUENCE): 0 basics -> 1 experience -> 2 trips -> 3 description -> 4 media -> 5 review
     await act(async () => {
-      await hook.result.current.nav.handleNext(); // 0 -> 1
-    });
+      await hook.result.current.nav.handleNext();
+    }); // 0 -> 1
     await act(async () => {
-      await hook.result.current.nav.handleNext(); // 1 -> 2
-    });
+      await hook.result.current.nav.handleNext();
+    }); // 1 -> 2
     await act(async () => {
-      await hook.result.current.nav.handleNext(); // 2 -> 3 (media)
-    });
-    expect(hook.result.current.nav.currentStep).toBe(3); // media index
-    // Media schema would normally require photos; ensure Next still works (media -> description)
+      await hook.result.current.nav.handleNext();
+    }); // 2 -> 3 (description)
     await act(async () => {
-      await hook.result.current.nav.handleNext(); // media -> description (4)
-    });
-    expect(hook.result.current.nav.currentStep).toBe(4);
+      await hook.result.current.nav.handleNext();
+    }); // 3 -> 4 (media)
+    expect(hook.result.current.nav.currentStep).toBe(4); // media index
+    // Now advance; should bypass min photos using existingImagesCount and reach review
     await act(async () => {
-      await hook.result.current.nav.handleNext(); // description -> review
-    });
+      await hook.result.current.nav.handleNext();
+    }); // 4 -> 5 (review)
     expect(hook.result.current.nav.isReviewStep).toBe(true);
   });
 

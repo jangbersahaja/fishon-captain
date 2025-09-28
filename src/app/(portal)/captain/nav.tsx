@@ -22,27 +22,33 @@ export function DashboardNav() {
   const pathname = usePathname();
   const active = useMemo(() => pathname?.replace(/\/$/, "") || "", [pathname]);
   return (
-    <nav className="p-4 md:py-8 md:px-5 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible text-sm">
-      {links.map(({ href, label, Icon }) => {
-        const isActive = active === href;
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={
-              "rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 " +
-              (isActive
-                ? "bg-[#ec2227] text-white shadow"
-                : "text-slate-600 hover:bg-slate-100")
-            }
-            aria-current={isActive ? "page" : undefined}
-            prefetch={false}
-          >
-            <Icon className="h-4 w-4" aria-hidden />
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      {pathname === "/captain/form" ? null : (
+        <aside className="md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+          <nav className="p-4 md:py-8 md:px-5 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible text-sm">
+            {links.map(({ href, label, Icon }) => {
+              const isActive = active === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={
+                    "rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 " +
+                    (isActive
+                      ? "bg-[#ec2227] text-white shadow"
+                      : "text-slate-600 hover:bg-slate-100")
+                  }
+                  aria-current={isActive ? "page" : undefined}
+                  prefetch={false}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
+      )}
+    </>
   );
 }

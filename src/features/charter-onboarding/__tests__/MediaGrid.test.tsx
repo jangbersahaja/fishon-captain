@@ -19,8 +19,10 @@ describe("MediaGrid video processing indicator", () => {
       />
     );
 
+    // Badge text
     expect(screen.getByText(/^processing$/i)).toBeInTheDocument();
-    expect(screen.getByText(/video processing/i)).toBeInTheDocument();
+    // Body copy changed in component to "Optimizing video & thumbnail"; keep test resilient
+    expect(screen.getByText(/optimizing video/i)).toBeInTheDocument();
     const altInput = screen.getByPlaceholderText(
       /alt text/i
     ) as HTMLInputElement;

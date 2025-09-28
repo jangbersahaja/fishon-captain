@@ -33,13 +33,19 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
     if (!active) return; // register only when visible
     if (!barRef.current) return;
     const el = barRef.current;
-    const unregister = registerBottomAnchor(
+    const unregisterMaybe = registerBottomAnchor(
       "review-bar",
       () => el.offsetHeight
     );
+    const unregister =
+      typeof unregisterMaybe === "function" ? unregisterMaybe : () => {};
     const ro = new ResizeObserver(() => {
       // trigger re-registration logic by re-registering height (simple approach)
-      unregister();
+      try {
+        unregister();
+      } catch {
+        /* noop defensive */
+      }
       registerBottomAnchor("review-bar", () => el.offsetHeight);
     });
     ro.observe(el);

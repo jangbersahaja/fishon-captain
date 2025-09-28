@@ -569,9 +569,11 @@ export default async function StaffCharterDetailPage({
                     </div>
                     {t.techniques.length ? (
                       <ul className="list-inside list-disc text-sm text-slate-700">
-                        {t.techniques.map((tech: { id: string; value: string }) => (
-                          <li key={tech.id}>{tech.value}</li>
-                        ))}
+                        {t.techniques.map(
+                          (tech: { id: string; value: string }) => (
+                            <li key={tech.id}>{tech.value}</li>
+                          )
+                        )}
                       </ul>
                     ) : (
                       <div className="text-sm text-slate-600">—</div>
@@ -583,9 +585,11 @@ export default async function StaffCharterDetailPage({
                     </div>
                     {t.startTimes.length ? (
                       <ul className="list-inside list-disc text-sm text-slate-700">
-                        {t.startTimes.map((st: { id: string; value: string }) => (
-                          <li key={st.id}>{st.value}</li>
-                        ))}
+                        {t.startTimes.map(
+                          (st: { id: string; value: string }) => (
+                            <li key={st.id}>{st.value}</li>
+                          )
+                        )}
                       </ul>
                     ) : (
                       <div className="text-sm text-slate-600">—</div>
@@ -598,31 +602,37 @@ export default async function StaffCharterDetailPage({
                       Trip media: {t.media.length}
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {t.media.map((m: { id: string; url: string; mimeType: string | null }) => (
-                        <a
-                          key={m.id}
-                          href={m.url}
-                          target="_blank"
-                          className="group block overflow-hidden rounded-md border border-slate-200"
-                        >
-                          {m.mimeType?.startsWith("image/") ||
-                          isImage(m.url) ? (
-                            <div className="relative h-24 w-full">
-                              <Image
-                                src={m.url}
-                                alt={m.url}
-                                fill
-                                sizes="(max-width: 640px) 50vw, 25vw"
-                                className="object-cover transition group-hover:opacity-90"
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex h-24 w-full items-center justify-center bg-slate-50 text-xs text-slate-600">
-                              {m.mimeType || "file"}
-                            </div>
-                          )}
-                        </a>
-                      ))}
+                      {t.media.map(
+                        (m: {
+                          id: string;
+                          url: string;
+                          mimeType: string | null;
+                        }) => (
+                          <a
+                            key={m.id}
+                            href={m.url}
+                            target="_blank"
+                            className="group block overflow-hidden rounded-md border border-slate-200"
+                          >
+                            {m.mimeType?.startsWith("image/") ||
+                            isImage(m.url) ? (
+                              <div className="relative h-24 w-full">
+                                <Image
+                                  src={m.url}
+                                  alt={m.url}
+                                  fill
+                                  sizes="(max-width: 640px) 50vw, 25vw"
+                                  className="object-cover transition group-hover:opacity-90"
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex h-24 w-full items-center justify-center bg-slate-50 text-xs text-slate-600">
+                                {m.mimeType || "file"}
+                              </div>
+                            )}
+                          </a>
+                        )
+                      )}
                     </div>
                   </div>
                 ) : null}

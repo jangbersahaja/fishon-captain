@@ -1,16 +1,19 @@
 const AligatorGar = "/images/species/freshwater/1. Alligator Gar.png";
 const MayanCichlid = "/images/species/freshwater/10. Mayan Cichlids.png";
 const GouramiKaloi = "/images/species/freshwater/11. Gourami Kaloi.png";
-const TinfoilBarbLampam = "/images/species/freshwater/12. Tinfoil Barb Lampam.png";
+const TinfoilBarbLampam =
+  "/images/species/freshwater/12. Tinfoil Barb Lampam.png";
 const HampalaSebarau = "/images/species/freshwater/13. Hampala Sebarau.png";
 const Sharkcatfish = "/images/species/freshwater/14. Patin Sharkcatfish.png";
 const ChaoPraya = "/images/species/freshwater/15. Chao Phraya.png";
-const MekongGiantCatfish = "/images/species/freshwater/16. Mekong Giant Catfish.png";
+const MekongGiantCatfish =
+  "/images/species/freshwater/16. Mekong Giant Catfish.png";
 const RedtailCatfish = "/images/species/freshwater/17. Redtail Catfish.png";
 const JaguarCichlid = "/images/species/freshwater/18. Jaguar Cichlid.png";
 const Mahseer = "/images/species/freshwater/19. Tengas Mahseer.png";
 const GiantSnakehead = "/images/species/freshwater/2. Giant Snakehead.png";
-const PutitorMahseer = "/images/species/freshwater/20. Kelah Putitor Mahseer.png";
+const PutitorMahseer =
+  "/images/species/freshwater/20. Kelah Putitor Mahseer.png";
 const Rohu = "/images/species/freshwater/21. Rohu.png";
 const Catfish = "/images/species/freshwater/22. Keli Catfish.png";
 const BlueTilapia = "/images/species/freshwater/23. Blue Tilapia.png";
@@ -26,11 +29,24 @@ const WallagoAttu = "/images/species/freshwater/31. Tapah Wallago Attu.png";
 const Knifefish = "/images/species/freshwater/32. Belida Knifefish.png";
 const BigheadCarp = "/images/species/freshwater/33. Tongsan Bighead Carp.png";
 const ClimbingPerch = "/images/species/freshwater/4. Climbing Perch.png";
-const GiantFreshwaterPrawn = "/images/species/freshwater/5. Giant Freshwater Prawn.png";
+const GiantFreshwaterPrawn =
+  "/images/species/freshwater/5. Giant Freshwater Prawn.png";
 const PeacockBass = "/images/species/freshwater/6. Peacock Bass.png";
 const Arapaimas = "/images/species/freshwater/7. Arapaima.png";
 const ChannaMaru = "/images/species/freshwater/8. Channa Maru.png";
 const Temensis = "/images/species/freshwater/9. Temensis.png";
+// Fixed: correct Sucker Barb asset path (previously truncated)
+const SuckerBarb = "/images/species/freshwater/Bentulu - Sucker Barb.png";
+const Mystacoleus =
+  "/images/species/freshwater/Ikan Masai -  Mystacoleucus marginatus.png";
+const KingOfTerbul = "/images/species/freshwater/Kelabau - King of Terbul.png";
+const GoonchCatfish = "/images/species/freshwater/Kenerak - Goonch Catfish.png";
+const FreshwaterDorab =
+  "/images/species/freshwater/Parang Sungai - Fresh Water Dorab.png";
+const MalayanTrout = "/images/species/freshwater/Sikang - Malayan Trout.png";
+const Temelian = "/images/species/freshwater/Temoleh - Temelian.png";
+const BeardlessBarb =
+  "/images/species/freshwater/Temperas - Beardless Barb.png";
 
 export const FRESH_WATER_SPECIES = [
   {
@@ -230,5 +246,53 @@ export const FRESH_WATER_SPECIES = [
     english_name: "Bighead Carp",
     local_name: "Tongsan",
     image: BigheadCarp,
+  },
+  {
+    id: "sucker-barb",
+    english_name: "Sucker Barb",
+    local_name: "Bentulu",
+    image: SuckerBarb,
+  },
+  {
+    id: "Mystacoleus",
+    english_name: "Mystacoleus",
+    local_name: "Ikan Masai",
+    image: Mystacoleus,
+  },
+  {
+    id: "king-of-terbul",
+    english_name: "King of Terbul",
+    local_name: "Kelabau",
+    image: KingOfTerbul,
+  },
+  {
+    id: "goonch-catfish",
+    english_name: "Goonch Catfish",
+    local_name: "Kenerak",
+    image: GoonchCatfish,
+  },
+  {
+    id: "freshwater-dorab",
+    english_name: "Freshwater Dorab",
+    local_name: "Parang Sungai",
+    image: FreshwaterDorab,
+  },
+  {
+    id: "malayan-trout",
+    english_name: "Malayan Trout",
+    local_name: "Sikang",
+    image: MalayanTrout,
+  },
+  {
+    id: "temelian",
+    english_name: "Temelian",
+    local_name: "Temoleh",
+    image: Temelian,
+  },
+  {
+    id: "beardless-barb",
+    english_name: "Beardless Barb",
+    local_name: "Temperas",
+    image: BeardlessBarb,
   },
 ];

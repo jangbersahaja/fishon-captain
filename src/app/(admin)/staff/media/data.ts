@@ -62,7 +62,10 @@ export async function loadPipelineData(
       })
       .then(
         (rows) =>
-          rows as Array<{ status: PendingMediaStatus; _count: { _all: number } }>
+          rows as Array<{
+            status: PendingMediaStatus;
+            _count: { _all: number };
+          }>
       ),
     prisma.pendingMedia.findMany({
       where,
@@ -74,7 +77,8 @@ export async function loadPipelineData(
   const statusCounts = STATUSES.reduce<Record<Status, number>>(
     (acc, status) => {
       const match = statusGroups.find(
-        (g: { status: PendingMediaStatus }) => g.status === (status as PendingMediaStatus)
+        (g: { status: PendingMediaStatus }) =>
+          g.status === (status as PendingMediaStatus)
       );
       acc[status] = match?._count._all ?? 0;
       return acc;
@@ -299,77 +303,103 @@ export async function loadStorageData(
     });
   });
 
-  pendingMedia.forEach((item: { id: string; originalKey: string | null; finalKey: string | null; thumbnailKey: string | null }) => {
-    addReference(item.originalKey, {
-      type: "PendingMedia",
-      label: `Pending ${item.id} • original`,
-    });
-    addReference(item.finalKey, {
-      type: "PendingMedia",
-      label: `Pending ${item.id} • final`,
-    });
-    addReference(item.thumbnailKey, {
-      type: "PendingMedia",
-      label: `Pending ${item.id} • thumbnail`,
-    });
-  });
+  pendingMedia.forEach(
+    (item: {
+      id: string;
+      originalKey: string | null;
+      finalKey: string | null;
+      thumbnailKey: string | null;
+    }) => {
+      addReference(item.originalKey, {
+        type: "PendingMedia",
+        label: `Pending ${item.id} • original`,
+      });
+      addReference(item.finalKey, {
+        type: "PendingMedia",
+        label: `Pending ${item.id} • final`,
+      });
+      addReference(item.thumbnailKey, {
+        type: "PendingMedia",
+        label: `Pending ${item.id} • thumbnail`,
+      });
+    }
+  );
 
-  captainProfiles.forEach((profile: { userId: string; displayName: string | null; avatarUrl: string | null; user: { email: string | null; name: string | null } | null }) => {
-    const key = extractKeyFromUrl(profile.avatarUrl);
-    if (!key) return;
-    const label =
-      profile.displayName ||
-      profile.user?.name ||
-      profile.user?.email ||
-      profile.userId;
-    addReference(key, {
-      type: "CaptainAvatar",
-      label: `Captain avatar • ${label}`,
-    });
-  });
+  captainProfiles.forEach(
+    (profile: {
+      userId: string;
+      displayName: string | null;
+      avatarUrl: string | null;
+      user: { email: string | null; name: string | null } | null;
+    }) => {
+      const key = extractKeyFromUrl(profile.avatarUrl);
+      if (!key) return;
+      const label =
+        profile.displayName ||
+        profile.user?.name ||
+        profile.user?.email ||
+        profile.userId;
+      addReference(key, {
+        type: "CaptainAvatar",
+        label: `Captain avatar • ${label}`,
+      });
+    }
+  );
 
-  verifications.forEach((row: { userId: string; idFront: unknown; idBack: unknown; captainLicense: unknown; boatRegistration: unknown; fishingLicense: unknown; additional: unknown }) => {
-    const userLabel = row.userId;
-    extractVerificationDocs(row.idFront, "ID front").forEach((doc) =>
-      addReference(doc.key, {
-        type: "Verification",
-        label: `${doc.label} • ${userLabel}`,
-      })
-    );
-    extractVerificationDocs(row.idBack, "ID back").forEach((doc) =>
-      addReference(doc.key, {
-        type: "Verification",
-        label: `${doc.label} • ${userLabel}`,
-      })
-    );
-    extractVerificationDocs(row.captainLicense, "Captain license").forEach(
-      (doc) =>
+  verifications.forEach(
+    (row: {
+      userId: string;
+      idFront: unknown;
+      idBack: unknown;
+      captainLicense: unknown;
+      boatRegistration: unknown;
+      fishingLicense: unknown;
+      additional: unknown;
+    }) => {
+      const userLabel = row.userId;
+      extractVerificationDocs(row.idFront, "ID front").forEach((doc) =>
         addReference(doc.key, {
           type: "Verification",
           label: `${doc.label} • ${userLabel}`,
         })
-    );
-    extractVerificationDocs(row.boatRegistration, "Boat registration").forEach(
-      (doc) =>
+      );
+      extractVerificationDocs(row.idBack, "ID back").forEach((doc) =>
         addReference(doc.key, {
           type: "Verification",
           label: `${doc.label} • ${userLabel}`,
         })
-    );
-    extractVerificationDocs(row.fishingLicense, "Fishing license").forEach(
-      (doc) =>
+      );
+      extractVerificationDocs(row.captainLicense, "Captain license").forEach(
+        (doc) =>
+          addReference(doc.key, {
+            type: "Verification",
+            label: `${doc.label} • ${userLabel}`,
+          })
+      );
+      extractVerificationDocs(
+        row.boatRegistration,
+        "Boat registration"
+      ).forEach((doc) =>
         addReference(doc.key, {
           type: "Verification",
           label: `${doc.label} • ${userLabel}`,
         })
-    );
-    extractVerificationDocs(row.additional, "Additional doc").forEach((doc) =>
-      addReference(doc.key, {
-        type: "Verification",
-        label: `${doc.label} • ${userLabel}`,
-      })
-    );
-  });
+      );
+      extractVerificationDocs(row.fishingLicense, "Fishing license").forEach(
+        (doc) =>
+          addReference(doc.key, {
+            type: "Verification",
+            label: `${doc.label} • ${userLabel}`,
+          })
+      );
+      extractVerificationDocs(row.additional, "Additional doc").forEach((doc) =>
+        addReference(doc.key, {
+          type: "Verification",
+          label: `${doc.label} • ${userLabel}`,
+        })
+      );
+    }
+  );
 
   const blobs: Array<{
     pathname: string;
@@ -405,25 +435,33 @@ export async function loadStorageData(
   const hasMore = Boolean(cursor);
   const now = Date.now();
 
-  const rowsRaw: StorageRow[] = blobs.map((blob: { pathname: string; size: number; uploadedAt: string; url: string; contentType: string | null }) => {
-    const key = normalizeKey(blob.pathname) ?? blob.pathname;
-    const refs = references.get(key) ?? [];
-    const scope = classifyScope(key);
-    const uploaded = new Date(blob.uploadedAt);
-    return {
-      key,
-      url: blob.url,
-      size: blob.size,
-      sizeLabel: formatBytes(blob.size),
-      uploadedAtIso: uploaded.toISOString(),
-      uploadedAgo: formatRelative(now - uploaded.getTime()),
-      contentType: blob.contentType,
-      scope,
-      scopeLabel: STORAGE_SCOPE_LABEL[scope],
-      linked: refs.length > 0,
-      references: refs,
-    };
-  });
+  const rowsRaw: StorageRow[] = blobs.map(
+    (blob: {
+      pathname: string;
+      size: number;
+      uploadedAt: string;
+      url: string;
+      contentType: string | null;
+    }) => {
+      const key = normalizeKey(blob.pathname) ?? blob.pathname;
+      const refs = references.get(key) ?? [];
+      const scope = classifyScope(key);
+      const uploaded = new Date(blob.uploadedAt);
+      return {
+        key,
+        url: blob.url,
+        size: blob.size,
+        sizeLabel: formatBytes(blob.size),
+        uploadedAtIso: uploaded.toISOString(),
+        uploadedAgo: formatRelative(now - uploaded.getTime()),
+        contentType: blob.contentType,
+        scope,
+        scopeLabel: STORAGE_SCOPE_LABEL[scope],
+        linked: refs.length > 0,
+        references: refs,
+      };
+    }
+  );
 
   const total = rowsRaw.length;
   const linkedCount = rowsRaw.filter((row) => row.linked).length;

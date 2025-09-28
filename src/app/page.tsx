@@ -188,6 +188,7 @@ export default function ListYourBusinessPage() {
           <Plan
             percent="10%"
             name="Basic"
+            highlight
             points={[
               "Google and Facebook Ads",
               "Dedicated account manager",
@@ -203,7 +204,7 @@ export default function ListYourBusinessPage() {
           <Plan
             percent="20%"
             name="Silver"
-            highlight
+            disabled
             points={[
               "Everything in Basic",
               "Top listing optimization",
@@ -211,6 +212,7 @@ export default function ListYourBusinessPage() {
             ]}
           />
           <Plan
+            disabled
             percent="30%"
             name="Gold"
             points={["Everything in Silver", "Video ads shooting every month"]}
@@ -404,11 +406,13 @@ function Plan({
   name,
   points,
   highlight = false,
+  disabled = false,
 }: {
   percent: string;
   name: string;
   points: string[];
   highlight?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -417,10 +421,16 @@ function Plan({
         highlight
           ? "border-[#EC2227] bg-[#EC2227]/5"
           : "border-neutral-200 bg-white",
+        disabled ? "opacity-40 bg-gray-600" : "",
       ].join(" ")}
     >
       <div className="flex justify-between items-end">
-        <h3 className="text-lg md:text-xl font-semibold">{name}</h3>
+        {disabled ? (
+          <h1 className="text-lg md:text-xl font-bold">COMING SOON</h1>
+        ) : (
+          <h3 className="text-lg md:text-xl font-semibold">{name}</h3>
+        )}
+
         <div className="flex flex-col items-center">
           <div
             className="text-2xl md:text-3xl font-extrabold"

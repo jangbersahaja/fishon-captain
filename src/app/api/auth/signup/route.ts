@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
 
@@ -30,14 +31,16 @@ export async function POST(req: Request) {
   }
   const passwordHash = await hash(password, 10);
   const compositeName = `${firstName} ${lastName}`.trim();
+  const createData: Prisma.UserCreateInput = {
+    email,
+    passwordHash,
+    name: compositeName,
+    firstName: firstName || null,
+    lastName: lastName || null,
+    role: "CAPTAIN", // default
+  };
   const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      name: compositeName,
-      firstName,
-      lastName,
-    },
+    data: createData,
     select: { id: true },
   });
   // Optionally store displayName later once CaptainProfile created; for now displayName captured in draft form.
