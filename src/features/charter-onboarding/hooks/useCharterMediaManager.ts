@@ -785,7 +785,7 @@ export function useCharterMediaManager({
     (index: number) => {
       setExistingImages((prev) => {
         const target = prev[index] as
-          | (typeof prev[number] & { storageKey?: string })
+          | ((typeof prev)[number] & { storageKey?: string })
           | undefined;
         const key = target?.storageKey || target?.name;
         if (key && currentCharterId) {
@@ -809,7 +809,7 @@ export function useCharterMediaManager({
     (index: number) => {
       setExistingVideos((prev) => {
         const target = prev[index] as
-          | (typeof prev[number] & { storageKey?: string })
+          | ((typeof prev)[number] & { storageKey?: string })
           | undefined;
         const key = target?.storageKey || target?.name;
         if (key && currentCharterId && target?.status === "ready") {

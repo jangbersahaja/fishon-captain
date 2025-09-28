@@ -39,6 +39,7 @@ describe("ReviewBar", () => {
       canSubmitMedia: true,
       existingImagesCount: 0,
       existingVideosCount: 0,
+      avatarUploading: false,
     },
     ...over,
   });
@@ -67,6 +68,7 @@ describe("ReviewBar", () => {
             canSubmitMedia: false,
             existingImagesCount: 0,
             existingVideosCount: 0,
+            avatarUploading: false,
           },
         })}
       >

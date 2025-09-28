@@ -11,29 +11,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Minimal form defaults replicating other tests (subset ok)
 const makeDefaults = (): CharterFormValues => ({
   operator: {
-    displayName: "Cap",
-    experienceYears: 1,
-    bio: "Long enough biography that passes validation with more than forty chars.",
-    phone: "+6000000000",
+    displayName: "Cap Test",
+    experienceYears: 2,
+    bio: "Experienced captain with safe trips",
+    phone: "+60000000",
     avatar: undefined,
-    avatarUrl: undefined,
   },
   charterType: "shared",
-  charterName: "Boat",
+  charterName: "Charter X",
   state: "Selangor",
   city: "Shah Alam",
   startingPoint: "Dock",
   postcode: "40000",
   latitude: 1,
   longitude: 1,
-  description:
-    "Description that is certainly over forty characters long for schema.",
+  description: "A valid description over forty characters in length here.",
   generatedDescription: undefined,
   tone: "friendly",
   boat: {
     name: "Boat",
     type: "Center",
-    lengthFeet: 25,
+    lengthFeet: 30,
     capacity: 4,
     features: ["GPS"],
   },
@@ -52,7 +50,7 @@ const makeDefaults = (): CharterFormValues => ({
     {
       name: "Half Day",
       tripType: "inshore",
-      price: 300,
+      price: 400,
       durationHours: 4,
       startTimes: ["07:00"],
       maxAnglers: 4,
@@ -64,6 +62,7 @@ const makeDefaults = (): CharterFormValues => ({
   ],
   photos: [],
   videos: [],
+  supportedLanguages: [],
   uploadedPhotos: [],
   uploadedVideos: [],
 });
@@ -185,10 +184,10 @@ describe("useDraftSnapshot", () => {
     // We simulate unchanged payload by returning same version so diff logic should skip second.
     const version = 5;
     const fetchSpy = vi.fn(async () => {
-      return new Response(
-        JSON.stringify({ draft: { id: "d1", version } }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ draft: { id: "d1", version } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     });
     global.fetch = fetchSpy as unknown as typeof fetch;
     const { hook } = setup({ isEditing: false, draftId: "d1", version });

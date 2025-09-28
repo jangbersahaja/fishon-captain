@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { applySecurityHeaders } from "@/lib/headers";
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 
 // Lightweight healthcheck: returns 200 if server can construct a response.
 // Optional: quick DB ping (counts minimal query) guarded by timeout.

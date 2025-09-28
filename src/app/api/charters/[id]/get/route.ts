@@ -57,15 +57,21 @@ export async function GET(
   }
   const images = charter.media
     .filter((m) => m.kind === "CHARTER_PHOTO")
-    .map((m) => ({ name: m.sortOrder?.toString() || "image", url: m.url }));
+    .map((m) => ({
+      name: m.storageKey || m.url,
+      url: m.url,
+      storageKey: m.storageKey || undefined,
+      sortOrder: m.sortOrder ?? undefined,
+    }));
   const videos = charter.media
     .filter((m) => m.kind === "CHARTER_VIDEO")
     .map((m) => ({
-      name: m.sortOrder?.toString() || "video",
+      name: m.storageKey || m.url,
       url: m.url,
       thumbnailUrl: m.thumbnailUrl || undefined,
       durationSeconds: m.durationSeconds || undefined,
-      storageKey: m.storageKey,
+      storageKey: m.storageKey || undefined,
+      sortOrder: m.sortOrder ?? undefined,
     }));
   // Default cover index to 0 (first image) for now; future: store in DB
   const imagesCoverIndex = images.length > 0 ? 0 : null;

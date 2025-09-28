@@ -56,7 +56,10 @@ export default async function DevDebugPage() {
 
       return {
         ...record,
+        createdAt: record.createdAt.toISOString(),
         user: user || { firstName: null, lastName: null, email: "unknown" },
+        updatedAt: record.updatedAt.toISOString(),
+        consumedAt: record.consumedAt ? record.consumedAt.toISOString() : null,
         charter: charter,
       };
     })

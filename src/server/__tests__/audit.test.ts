@@ -87,9 +87,9 @@ describe("safeSerialize effects (indirect)", () => {
     expect(Array.isArray(serialized.arr)).toBe(true);
     expect(serialized.arr.length).toBe(50);
     // Walk down 0..5 levels (0..4 allowed, 5th replaced)
-    let d = serialized.deep;
+    let d = serialized.deep as DeepNode | string | undefined;
     let depthCount = 0;
-    while (d && d.next && depthCount < 6) {
+    while (d && typeof d !== "string" && d.next && depthCount < 6) {
       depthCount++;
       if (depthCount > 4) {
         // beyond depth 4 contents truncated token

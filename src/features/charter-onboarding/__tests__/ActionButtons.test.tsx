@@ -44,6 +44,7 @@ describe("ActionButtons", () => {
       canSubmitMedia: true,
       existingImagesCount: 0,
       existingVideosCount: 0,
+      avatarUploading: false,
     },
     ...over,
   });
@@ -90,6 +91,7 @@ describe("ActionButtons", () => {
             canSubmitMedia: false,
             existingImagesCount: 0,
             existingVideosCount: 0,
+            avatarUploading: true,
           },
         })}
       >

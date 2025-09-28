@@ -82,6 +82,7 @@ export function mapCharterToDraftValues(params: {
   const pickup = charter.pickup || null;
   return {
     operator: {
+      avatarUrl: undefined,
       displayName: captainProfile.displayName || "",
       experienceYears: captainProfile.experienceYrs ?? 0,
       bio: captainProfile.bio || "",
@@ -140,5 +141,8 @@ export function mapCharterToDraftValues(params: {
     // Media re-upload required during edit session, keep arrays empty in draft
     photos: [],
     videos: [],
+    uploadedPhotos: [],
+    uploadedVideos: [],
+    supportedLanguages: [],
   } as DraftValues;
 }

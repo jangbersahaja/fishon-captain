@@ -62,6 +62,9 @@ const makeDefaults = (): CharterFormValues => ({
   ],
   photos: [],
   videos: [],
+  supportedLanguages: [],
+  uploadedPhotos: [],
+  uploadedVideos: [],
 });
 
 describe("useCharterSubmission", () => {

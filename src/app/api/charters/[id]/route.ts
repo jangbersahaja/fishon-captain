@@ -577,9 +577,8 @@ export async function GET(
         // Prisma select guarantees these fields exist (possibly undefined)
         thumbnailUrl: (m as unknown as { thumbnailUrl?: string | null })
           .thumbnailUrl,
-        durationSeconds: (
-          m as unknown as { durationSeconds?: number | null }
-        ).durationSeconds,
+        durationSeconds: (m as unknown as { durationSeconds?: number | null })
+          .durationSeconds,
       };
       return {
         name: m.storageKey,
