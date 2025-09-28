@@ -121,6 +121,7 @@ export function useCharterMediaManager({
   const [pendingImageIds, setPendingImageIds] = useState<string[]>([]);
   const [pendingVideoIds, setPendingVideoIds] = useState<string[]>([]);
   const [deleteKeys, setDeleteKeys] = useState<Set<string>>(new Set());
+  const processedDeleteKeysRef = useRef<Set<string>>(new Set());
 
   // Log deleteKeys changes when debugging
   useEffect(() => {
@@ -128,6 +129,33 @@ export function useCharterMediaManager({
       dlog("delete_keys_updated", { count: deleteKeys.size });
     }
   }, [deleteKeys, dlog, debugEnabled]);
+
+  // Process any queued deletions once we have a charterId (for cases where user removed media before id was ready)
+  useEffect(() => {
+    if (!currentCharterId || deleteKeys.size === 0) return;
+    const toProcess: string[] = [];
+    deleteKeys.forEach((k) => {
+      if (!processedDeleteKeysRef.current.has(k)) toProcess.push(k);
+    });
+    if (!toProcess.length) return;
+    dlog("deferred_delete_process", { count: toProcess.length });
+    toProcess.forEach((storageKey) => {
+      fetch(`/api/charters/${currentCharterId}/media/remove`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storageKey }),
+      })
+        .then((r) => {
+          if (!r.ok) {
+            dlog("deferred_delete_fail_status", { storageKey, status: r.status });
+            return;
+          }
+          processedDeleteKeysRef.current.add(storageKey);
+          dlog("deferred_delete_ok", { storageKey });
+        })
+        .catch((e) => dlog("deferred_delete_error", { storageKey, error: String(e) }));
+    });
+  }, [currentCharterId, deleteKeys, dlog]);
   const pendingAllIds = useMemo(
     () => [...pendingImageIds, ...pendingVideoIds],
     [pendingImageIds, pendingVideoIds]
