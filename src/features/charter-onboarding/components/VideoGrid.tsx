@@ -144,7 +144,7 @@ export function VideoGrid({
             </div>
 
             {/* Footer actions */}
-            <div className="flex items-center justify-between px-3 py-2 text-xs text-white bg-black">
+            <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-600">
               <span className="truncate" title={item.name}>
                 {displayName(item.name)}
               </span>

@@ -352,16 +352,16 @@ export function VideoUploadSection({
           target.id
         ) {
           // Pending removal
-            fetch(`/api/charters/${charterId}/media/remove`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pendingId: target.id }),
-            }).catch((e) =>
-              console.warn("[videoFlow] remove.pending_api_failed", {
-                id,
-                error: String(e),
-              })
-            );
+          fetch(`/api/charters/${charterId}/media/remove`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pendingId: target.id }),
+          }).catch((e) =>
+            console.warn("[videoFlow] remove.pending_api_failed", {
+              id,
+              error: String(e),
+            })
+          );
         }
       }
       return prev.filter((i) => i.id !== id);

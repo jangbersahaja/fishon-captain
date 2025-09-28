@@ -247,11 +247,13 @@ export function useCharterMediaManager({
     lastSignatureRef.current = signature;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      const deleteKeysArr = Array.from(deleteKeys);
       fetch(`/api/charters/${currentCharterId}/media`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           media: { images: imagesPayload, videos: videosPayload },
+          deleteKeys: deleteKeysArr,
           order: {
             images: imagesPayload.map((_, i) => i),
             videos: videosPayload.map((_, i) => i),
@@ -263,6 +265,7 @@ export function useCharterMediaManager({
             dlog("media_order_persist_ok", {
               images: imagesPayload.length,
               videos: videosPayload.length,
+              deleted: deleteKeysArr.length,
             });
           else dlog("media_order_persist_fail_status", { status: r.status });
         })
@@ -271,7 +274,7 @@ export function useCharterMediaManager({
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [existingImages, existingVideos, currentCharterId, dlog]);
+  }, [existingImages, existingVideos, currentCharterId, deleteKeys, dlog]);
 
   // For now, allow submission even during video transcoding to not block users
   // Video will be attached once transcoding completes
