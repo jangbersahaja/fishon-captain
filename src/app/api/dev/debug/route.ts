@@ -42,7 +42,6 @@ export async function GET() {
       worker: "/api/workers/transcode",
       simpleWorker: "/api/workers/transcode-simple",
       pending: "/api/media/pending",
-      uploadDeprecated: "/api/media/upload", // deprecated
       photo: "/api/media/photo",
       video: "/api/media/video",
     },

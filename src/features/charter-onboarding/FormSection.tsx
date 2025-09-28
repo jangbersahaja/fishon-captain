@@ -122,21 +122,17 @@ export default function FormSection() {
     existingVideos,
     setExistingImages,
     setExistingVideos,
-    photoProgress,
-    videoProgress,
     photoPreviews,
     videoPreviews: enhancedVideoPreviews,
     addPhotoFiles,
-    addVideoFiles,
     reorderExistingPhotos,
-    reorderExistingVideos,
     removePhoto,
-    removeVideo,
     retryPhoto,
-    retryVideo,
     isMediaUploading,
-    canSubmitMedia,
-    hasBlockingMedia,
+  canSubmitMedia,
+  hasBlockingMedia,
+    // photoProgress,
+    // videoProgress,
   } = media;
   // New video upload section dynamic blocking state (queued/transcoding)
   const [videoSectionBlocking, setVideoSectionBlocking] = useState(false);
@@ -618,17 +614,11 @@ export default function FormSection() {
             normalizedPhotoPreviews={normalizedPhotoPreviews}
             normalizedVideoPreviews={normalizedVideoPreviews}
             addPhotoFiles={addPhotoFiles}
-            addVideoFiles={addVideoFiles}
             removePhoto={removePhoto}
-            removeVideo={removeVideo}
-            videoProgress={videoProgress}
-            photoProgress={photoProgress}
             existingImagesCount={existingImages.length}
             existingVideosCount={existingVideos.length}
             onReorderPhotos={reorderExistingPhotos}
-            onReorderVideos={reorderExistingVideos}
             onRetryPhoto={retryPhoto}
-            onRetryVideo={retryVideo}
             currentCharterId={currentCharterId}
             onVideoBlockingChange={(b) => setVideoSectionBlocking(b)}
             onReadyVideosChange={useCallback(

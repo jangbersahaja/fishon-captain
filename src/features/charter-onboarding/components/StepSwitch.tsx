@@ -17,17 +17,11 @@ export interface StepSwitchProps {
   normalizedPhotoPreviews: { name: string; url: string; file?: File }[];
   normalizedVideoPreviews: { name: string; url: string; file?: File }[];
   addPhotoFiles: (files: File[]) => void;
-  addVideoFiles: (files: File[]) => void;
   removePhoto: (idx: number) => void;
-  removeVideo: (idx: number) => void;
-  videoProgress: number[]; // legacy (no longer passed to new uploader)
-  photoProgress: number[];
   existingImagesCount: number;
   existingVideosCount: number;
   onReorderPhotos: (from: number, to: number) => void;
-  onReorderVideos: (from: number, to: number) => void; // legacy
   onRetryPhoto: (index: number) => void;
-  onRetryVideo: (index: number) => void; // legacy
   currentCharterId: string | null;
   onVideoBlockingChange?: (blocking: boolean) => void;
   onReadyVideosChange?: (videos: { name: string; url: string }[]) => void;

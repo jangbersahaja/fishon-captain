@@ -9,4 +9,3 @@ export * from "./SpeciesSelector";
 export * from "./StartTimeInput";
 export * from "./StepProgress";
 export * from "./TagInput";
-export * from "./VideoGrid";
