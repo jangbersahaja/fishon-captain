@@ -329,7 +329,43 @@ export function VideoUploadSection({
   // Removal
   const removeItem = (id: string) => {
     log("remove.request", { id });
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    setItems((prev) => {
+      const target = prev.find((i) => i.id === id);
+      // Fire server removal best-effort if we have a charterId
+      if (target && charterId) {
+        // Ready video -> remove by storageKey (finalKey)
+        if (target.status === "ready" && (target.finalKey || target.id)) {
+          fetch(`/api/charters/${charterId}/media/remove`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              storageKey: target.finalKey || target.id,
+            }),
+          }).catch((e) =>
+            console.warn("[videoFlow] remove.api_failed", {
+              id,
+              error: String(e),
+            })
+          );
+        } else if (
+          (target.status === "queued" || target.status === "transcoding") &&
+          target.id
+        ) {
+          // Pending removal
+            fetch(`/api/charters/${charterId}/media/remove`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pendingId: target.id }),
+            }).catch((e) =>
+              console.warn("[videoFlow] remove.pending_api_failed", {
+                id,
+                error: String(e),
+              })
+            );
+        }
+      }
+      return prev.filter((i) => i.id !== id);
+    });
   };
 
   // Define persistence scheduler early (referenced by hover capture)
@@ -657,7 +693,8 @@ export function VideoUploadSection({
 
   // Derive display name from URL path if provided (ignore numeric DB names)
   const deriveDisplayName = (it: SimpleVideoItem): string => {
-    const candidate = it.finalUrl || it.previewUrl || it.localObjectUrl || it.name;
+    const candidate =
+      it.finalUrl || it.previewUrl || it.localObjectUrl || it.name;
     if (!candidate) return it.name;
     try {
       const clean = candidate.split("?")[0];
@@ -678,7 +715,10 @@ export function VideoUploadSection({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-800">
-          Videos <span className="ml-1 text-xs text-slate-500">({items.length}/{max})</span>
+          Videos{" "}
+          <span className="ml-1 text-xs text-slate-500">
+            ({items.length}/{max})
+          </span>
         </h3>
         <label className="text-xs font-medium cursor-pointer rounded border border-neutral-300 px-2 py-1 shadow-sm bg-white hover:bg-slate-50">
           Add Video
@@ -784,39 +824,101 @@ export function VideoUploadSection({
                 {/* Status badges replaced with icon chip at top-right */}
                 <div className="absolute top-1 right-1 flex items-center gap-1">
                   {v.status === "ready" && (
-                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-emerald-600/90 text-white" title="Ready">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                    <span
+                      className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-emerald-600/90 text-white"
+                      title="Ready"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-3.5 h-3.5"
+                      >
                         <path d="M9.53 16.28 5.28 12l1.06-1.06L9.53 14.4l8.13-8.13 1.06 1.06-9.19 9.19Z" />
                       </svg>
                     </span>
                   )}
                   {v.status === "transcoding" && (
-                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-amber-500/90 text-white" title="Transcoding">
-                      <svg className="w-3.5 h-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    <span
+                      className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-amber-500/90 text-white"
+                      title="Transcoding"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        />
                       </svg>
                     </span>
                   )}
                   {v.status === "queued" && (
-                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-slate-500/80 text-white" title="Queued">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                    <span
+                      className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-slate-500/80 text-white"
+                      title="Queued"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-3.5 h-3.5"
+                      >
                         <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 3.25a.75.75 0 0 1 .75.75v5.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.5-2.02a.75.75 0 0 1-.37-.65V6a.75.75 0 0 1 .75-.75Z" />
                       </svg>
                     </span>
                   )}
                   {v.status === "failed" && (
-                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-red-600/90 text-white" title="Failed">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                    <span
+                      className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-red-600/90 text-white"
+                      title="Failed"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-3.5 h-3.5"
+                      >
                         <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm.75 5v6.5a.75.75 0 0 1-1.5 0V7a.75.75 0 0 1 1.5 0Zm-1.5 9a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0Z" />
                       </svg>
                     </span>
                   )}
                   {v.thumbPersisting && (
-                    <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-slate-700/70 text-white" title="Saving thumbnail">
-                      <svg className="w-3.5 h-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    <span
+                      className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-slate-700/70 text-white"
+                      title="Saving thumbnail"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        />
                       </svg>
                     </span>
                   )}
