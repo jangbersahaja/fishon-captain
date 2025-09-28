@@ -42,21 +42,20 @@ type CharterWithIncludes = Prisma.CharterGetPayload<{
 }>;
 
 // Type for captain verification query
-type CaptainVerificationSelect = Prisma.CaptainVerificationGetPayload<{
-  select: {
-    id: true;
-    userId: true;
-    idFront: true;
-    idBack: true;
-    captainLicense: true;
-    boatRegistration: true;
-    fishingLicense: true;
-    additional: true;
-    status: true;
-    createdAt: true;
-    updatedAt: true;
-  };
-}>;
+// Type for captain verification query - using inline type definition based on actual schema
+type CaptainVerificationSelect = {
+  id: string;
+  userId: string;
+  idFront: Prisma.JsonValue | null;
+  idBack: Prisma.JsonValue | null;
+  captainLicense: Prisma.JsonValue | null;
+  boatRegistration: Prisma.JsonValue | null;
+  fishingLicense: Prisma.JsonValue | null;
+  additional: Prisma.JsonValue; // array of Uploaded
+  status: string; // VerificationStatus enum
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 async function toggleActive(id: string, isActive: boolean) {
   const h = await headers();
