@@ -1,76 +1,82 @@
-/**
- * useCharterMediaManager
- * Phase 3 extraction: Centralizes all media-related client logic previously embedded in FormSection.
- * This includes:
- *  - Local state for existing (server) vs new (local) images/videos
- *  - Upload flows with progress tracking (photo & video)
- *  - Avatar selection / upload (immediate when editing)
- *  - Reordering & removal (persisting order / deletions to server in edit mode)
- *  - Validation helpers (canSubmitMedia, isMediaUploading)
- *  - Preview derivation (image/video previews, video thumbnails, avatar preview)
- *
- * Intent: Shrink FormSection responsibilities to orchestration (steps, submit) and
- * decouple complex side-effects, easing future test coverage and maintenance.
- */
 "use client";
+/**
+ * Simplified Charter media manager using PendingMedia staging.
+ * Legacy progress/reorder/remove logic replaced with no-op stubs to keep API surface stable.
+ */
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
-import {
-  useMediaPreviews,
-  useVideoThumbnails,
-} from "@features/charter-onboarding/hooks";
+import { isFormDebug } from "@features/charter-onboarding/debug";
 import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ChangeEvent,
 } from "react";
 import type { UseFormReturn } from "react-hook-form";
+import { useMediaPreviews } from "./useMediaPreviews";
+import { usePendingMediaPoll } from "./usePendingMediaPoll";
+import { useVideoThumbnails } from "./useVideoThumbnails";
 
 export interface UseCharterMediaManagerArgs {
   form: UseFormReturn<CharterFormValues>;
   isEditing: boolean;
   currentCharterId: string | null;
-  // Optional callback if avatar save should record a timestamp etc.
   onAvatarUploaded?: (url: string) => void;
 }
 
 export interface UseCharterMediaManagerResult {
-  // Avatar
   captainAvatarPreview: string | null;
   handleAvatarChange: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
   clearAvatar: () => void;
   avatarUploading: boolean;
-  // Existing (server) media collections
   existingImages: Array<{ name: string; url: string }>;
-  existingVideos: Array<{ name: string; url: string }>;
+  existingVideos: Array<{
+    name: string;
+    url: string;
+    thumbnailUrl?: string;
+    durationSeconds?: number;
+    /**
+     * queued: upload done, waiting for worker to start
+     * transcoding: worker actively processing
+     * processing: legacy alias retained (maps to queued or transcoding visually)
+     * ready: final asset prepared
+     * failed: terminal error (worker failed)
+     */
+    status?: "queued" | "transcoding" | "processing" | "ready" | "failed";
+    pendingId?: string;
+  }>;
   setExistingImages: React.Dispatch<
     React.SetStateAction<Array<{ name: string; url: string }>>
   >;
   setExistingVideos: React.Dispatch<
-    React.SetStateAction<Array<{ name: string; url: string }>>
+    React.SetStateAction<
+      Array<{
+        name: string;
+        url: string;
+        thumbnailUrl?: string;
+        durationSeconds?: number;
+        status?: "queued" | "transcoding" | "processing" | "ready" | "failed";
+        pendingId?: string;
+      }>
+    >
   >;
-  // Upload progress arrays (0-100, -1 error)
   photoProgress: number[];
   videoProgress: number[];
-  // Derived previews
   photoPreviews: Array<{ url: string; name?: string }>;
   videoPreviews: Array<{ url: string; name?: string; thumbnailUrl?: string }>;
-  // Actions for adding media
   addPhotoFiles: (files: File[]) => Promise<void>;
   addVideoFiles: (files: File[]) => Promise<void>;
-  // Reorder + removal + retry
   reorderExistingPhotos: (from: number, to: number) => void;
   reorderExistingVideos: (from: number, to: number) => void;
   removePhoto: (index: number) => void;
   removeVideo: (index: number) => void;
   retryPhoto: (index: number) => void;
   retryVideo: (index: number) => void;
-  // Uploading / validation flags
   isMediaUploading: boolean;
   canSubmitMedia: boolean;
   combinedPhotoCount: number;
+  isVideoTranscoding: boolean;
+  hasBlockingMedia: boolean; // queued or transcoding videos present
 }
 
 export function useCharterMediaManager({
@@ -79,11 +85,25 @@ export function useCharterMediaManager({
   currentCharterId,
   onAvatarUploaded,
 }: UseCharterMediaManagerArgs): UseCharterMediaManagerResult {
-  const { watch, setValue } = form;
-  // Progress & persistent media
-  const [photoProgress, setPhotoProgress] = useState<number[]>([]);
-  const [videoProgress, setVideoProgress] = useState<number[]>([]);
+  const debugEnabled = useCallback(
+    () =>
+      (typeof window !== "undefined" && isFormDebug()) ||
+      process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1",
+    []
+  );
+  const dlog = useCallback(
+    (label: string, payload?: Record<string, unknown>) => {
+      if (!debugEnabled()) return;
+      console.log(`[mediaManager] ${label}`, payload || {});
+    },
+    [debugEnabled]
+  );
+
+  const { setValue } = form;
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [captainAvatarPreview, setCaptainAvatarPreview] = useState<
+    string | null
+  >(null);
   const [existingImages, setExistingImages] = useState<
     Array<{ name: string; url: string }>
   >([]);
@@ -93,158 +113,567 @@ export function useCharterMediaManager({
       url: string;
       thumbnailUrl?: string;
       durationSeconds?: number;
+      status?: "queued" | "transcoding" | "processing" | "ready" | "failed";
+      pendingId?: string;
     }>
   >([]);
-  const [captainAvatarPreview, setCaptainAvatarPreview] = useState<
-    string | null
-  >(null);
+  const [pendingImageIds, setPendingImageIds] = useState<string[]>([]);
+  const [pendingVideoIds, setPendingVideoIds] = useState<string[]>([]);
+  const [deleteKeys, setDeleteKeys] = useState<Set<string>>(new Set());
 
-  // Form watched fields
-  const photos = watch("photos");
-  const videos = watch("videos");
-  const captainAvatarFile = watch("operator.avatar");
-  const avatarUrl = watch("operator.avatarUrl");
-
-  // Merge existing (server) + new (local) for previews
-  const mergedPhotos = useMemo(() => {
-    const existing = Array.isArray(existingImages) ? existingImages : [];
-    const current = Array.isArray(photos) ? photos : [];
-    return [...existing, ...current];
-  }, [existingImages, photos]);
-  const mergedVideos = useMemo(() => {
-    const existing = Array.isArray(existingVideos) ? existingVideos : [];
-    const current = Array.isArray(videos) ? videos : [];
-    return [...existing, ...current];
-  }, [existingVideos, videos]);
-
-  const photoPreviews = useMediaPreviews(mergedPhotos);
-  const videoPreviewsBase = useMediaPreviews(mergedVideos);
-  const { getThumbnailUrl } = useVideoThumbnails(currentCharterId);
-  const videoPreviews = useMemo(() => {
-    return videoPreviewsBase.map((v) => {
-      // If existing video already has persisted thumbnailUrl, prefer it
-      const existingMatch = existingVideos.find((ev) => ev.url === v.url);
-      return {
-        ...v,
-        thumbnailUrl:
-          existingMatch?.thumbnailUrl || getThumbnailUrl(v.url) || undefined,
-        durationSeconds: existingMatch?.durationSeconds,
-      };
-    });
-  }, [videoPreviewsBase, getThumbnailUrl, existingVideos]);
-
-  const combinedPhotoCount = useMemo(() => {
-    const localCount = Array.isArray(photos) ? photos.length : 0;
-    return (existingImages?.length || 0) + localCount;
-  }, [photos, existingImages]);
-
-  // Hydrate persisted uploaded media metadata (create flow draft restore)
+  // Log deleteKeys changes when debugging
   useEffect(() => {
-    if (existingImages.length === 0) {
-      const persisted = form.getValues("uploadedPhotos") as
-        | Array<{ name: string; url: string }>
-        | undefined;
-      if (persisted && persisted.length) {
-        setExistingImages(persisted);
-      }
+    if (deleteKeys.size && debugEnabled()) {
+      dlog("delete_keys_updated", { count: deleteKeys.size });
     }
-    if (existingVideos.length === 0) {
-      const persistedV = form.getValues("uploadedVideos") as
-        | Array<{ name: string; url: string }>
-        | undefined;
-      if (persistedV && persistedV.length) {
-        setExistingVideos(persistedV);
-      }
-    }
-    // Initialize avatar preview from saved avatarUrl (both editing and new drafts)
+  }, [deleteKeys, dlog, debugEnabled]);
+  const pendingAllIds = useMemo(
+    () => [...pendingImageIds, ...pendingVideoIds],
+    [pendingImageIds, pendingVideoIds]
+  );
+
+  const { items: pendingItems } = usePendingMediaPoll({
+    ids: pendingAllIds,
+    enabled: pendingAllIds.length > 0,
+  });
+
+  // Previews
+  const photoPreviews = useMediaPreviews(existingImages);
+  const videoPreviewBase = useMediaPreviews(existingVideos);
+  const { getThumbnailUrl } = useVideoThumbnails(currentCharterId);
+  const videoPreviews = useMemo(
+    () =>
+      videoPreviewBase.map((v) => {
+        const match = existingVideos.find((ev) => ev.url === v.url);
+        return {
+          ...v,
+          thumbnailUrl:
+            match?.thumbnailUrl || getThumbnailUrl(v.url) || undefined,
+          durationSeconds: match?.durationSeconds,
+          processing: match?.status === "processing",
+        };
+      }),
+    [videoPreviewBase, existingVideos, getThumbnailUrl]
+  );
+
+  // Hydrate from form once (draft restore/edit)
+  useEffect(() => {
+    const photos = form.getValues("uploadedPhotos") as
+      | Array<{ name: string; url: string }>
+      | undefined;
+    if (photos?.length) setExistingImages(photos);
+    const vids = form.getValues("uploadedVideos") as
+      | Array<{ name: string; url: string }>
+      | undefined;
+    if (vids?.length) setExistingVideos(vids);
     const avatarUrl = form.getValues("operator.avatarUrl");
-    if (avatarUrl) {
-      setCaptainAvatarPreview(avatarUrl);
-    }
+    if (avatarUrl) setCaptainAvatarPreview(avatarUrl);
+    dlog("hydrate_from_form", {
+      photos: photos?.length || 0,
+      videos: vids?.length || 0,
+      hasAvatar: !!avatarUrl,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const isMediaUploading = useMemo(() => {
-    if (!isEditing) return false;
-    const pBusy = photoProgress.some((p) => p >= 0 && p < 100);
-    const vBusy = videoProgress.some((p) => p >= 0 && p < 100);
-    return pBusy || vBusy;
-  }, [photoProgress, videoProgress, isEditing]);
-  // Relax minimum photo requirement when editing: existing listing can be saved with any current photo count.
+  // Persist to form for draft autosave compatibility
+  useEffect(() => {
+    setValue(
+      "uploadedPhotos",
+      existingImages as unknown as CharterFormValues["uploadedPhotos"],
+      { shouldDirty: true, shouldValidate: false }
+    );
+  }, [existingImages, setValue]);
+  useEffect(() => {
+    const sanitized = existingVideos.map((video) => ({
+      name: video.name,
+      url: video.url,
+    }));
+    setValue(
+      "uploadedVideos",
+      sanitized as unknown as CharterFormValues["uploadedVideos"],
+      { shouldDirty: true, shouldValidate: false }
+    );
+  }, [existingVideos, setValue]);
+
+  const combinedPhotoCount = existingImages.length; // photos only
+  // Videos that are still transcoding (have pendingId but status !== "ready")
+  const transcodingVideoCount = existingVideos.filter(
+    (v) =>
+      (v.status === "processing" ||
+        v.status === "queued" ||
+        v.status === "transcoding") &&
+      v.pendingId
+  ).length;
+
+  // Block submission if:
+  // 1. Images are still uploading (fast process)
+  // 2. Videos are still transcoding AND we want to enforce waiting
+  const isMediaUploading = pendingImageIds.length > 0;
+  const isVideoTranscoding = transcodingVideoCount > 0;
+  const hasBlockingMedia = transcodingVideoCount > 0; // simple gate: any non-ready video blocks
+
+  // For now, allow submission even during video transcoding to not block users
+  // Video will be attached once transcoding completes
   const canSubmitMedia = isEditing ? true : combinedPhotoCount >= 3;
 
-  // Avatar handling - now includes immediate upload and draft save for both editing and new drafts
-  const handleAvatarChange = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
+  // New split endpoints: /api/media/photo and /api/media/video
+  const uploadPhoto = useCallback(
+    async (file: File, charterId: string | null) => {
+      dlog("photo_upload_start", {
+        name: file.name,
+        size: file.size,
+        charterId,
+      });
+      const fd = new FormData();
+      fd.set("file", file);
+      if (charterId) fd.set("charterId", charterId);
+      const res = await fetch("/api/media/photo", { method: "POST", body: fd });
+      if (!res.ok) throw new Error("photo_upload_failed");
+      const json = (await res.json()) as {
+        url: string;
+        key: string;
+        charterMediaId?: string;
+      };
+      dlog("photo_upload_success", {
+        key: json.key,
+        charterMediaId: json.charterMediaId,
+      });
+      return json;
+    },
+    [dlog]
+  );
 
-      setAvatarUploading(true);
+  const uploadVideo = useCallback(
+    async (file: File, charterId: string | null) => {
+      dlog("video_upload_start", {
+        name: file.name,
+        size: file.size,
+        charterId,
+      });
+      const fd = new FormData();
+      fd.set("file", file);
+      if (charterId) fd.set("charterId", charterId);
+      const res = await fetch("/api/media/video", { method: "POST", body: fd });
+      if (!res.ok) throw new Error("video_upload_failed");
+      const json = (await res.json()) as {
+        pendingMediaId: string;
+        status: string;
+        previewUrl: string;
+      };
+      dlog("video_upload_enqueued", {
+        pendingMediaId: json.pendingMediaId,
+        status: json.status,
+        previewUrl: json.previewUrl,
+      });
+      return json;
+    },
+    [dlog]
+  );
+
+  const addPhotoFiles = useCallback(
+    async (files: File[]) => {
+      if (!files.length) return;
+      // In edit mode we expect a charterId; if not yet available, block to avoid orphan pending media
+      if (isEditing && !currentCharterId) {
+        console.warn(
+          "[mediaManager] Blocking photo upload until charterId loads",
+          {
+            isEditing,
+            currentCharterId,
+            fileCount: files.length,
+          }
+        );
+        return;
+      }
       try {
-        if (!file.type.startsWith("image/")) {
-          setValue("operator.avatar", file, { shouldValidate: true });
-          return;
-        }
-
-        console.log("[avatar] processing upload", {
-          name: file.name,
-          size: file.size,
-        });
-
         const { resizeImageFile } = await import("@/utils/resizeImage");
-        const resized = await resizeImageFile(file, {
-          square: true,
-          maxWidth: 512,
-          mimeType: "image/webp",
-          nameSuffix: "-avatar",
-        });
-
-        // Store the file object for form validation
-        setValue("operator.avatar", resized, { shouldValidate: true });
-
-        // Immediately upload to blob storage for both editing and new drafts
-        console.log("[avatar] uploading to blob storage");
-        const fd = new FormData();
-        fd.set("file", resized);
-        fd.set("docType", "charter_avatar");
-
-        const up = await fetch("/api/blob/upload", {
-          method: "POST",
-          body: fd,
-        });
-
-        if (up.ok) {
-          const { url } = await up.json();
-          console.log("[avatar] upload successful", { url });
-
-          // Update avatarUrl in form state for draft persistence
-          setValue("operator.avatarUrl", url, {
-            shouldDirty: true,
-            shouldValidate: false,
-          });
-
-          if (isEditing) {
-            // For editing mode, also update the captain profile directly
-            await fetch("/api/captain/avatar", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url, deleteKey: null }),
+        dlog("photo_batch_start", { count: files.length });
+        const processed = await Promise.all(
+          files.map((f) =>
+            f.type.startsWith("image/")
+              ? resizeImageFile(f, {
+                  square: false,
+                  maxWidth: 1280,
+                  maxHeight: 720,
+                  mimeType: "image/webp",
+                  nameSuffix: "-gallery",
+                })
+              : Promise.resolve(f)
+          )
+        );
+        for (const f of processed) {
+          try {
+            const resp = await uploadPhoto(f, currentCharterId);
+            setExistingImages((prev) => [
+              ...prev,
+              { name: resp.key, url: resp.url },
+            ]);
+          } catch (e) {
+            console.error("photo pending upload failed", e);
+            dlog("photo_upload_error", {
+              name: f.name,
+              message: (e as Error).message,
             });
           }
-
-          // Notify parent component to trigger draft save
-          onAvatarUploaded?.(url);
-        } else {
-          console.error("[avatar] upload failed", { status: up.status });
-          // Keep the file object for form submission upload as fallback
         }
-      } catch (error) {
-        console.error("[avatar] processing failed:", error);
-        // fallback: keep original file
+        dlog("photo_batch_complete", { added: processed.length });
+      } catch (e) {
+        console.error("photo resize failed", e);
+        dlog("photo_batch_resize_failed", { message: (e as Error).message });
+      }
+    },
+    [uploadPhoto, currentCharterId, isEditing, dlog]
+  );
+
+  const addVideoFiles = useCallback(
+    async (files: File[]) => {
+      if (!files.length) return;
+      if (isEditing && !currentCharterId) {
+        console.warn(
+          "[mediaManager] Blocking video upload until charterId loads",
+          {
+            isEditing,
+            currentCharterId,
+            fileCount: files.length,
+          }
+        );
+        return;
+      }
+      const allowed = files.filter((f) => f.type.startsWith("video/"));
+      const remainingSlots = 3 - existingVideos.length - pendingVideoIds.length;
+      const picked = allowed.slice(0, Math.max(0, remainingSlots));
+
+      // Helper to capture first frame (at ~1s or earliest) into data URL
+      const captureFirstFrame = (file: File): Promise<string | null> => {
+        return new Promise((resolve) => {
+          try {
+            const videoEl = document.createElement("video");
+            videoEl.preload = "metadata";
+            videoEl.muted = true;
+            videoEl.playsInline = true;
+            const revoke = () => {
+              try {
+                URL.revokeObjectURL(videoEl.src);
+              } catch {}
+            };
+            videoEl.onloadeddata = async () => {
+              try {
+                const targetTime =
+                  videoEl.duration && videoEl.duration > 1 ? 1 : 0.1;
+                const seekHandler = () => {
+                  try {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = videoEl.videoWidth || 320;
+                    canvas.height = videoEl.videoHeight || 180;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) {
+                      revoke();
+                      resolve(null);
+                      return;
+                    }
+                    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                    revoke();
+                    resolve(dataUrl);
+                  } catch {
+                    revoke();
+                    resolve(null);
+                  }
+                };
+                if (Math.abs(videoEl.currentTime - targetTime) < 0.05) {
+                  seekHandler();
+                } else {
+                  videoEl.onseeked = seekHandler;
+                  try {
+                    videoEl.currentTime = targetTime;
+                  } catch {
+                    seekHandler();
+                  }
+                }
+              } catch {
+                revoke();
+                resolve(null);
+              }
+            };
+            videoEl.onerror = () => {
+              revoke();
+              resolve(null);
+            };
+            videoEl.src = URL.createObjectURL(file);
+          } catch {
+            resolve(null);
+          }
+        });
+      };
+
+      for (const f of picked) {
+        let tempId: string | null = null;
+        let objectUrl: string | null = null;
+        try {
+          tempId = `temp-video-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 9)}`;
+          objectUrl = URL.createObjectURL(f);
+          // Start client-side frame capture without blocking upload
+          const framePromise = captureFirstFrame(f);
+          if (tempId && objectUrl) {
+            const placeholderName = tempId;
+            const placeholderUrl = objectUrl;
+            setExistingVideos((prev) => [
+              ...prev,
+              {
+                name: placeholderName,
+                url: placeholderUrl,
+                status: "queued", // initial local placeholder state
+                pendingId: undefined,
+              },
+            ]);
+            dlog("video_placeholder_added", { tempId, size: f.size });
+          }
+
+          const resp = await uploadVideo(f, currentCharterId);
+          // Apply captured frame (if succeeded) to placeholder before promoting
+          framePromise
+            .then((thumb) => {
+              if (!thumb) return;
+              setExistingVideos((prev) => {
+                const idx = prev.findIndex((v) => v.name === tempId);
+                if (idx === -1) return prev;
+                const next = [...prev];
+                next[idx] = { ...next[idx], thumbnailUrl: thumb };
+                return next;
+              });
+            })
+            .catch(() => {});
+          setExistingVideos((prev) => {
+            if (!tempId) return prev;
+            const idx = prev.findIndex((v) => v.name === tempId);
+            if (idx === -1) return prev;
+            const next = [...prev];
+            const before = next[idx];
+            next[idx] = {
+              name: resp.pendingMediaId,
+              url: resp.previewUrl,
+              status: resp.status === "READY" ? "ready" : "queued",
+              pendingId: resp.pendingMediaId,
+              // carry over any captured client-side frame thumbnail
+              thumbnailUrl:
+                before && typeof before === "object"
+                  ? before.thumbnailUrl
+                  : undefined,
+            };
+            try {
+              if (objectUrl) URL.revokeObjectURL(objectUrl);
+            } catch {}
+            if (before.pendingId !== resp.pendingMediaId) {
+              dlog("video_pending_created", {
+                tempId,
+                pendingMediaId: resp.pendingMediaId,
+                status: resp.status,
+              });
+            }
+            return next;
+          });
+          setPendingVideoIds((prev) => [...prev, resp.pendingMediaId]);
+        } catch (e) {
+          console.error("video pending upload failed", e);
+          dlog("video_upload_error", { tempId, message: (e as Error).message });
+          if (tempId) {
+            setExistingVideos((prev) => prev.filter((v) => v.name !== tempId));
+          }
+          try {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+          } catch {}
+        }
+      }
+    },
+    [
+      uploadVideo,
+      currentCharterId,
+      existingVideos.length,
+      pendingVideoIds.length,
+      isEditing,
+      dlog,
+    ]
+  );
+
+  // Promote READY items
+  useEffect(() => {
+    if (!pendingItems.length) return;
+    const readyImages = pendingItems.filter(
+      (p) => p.kind === "IMAGE" && p.status === "READY"
+    );
+    if (readyImages.length) {
+      setExistingImages((prev) => {
+        let next = [...prev];
+        for (const r of readyImages) {
+          if (!r.finalKey || !r.finalUrl) continue;
+          if (!next.some((e) => e.name === r.finalKey)) {
+            next = [...next, { name: r.finalKey, url: r.finalUrl }];
+          }
+        }
+        return next;
+      });
+      setPendingImageIds((ids) =>
+        ids.filter((id) => !readyImages.some((r) => r.id === id))
+      );
+    }
+
+    const readyVideos = pendingItems.filter(
+      (p) => p.kind === "VIDEO" && p.status === "READY"
+    );
+    const readyVideosWithFinal = readyVideos.filter(
+      (r): r is typeof r & { finalKey: string; finalUrl: string } =>
+        Boolean(r.finalKey && r.finalUrl)
+    );
+    if (readyVideosWithFinal.length) {
+      dlog("video_ready_promote", { count: readyVideosWithFinal.length });
+      setExistingVideos((prev) => {
+        let next = [...prev];
+        for (const r of readyVideosWithFinal) {
+          const idx = next.findIndex(
+            (e) =>
+              e.pendingId === r.id ||
+              e.url === r.originalUrl ||
+              e.name === r.id ||
+              e.name === r.finalKey
+          );
+          const replacement = {
+            name: r.finalKey,
+            url: r.finalUrl,
+            thumbnailUrl: r.thumbnailUrl || undefined,
+            durationSeconds: r.durationSeconds || undefined,
+            status: "ready" as const,
+            pendingId: undefined,
+          };
+          if (idx !== -1) {
+            next[idx] = replacement;
+            continue;
+          }
+          if (!next.some((e) => e.name === r.finalKey)) {
+            next = [...next, replacement];
+          }
+        }
+        return next;
+      });
+      setPendingVideoIds((ids) =>
+        ids.filter((id) => !readyVideosWithFinal.some((r) => r.id === id))
+      );
+    }
+  }, [pendingItems, dlog]);
+
+  // Update intermediate video statuses (QUEUED / TRANSCODING) for better UX.
+  useEffect(() => {
+    if (!pendingItems.length) return;
+    setExistingVideos((prev) => {
+      let changed = false;
+      const map = new Map(prev.map((v) => [v.pendingId, v] as const));
+      for (const p of pendingItems) {
+        if (p.kind !== "VIDEO") continue;
+        const existing = Array.from(map.values()).find(
+          (v) =>
+            v.pendingId === p.id || v.name === p.id || v.name === p.finalKey
+        );
+        if (!existing) continue;
+        const desiredStatus =
+          p.status === "FAILED"
+            ? "failed"
+            : p.status === "TRANSCODING"
+            ? "transcoding"
+            : p.status === "QUEUED"
+            ? "queued"
+            : existing.status;
+        if (desiredStatus && existing.status !== desiredStatus) {
+          dlog("video_status_update", {
+            pendingId: p.id,
+            from: existing.status,
+            to: desiredStatus,
+          });
+          existing.status = desiredStatus;
+          changed = true;
+        }
+        // Opportunistically update thumbnail if worker has produced one early
+        if (p.thumbnailUrl && !existing.thumbnailUrl) {
+          existing.thumbnailUrl = p.thumbnailUrl;
+          changed = true;
+        }
+      }
+      return changed ? [...map.values()] : prev;
+    });
+  }, [pendingItems, dlog]);
+
+  // Cleanup: ensure we don't retain processing/queued placeholders once their pending ID is cleared.
+  useEffect(() => {
+    if (pendingVideoIds.length === 0) {
+      setExistingVideos((prev) =>
+        prev.filter(
+          (item) =>
+            item.status !== "processing" &&
+            item.status !== "queued" &&
+            item.status !== "transcoding"
+        )
+      );
+      return;
+    }
+    const pendingSet = new Set(pendingVideoIds);
+    setExistingVideos((prev) =>
+      prev.filter((item) => {
+        if (item.status === "ready") return true;
+        if (!item.pendingId) return true;
+        return pendingSet.has(item.pendingId);
+      })
+    );
+  }, [pendingVideoIds]);
+
+  const handleAvatarChange = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setAvatarUploading(true);
+      try {
+        const objUrl = URL.createObjectURL(file);
+        setCaptainAvatarPreview(objUrl);
+        if (file.type.startsWith("image/")) {
+          const { resizeImageFile } = await import("@/utils/resizeImage");
+          const resized = await resizeImageFile(file, {
+            square: true,
+            maxWidth: 512,
+            mimeType: "image/webp",
+            nameSuffix: "-avatar",
+          });
+          setValue("operator.avatar", resized, { shouldValidate: true });
+          const fd = new FormData();
+          fd.set("file", resized);
+          fd.set("docType", "charter_avatar");
+          const resp = await fetch("/api/blob/upload", {
+            method: "POST",
+            body: fd,
+          });
+          if (resp.ok) {
+            const { url } = await resp.json();
+            setValue("operator.avatarUrl", url, {
+              shouldDirty: true,
+              shouldValidate: false,
+            });
+            if (isEditing) {
+              await fetch("/api/captain/avatar", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url, deleteKey: null }),
+              });
+            }
+            onAvatarUploaded?.(url);
+          }
+        } else {
+          setValue("operator.avatar", file, { shouldValidate: true });
+        }
+      } catch (err) {
+        console.error("avatar upload failed", err);
         setValue("operator.avatar", file, { shouldValidate: true });
       } finally {
         setAvatarUploading(false);
-        event.target.value = "";
+        e.target.value = "";
       }
     },
     [isEditing, onAvatarUploaded, setValue]
@@ -259,768 +688,86 @@ export function useCharterMediaManager({
     if (input) input.value = "";
   }, [setValue]);
 
-  // Sync avatar preview with file or keep existing when editing
-  useEffect(() => {
-    if (captainAvatarFile instanceof File) {
-      const url = URL.createObjectURL(captainAvatarFile);
-      setCaptainAvatarPreview(url);
-      return () => URL.revokeObjectURL(url);
-    }
-    if (!isEditing) setCaptainAvatarPreview(null);
-  }, [captainAvatarFile, isEditing]);
+  const noop = () => {};
+  const empty: number[] = [];
 
-  // Sync avatar preview with saved avatarUrl (from draft or server)
-  useEffect(() => {
-    // Only set preview from URL if there's no file selected
-    if (!captainAvatarFile && avatarUrl) {
-      setCaptainAvatarPreview(avatarUrl);
-    } else if (!captainAvatarFile && !avatarUrl) {
-      setCaptainAvatarPreview(null);
-    }
-  }, [avatarUrl, captainAvatarFile]);
-
-  // Generic helper to perform xhr upload with progress callback
-  const uploadWithProgress = useCallback(
-    (fd: FormData, onProgress: (p: number) => void) =>
-      new Promise<{ key: string; url: string }>((resolve, reject) => {
-        try {
-          const xhr = new XMLHttpRequest();
-          xhr.open("POST", "/api/blob/upload");
-          xhr.upload.onprogress = (evt) => {
-            if (evt.lengthComputable) {
-              onProgress(Math.round((evt.loaded / evt.total) * 100));
-            }
-          };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const json = JSON.parse(xhr.responseText) as {
-                  key?: string;
-                  url?: string;
-                };
-                if (json.key && json.url)
-                  resolve({ key: json.key, url: json.url });
-                else reject(new Error("Upload response missing key/url"));
-              } catch (e) {
-                reject(
-                  e instanceof Error ? e : new Error("Upload parse error")
-                );
-              }
-            } else reject(new Error(`Upload failed: ${xhr.status}`));
-          };
-          xhr.onerror = () => reject(new Error("Network error"));
-          xhr.send(fd);
-        } catch (e) {
-          reject(e instanceof Error ? e : new Error("Upload error"));
-        }
-      }),
-    []
-  );
-
-  // Throttle progress updates to avoid rapid re-renders for tiny files
-  const lastPhotoProgressRef = useRef<Record<number, number>>({});
-  const lastVideoProgressRef = useRef<Record<number, number>>({});
-  const shouldUpdateProgress = (
-    ref: React.MutableRefObject<Record<number, number>>,
-    idx: number,
-    _p: number
-  ) => {
-    const now = performance.now();
-    const last = ref.current[idx] ?? 0;
-    if (now - last > 70 || _p === 0 || _p === 100) {
-      ref.current[idx] = now;
-      return true;
-    }
-    return false;
-  };
-
-  const HOLD_MS = 250; // time to allow 100% state to visually settle before switching collections
-
-  const addPhotoFiles = useCallback(
-    async (fileList: File[]) => {
-      if (!fileList.length) return;
-      if (!currentCharterId) {
-        console.warn(
-          "[media] blocked video upload: charterId not yet available (charter must exist before uploading videos)"
-        );
-        return;
-      }
-      try {
-        const { resizeImageFile } = await import("@/utils/resizeImage");
-        const current = (watch("photos") ?? []) as File[];
-        const incoming = await Promise.all(
-          fileList.map((f) =>
-            f.type.startsWith("image/")
-              ? resizeImageFile(f, {
-                  square: false,
-                  maxWidth: 1280,
-                  maxHeight: 720,
-                  mimeType: "image/webp",
-                  nameSuffix: "-gallery",
-                })
-              : Promise.resolve(f)
-          )
-        );
-        const next = [...current, ...incoming].slice(0, 15);
-        setValue("photos", next, { shouldValidate: true });
-        setPhotoProgress((prev) => {
-          const base = current.length;
-          const addCount = Math.min(incoming.length, 15 - base);
-          return [...prev, ...Array(addCount).fill(0)];
-        });
-        if (isEditing && currentCharterId) {
-          const uploaded: Array<{ name: string; url: string }> = [];
-          const base = current.length;
-          for (let idx = 0; idx < incoming.length; idx++) {
-            const f = incoming[idx];
-            const fd = new FormData();
-            fd.set("file", f);
-            fd.set("docType", "charter_media");
-            fd.set("charterId", currentCharterId);
-            try {
-              const { key, url } = await uploadWithProgress(fd, (p) => {
-                if (!shouldUpdateProgress(lastPhotoProgressRef, base + idx, p))
-                  return;
-                setPhotoProgress((prev) => {
-                  const arr = [...prev];
-                  const pos = base + idx;
-                  if (pos >= 0 && pos < arr.length) arr[pos] = p;
-                  return arr;
-                });
-              });
-              uploaded.push({ name: key, url });
-              setPhotoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = 100;
-                return arr;
-              });
-            } catch {
-              setPhotoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = -1;
-                return arr;
-              });
-            }
-          }
-          if (uploaded.length) {
-            await fetch(`/api/charters/${currentCharterId}/media`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                media: {
-                  images: [...existingImages, ...uploaded],
-                  videos: existingVideos,
-                },
-              }),
-            });
-            setTimeout(() => {
-              setExistingImages((prev) => [...prev, ...uploaded]);
-              setValue("photos", [], { shouldValidate: true });
-              setPhotoProgress([]);
-            }, HOLD_MS);
-          }
-        } else if (isEditing && !currentCharterId) {
-          // Edge case: editing flag true but charterId not yet available (hydration race). Fallback to draft-style immediate blob upload
-          // to avoid blocking user with perpetual 0% progress entries.
-          if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-            console.warn(
-              "[media] editing without charterId – falling back to immediate upload path"
-            );
-          }
-          const uploaded: Array<{ name: string; url: string }> = [];
-          const base = current.length;
-          for (let idx = 0; idx < incoming.length; idx++) {
-            const f = incoming[idx];
-            const fd = new FormData();
-            fd.set("file", f);
-            fd.set("docType", "charter_media");
-            try {
-              const { key, url } = await uploadWithProgress(fd, (p) => {
-                if (!shouldUpdateProgress(lastPhotoProgressRef, base + idx, p))
-                  return;
-                setPhotoProgress((prev) => {
-                  const arr = [...prev];
-                  const pos = base + idx;
-                  if (pos >= 0 && pos < arr.length) arr[pos] = p;
-                  return arr;
-                });
-              });
-              uploaded.push({ name: key, url });
-              setPhotoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = 100;
-                return arr;
-              });
-            } catch {
-              setPhotoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = -1;
-                return arr;
-              });
-            }
-          }
-          if (uploaded.length) {
-            setTimeout(() => {
-              setExistingImages((prev) => [...prev, ...uploaded]);
-              const prevPersisted = form.getValues("uploadedPhotos") || [];
-              setValue("uploadedPhotos", [...prevPersisted, ...uploaded], {
-                shouldDirty: true,
-                shouldValidate: false,
-              });
-              setValue("photos", [], { shouldValidate: true });
-              setPhotoProgress([]);
-            }, HOLD_MS);
-          }
-        } else if (!isEditing) {
-          // Create flow: upload immediately with progress even without charterId so UI isn't stuck.
-          const uploaded: Array<{ name: string; url: string }> = [];
-          const base = current.length;
-          for (let idx = 0; idx < incoming.length; idx++) {
-            const f = incoming[idx];
-            const fd = new FormData();
-            fd.set("file", f);
-            fd.set("docType", "charter_media");
-            try {
-              const { key, url } = await uploadWithProgress(fd, (p) => {
-                if (!shouldUpdateProgress(lastPhotoProgressRef, base + idx, p))
-                  return;
-                setPhotoProgress((prev) => {
-                  const arr = [...prev];
-                  const pos = base + idx;
-                  if (pos >= 0 && pos < arr.length) arr[pos] = p;
-                  return arr;
-                });
-              });
-              uploaded.push({ name: key, url });
-              setPhotoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = 100;
-                return arr;
-              });
-            } catch {
-              setPhotoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = -1;
-                return arr;
-              });
-            }
-          }
-          if (uploaded.length) {
-            setTimeout(() => {
-              setExistingImages((prev) => [...prev, ...uploaded]);
-              const prevPersisted = form.getValues("uploadedPhotos") || [];
-              setValue("uploadedPhotos", [...prevPersisted, ...uploaded], {
-                shouldDirty: true,
-                shouldValidate: false,
-              });
-              setValue("photos", [], { shouldValidate: true });
-              setPhotoProgress([]);
-            }, HOLD_MS);
-          }
-        }
-      } catch {
-        const current = (watch("photos") ?? []) as File[];
-        const next = [...current, ...fileList].slice(0, 15);
-        setValue("photos", next, { shouldValidate: true });
-      }
-    },
-    [
-      watch,
-      setValue,
-      isEditing,
-      currentCharterId,
-      uploadWithProgress,
-      existingImages,
-      existingVideos,
-      form,
-    ]
-  );
-
-  const addVideoFiles = useCallback(
-    async (fileList: File[]) => {
-      if (!fileList.length) return;
-      const current = (watch("videos") ?? []) as File[];
-      const room = Math.max(0, 3 - current.length);
-      const picked = fileList
-        .filter((f) => f.type.startsWith("video/"))
-        .slice(0, room);
-      const MAX_BYTES = 200 * 1024 * 1024;
-      const MAX_SECONDS = 90;
-      const within: File[] = [];
-      for (const f of picked) {
-        if (f.size > MAX_BYTES) continue;
-        const ok = await new Promise<boolean>((resolve) => {
-          const url = URL.createObjectURL(f);
-          const el = document.createElement("video");
-          el.preload = "metadata";
-          el.onloadedmetadata = () => {
-            const d = Number.isFinite(el.duration) ? el.duration : 0;
-            URL.revokeObjectURL(url);
-            resolve(d <= MAX_SECONDS || d === 0);
-          };
-          el.onerror = () => {
-            URL.revokeObjectURL(url);
-            resolve(true);
-          };
-          el.src = url;
-        });
-        if (ok) within.push(f);
-      }
-      setValue("videos", [...current, ...within].slice(0, 3), {
-        shouldValidate: true,
-      });
-      setVideoProgress((prev) => {
-        const base = current.length;
-        const addCount = Math.min(within.length, 3 - base);
-        return [...prev, ...Array(addCount).fill(0)];
-      });
-  if (currentCharterId && within.length) {
-        const uploaded: Array<{ name: string; url: string }> = [];
-        const base = current.length;
-        for (let idx = 0; idx < within.length; idx++) {
-          const f = within[idx];
-          const fd = new FormData();
-          fd.set("file", f);
-          fd.set("docType", "charter_media");
-          fd.set("charterId", currentCharterId);
-          try {
-            const { key, url } = await uploadWithProgress(fd, (p) => {
-              if (!shouldUpdateProgress(lastVideoProgressRef, base + idx, p))
-                return;
-              setVideoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = p;
-                return arr;
-              });
-            });
-            uploaded.push({ name: key, url });
-            setVideoProgress((prev) => {
-              const arr = [...prev];
-              const pos = base + idx;
-              if (pos >= 0 && pos < arr.length) arr[pos] = 100;
-              return arr;
-            });
-          } catch {
-            setVideoProgress((prev) => {
-              const arr = [...prev];
-              const pos = base + idx;
-              if (pos >= 0 && pos < arr.length) arr[pos] = -1;
-              return arr;
-            });
-          }
-        }
-        if (uploaded.length) {
-          await fetch(`/api/charters/${currentCharterId}/media`, {
-            method: "PUT",
+  // Removal handlers
+  const removePhoto = useCallback(
+    (index: number) => {
+      setExistingImages((prev) => {
+        const target = prev[index];
+        if (target && currentCharterId) {
+          setDeleteKeys((s) => new Set(s).add(target.name));
+          // Fire-and-forget server removal
+          fetch(`/api/charters/${currentCharterId}/media/remove`, {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              media: {
-                images: existingImages,
-                videos: [...existingVideos, ...uploaded],
-              },
-            }),
-          });
-          setTimeout(() => {
-            setExistingVideos((prev) => [...prev, ...uploaded]);
-            setValue("videos", [], { shouldValidate: true });
-            setVideoProgress([]);
-          }, HOLD_MS);
-        }
-      } else if (isEditing && !currentCharterId && within.length) {
-        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-          console.warn(
-            "[media] editing without charterId (videos) – immediate upload fallback"
+            body: JSON.stringify({ storageKey: target.name }),
+          }).catch((e) =>
+            console.warn("[mediaManager] photo_remove_api_failed", e)
           );
         }
-        const uploaded: Array<{ name: string; url: string }> = [];
-        const base = current.length;
-        for (let idx = 0; idx < within.length; idx++) {
-          const f = within[idx];
-          const fd = new FormData();
-          fd.set("file", f);
-          fd.set("docType", "charter_media");
-          try {
-            const { key, url } = await uploadWithProgress(fd, (p) => {
-              if (!shouldUpdateProgress(lastVideoProgressRef, base + idx, p))
-                return;
-              setVideoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = p;
-                return arr;
-              });
-            });
-            uploaded.push({ name: key, url });
-            setVideoProgress((prev) => {
-              const arr = [...prev];
-              const pos = base + idx;
-              if (pos >= 0 && pos < arr.length) arr[pos] = 100;
-              return arr;
-            });
-          } catch {
-            setVideoProgress((prev) => {
-              const arr = [...prev];
-              const pos = base + idx;
-              if (pos >= 0 && pos < arr.length) arr[pos] = -1;
-              return arr;
-            });
-          }
-        }
-        if (uploaded.length) {
-          setTimeout(() => {
-            setExistingVideos((prev) => [...prev, ...uploaded]);
-            const prevPersistedV = form.getValues("uploadedVideos") || [];
-            setValue("uploadedVideos", [...prevPersistedV, ...uploaded], {
-              shouldDirty: true,
-              shouldValidate: false,
-            });
-            setValue("videos", [], { shouldValidate: true });
-            setVideoProgress([]);
-          }, HOLD_MS);
-        }
-      } else if (!isEditing && within.length) {
-        const uploaded: Array<{ name: string; url: string }> = [];
-        const base = current.length;
-        for (let idx = 0; idx < within.length; idx++) {
-          const f = within[idx];
-          const fd = new FormData();
-          fd.set("file", f);
-          fd.set("docType", "charter_media");
-          try {
-            const { key, url } = await uploadWithProgress(fd, (p) => {
-              if (!shouldUpdateProgress(lastVideoProgressRef, base + idx, p))
-                return;
-              setVideoProgress((prev) => {
-                const arr = [...prev];
-                const pos = base + idx;
-                if (pos >= 0 && pos < arr.length) arr[pos] = p;
-                return arr;
-              });
-            });
-            uploaded.push({ name: key, url });
-            setVideoProgress((prev) => {
-              const arr = [...prev];
-              const pos = base + idx;
-              if (pos >= 0 && pos < arr.length) arr[pos] = 100;
-              return arr;
-            });
-          } catch {
-            setVideoProgress((prev) => {
-              const arr = [...prev];
-              const pos = base + idx;
-              if (pos >= 0 && pos < arr.length) arr[pos] = -1;
-              return arr;
-            });
-          }
-        }
-        if (uploaded.length) {
-          setTimeout(() => {
-            setExistingVideos((prev) => [...prev, ...uploaded]);
-            const prevPersistedV = form.getValues("uploadedVideos") || [];
-            setValue("uploadedVideos", [...prevPersistedV, ...uploaded], {
-              shouldDirty: true,
-              shouldValidate: false,
-            });
-            setValue("videos", [], { shouldValidate: true });
-            setVideoProgress([]);
-          }, HOLD_MS);
-        }
-      }
+        return prev.filter((_, i) => i !== index);
+      });
+      dlog("photo_removed", { index });
     },
-    [
-      watch,
-      setValue,
-      isEditing,
-      currentCharterId,
-      uploadWithProgress,
-      existingImages,
-      existingVideos,
-      form,
-    ]
+    [dlog, currentCharterId]
   );
-
-  const reorderExistingPhotos = useCallback(
-    (from: number, to: number) => {
-      const existingCount = existingImages.length;
-      if (from < 0 || to < 0) return;
-      if (from >= existingCount || to >= existingCount) return;
-      if (from === to) return;
-      const next = [...existingImages];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      setExistingImages(next);
-      if (isEditing && currentCharterId) {
-        fetch(`/api/charters/${currentCharterId}/media`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            media: { images: next, videos: existingVideos },
-          }),
-        }).catch(() => {});
-      }
-    },
-    [existingImages, existingVideos, isEditing, currentCharterId]
-  );
-
-  const reorderExistingVideos = useCallback(
-    (from: number, to: number) => {
-      const existingCount = existingVideos.length;
-      if (from < 0 || to < 0) return;
-      if (from >= existingCount || to >= existingCount) return;
-      if (from === to) return;
-      const next = [...existingVideos];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      setExistingVideos(next);
-      if (isEditing && currentCharterId) {
-        fetch(`/api/charters/${currentCharterId}/media`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            media: { images: existingImages, videos: next },
-          }),
-        }).catch(() => {});
-      }
-    },
-    [existingImages, existingVideos, isEditing, currentCharterId]
-  );
-
-  const removePhoto = useCallback(
-    (i: number) => {
-      if (i < existingImages.length) {
-        const removed = existingImages[i];
-        const next = existingImages.filter((_, idx) => idx !== i);
-        setExistingImages(next);
-        if (isEditing && currentCharterId) {
-          fetch(`/api/charters/${currentCharterId}/media`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              media: { images: next, videos: existingVideos },
-              deleteKeys: [removed.name],
-            }),
-          }).catch(() => {});
-        }
-        return;
-      }
-      const current = watch("photos") ?? [];
-      const offset = i - existingImages.length;
-      setValue(
-        "photos",
-        current.filter((_: unknown, idx: number) => idx !== offset),
-        { shouldValidate: true }
-      );
-    },
-    [
-      existingImages,
-      existingVideos,
-      isEditing,
-      currentCharterId,
-      watch,
-      setValue,
-    ]
-  );
-
   const removeVideo = useCallback(
-    (i: number) => {
-      if (i < existingVideos.length) {
-        const removed = existingVideos[i];
-        const next = existingVideos.filter((_, idx) => idx !== i);
-        setExistingVideos(next);
-        if (isEditing && currentCharterId) {
-          fetch(`/api/charters/${currentCharterId}/media`, {
-            method: "PUT",
+    (index: number) => {
+      setExistingVideos((prev) => {
+        const target = prev[index];
+        if (target && currentCharterId && target.status === "ready") {
+          setDeleteKeys((s) => new Set(s).add(target.name));
+          fetch(`/api/charters/${currentCharterId}/media/remove`, {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              media: { images: existingImages, videos: next },
-              deleteKeys: [removed.name],
-            }),
-          }).catch(() => {});
+            body: JSON.stringify({ storageKey: target.name }),
+          }).catch((e) =>
+            console.warn("[mediaManager] video_remove_api_failed", e)
+          );
         }
-        return;
-      }
-      const current = watch("videos") ?? [];
-      const offset = i - existingVideos.length;
-      setValue(
-        "videos",
-        current.filter((_: unknown, idx: number) => idx !== offset),
-        { shouldValidate: true }
-      );
-    },
-    [
-      existingVideos,
-      existingImages,
-      isEditing,
-      currentCharterId,
-      watch,
-      setValue,
-    ]
-  );
-
-  const retryPhoto = useCallback(
-    async (i: number) => {
-      const offset = i - existingImages.length;
-      const current = (watch("photos") ?? []) as File[];
-      if (offset < 0 || offset >= current.length) return;
-      setPhotoProgress((prev) => {
-        const arr = [...prev];
-        if (offset >= 0 && offset < arr.length) arr[offset] = 0;
-        return arr;
+        // If still pending (queued/transcoding) attempt pending removal via pendingId
+        if (
+          target &&
+          currentCharterId &&
+          target.pendingId &&
+          target.status !== "ready"
+        ) {
+          fetch(`/api/charters/${currentCharterId}/media/remove`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pendingId: target.pendingId }),
+          }).catch((e) =>
+            console.warn("[mediaManager] video_pending_remove_api_failed", e)
+          );
+        }
+        return prev.filter((_, i) => i !== index);
       });
-      const file = current[offset];
-      const fd = new FormData();
-      fd.set("file", file);
-      fd.set("docType", "charter_media");
-      if (isEditing && currentCharterId) fd.set("charterId", currentCharterId);
-      try {
-        const { key, url } = await uploadWithProgress(fd, (p) => {
-          if (!shouldUpdateProgress(lastPhotoProgressRef, offset, p)) return;
-          setPhotoProgress((prev) => {
-            const arr = [...prev];
-            if (offset >= 0 && offset < arr.length) arr[offset] = p;
-            return arr;
-          });
-        });
-        setPhotoProgress((prev) => {
-          const arr = [...prev];
-          if (offset >= 0 && offset < arr.length) arr[offset] = 100;
-          return arr;
-        });
-        if (isEditing && currentCharterId) {
-          await fetch(`/api/charters/${currentCharterId}/media`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              media: {
-                images: [...existingImages, { name: key, url }],
-                videos: existingVideos,
-              },
-            }),
-          });
-          setTimeout(() => {
-            setExistingImages((prev) => [...prev, { name: key, url }]);
-            const nextLocal = current.filter((_, idx) => idx !== offset);
-            setValue("photos", nextLocal, { shouldValidate: true });
-            setPhotoProgress([]);
-          }, HOLD_MS);
-        } else if (!isEditing) {
-          setTimeout(() => {
-            setExistingImages((prev) => [...prev, { name: key, url }]);
-            const prevPersisted = form.getValues("uploadedPhotos") || [];
-            setValue("uploadedPhotos", [...prevPersisted, { name: key, url }], {
-              shouldDirty: true,
-              shouldValidate: false,
-            });
-            const nextLocal = current.filter((_, idx) => idx !== offset);
-            setValue("photos", nextLocal, { shouldValidate: true });
-            setPhotoProgress([]);
-          }, HOLD_MS);
-        }
-      } catch {
-        setPhotoProgress((prev) => {
-          const arr = [...prev];
-          if (offset >= 0 && offset < arr.length) arr[offset] = -1;
-          return arr;
-        });
-      }
+      dlog("video_removed", { index });
     },
-    [
-      watch,
-      existingImages,
-      existingVideos,
-      isEditing,
-      currentCharterId,
-      uploadWithProgress,
-      form,
-      setValue,
-    ]
+    [dlog, currentCharterId]
   );
 
+  // Retry stubs – future: re-initiate upload flow for failed items
+  const retryPhoto = useCallback(() => {
+    dlog("photo_retry_requested");
+    // No-op: photos upload atomically currently
+  }, [dlog]);
   const retryVideo = useCallback(
-    async (i: number) => {
-      const offset = i - existingVideos.length;
-      const current = (watch("videos") ?? []) as File[];
-      if (offset < 0 || offset >= current.length) return;
-      setVideoProgress((prev) => {
-        const arr = [...prev];
-        if (offset >= 0 && offset < arr.length) arr[offset] = 0;
-        return arr;
-      });
-      const file = current[offset];
-      const fd = new FormData();
-      fd.set("file", file);
-      fd.set("docType", "charter_media");
-      if (isEditing && currentCharterId) fd.set("charterId", currentCharterId);
-      try {
-        const { key, url } = await uploadWithProgress(fd, (p) => {
-          if (!shouldUpdateProgress(lastVideoProgressRef, offset, p)) return;
-          setVideoProgress((prev) => {
-            const arr = [...prev];
-            if (offset >= 0 && offset < arr.length) arr[offset] = p;
-            return arr;
-          });
-        });
-        setVideoProgress((prev) => {
-          const arr = [...prev];
-          if (offset >= 0 && offset < arr.length) arr[offset] = 100;
-          return arr;
-        });
-        if (isEditing && currentCharterId) {
-          await fetch(`/api/charters/${currentCharterId}/media`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              media: {
-                images: existingImages,
-                videos: [...existingVideos, { name: key, url }],
-              },
-            }),
-          });
-          setTimeout(() => {
-            setExistingVideos((prev) => [...prev, { name: key, url }]);
-            const nextLocal = current.filter((_, idx) => idx !== offset);
-            setValue("videos", nextLocal, { shouldValidate: true });
-            setVideoProgress([]);
-          }, HOLD_MS);
-        } else if (!isEditing) {
-          setTimeout(() => {
-            setExistingVideos((prev) => [...prev, { name: key, url }]);
-            const prevPersistedV = form.getValues("uploadedVideos") || [];
-            setValue(
-              "uploadedVideos",
-              [...prevPersistedV, { name: key, url }],
-              { shouldDirty: true, shouldValidate: false }
-            );
-            const nextLocal = current.filter((_, idx) => idx !== offset);
-            setValue("videos", nextLocal, { shouldValidate: true });
-            setVideoProgress([]);
-          }, HOLD_MS);
+    (index: number) => {
+      setExistingVideos((prev) => {
+        const next = [...prev];
+        const target = next[index];
+        if (target && target.status === "failed") {
+          // For now just remove failed item; user can add again.
+          next.splice(index, 1);
         }
-      } catch {
-        setVideoProgress((prev) => {
-          const arr = [...prev];
-          if (offset >= 0 && offset < arr.length) arr[offset] = -1;
-          return arr;
-        });
-      }
+        return next;
+      });
+      dlog("video_retry_placeholder", { index });
     },
-    [
-      watch,
-      existingImages,
-      existingVideos,
-      isEditing,
-      currentCharterId,
-      uploadWithProgress,
-      form,
-      setValue,
-    ]
+    [dlog]
   );
 
   return {
@@ -1032,14 +779,14 @@ export function useCharterMediaManager({
     existingVideos,
     setExistingImages,
     setExistingVideos,
-    photoProgress,
-    videoProgress,
+    photoProgress: empty,
+    videoProgress: empty,
     photoPreviews,
     videoPreviews,
     addPhotoFiles,
     addVideoFiles,
-    reorderExistingPhotos,
-    reorderExistingVideos,
+    reorderExistingPhotos: noop,
+    reorderExistingVideos: noop,
     removePhoto,
     removeVideo,
     retryPhoto,
@@ -1047,5 +794,10 @@ export function useCharterMediaManager({
     isMediaUploading,
     canSubmitMedia,
     combinedPhotoCount,
+    isVideoTranscoding,
+    hasBlockingMedia,
+    // expose for save layer integration (not yet consumed here)
+    // @ts-expect-error internal field for persistence layer
+    deleteKeys: Array.from(deleteKeys),
   };
 }

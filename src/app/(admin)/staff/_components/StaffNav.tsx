@@ -9,7 +9,7 @@ export default function StaffNav() {
     { href: "/staff", label: "Dashboard" },
     { href: "/staff/verification", label: "Verification" },
     { href: "/staff/charters", label: "Charters" },
-    // Future: { href: "/staff/media", label: "Media" },
+    { href: "/staff/media", label: "Media" },
     // Future: { href: "/staff/reports", label: "Reports" },
   ];
 

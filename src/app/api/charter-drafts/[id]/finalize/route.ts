@@ -149,6 +149,75 @@ export async function POST(
     : null;
   // forcing the user to re-upload.
 
+  // SAFETY NET: Auto-ingest any orphan READY PendingMedia (no charterId, no consumedAt) owned by user
+  // that the client may have omitted (e.g., page reload during staging). We only do this on CREATE path
+  // (draft.charterId is null) because edit path reuses existing media unless explicitly replaced.
+  const orphanPendingImages: { name: string; url: string }[] = [];
+  const orphanPendingVideos: { name: string; url: string }[] = [];
+  if (!draft.charterId) {
+    try {
+      const orphans = await prisma.pendingMedia.findMany({
+        where: {
+          userId,
+          status: "READY",
+          charterId: null,
+          consumedAt: null,
+        },
+        select: {
+          id: true,
+          kind: true,
+          finalUrl: true,
+          finalKey: true,
+        },
+        take: 50, // guardrail
+      });
+      for (const o of orphans) {
+        if (!o.finalKey || !o.finalUrl) continue;
+        if (o.kind === "IMAGE") {
+          if (!mediaNormalized?.images.some((m) => m.name === o.finalKey)) {
+            orphanPendingImages.push({ name: o.finalKey, url: o.finalUrl });
+          }
+        } else if (o.kind === "VIDEO") {
+          if (!mediaNormalized?.videos.some((m) => m.name === o.finalKey)) {
+            orphanPendingVideos.push({ name: o.finalKey, url: o.finalUrl });
+          }
+        }
+      }
+      if (orphans.length) {
+        // Mark them consumed optimistically; if finalize later fails validation we still keep consumedAt
+        // to avoid repeated ingestion loops (user can re-upload if truly lost).
+        await prisma.pendingMedia.updateMany({
+          where: { id: { in: orphans.map((o) => o.id) } },
+          data: { consumedAt: new Date() },
+        });
+        logger.info("finalize_ingested_orphan_pending", {
+          userId,
+          draftId: draft.id,
+          count: orphans.length,
+          imagesAdded: orphanPendingImages.length,
+          videosAdded: orphanPendingVideos.length,
+          requestId,
+        });
+      }
+    } catch (e) {
+      logger.error("finalize_orphan_pending_error", {
+        userId,
+        draftId: draft.id,
+        error: e instanceof Error ? e.message : String(e),
+        requestId,
+      });
+    }
+  }
+
+  if (!draft.charterId && media) {
+    if (orphanPendingImages.length) {
+      media.images.push(...orphanPendingImages);
+    }
+    if (orphanPendingVideos.length) {
+      media.videos.push(...orphanPendingVideos);
+    }
+  }
+
   let result:
     | { ok: true; charterId: string }
     | { ok: false; errors: Record<string, string> };

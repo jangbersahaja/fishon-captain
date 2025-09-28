@@ -42,20 +42,41 @@ export function useCharterDataLoad({
   // Exposed only for debugging field population problems
   const hydrationLogRef = useRef<{ stage: string; ts: number }[]>([]);
 
-  // Initialize baseline state
+  // Initialize baseline state only once per editCharterId value. We intentionally
+  // exclude clearLocalDraft / initializeDraftState from dependencies because they
+  // may be unstable (recreated each provider render) causing an infinite loop.
+  const initRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
+    if (initRef.current === editCharterId) return; // already initialized for this id value
+    initRef.current = editCharterId;
     const defaults = createDefaultCharterFormValues();
     if (editCharterId) {
-      // Immediately mark editing so UI can hide create-mode banners while fetch in flight.
-      setEffectiveEditing(true);
-      clearLocalDraft();
-      initializeDraftState(defaults, null);
+      // Only update state if changing from non-editing -> editing
+      setEffectiveEditing((prev) => (prev ? prev : true));
+      // Ensure currentCharterId is available immediately for downstream upload hooks
+      // so that media uploads in edit mode aren't blocked while hydration fetch runs.
+      setCurrentCharterId(editCharterId);
+      try {
+        clearLocalDraft();
+      } catch {
+        /* swallow clear errors */
+      }
+      try {
+        initializeDraftState(defaults, null);
+      } catch {
+        /* swallow init errors */
+      }
       setDraftLoaded(true);
     } else {
-      initializeDraftState(defaults, null);
+      try {
+        initializeDraftState(defaults, null);
+      } catch {
+        /* swallow init errors */
+      }
       setDraftLoaded(true);
     }
-  }, [editCharterId, clearLocalDraft, initializeDraftState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally exclude clearLocalDraft & initializeDraftState to avoid infinite re-init when their identities change
+  }, [editCharterId]);
 
   useEffect(() => {
     if (!draftLoaded || fetchedRef.current) return;

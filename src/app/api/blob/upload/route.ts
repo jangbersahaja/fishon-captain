@@ -106,8 +106,8 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-            error: "video_requires_charterId",
-            message:
+          error: "video_requires_charterId",
+          message:
             "Video uploads require a charterId (ensure charter is loaded before uploading).",
         },
         { status: 400 }

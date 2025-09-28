@@ -37,6 +37,7 @@ export interface CharterFormEnvironment {
     existingImagesCount: number;
     existingVideosCount: number;
     avatarUploading: boolean;
+    hasBlockingMedia?: boolean; // queued/transcoding videos blocking save
   };
 }
 

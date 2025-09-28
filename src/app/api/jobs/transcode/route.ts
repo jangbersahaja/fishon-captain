@@ -4,9 +4,8 @@ import { NextResponse } from "next/server";
 
 export const runtime = "edge"; // tiny and fast; just queues the job
 
-const qstash = new Client({
-  token: process.env.QSTASH_TOKEN!,
-});
+const qstashToken = process.env.QSTASH_TOKEN;
+const qstash = qstashToken ? new Client({ token: qstashToken }) : null;
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as {
@@ -15,6 +14,7 @@ export async function POST(req: Request) {
     charterId?: string;
     filename?: string;
     userId?: string;
+    pendingMediaId?: string;
     // Legacy support
     key?: string;
     url?: string;
@@ -25,18 +25,57 @@ export async function POST(req: Request) {
   }
 
   // Validate and ensure workerUrl has a valid scheme
-  const workerUrl = process.env.NEXT_PUBLIC_SITE_URL
-    ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/workers/transcode`
-    : null;
+  const deriveBaseUrl = (): string | null => {
+    const trimTrailing = (val: string) => val.replace(/\/+$/, "");
+    try {
+      const parsed = new URL(req.url);
+      if (parsed.origin) {
+        return trimTrailing(parsed.origin);
+      }
+    } catch {
+      // ignore
+    }
+    const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+    if (envUrl) {
+      try {
+        const parsed = new URL(envUrl);
+        return trimTrailing(parsed.toString());
+      } catch {
+        // ignore malformed env
+      }
+    }
+    const vercelUrl = process.env.VERCEL_URL?.trim();
+    if (vercelUrl) {
+      try {
+        const parsed = vercelUrl.startsWith("http")
+          ? new URL(vercelUrl)
+          : new URL(`https://${vercelUrl}`);
+        return trimTrailing(parsed.toString());
+      } catch {
+        // ignore
+      }
+    }
+    const originHeader = req.headers.get("origin");
+    if (originHeader) {
+      try {
+        const parsed = new URL(originHeader);
+        return trimTrailing(parsed.toString());
+      } catch {
+        // ignore invalid origin header
+      }
+    }
+    return null;
+  };
 
-  if (
-    !workerUrl ||
-    (!workerUrl.startsWith("http://") && !workerUrl.startsWith("https://"))
-  ) {
-    throw new Error(
-      "Invalid NEXT_PUBLIC_SITE_URL: Ensure it includes http:// or https://"
-    );
+  const baseUrl = deriveBaseUrl();
+  if (!baseUrl) {
+    return NextResponse.json({ error: "invalid_site_url" }, { status: 400 });
   }
+  const workerUrl = `${baseUrl}/api/workers/transcode`;
+
+  // Detect loopback / local development unsuitable for QStash
+  const isLoopback = /localhost|127\.0\.0\.1|::1/.test(workerUrl);
+  const canUseQStash = !!qstash && !isLoopback;
 
   // Normalize the payload for the worker
   const payload = {
@@ -45,12 +84,48 @@ export async function POST(req: Request) {
     charterId: body.charterId,
     filename: body.filename,
     userId: body.userId,
+    pendingMediaId: body.pendingMediaId,
   };
 
-  await qstash.publishJSON({
-    url: workerUrl,
-    body: payload,
-  });
+  if (canUseQStash) {
+    try {
+      await qstash!.publishJSON({
+        url: workerUrl.replace(/\/worker(s)?\//, "/workers/"),
+        body: payload,
+      });
+      return NextResponse.json({ ok: true, queued: true });
+    } catch (e) {
+      // Fallback to direct call in dev if publish fails
+      if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        console.warn("qstash publish failed, attempting direct fallback", e);
+      }
+    }
+  }
 
-  return NextResponse.json({ ok: true });
+  // Direct fallback: invoke worker endpoint immediately (synchronous local dev path)
+  try {
+    const direct = await fetch(`${workerUrl}-simple`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const text = await direct.text();
+    if (!direct.ok) {
+      return NextResponse.json(
+        {
+          error: "queue_failed",
+          status: direct.status,
+          direct: true,
+          body: text,
+        },
+        { status: direct.status || 502 }
+      );
+    }
+    return NextResponse.json({ ok: true, direct: true, body: text });
+  } catch (e) {
+    return NextResponse.json(
+      { error: "queue_failed", message: (e as Error).message },
+      { status: 500 }
+    );
+  }
 }

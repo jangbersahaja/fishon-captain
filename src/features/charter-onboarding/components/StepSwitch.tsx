@@ -20,14 +20,17 @@ export interface StepSwitchProps {
   addVideoFiles: (files: File[]) => void;
   removePhoto: (idx: number) => void;
   removeVideo: (idx: number) => void;
-  videoProgress: number[]; // adapt to actual hook return
+  videoProgress: number[]; // legacy (no longer passed to new uploader)
   photoProgress: number[];
   existingImagesCount: number;
   existingVideosCount: number;
   onReorderPhotos: (from: number, to: number) => void;
-  onReorderVideos: (from: number, to: number) => void;
+  onReorderVideos: (from: number, to: number) => void; // legacy
   onRetryPhoto: (index: number) => void;
-  onRetryVideo: (index: number) => void;
+  onRetryVideo: (index: number) => void; // legacy
+  currentCharterId: string | null;
+  onVideoBlockingChange?: (blocking: boolean) => void;
+  onReadyVideosChange?: (videos: { name: string; url: string }[]) => void;
 }
 
 const MediaPricingStep = dynamic(
@@ -91,19 +94,13 @@ export const StepSwitch: React.FC<StepSwitchProps> = (props) => {
         <MediaPricingStep
           form={props.form}
           photoPreviews={props.normalizedPhotoPreviews}
-          videoPreviews={props.normalizedVideoPreviews}
           onAddPhotoFiles={props.addPhotoFiles}
-          onAddVideoFiles={props.addVideoFiles}
           onRemovePhoto={props.removePhoto}
-          onRemoveVideo={props.removeVideo}
-          videoProgress={props.videoProgress}
-          photoProgress={props.photoProgress}
-          existingPhotosCount={props.existingImagesCount}
-          existingVideosCount={props.existingVideosCount}
           onReorderPhotos={props.onReorderPhotos}
-          onReorderVideos={props.onReorderVideos}
           onRetryPhoto={props.onRetryPhoto}
-          onRetryVideo={props.onRetryVideo}
+          currentCharterId={props.currentCharterId}
+          onVideoBlockingChange={props.onVideoBlockingChange}
+          onReadyVideosChange={props.onReadyVideosChange}
         />
       );
     default:

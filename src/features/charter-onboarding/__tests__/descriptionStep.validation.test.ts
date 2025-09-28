@@ -31,6 +31,7 @@ function makeDefaults(): CharterFormValues {
     postcode: "40000",
     latitude: 3.05,
     longitude: 101.5,
+    supportedLanguages: ["Malay", "English"],
     description: "Short seed", // intentionally under min
     generatedDescription: undefined,
     tone: "friendly",

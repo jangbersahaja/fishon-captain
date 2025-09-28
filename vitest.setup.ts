@@ -33,3 +33,40 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         new Response("Not Implemented", { status: 501 }) as unknown as Response
       );
 }) as typeof fetch;
+
+// Provide a lightweight mock for ToastContext so hooks/components using useToasts
+// do not throw during tests that don't explicitly wrap with a provider.
+// Individual tests can still spy on push by importing the mocked module and
+// accessing its internal mock implementation if needed.
+vi.mock("@/components/toast/ToastContext", () => {
+  const push = vi.fn();
+  return {
+    useToasts: () => ({
+      push,
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      registerBottomAnchor: vi.fn(),
+    }),
+    ToastProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
+// ResizeObserver mock for components using it (e.g., ReviewBar)
+class MockResizeObserver {
+  private _cb: ResizeObserverCallback;
+  constructor(cb: ResizeObserverCallback) {
+    this._cb = cb;
+  }
+  observe() {
+    // no-op
+  }
+  unobserve() {
+    // no-op
+  }
+  disconnect() {
+    // no-op
+  }
+}
+// Assign mock (override jsdom missing implementation)
+// @ts-expect-error jsdom environment lacks built-in ResizeObserver
+global.ResizeObserver = MockResizeObserver as unknown as ResizeObserver;

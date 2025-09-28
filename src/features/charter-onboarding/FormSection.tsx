@@ -11,7 +11,11 @@ import {
 import { ConfirmDialog } from "@features/charter-onboarding/components/ConfirmDialog";
 import { StepProgress } from "@features/charter-onboarding/components/StepProgress";
 import { CharterFormProvider } from "@features/charter-onboarding/context/CharterFormContext";
-import { logFormDebug } from "@features/charter-onboarding/debug";
+import {
+  isFormDebug,
+  logFormDebug,
+  setFormDebug,
+} from "@features/charter-onboarding/debug";
 import { STEP_SEQUENCE } from "@features/charter-onboarding/formSteps";
 import {
   useAutofillCity,
@@ -132,7 +136,10 @@ export default function FormSection() {
     retryVideo,
     isMediaUploading,
     canSubmitMedia,
+    hasBlockingMedia,
   } = media;
+  // New video upload section dynamic blocking state (queued/transcoding)
+  const [videoSectionBlocking, setVideoSectionBlocking] = useState(false);
 
   // Server draft snapshot (diff + redundancy) – bypassed in edit mode.
   const [serverSaving, setServerSaving] = useState(false);
@@ -490,165 +497,12 @@ export default function FormSection() {
   ]);
 
   const [showConfirm, setShowConfirm] = useState(false);
-  const [mediaUploadError, setMediaUploadError] = useState<string | null>(null);
+  // mediaUploadError removed with legacy deferred upload path – keep placeholder if future UI wants aggregate errors.
   const totalSteps = STEP_SEQUENCE.length; // kept local for display only
   const bottomPaddingClass = isReviewStep ? "pb-60" : "pb-16";
 
   // Upload newly added local media (create mode) after successfully advancing past media step.
-  const uploadMediaIfLeavingMediaStep = useCallback(
-    async (prevStepId: string) => {
-      if (isEditing) return;
-      const values = form.getValues();
-      const photos: File[] = Array.isArray(values.photos) ? values.photos : [];
-      const videos: File[] = Array.isArray(values.videos) ? values.videos : [];
-      const avatarFile = values.operator.avatar;
-      const leavingMedia = prevStepId === "media";
-      const shouldUploadAvatar = avatarFile instanceof File;
-      const shouldUploadMedia =
-        leavingMedia && (photos.length || videos.length);
-      if (!shouldUploadAvatar && !shouldUploadMedia) return;
-      setMediaUploadError(null);
-      const uploadOne = async (
-        file: File,
-        kind: "photo" | "video" | "avatar"
-      ) => {
-        if (uploadedMediaMapRef.current.has(file))
-          return uploadedMediaMapRef.current.get(file)!;
-        const fd = new FormData();
-        fd.set("file", file);
-        fd.set(
-          "docType",
-          kind === "avatar" ? "charter_avatar" : "charter_media"
-        );
-        try {
-          const res = await fetch("/api/blob/upload", {
-            method: "POST",
-            body: fd,
-          });
-          if (!res.ok) return null;
-          const { key, url } = (await res.json()) as {
-            key: string;
-            url: string;
-          };
-          const meta = { name: key, url, kind } as const;
-          uploadedMediaMapRef.current.set(file, meta);
-          return meta;
-        } catch {
-          return null;
-        }
-      };
-      let avatarMeta: { name: string; url: string } | null = null;
-      if (shouldUploadAvatar) {
-        const up = await uploadOne(avatarFile as File, "avatar");
-        if (up) {
-          avatarMeta = { name: up.name, url: up.url };
-          // Persist avatarUrl into form state so draft snapshot can keep preview across reloads
-          const current = form.getValues("operator.avatarUrl");
-          if (current !== up.url) {
-            form.setValue("operator.avatarUrl", up.url, {
-              shouldDirty: true,
-              shouldValidate: false,
-            });
-            // Force immediate draft save to capture avatarUrl quickly
-            draftSnapshot.saveServerDraftSnapshot();
-          }
-        }
-      }
-      if (shouldUploadMedia) {
-        const photoResults = await Promise.all(
-          photos.map((f) => uploadOne(f, "photo"))
-        );
-        const videoResults = await Promise.all(
-          videos.map((f) => uploadOne(f, "video"))
-        );
-        const successfulPhotoMetas: { name: string; url: string }[] = [];
-        const failedPhotos: File[] = [];
-        photoResults.forEach((meta, idx) => {
-          if (meta)
-            successfulPhotoMetas.push({ name: meta.name, url: meta.url });
-          else failedPhotos.push(photos[idx]);
-        });
-        const successfulVideoMetas: { name: string; url: string }[] = [];
-        const failedVideos: File[] = [];
-        videoResults.forEach((meta, idx) => {
-          if (meta)
-            successfulVideoMetas.push({ name: meta.name, url: meta.url });
-          else failedVideos.push(videos[idx]);
-        });
-        if (successfulPhotoMetas.length) {
-          setExistingImages((prev) => [...prev, ...successfulPhotoMetas]);
-          // Append to persisted uploadedPhotos array
-          const prevPersisted = form.getValues("uploadedPhotos") || [];
-          form.setValue(
-            "uploadedPhotos",
-            [...prevPersisted, ...successfulPhotoMetas],
-            { shouldDirty: true, shouldValidate: false }
-          );
-        }
-        if (successfulVideoMetas.length) {
-          setExistingVideos((prev) => [...prev, ...successfulVideoMetas]);
-          const prevPersistedV = form.getValues("uploadedVideos") || [];
-          form.setValue(
-            "uploadedVideos",
-            [...prevPersistedV, ...successfulVideoMetas],
-            { shouldDirty: true, shouldValidate: false }
-          );
-        }
-        // Keep only failed files in form so user can retry
-        if (
-          successfulPhotoMetas.length ||
-          failedPhotos.length !== photos.length
-        )
-          form.setValue("photos", failedPhotos, { shouldValidate: true });
-        if (
-          successfulVideoMetas.length ||
-          failedVideos.length !== videos.length
-        )
-          form.setValue("videos", failedVideos, { shouldValidate: true });
-        if (successfulPhotoMetas.length || successfulVideoMetas.length) {
-          // Save draft snapshot to persist newly uploaded media metadata promptly
-          draftSnapshot.saveServerDraftSnapshot();
-        }
-        const failCount = failedPhotos.length + failedVideos.length;
-        if (failCount > 0) {
-          setMediaUploadError(
-            `${failCount} media file${
-              failCount === 1 ? "" : "s"
-            } failed to upload. They remain selected for retry.`
-          );
-        }
-      }
-      void avatarMeta; // mapping retained for finalize
-    },
-    [form, isEditing, setExistingImages, setExistingVideos, draftSnapshot]
-  );
-
-  // Wrap original handleNext to inject post-step upload
-  const handleNextWithUpload = useCallback(async () => {
-    const prevStepId = activeStep.id;
-    const prevIndex = currentStep;
-    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-      console.log("[form] handleNextWithUpload start", {
-        prevIndex,
-        prevStepId,
-      });
-    }
-    await handleNext();
-    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-      console.log("[form] handleNextWithUpload after handleNext", {
-        newCurrentStep: currentStep + 1,
-      });
-    }
-    if (!isEditing) {
-      await uploadMediaIfLeavingMediaStep(prevStepId);
-    }
-  }, [
-    handleNext,
-    uploadMediaIfLeavingMediaStep,
-    activeStep.id,
-    currentStep,
-    isEditing,
-  ]);
+  // Legacy deferred media upload removed. All media now uploads immediately via useCharterMediaManager.
 
   return (
     <CharterFormProvider
@@ -665,7 +519,7 @@ export default function FormSection() {
           isLastStep,
           isReviewStep,
           activeStep,
-          handleNext: handleNextWithUpload,
+          handleNext,
           handlePrev,
           gotoStep,
         },
@@ -684,12 +538,37 @@ export default function FormSection() {
           existingImagesCount: existingImages.length,
           existingVideosCount: existingVideos.length,
           avatarUploading,
+          hasBlockingMedia: hasBlockingMedia || videoSectionBlocking,
         },
       }}
     >
       <div
         className={`space-y-10 px-4 pt-6 max-w-5xl mx-auto ${bottomPaddingClass}`}
+        // Keyboard toggle: cmd+shift+D (mac) / ctrl+shift+D
+        onKeyDown={(e) => {
+          const mac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+          if (
+            (mac ? e.metaKey : e.ctrlKey) &&
+            e.shiftKey &&
+            e.key.toLowerCase() === "d"
+          ) {
+            e.preventDefault();
+            const next = !isFormDebug();
+            setFormDebug(next);
+            if (next) {
+              logFormDebug("toggled_on", { via: "keyboard" });
+            } else {
+              console.debug("[FormDebug] toggled_off");
+            }
+          }
+        }}
+        tabIndex={0}
       >
+        {isFormDebug() && (
+          <div className="fixed top-2 right-2 z-[100] rounded bg-indigo-600/80 px-2 py-1 text-[10px] font-mono text-white shadow">
+            FORM DEBUG
+          </div>
+        )}
         {isEditing && (
           <div
             className={`rounded-xl px-4 py-3 text-xs ${feedbackTokens.info.subtle}`}
@@ -750,6 +629,38 @@ export default function FormSection() {
             onReorderVideos={reorderExistingVideos}
             onRetryPhoto={retryPhoto}
             onRetryVideo={retryVideo}
+            currentCharterId={currentCharterId}
+            onVideoBlockingChange={(b) => setVideoSectionBlocking(b)}
+            onReadyVideosChange={(ready) => {
+              // Bridge ready transcoded videos into existingVideos so finalize sees them.
+              if (!ready.length) return; // nothing new to integrate
+              setExistingVideos((prev) => {
+                // Fast path: if all ready names already exist unchanged, skip update (avoid loop)
+                let allPresent = true;
+                for (const r of ready) {
+                  const existing = prev.find((p) => p.name === r.name);
+                  if (!existing || existing.url !== r.url) {
+                    allPresent = false;
+                    break;
+                  }
+                }
+                if (allPresent) return prev; // no state change
+                const map = new Map(prev.map((v) => [v.name, v]));
+                let changed = false;
+                for (const r of ready) {
+                  const existing = map.get(r.name);
+                  if (!existing) {
+                    map.set(r.name, r);
+                    changed = true;
+                  } else if (existing.url !== r.url) {
+                    map.set(r.name, { ...existing, url: r.url });
+                    changed = true;
+                  }
+                }
+                if (!changed) return prev;
+                return Array.from(map.values());
+              });
+            }}
           />
           {isReviewStep && <ReviewStep charter={previewCharter} />}
           {submitState?.type === "error" && (
@@ -757,13 +668,6 @@ export default function FormSection() {
               className={`rounded-2xl px-4 py-3 text-sm ${feedbackTokens.error.subtle}`}
             >
               {submitState.message}
-            </div>
-          )}
-          {mediaUploadError && !isEditing && (
-            <div
-              className={`rounded-2xl px-4 py-2 text-[11px] ${feedbackTokens.warning.subtle}`}
-            >
-              {mediaUploadError}
             </div>
           )}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

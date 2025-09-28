@@ -87,7 +87,7 @@ export function useCharterSubmission({
   const { push: pushToast } = useToasts();
 
   // Live charter edit PATCH
-  const saveEditChanges = useCallback(async () => {
+  const saveEditChanges: () => Promise<void> = useCallback(async () => {
     if (!isEditing) return; // not applicable
     // Prefer fully confirmed id but fall back to raw URL param if hydration succeeded elsewhere (fallback path) but hook didn't set currentCharterId.
     const effectiveId = currentCharterId || fallbackEditCharterId;
@@ -146,6 +146,8 @@ export function useCharterSubmission({
           replace: true,
           autoDismiss: 2200,
         });
+        // Maintain legacy behavior for tests & UI surfaces expecting submitState to reflect edit success
+        setSubmitState({ type: "success", message: "Saved changes" });
       } else {
         pushToast({
           id: "charter-edit",
@@ -161,6 +163,7 @@ export function useCharterSubmission({
             },
           ],
         });
+        setSubmitState({ type: "error", message: "Save failed" });
       }
     } catch {
       pushToast({
@@ -177,6 +180,7 @@ export function useCharterSubmission({
           },
         ],
       });
+      setSubmitState({ type: "error", message: "Save error" });
     } finally {
       setSavingEdit(false);
     }

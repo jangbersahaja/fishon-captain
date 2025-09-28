@@ -7,6 +7,7 @@ type MediaPreview = BasePreview & {
   isCover?: boolean;
   progress?: number;
   thumbnailUrl?: string; // For video thumbnails
+  processing?: boolean;
 };
 
 type MediaGridProps = {
@@ -41,6 +42,14 @@ export function MediaGrid({
       return name;
     }
   };
+  const deriveStatus = (item: MediaPreview) => {
+    // Infer from upstream flags. A FAILED video may carry a custom flag we treat as truthy.
+    // Allow for an injected boolean 'failed' prop without widening MediaPreview permanently.
+    const maybeFailed = (item as unknown as { failed?: boolean }).failed;
+    if (maybeFailed) return "failed" as const;
+    if (item.processing) return "processing" as const;
+    return "ready" as const;
+  };
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [videoErrors, setVideoErrors] = useState<Set<number>>(new Set());
@@ -54,13 +63,16 @@ export function MediaGrid({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item, index) => {
+        const isProcessing = Boolean(item.processing);
         const disabled =
-          typeof item.progress === "number" &&
-          item.progress >= 0 &&
-          item.progress < 100;
+          isProcessing ||
+          (typeof item.progress === "number" &&
+            item.progress >= 0 &&
+            item.progress < 100);
         const justCompleted = item.progress === 100; // used during HOLD_MS before list migration
         const isVideo =
           kind === "video" || /\.(mp4|mov|webm|ogg)$/iu.test(item.name || "");
+        const status = deriveStatus(item);
         return (
           <div
             key={`${item.url}-${index}`}
@@ -106,10 +118,66 @@ export function MediaGrid({
                 Cover
               </span>
             )}
+            {status === "processing" && (
+              <span className="absolute right-2 top-2 z-10 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
+                Processing
+              </span>
+            )}
+            {status === "failed" && (
+              <span className="absolute right-2 top-2 z-10 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
+                Failed
+              </span>
+            )}
             {isVideo ? (
               <div className="relative h-36 bg-black/5">
-                {item.thumbnailUrl && !videoErrors.has(index) ? (
-                  // Use thumbnail for video preview
+                {status === "processing" ? (
+                  <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-600 animate-pulse">
+                    <div className="relative h-full w-full">
+                      {item.thumbnailUrl && !videoErrors.has(index) && (
+                        <Image
+                          src={item.thumbnailUrl}
+                          fill
+                          className="object-cover opacity-40 blur-sm"
+                          sizes="300px"
+                          alt={`${toDisplayName(
+                            item.name
+                          )} thumbnail (processing)`}
+                          unoptimized
+                          onError={() =>
+                            setVideoErrors((prev) => new Set(prev).add(index))
+                          }
+                        />
+                      )}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60">
+                        <span
+                          className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600"
+                          aria-hidden="true"
+                        />
+                        <p className="text-xs font-semibold uppercase tracking-wide">
+                          Processing…
+                        </p>
+                        <p className="mt-1 px-4 text-center text-[11px] text-slate-500">
+                          Optimizing video & thumbnail
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : status === "failed" ? (
+                  <div
+                    className="h-full w-full flex flex-col items-center justify-center bg-red-50 text-red-600 cursor-pointer hover:bg-red-100 transition-colors"
+                    onClick={() => window.open(item.url, "_blank")}
+                    title="Open original video"
+                  >
+                    <div className="text-2xl mb-1">⚠️</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide">
+                      Transcode failed
+                    </div>
+                    <div className="text-[10px] mt-1 text-red-500/70 px-3 text-center">
+                      Retry upload or contact support
+                    </div>
+                  </div>
+                ) : item.thumbnailUrl && !videoErrors.has(index) ? (
+                  // Use thumbnail for video preview - video is ready
                   <div
                     className="relative h-full w-full cursor-pointer group"
                     onClick={() => window.open(item.url, "_blank")}
@@ -138,41 +206,21 @@ export function MediaGrid({
                         </svg>
                       </div>
                     </div>
-                  </div>
-                ) : videoErrors.has(index) ? (
-                  // Generic fallback for videos that can't load
-                  <div
-                    className="h-full w-full flex flex-col items-center justify-center bg-gray-100 text-gray-500 cursor-pointer hover:bg-gray-200 transition-colors"
-                    onClick={() => window.open(item.url, "_blank")}
-                    title="Click to open video in new tab"
-                  >
-                    <div className="text-2xl mb-2">🎥</div>
-                    <div className="text-xs text-center px-2">
-                      Video Preview
-                    </div>
-                    <div className="text-xs text-center px-2 mt-1 text-gray-400">
-                      (Click to view)
+                    {/* Ready indicator */}
+                    <div className="absolute top-2 left-2">
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
+                        ✓ Ready
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  // Try to load video element for preview
-                  <div className="relative h-full w-full">
-                    <video
-                      src={item.url}
-                      className="h-full w-full object-cover"
-                      preload="metadata"
-                      playsInline
-                      muted
-                      onError={() => {
-                        setVideoErrors((prev) => new Set(prev).add(index));
-                      }}
-                    />
-                    {/* Video label for video element fallback */}
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                      <span className="rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
-                        Video
-                      </span>
-                    </div>
+                  <div
+                    className="h-full w-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 text-xs"
+                    onClick={() => window.open(item.url, "_blank")}
+                    title="Open video"
+                  >
+                    <div className="text-lg mb-1">�️</div>
+                    <span>No thumbnail yet</span>
                   </div>
                 )}
               </div>

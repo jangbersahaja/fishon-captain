@@ -24,6 +24,13 @@ export const ActionButtons: React.FC = () => {
       saveEditChanges: s.submission?.saveEditChanges || (() => {}),
     })
   );
+  // Additional media state for disabling Save during uploads or when media cannot submit
+  const { isMediaUploading, canSubmitMedia, hasBlockingMedia } =
+    useCharterFormSelectors((s) => ({
+      isMediaUploading: s.media?.isMediaUploading ?? false,
+      canSubmitMedia: s.media?.canSubmitMedia ?? true,
+      hasBlockingMedia: s.media?.hasBlockingMedia ?? false,
+    }));
   const serverDraftId = useCharterFormSelectors((s) => s.serverDraftId);
   const { avatarUploading } = useCharterFormSelectors((s) => ({
     avatarUploading: s.media?.avatarUploading ?? false,
@@ -134,7 +141,13 @@ export const ActionButtons: React.FC = () => {
         <Tooltip content={savingEdit ? "Saving…" : "Save"}>
           <button
             type="button"
-            disabled={savingEdit || serverSaving}
+            disabled={
+              savingEdit ||
+              serverSaving ||
+              isMediaUploading ||
+              hasBlockingMedia ||
+              !canSubmitMedia
+            }
             aria-label="Save"
             onClick={saveEditChanges}
             className="inline-flex items-center justify-center rounded-full bg-emerald-600 p-3 text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600"
@@ -149,7 +162,11 @@ export const ActionButtons: React.FC = () => {
               aria-hidden
               className="hidden md:ml-2 md:inline text-[11px] font-medium"
             >
-              {savingEdit ? "Saving…" : "Save"}
+              {savingEdit
+                ? "Saving…"
+                : hasBlockingMedia
+                ? "Waiting for video…"
+                : "Save"}
             </span>
           </button>
         </Tooltip>

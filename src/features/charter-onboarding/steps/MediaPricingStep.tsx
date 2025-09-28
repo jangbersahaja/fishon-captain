@@ -1,7 +1,8 @@
 "use client";
 
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
-import { MediaGrid } from "@features/charter-onboarding/components";
+import { PhotoGrid } from "@features/charter-onboarding/components";
+import { VideoUploadSection } from "@features/charter-onboarding/components/VideoUploadSection";
 import { useMemo, useState, type ChangeEvent } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
@@ -12,97 +13,62 @@ type MediaPreview = {
   isCover?: boolean;
 };
 
+type VideoPreview = MediaPreview & {
+  thumbnailUrl?: string;
+  status?: "queued" | "transcoding" | "ready" | "failed";
+  durationSeconds?: number;
+};
+
 type MediaPricingStepProps = {
   form: UseFormReturn<CharterFormValues>;
   photoPreviews: MediaPreview[];
-  videoPreviews: MediaPreview[];
+  videoPreviews?: VideoPreview[]; // legacy (ignored by new video uploader)
   onPhotoChange?: (e: ChangeEvent<HTMLInputElement>) => void;
-  onVideoChange?: (e: ChangeEvent<HTMLInputElement>) => void;
-  onAddPhotoFiles?: (files: File[]) => void; // drop/paste support
-  onAddVideoFiles?: (files: File[]) => void; // drop/paste support
+  // onVideoChange?: (e: ChangeEvent<HTMLInputElement>) => void; // removed
+  onAddPhotoFiles?: (files: File[]) => void;
+  onAddVideoFiles?: (files: File[]) => void; // legacy
   onRemovePhoto: (index: number) => void;
-  onRemoveVideo: (index: number) => void;
-  videoProgress?: number[]; // NEW
-  photoProgress?: number[]; // optional
-  existingPhotosCount?: number;
-  existingVideosCount?: number;
-  onReorderPhotos?: (from: number, to: number) => void;
-  onReorderVideos?: (from: number, to: number) => void;
+  onRemoveVideo?: (index: number) => void; // legacy optional
+  onReorderPhotos?: (from: number, to: number) => void; // still supported externally
   onRetryPhoto?: (index: number) => void;
   onRetryVideo?: (index: number) => void;
+  currentCharterId?: string | null;
+  onVideoBlockingChange?: (blocking: boolean) => void;
+  onReadyVideosChange?: (videos: { name: string; url: string }[]) => void;
 };
 
 export function MediaPricingStep({
   form,
   photoPreviews,
-  videoPreviews,
   onPhotoChange,
-  onVideoChange,
   onAddPhotoFiles,
-  onAddVideoFiles,
   onRemovePhoto,
-  onRemoveVideo,
-  existingPhotosCount = 0,
-  existingVideosCount = 0,
   onReorderPhotos,
-  onReorderVideos,
-  photoProgress,
-  videoProgress,
   onRetryPhoto,
-  onRetryVideo,
+  currentCharterId,
+  onVideoBlockingChange,
+  onReadyVideosChange,
 }: MediaPricingStepProps) {
   const { watch, setValue } = form;
   const [draggingPhotos, setDraggingPhotos] = useState(false);
-  const [draggingVideos, setDraggingVideos] = useState(false);
+  // Legacy draggingVideos state removed (video uploader handles its own UX)
 
   const watchedPhotosAlt = watch("photosAlt" as keyof CharterFormValues);
-  const watchedVideosAlt = watch("videosAlt" as keyof CharterFormValues);
+  // const watchedVideosAlt = watch("videosAlt" as keyof CharterFormValues); // reserved for future video alt feature
 
   const photosAlt = useMemo(() => watchedPhotosAlt || [], [watchedPhotosAlt]);
-  const videosAlt = useMemo(
-    () => (watchedVideosAlt as string[]) || [],
-    [watchedVideosAlt]
-  );
+  // Video alt currently unused (reserved for future enhancement)
+  // const videosAlt = useMemo(() => (watchedVideosAlt as string[]) || [], [watchedVideosAlt]);
 
   // Cover logic: first item is always cover; no explicit controls.
   const photoCoverIndex = 0;
-  const videoCoverIndex = 0;
 
-  const handleRemovePhoto = (index: number) => {
-    onRemovePhoto(index);
-  };
+  const handleRemovePhoto = (index: number) => onRemovePhoto(index);
 
-  const handleRemoveVideo = (index: number) => {
-    onRemoveVideo(index);
-  };
+  // handleRemoveVideo no longer used; removal handled inside new VideoUploadSection
 
   const handleMovePhoto = (from: number, to: number) => {
-    const current = [...(watch("photos") || [])];
-    const total = existingPhotosCount + current.length;
-    if (to < 0 || to >= total) return;
-    if (typeof onReorderPhotos === "function") {
-      // Let parent handle all cases, including cross-boundary and persistence.
-      onReorderPhotos(from, to);
-      return;
-    }
-    if (from < existingPhotosCount || to < existingPhotosCount) return;
-    const [moved] = current.splice(from, 1);
-    current.splice(to, 0, moved);
-    setValue("photos", current, { shouldValidate: true });
-  };
-
-  const handleMoveVideo = (from: number, to: number) => {
-    const current = [...(watch("videos") || [])];
-    const total = existingVideosCount + current.length;
-    if (to < 0 || to >= total) return;
-    if (typeof onReorderVideos === "function") {
-      onReorderVideos(from, to);
-      return;
-    }
-    if (from < existingVideosCount || to < existingVideosCount) return;
-    const [moved] = current.splice(from, 1);
-    current.splice(to, 0, moved);
-    setValue("videos", current, { shouldValidate: true });
+    if (onReorderPhotos) onReorderPhotos(from, to);
   };
 
   const handleUpdatePhotoAlt = (i: number, alt: string) => {
@@ -113,57 +79,24 @@ export function MediaPricingStep({
     });
   };
 
-  const handleUpdateVideoAlt = (i: number, alt: string) => {
-    const arr = Array.isArray(videosAlt) ? [...videosAlt] : [];
-    arr[i] = alt;
-    setValue("videosAlt" as keyof CharterFormValues, arr, {
-      shouldValidate: false,
-    });
-  };
+  // Video alt editing not supported in dedicated grid
 
-  const photoItems = useMemo(() => {
-    return (photoPreviews || []).map((p, i) => ({
-      ...p,
-      alt: Array.isArray(photosAlt) ? photosAlt[i] ?? p.alt : p.alt,
-      isCover: i === photoCoverIndex,
-      progress:
-        typeof existingPhotosCount === "number" &&
-        i >= existingPhotosCount &&
-        Array.isArray(photoProgress)
-          ? photoProgress[i - existingPhotosCount]
-          : undefined,
-    }));
-  }, [
-    photoPreviews,
-    photoCoverIndex,
-    photosAlt,
-    existingPhotosCount,
-    photoProgress,
-  ]);
-  const videoItems = useMemo(() => {
-    return (videoPreviews || []).map((v, i) => ({
-      ...v,
-      alt: Array.isArray(videosAlt) ? videosAlt[i] ?? v.alt : v.alt,
-      isCover: i === videoCoverIndex,
-      progress:
-        typeof existingVideosCount === "number" &&
-        i >= existingVideosCount &&
-        Array.isArray(videoProgress)
-          ? videoProgress[i - existingVideosCount]
-          : undefined,
-    }));
-  }, [
-    videoPreviews,
-    videoCoverIndex,
-    videosAlt,
-    existingVideosCount,
-    videoProgress,
-  ]);
+  const photoItems = useMemo(
+    () =>
+      (photoPreviews || []).map((p, i) => ({
+        ...p,
+        alt: Array.isArray(photosAlt) ? photosAlt[i] ?? p.alt : p.alt,
+        isCover: i === photoCoverIndex,
+      })),
+    [photoPreviews, photosAlt]
+  );
+  // Legacy videoItems computation retained for fallback but replaced by new VideoUploadSection below.
+  // Legacy videoItems removed.
 
   const photoCount = photoPreviews?.length ?? 0;
-  const videoCount = videoPreviews?.length ?? 0;
+  // videoCount unused after migration.
   const PHOTO_MAX = 15;
-  const VIDEO_MAX = 3;
+  const VIDEO_MAX = 10;
 
   // Fallback input change handlers: if parent didn't provide onPhotoChange/onVideoChange,
   // call the addFiles delegates directly so "Add" buttons work.
@@ -180,67 +113,43 @@ export function MediaPricingStep({
     // allow selecting same file again
     e.target.value = "";
   };
-  const handleVideoInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (typeof onVideoChange === "function") {
-      onVideoChange(e);
-      return;
-    }
-    const list = Array.from(e.target.files || []);
-    if (list.length) {
-      const filtered = list.filter((f) => f.type.startsWith("video/"));
-      onAddVideoFiles?.(filtered);
-    }
-    e.target.value = "";
-  };
+  // Legacy file input change handler for videos removed.
 
   // Drop/paste handlers
   const handleFilesDrop = (
     e: React.DragEvent<HTMLDivElement>,
-    kind: "photo" | "video"
+    kind: "photo"
   ) => {
     e.preventDefault();
     e.stopPropagation();
     const files = Array.from(e.dataTransfer.files || []);
     if (!files.length) return;
-    const filtered = files.filter((f) =>
-      kind === "photo"
-        ? f.type.startsWith("image/")
-        : f.type.startsWith("video/")
-    );
+    const filtered = files.filter((f) => f.type.startsWith("image/"));
     if (!filtered.length) return;
     if (kind === "photo") onAddPhotoFiles?.(filtered);
-    else onAddVideoFiles?.(filtered);
     if (kind === "photo") setDraggingPhotos(false);
-    else setDraggingVideos(false);
   };
   const handleDragOver = (
     e: React.DragEvent<HTMLDivElement>,
-    kind: "photo" | "video"
+    kind: "photo"
   ) => {
     e.preventDefault();
     if (kind === "photo") setDraggingPhotos(true);
-    else setDraggingVideos(true);
   };
-  const handleDragLeave = (kind: "photo" | "video") => {
+  const handleDragLeave = (kind: "photo") => {
     if (kind === "photo") setDraggingPhotos(false);
-    else setDraggingVideos(false);
   };
   const handlePaste = (
     e: React.ClipboardEvent<HTMLDivElement>,
-    kind: "photo" | "video"
+    kind: "photo"
   ) => {
     const items = e.clipboardData?.files
       ? Array.from(e.clipboardData.files)
       : [];
     if (!items.length) return;
-    const filtered = items.filter((f) =>
-      kind === "photo"
-        ? f.type.startsWith("image/")
-        : f.type.startsWith("video/")
-    );
+    const filtered = items.filter((f) => f.type.startsWith("image/"));
     if (!filtered.length) return;
     if (kind === "photo") onAddPhotoFiles?.(filtered);
-    else onAddVideoFiles?.(filtered);
   };
 
   return (
@@ -295,66 +204,37 @@ export function MediaPricingStep({
             />
           </div>
 
-          <MediaGrid
+          <PhotoGrid
             items={photoItems}
             emptyLabel="No photos uploaded"
             onRemove={handleRemovePhoto}
             onUpdateAlt={handleUpdatePhotoAlt}
             onMove={handleMovePhoto}
-            onRetry={onRetryPhoto}
-            kind="image"
+            onRetry={onRetryPhoto ? (i) => onRetryPhoto(i) : undefined}
           />
         </div>
 
-        {/* Videos */}
-        <div
-          className={`rounded-2xl border p-4 ${
-            draggingVideos
-              ? "border-slate-400 bg-slate-50"
-              : "border-neutral-200"
-          }`}
-          onDragOver={(e) => handleDragOver(e, "video")}
-          onDrop={(e) => handleFilesDrop(e, "video")}
-          onDragLeave={() => handleDragLeave("video")}
-          onPaste={(e) => handlePaste(e, "video")}
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Videos{" "}
-              <span className="ml-1 text-xs text-slate-500">
-                ({videoCount}/{VIDEO_MAX})
-              </span>
-            </h3>
-            <label
-              htmlFor="video-upload"
-              className="cursor-pointer rounded border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm"
-              aria-disabled={videoCount >= VIDEO_MAX}
-              data-disabled={videoCount >= VIDEO_MAX}
-            >
-              Add videos
-            </label>
-            <input
-              id="video-upload"
-              type="file"
-              accept="video/*"
-              multiple
-              className="hidden"
-              onChange={handleVideoInputChange}
-              disabled={videoCount >= VIDEO_MAX}
-            />
-          </div>
-
-          <MediaGrid
-            items={videoItems}
-            emptyLabel="No videos uploaded"
-            onRemove={handleRemoveVideo}
-            onUpdateAlt={handleUpdateVideoAlt}
-            onMove={handleMoveVideo}
-            onRetry={onRetryVideo}
-            kind="video"
+        {/* Videos - new minimal uploader section */}
+        <div className="rounded-2xl border p-4 border-neutral-200">
+          <VideoUploadSection
+            charterId={currentCharterId || null}
+            max={VIDEO_MAX}
+            onBlockingChange={onVideoBlockingChange}
+            onItemsChange={(items) => {
+              if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+                console.log("[VideoUploadSection bridge] items update", items);
+              }
+              // Derive ready videos (finalUrl present)
+              const ready = items
+                .filter((i) => i.status === "ready" && i.finalUrl)
+                .map((i) => ({
+                  name: i.finalKey || i.id, // prefer stable storage key
+                  url: i.finalUrl as string,
+                }));
+              onReadyVideosChange?.(ready);
+            }}
           />
         </div>
-
       </div>
     </section>
   );
