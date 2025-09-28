@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import type { PendingMediaStatus } from "@prisma/client";
 import { list } from "@vercel/blob";
 
 import {
@@ -47,18 +47,23 @@ export async function loadPipelineData(
   const kindFilter =
     kindParam === "IMAGE" || kindParam === "VIDEO" ? (kindParam as Kind) : null;
 
-  const where: Prisma.PendingMediaWhereInput = {
-    ...(statusFilter ? { status: statusFilter } : {}),
+  const where: { status?: PendingMediaStatus; kind?: string } = {
+    ...(statusFilter ? { status: statusFilter as PendingMediaStatus } : {}),
     ...(kindFilter ? { kind: kindFilter } : {}),
   };
 
   const fetchLimit = staleOnly ? FETCH_LIMIT_STALE : FETCH_LIMIT_DEFAULT;
 
   const [statusGroups, rawItems] = await Promise.all([
-    prisma.pendingMedia.groupBy({
-      by: ["status"],
-      _count: { _all: true },
-    }),
+    prisma.pendingMedia
+      .groupBy({
+        by: ["status"],
+        _count: { _all: true },
+      })
+      .then(
+        (rows) =>
+          rows as Array<{ status: PendingMediaStatus; _count: { _all: number } }>
+      ),
     prisma.pendingMedia.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -68,7 +73,9 @@ export async function loadPipelineData(
 
   const statusCounts = STATUSES.reduce<Record<Status, number>>(
     (acc, status) => {
-      const match = statusGroups.find((g) => g.status === status);
+      const match = statusGroups.find(
+        (g: { status: PendingMediaStatus }) => g.status === (status as PendingMediaStatus)
+      );
       acc[status] = match?._count._all ?? 0;
       return acc;
     },
@@ -292,7 +299,7 @@ export async function loadStorageData(
     });
   });
 
-  pendingMedia.forEach((item) => {
+  pendingMedia.forEach((item: { id: string; originalKey: string | null; finalKey: string | null; thumbnailKey: string | null }) => {
     addReference(item.originalKey, {
       type: "PendingMedia",
       label: `Pending ${item.id} • original`,
@@ -307,7 +314,7 @@ export async function loadStorageData(
     });
   });
 
-  captainProfiles.forEach((profile) => {
+  captainProfiles.forEach((profile: { userId: string; displayName: string | null; avatarUrl: string | null; user: { email: string | null; name: string | null } | null }) => {
     const key = extractKeyFromUrl(profile.avatarUrl);
     if (!key) return;
     const label =
@@ -321,7 +328,7 @@ export async function loadStorageData(
     });
   });
 
-  verifications.forEach((row) => {
+  verifications.forEach((row: { userId: string; idFront: unknown; idBack: unknown; captainLicense: unknown; boatRegistration: unknown; fishingLicense: unknown; additional: unknown }) => {
     const userLabel = row.userId;
     extractVerificationDocs(row.idFront, "ID front").forEach((doc) =>
       addReference(doc.key, {
@@ -398,7 +405,7 @@ export async function loadStorageData(
   const hasMore = Boolean(cursor);
   const now = Date.now();
 
-  const rowsRaw: StorageRow[] = blobs.map((blob) => {
+  const rowsRaw: StorageRow[] = blobs.map((blob: { pathname: string; size: number; uploadedAt: string; url: string; contentType: string | null }) => {
     const key = normalizeKey(blob.pathname) ?? blob.pathname;
     const refs = references.get(key) ?? [];
     const scope = classifyScope(key);
