@@ -1,61 +1,55 @@
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import type {
+  Boat,
+  CaptainProfile,
+  CaptainVerification,
+  Charter,
+  CharterAmenity,
+  CharterDraft,
+  CharterFeature,
+  CharterMedia,
+  Pickup,
+  PickupArea,
+  Policies,
+  Trip,
+  TripSpecies,
+  TripStartTime,
+  TripTechnique,
+  User,
+} from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { headers } from "next/headers";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 
-// Type for the complex charter query with all includes
-type CharterWithIncludes = Prisma.CharterGetPayload<{
-  include: {
-    captain: {
-      include: {
-        user: {
-          select: {
-            id: true;
-            email: true;
-            role: true;
-            createdAt: true;
-            updatedAt: true;
-            name: true;
-          };
-        };
-      };
-    };
-    boat: true;
-    amenities: true;
-    features: true;
-    media: true;
-    pickup: { include: { areas: true } };
-    policies: true;
-    trips: {
-      include: {
-        species: true;
-        startTimes: true;
-        techniques: true;
-        media: true;
-      };
-    };
-    draft: true;
-  };
-}>;
+// Rich charter type assembled from included relations
+interface CharterWithIncludes extends Charter {
+  captain:
+    | (CaptainProfile & {
+        user: Pick<
+          User,
+          "id" | "email" | "role" | "createdAt" | "updatedAt" | "name"
+        >;
+      })
+    | null; // captain can be null if data inconsistency; guard in code
+  boat: Boat | null;
+  amenities: CharterAmenity[];
+  features: CharterFeature[];
+  media: CharterMedia[];
+  pickup: (Pickup & { areas: PickupArea[] }) | null;
+  policies: Policies | null;
+  trips: (Trip & {
+    species: TripSpecies[];
+    startTimes: TripStartTime[];
+    techniques: TripTechnique[];
+    media: CharterMedia[];
+  })[];
+  draft: CharterDraft | null;
+}
 
-// Type for captain verification query
-// Type for captain verification query - using inline type definition based on actual schema
-type CaptainVerificationSelect = {
-  id: string;
-  userId: string;
-  idFront: Prisma.JsonValue | null;
-  idBack: Prisma.JsonValue | null;
-  captainLicense: Prisma.JsonValue | null;
-  boatRegistration: Prisma.JsonValue | null;
-  fishingLicense: Prisma.JsonValue | null;
-  additional: Prisma.JsonValue; // array of Uploaded
-  status: string; // VerificationStatus enum
-  createdAt: Date;
-  updatedAt: Date;
-};
+// Captain verification selection (entire model for now)
+type CaptainVerificationSelect = CaptainVerification;
 
 async function toggleActive(id: string, isActive: boolean) {
   const h = await headers();
@@ -87,7 +81,7 @@ export default async function StaffCharterDetailPage({
   if (!session?.user) redirect(`/auth?mode=signin&next=/staff/charters/${id}`);
   if (role !== "STAFF" && role !== "ADMIN") redirect("/captain");
 
-  const c: CharterWithIncludes | null = await prisma.charter.findUnique({
+  const rawCharter = await prisma.charter.findUnique({
     where: { id },
     include: {
       captain: {
@@ -122,7 +116,8 @@ export default async function StaffCharterDetailPage({
       draft: true,
     },
   });
-  if (!c) {
+  const charter = rawCharter as CharterWithIncludes | null; // runtime shape guaranteed by include
+  if (!charter) {
     return (
       <div className="px-6 py-8">
         <h1 className="text-2xl font-semibold tracking-tight">Charter</h1>
@@ -130,6 +125,9 @@ export default async function StaffCharterDetailPage({
       </div>
     );
   }
+
+  // After null guard we can safely alias for legacy references
+  const c = charter; // non-null alias used below
 
   // Load captain verification for this charter's captain (if exists)
   const verification: CaptainVerificationSelect | null = c.captain?.userId
@@ -158,7 +156,8 @@ export default async function StaffCharterDetailPage({
         <div>
           <div className="text-xl font-semibold text-slate-900">{c.name}</div>
           <div className="text-sm text-slate-600">
-            Captain: {c.captain?.displayName || c.captain?.userId || "—"}
+            Captain:{" "}
+            {charter.captain?.displayName || charter.captain?.userId || "—"}
           </div>
           <div className="text-slate-500">
             Created {new Date(c.createdAt).toLocaleString()} • Updated{" "}
@@ -168,22 +167,22 @@ export default async function StaffCharterDetailPage({
         <div className="flex items-center gap-3">
           <span
             className={
-              c.isActive
+              charter.isActive
                 ? "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
                 : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
             }
           >
-            {c.isActive ? "Active" : "Inactive"}
+            {charter.isActive ? "Active" : "Inactive"}
           </span>
           <form
             action={async () => {
               "use server";
-              await toggleActive(c.id, !c.isActive);
+              await toggleActive(charter.id, !charter.isActive);
               redirect(`/staff/charters/${c.id}`);
             }}
           >
             <button className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
-              {c.isActive ? "Disable" : "Enable"}
+              {charter.isActive ? "Disable" : "Enable"}
             </button>
           </form>
         </div>
@@ -202,7 +201,7 @@ export default async function StaffCharterDetailPage({
         <div className="grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
           <div>
             <span className="text-slate-500">Display name:</span>{" "}
-            {c.captain?.displayName || "—"}
+            {charter.captain?.displayName || "—"}
           </div>
           <div>
             <span className="text-slate-500">User ID:</span>{" "}
@@ -267,10 +266,10 @@ export default async function StaffCharterDetailPage({
           <div className="grid items-start gap-4 sm:grid-cols-4">
             {/* Avatar (left) */}
             <div>
-              {c.captain.avatarUrl ? (
+              {charter.captain?.avatarUrl ? (
                 <div className="relative h-24 w-24 overflow-hidden rounded-full border border-slate-200 bg-slate-100 sm:h-32 sm:w-32">
                   <Image
-                    src={c.captain.avatarUrl}
+                    src={charter.captain.avatarUrl!}
                     alt="Captain avatar"
                     fill
                     sizes="(max-width: 640px) 96px, 128px"
@@ -289,23 +288,23 @@ export default async function StaffCharterDetailPage({
               <div className="grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
                 <div className="col-span-2">
                   <span className="text-slate-500">Display name:</span>{" "}
-                  {c.captain.displayName}
+                  {charter.captain?.displayName}
                 </div>
                 <div>
                   <span className="text-slate-500">First name:</span>{" "}
-                  {c.captain.firstName}
+                  {charter.captain?.firstName}
                 </div>
                 <div>
                   <span className="text-slate-500">Last name:</span>{" "}
-                  {c.captain.lastName}
+                  {charter.captain?.lastName}
                 </div>
                 <div>
                   <span className="text-slate-500">Phone:</span>{" "}
-                  {c.captain.phone}
+                  {charter.captain?.phone}
                 </div>
                 <div>
                   <span className="text-slate-500">Experience:</span>{" "}
-                  {c.captain.experienceYrs} years
+                  {charter.captain?.experienceYrs} years
                 </div>
               </div>
             </div>
@@ -357,7 +356,7 @@ export default async function StaffCharterDetailPage({
               {c.startingPoint}
             </div>
             <div>
-              <span className="text-slate-500">City:</span> {c.city}
+              <span className="text-slate-500">City:</span> {charter.city}
             </div>
             <div>
               <span className="text-slate-500">Postcode:</span> {c.postcode}

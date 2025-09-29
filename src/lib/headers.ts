@@ -4,10 +4,12 @@ export function applySecurityHeaders(res: Response): Response {
   const GOOGLE_SCRIPT = "https://maps.googleapis.com"; // main JS loader
   const GOOGLE_STATIC = "https://maps.gstatic.com"; // supporting assets
   const GOOGLE_FONTS = "https://fonts.googleapis.com"; // Google Fonts for Maps UI
-  // Add 'unsafe-inline' in dev so dynamic Next scripts & React refresh work; optionally add 'strict-dynamic' later.
+  // NOTE: Next.js emits a small inline bootstrap script. Long-term we should migrate to a nonce-based CSP.
+  // Interim approach: keep 'unsafe-inline' (plus 'strict-dynamic' to reduce risk) in prod until nonce wiring is added.
+  // If an env flag FORCE_CSP_NONCE is introduced later, we can branch and inject a nonce instead.
   const scriptSrc = isDev
     ? `script-src 'self' 'unsafe-inline' ${GOOGLE_SCRIPT} ${GOOGLE_STATIC}`
-    : `script-src 'self' ${GOOGLE_SCRIPT} ${GOOGLE_STATIC}`;
+    : `script-src 'self' 'unsafe-inline' 'strict-dynamic' ${GOOGLE_SCRIPT} ${GOOGLE_STATIC}`;
   // Allow images/videos from Vercel Blob public host(s)
   const vercelBlobWildcard = "https://*.public.blob.vercel-storage.com";
   // Optionally allow a specific hostname via env if provided
@@ -36,23 +38,32 @@ export function applySecurityHeaders(res: Response): Response {
   );
 
   const styleSrc = `style-src 'self' 'unsafe-inline' ${GOOGLE_FONTS}`; // Google Maps injects inline styles and loads external fonts
+  const fontSrc = `font-src 'self' data:`; // allow embedded fonts (extend if using fonts.gstatic.com)
+  const objectSrc = "object-src 'none'";
+  const baseUri = "base-uri 'self'";
+  const formAction = "form-action 'self'";
   const csp =
     [
       "default-src 'self'",
       scriptSrc,
       styleSrc,
+      fontSrc,
       imgSrc,
       mediaSrc,
       connectSrc,
+      objectSrc,
+      baseUri,
+      formAction,
       "frame-ancestors 'none'",
     ].join("; ") + ";";
   res.headers.set("Content-Security-Policy", csp);
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("X-Frame-Options", "DENY");
+  // Comma separate directives per spec to avoid parse errors.
   res.headers.set(
     "Permissions-Policy",
-    "geolocation=() microphone=() camera=()"
+    "geolocation=(), microphone=(), camera=()"
   );
   return res;
 }

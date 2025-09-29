@@ -40,7 +40,7 @@ export function Tooltip({
       : "left-full top-1/2 -translate-y-1/2 ml-1.5";
   return (
     <span
-      className="relative inline-flex"
+      className="relative inline-flex bg-[#ec2227] rounded-full"
       onMouseEnter={show}
       onMouseLeave={hide}
       onFocus={show}
