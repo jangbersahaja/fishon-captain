@@ -3,10 +3,10 @@ import {
   AlertCircle,
   Camera,
   CheckCircle2,
-  FileText,
   FileArchive,
-  FileSpreadsheet,
   File as FileGeneric,
+  FileSpreadsheet,
+  FileText,
   IdCard,
   Image as ImageIcon,
   ImagePlus,
@@ -18,10 +18,10 @@ import {
 import {
   useCallback,
   useEffect,
-  useMemo,
-  useState,
-  useRef,
   useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 
 type Uploaded = { key: string; url: string; name: string; updatedAt: string };
@@ -508,6 +508,18 @@ function Section({
     return () => ro.disconnect();
   }, [children]);
 
+  // Re-measure when expanding (in case previous measure occurred while collapsed)
+  useLayoutEffect(() => {
+    if (!isCollapsed) {
+      const el = contentRef.current;
+      if (el) {
+        const h = el.getBoundingClientRect().height;
+        if (h !== measured) setMeasured(h);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCollapsed]);
+
   useEffect(() => {
     setAnimLock(true);
     const t = setTimeout(() => setAnimLock(false), 320);
@@ -550,7 +562,7 @@ function Section({
       <div
         ref={wrapperRef}
         style={{
-          height: isCollapsed ? 0 : measured,
+          height: isCollapsed ? 0 : measured === 0 ? "auto" : measured,
           transition: "height 300ms ease",
           overflow: "hidden",
         }}
@@ -681,7 +693,9 @@ function FileInput({
           {existing && (
             <div className="flex items-center gap-2 max-w-[60%] min-w-0">
               <PreviewOrIcon file={existing} />
-              <span className="text-xs text-slate-500 truncate">{existing.name}</span>
+              <span className="text-xs text-slate-500 truncate">
+                {existing.name}
+              </span>
             </div>
           )}
           {icon}
@@ -700,7 +714,9 @@ function FileInput({
           {existing && (
             <div className="flex items-center gap-2 max-w-[60%] min-w-0">
               <PreviewOrIcon file={existing} />
-              <span className="text-xs text-slate-500 truncate">{existing.name}</span>
+              <span className="text-xs text-slate-500 truncate">
+                {existing.name}
+              </span>
             </div>
           )}
           {icon}
@@ -850,11 +866,11 @@ function PreviewOrIcon({ file }: { file: Statused }) {
       <div className="relative h-10 w-10 overflow-hidden rounded-md border border-slate-300 bg-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-            src={file.url}
-            alt={file.name}
-            className="h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
+          src={file.url}
+          alt={file.name}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
         />
       </div>
     );
