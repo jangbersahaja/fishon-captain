@@ -1,15 +1,15 @@
 "use client";
 import {
   AlertCircle,
+  Camera,
   CheckCircle2,
   FileText,
   IdCard,
   Image as ImageIcon,
+  ImagePlus,
   Info,
   Loader2,
   Trash2,
-  ImagePlus,
-  Camera,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -192,15 +192,6 @@ export default function VerificationPage() {
     }
   }
 
-  // Mobile detection (best-effort) to restrict certain accepts (e.g. additional docs images only on mobile)
-  const isMobile = useMemo(
-    () =>
-      typeof navigator !== "undefined" &&
-      /Android|iPhone|iPad|iPod|Mobile|IEMobile|BlackBerry/i.test(
-        navigator.userAgent
-      ),
-    []
-  );
 
   return (
     <div className="px-6 py-8 space-y-6">
@@ -317,7 +308,7 @@ export default function VerificationPage() {
 
         <Section
           title="Captain license"
-          description="Upload an image or PDF."
+          description="Upload image or any supporting document (PDF, DOCX, etc.)."
           updated={!!captainLicense}
           processing={captainLicense?.status === "processing"}
           validated={captainLicense?.status === "validated"}
@@ -335,7 +326,7 @@ export default function VerificationPage() {
               )
             }
             loading={!!loading["captainLicense"]}
-            accept="image/*,application/pdf"
+            accept="*/*"
             icon={<FileText className="h-4 w-4" />}
           />
           <SubmitRow
@@ -364,7 +355,7 @@ export default function VerificationPage() {
 
         <Section
           title="Boat registration certificate"
-          description="Upload an image or PDF."
+          description="Upload image or any document file (PDF, DOCX, ZIP if needed)."
           updated={!!boatReg}
           processing={boatReg?.status === "processing"}
           validated={boatReg?.status === "validated"}
@@ -377,7 +368,7 @@ export default function VerificationPage() {
               handleReplace("boatRegistration", f, boatReg, setBoatReg)
             }
             loading={!!loading["boatRegistration"]}
-            accept="image/*,application/pdf"
+            accept="*/*"
             icon={<FileText className="h-4 w-4" />}
           />
           <SubmitRow
@@ -404,7 +395,7 @@ export default function VerificationPage() {
 
         <Section
           title="Fishing license"
-          description="Upload an image or PDF."
+          description="Upload image or any document file."
           updated={!!fishingLicense}
           processing={fishingLicense?.status === "processing"}
           validated={fishingLicense?.status === "validated"}
@@ -422,7 +413,7 @@ export default function VerificationPage() {
               )
             }
             loading={!!loading["fishingLicense"]}
-            accept="image/*,application/pdf"
+            accept="*/*"
             icon={<FileText className="h-4 w-4" />}
           />
           <SubmitRow
@@ -451,7 +442,7 @@ export default function VerificationPage() {
 
         <Section
           title="Additional documents"
-          description="Upload any other relevant documents. (On mobile, images only.) These are for your records and may not require verification."
+          description="Upload any other supporting files (images, PDFs, docs, spreadsheets, zips). These are for your records and may not require verification."
           updated={additionalDocs.length > 0}
           collapsible={false}
         >
@@ -466,7 +457,7 @@ export default function VerificationPage() {
               )
             }
             loading={!!loading["additional"]}
-            accept={isMobile ? "image/*" : "image/*,application/pdf"}
+            accept="*/*"
           />
           {/* Additional documents are saved instantly; no verification step. */}
         </Section>
@@ -562,8 +553,14 @@ function FileInput({
   icon?: React.ReactNode;
   variant?: "govId";
 }) {
-  const idCamera = useMemo(() => `${label}-camera-input`.replace(/\s+/g, "-"), [label]);
-  const idGallery = useMemo(() => `${label}-gallery-input`.replace(/\s+/g, "-"), [label]);
+  const idCamera = useMemo(
+    () => `${label}-camera-input`.replace(/\s+/g, "-"),
+    [label]
+  );
+  const idGallery = useMemo(
+    () => `${label}-gallery-input`.replace(/\s+/g, "-"),
+    [label]
+  );
 
   const handleSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
