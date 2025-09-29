@@ -8,7 +8,6 @@ import {
   FileSpreadsheet,
   FileText,
   IdCard,
-  Image as ImageIcon,
   ImagePlus,
   Info,
   Loader2,
@@ -259,7 +258,6 @@ export default function VerificationPage() {
             loading={!!loading["idFront"]}
             accept="image/*"
             variant="govId"
-            icon={<ImageIcon className="h-4 w-4" />}
           />
           <FileInput
             label="Back side"
@@ -269,7 +267,6 @@ export default function VerificationPage() {
             loading={!!loading["idBack"]}
             accept="image/*"
             variant="govId"
-            icon={<ImageIcon className="h-4 w-4" />}
           />
           <div className="flex justify-end mt-2">
             <button
@@ -326,7 +323,6 @@ export default function VerificationPage() {
             }
             loading={!!loading["captainLicense"]}
             accept="*/*"
-            icon={<FileText className="h-4 w-4" />}
           />
           <SubmitRow
             disabled={!captainLicense}
@@ -366,7 +362,6 @@ export default function VerificationPage() {
             }
             loading={!!loading["boatRegistration"]}
             accept="*/*"
-            icon={<FileText className="h-4 w-4" />}
           />
           <SubmitRow
             disabled={!boatReg}
@@ -409,7 +404,6 @@ export default function VerificationPage() {
             }
             loading={!!loading["fishingLicense"]}
             accept="*/*"
-            icon={<FileText className="h-4 w-4" />}
           />
           <SubmitRow
             disabled={!fishingLicense}
@@ -483,7 +477,7 @@ function Section({
 
   const isCollapsed = collapsible ? collapsed : false;
 
-    // (Animation logic removed; simple show/hide behavior retained)
+  // (Animation logic removed; simple show/hide behavior retained)
 
   return (
     <div className="relative rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -538,7 +532,6 @@ function FileInput({
   accept,
   capture,
   required,
-  icon,
   variant,
 }: {
   label: string;
@@ -548,7 +541,6 @@ function FileInput({
   accept: string;
   capture?: "user" | "environment";
   required?: boolean;
-  icon?: React.ReactNode;
   variant?: "govId";
 }) {
   const idCamera = useMemo(
@@ -557,6 +549,10 @@ function FileInput({
   );
   const idGallery = useMemo(
     () => `${label}-gallery-input`.replace(/\s+/g, "-"),
+    [label]
+  );
+  const idSingle = useMemo(
+    () => `${label}-file-input`.replace(/\s+/g, "-"),
     [label]
   );
 
@@ -601,27 +597,27 @@ function FileInput({
         )}
       </div>
       {variant === "govId" ? (
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <input
-            id={idCamera}
-            type="file"
-            accept={accept}
-            capture={capture || "environment"}
-            onChange={handleSelect}
-            className="hidden"
-            required={required && !existing}
-            disabled={existing?.status === "validated"}
-          />
-          <input
-            id={idGallery}
-            type="file"
-            accept={accept}
-            onChange={handleSelect}
-            className="hidden"
-            required={required && !existing}
-            disabled={existing?.status === "validated"}
-          />
-          <div className="flex items-center gap-2">
+        <div className="mt-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              id={idCamera}
+              type="file"
+              accept={accept}
+              capture={capture || "environment"}
+              onChange={handleSelect}
+              className="hidden"
+              required={required && !existing}
+              disabled={existing?.status === "validated"}
+            />
+            <input
+              id={idGallery}
+              type="file"
+              accept={accept}
+              onChange={handleSelect}
+              className="hidden"
+              required={required && !existing}
+              disabled={existing?.status === "validated"}
+            />
             <button
               type="button"
               onClick={() => document.getElementById(idCamera)?.click()}
@@ -640,35 +636,42 @@ function FileInput({
             </button>
           </div>
           {existing && (
-            <div className="flex items-center gap-2 max-w-[60%] min-w-0">
+            <div className="mt-3 flex items-center gap-2 max-w-sm">
               <PreviewOrIcon file={existing} />
-              <span className="text-xs text-slate-500 truncate">
+              <span className="text-xs text-slate-600 truncate">
                 {existing.name}
               </span>
             </div>
           )}
-          {icon}
         </div>
       ) : (
-        <div className="mt-1 flex items-center gap-3">
+        <div className="mt-2">
           <input
+            id={idSingle}
             type="file"
             accept={accept}
             capture={capture}
             onChange={handleSelect}
-            className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-full file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-100"
+            className="hidden"
             required={required && !existing}
             disabled={existing?.status === "validated"}
           />
+          <button
+            type="button"
+            onClick={() => document.getElementById(idSingle)?.click()}
+            disabled={existing?.status === "validated"}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {existing ? "Replace File" : "Choose File"}
+          </button>
           {existing && (
-            <div className="flex items-center gap-2 max-w-[60%] min-w-0">
+            <div className="mt-3 flex items-center gap-2 max-w-sm">
               <PreviewOrIcon file={existing} />
-              <span className="text-xs text-slate-500 truncate">
+              <span className="text-xs text-slate-600 truncate">
                 {existing.name}
               </span>
             </div>
           )}
-          {icon}
         </div>
       )}
     </div>
