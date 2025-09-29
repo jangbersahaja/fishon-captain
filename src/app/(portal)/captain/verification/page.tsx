@@ -15,14 +15,7 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Uploaded = { key: string; url: string; name: string; updatedAt: string };
 type Statused = Uploaded & {
@@ -490,41 +483,7 @@ function Section({
 
   const isCollapsed = collapsible ? collapsed : false;
 
-  // Animated height using ResizeObserver
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
-  const [measured, setMeasured] = useState(0);
-  const [animLock, setAnimLock] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    const measure = () => {
-      setMeasured(el.getBoundingClientRect().height);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [children]);
-
-  // Re-measure when expanding (in case previous measure occurred while collapsed)
-  useLayoutEffect(() => {
-    if (!isCollapsed) {
-      const el = contentRef.current;
-      if (el) {
-        const h = el.getBoundingClientRect().height;
-        if (h !== measured) setMeasured(h);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCollapsed]);
-
-  useEffect(() => {
-    setAnimLock(true);
-    const t = setTimeout(() => setAnimLock(false), 320);
-    return () => clearTimeout(t);
-  }, [isCollapsed]);
+    // (Animation logic removed; simple show/hide behavior retained)
 
   return (
     <div className="relative rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -560,22 +519,12 @@ function Section({
         ) : null}
       </div>
       <div
-        ref={wrapperRef}
-        style={{
-          height: isCollapsed ? 0 : measured === 0 ? "auto" : measured,
-          transition: "height 300ms ease",
-          overflow: "hidden",
-        }}
+        className={`mt-4 grid gap-3 transition-opacity duration-200 ${
+          isCollapsed ? "opacity-0 hidden" : "opacity-100"
+        }`}
         aria-hidden={isCollapsed}
       >
-        <div
-          ref={contentRef}
-          className={`mt-4 grid gap-3 transition-opacity duration-300 ${
-            isCollapsed ? "opacity-0" : "opacity-100"
-          } ${animLock ? "pointer-events-none" : ""}`}
-        >
-          {children}
-        </div>
+        {children}
       </div>
     </div>
   );
