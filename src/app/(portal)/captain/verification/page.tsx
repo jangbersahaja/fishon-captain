@@ -53,6 +53,8 @@ export default function VerificationPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  // Track unsent changes (uploads that have not been submitted yet)
+  const [dirty, setDirty] = useState<Record<string, boolean>>({});
 
   // Hydrate from server so we reflect current statuses and validity
   useEffect(() => {
@@ -147,6 +149,7 @@ export default function VerificationPage() {
       const up = await uploadFile(nextFile, field as DocType);
       onSet?.(up);
       await saveField({ [field]: up });
+      setDirty((d) => ({ ...d, [field]: true }));
     } catch {
       setMessage({ type: "error", text: "Upload failed. Please try again." });
     } finally {
@@ -263,6 +266,7 @@ export default function VerificationPage() {
               });
               setIdFront(null);
               setLoading((s) => ({ ...s, idFront: false }));
+              setDirty((d) => ({ ...d, idFront: false }));
             }}
             loading={!!loading["idFront"]}
             accept="image/*"
@@ -282,6 +286,7 @@ export default function VerificationPage() {
               });
               setIdBack(null);
               setLoading((s) => ({ ...s, idBack: false }));
+              setDirty((d) => ({ ...d, idBack: false }));
             }}
             loading={!!loading["idBack"]}
             accept="image/*"
@@ -306,6 +311,7 @@ export default function VerificationPage() {
                 if (res.ok) {
                   setIdFront((v) => (v ? { ...v, status: "processing" } : v));
                   setIdBack((v) => (v ? { ...v, status: "processing" } : v));
+                  setDirty((d) => ({ ...d, idFront: false, idBack: false }));
                   setMessage({ type: "success", text: "Submitted." });
                 } else {
                   const err = await res.json().catch(() => ({}));
@@ -316,6 +322,14 @@ export default function VerificationPage() {
                 }
               }}
               className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+              disabled={
+                !idFront ||
+                !idBack ||
+                idFront.status === "processing" ||
+                idBack.status === "processing" ||
+                idFront.status === "validated" && idBack.status === "validated" ||
+                (!dirty.idFront && !dirty.idBack)
+              }
             >
               <Save className="h-4 w-4" /> Save
             </button>
@@ -340,7 +354,8 @@ export default function VerificationPage() {
               )
             }
             onRemove={async () => {
-              if (!captainLicense || captainLicense.status === "validated") return;
+              if (!captainLicense || captainLicense.status === "validated")
+                return;
               setLoading((s) => ({ ...s, captainLicense: true }));
               await fetch("/api/captain/verification", {
                 method: "POST",
@@ -349,12 +364,18 @@ export default function VerificationPage() {
               });
               setCaptainLicense(null);
               setLoading((s) => ({ ...s, captainLicense: false }));
+              setDirty((d) => ({ ...d, captainLicense: false }));
             }}
             loading={!!loading["captainLicense"]}
             accept="*/*"
           />
           <SubmitRow
-            disabled={!captainLicense}
+            disabled={
+              !captainLicense ||
+              captainLicense.status === "processing" ||
+              captainLicense.status === "validated" ||
+              !dirty.captainLicense
+            }
             onSubmit={async () => {
               const res = await fetch("/api/captain/verification", {
                 method: "POST",
@@ -365,6 +386,7 @@ export default function VerificationPage() {
                 setCaptainLicense((v) =>
                   v ? { ...v, status: "processing" } : v
                 );
+                setDirty((d) => ({ ...d, captainLicense: false }));
                 setMessage({ type: "success", text: "Submitted." });
               } else {
                 const err = await res.json().catch(() => ({}));
@@ -399,12 +421,18 @@ export default function VerificationPage() {
               });
               setBoatReg(null);
               setLoading((s) => ({ ...s, boatRegistration: false }));
+              setDirty((d) => ({ ...d, boatRegistration: false }));
             }}
             loading={!!loading["boatRegistration"]}
             accept="*/*"
           />
           <SubmitRow
-            disabled={!boatReg}
+            disabled={
+              !boatReg ||
+              boatReg.status === "processing" ||
+              boatReg.status === "validated" ||
+              !dirty.boatRegistration
+            }
             onSubmit={async () => {
               const res = await fetch("/api/captain/verification", {
                 method: "POST",
@@ -413,6 +441,7 @@ export default function VerificationPage() {
               });
               if (res.ok) {
                 setBoatReg((v) => (v ? { ...v, status: "processing" } : v));
+                setDirty((d) => ({ ...d, boatRegistration: false }));
                 setMessage({ type: "success", text: "Submitted." });
               } else {
                 const err = await res.json().catch(() => ({}));
@@ -443,7 +472,8 @@ export default function VerificationPage() {
               )
             }
             onRemove={async () => {
-              if (!fishingLicense || fishingLicense.status === "validated") return;
+              if (!fishingLicense || fishingLicense.status === "validated")
+                return;
               setLoading((s) => ({ ...s, fishingLicense: true }));
               await fetch("/api/captain/verification", {
                 method: "POST",
@@ -452,12 +482,18 @@ export default function VerificationPage() {
               });
               setFishingLicense(null);
               setLoading((s) => ({ ...s, fishingLicense: false }));
+              setDirty((d) => ({ ...d, fishingLicense: false }));
             }}
             loading={!!loading["fishingLicense"]}
             accept="*/*"
           />
           <SubmitRow
-            disabled={!fishingLicense}
+            disabled={
+              !fishingLicense ||
+              fishingLicense.status === "processing" ||
+              fishingLicense.status === "validated" ||
+              !dirty.fishingLicense
+            }
             onSubmit={async () => {
               const res = await fetch("/api/captain/verification", {
                 method: "POST",
@@ -468,6 +504,7 @@ export default function VerificationPage() {
                 setFishingLicense((v) =>
                   v ? { ...v, status: "processing" } : v
                 );
+                setDirty((d) => ({ ...d, fishingLicense: false }));
                 setMessage({ type: "success", text: "Submitted." });
               } else {
                 const err = await res.json().catch(() => ({}));
@@ -646,7 +683,7 @@ function FileInput({
           id={inputId}
           type="file"
           accept={accept}
-          capture={variant === "govId" ? (capture || "environment") : capture}
+          capture={variant === "govId" ? capture || "environment" : capture}
           onChange={handleSelect}
           className="hidden"
           required={required && !existing}
@@ -664,7 +701,11 @@ function FileInput({
           {existing && existing.status !== "validated" && onRemove && (
             <button
               type="button"
-              onClick={onRemove}
+              onClick={() => {
+                if (window.confirm("Remove this file? This cannot be undone.")) {
+                  onRemove();
+                }
+              }}
               className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
             >
               Remove
