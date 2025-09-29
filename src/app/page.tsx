@@ -205,17 +205,13 @@ export default function ListYourBusinessPage() {
             percent="20%"
             name="Silver"
             disabled
-            points={[
-              "Everything in Basic",
-              "Top listing optimization",
-              "Charter ads",
-            ]}
+            points={["Everything in Basic", "More Marketing Tools"]}
           />
           <Plan
             disabled
             percent="30%"
             name="Gold"
-            points={["Everything in Silver", "Video ads shooting every month"]}
+            points={["Everything in Silver", "Premium Placement"]}
           />
         </div>
         <p className="mt-3 text-xs text-neutral-500">
