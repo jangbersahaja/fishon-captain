@@ -239,8 +239,8 @@ export default function Navbar() {
           sizes="(min-width: 640px) 112px, 96px"
         />
       </span>
-      <div className="bg-white px-2 py-1 rounded-r-lg inset-shadow-2xs">
-        <h1 className="text-lg font-bold sm:text-xl text-[#ec2227] ">
+      <div className="bg-white px-1.5 py-0 rounded-r-lg inset-shadow-2xs">
+        <h1 className="text-base font-bold sm:text-lg text-[#ec2227] ">
           Captains
         </h1>
       </div>
