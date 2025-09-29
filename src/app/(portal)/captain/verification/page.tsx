@@ -4,15 +4,25 @@ import {
   Camera,
   CheckCircle2,
   FileText,
+  FileArchive,
+  FileSpreadsheet,
+  File as FileGeneric,
   IdCard,
   Image as ImageIcon,
   ImagePlus,
   Info,
   Loader2,
-  Trash2,
   Save,
+  Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useLayoutEffect,
+} from "react";
 
 type Uploaded = { key: string; url: string; name: string; updatedAt: string };
 type Statused = Uploaded & {
@@ -238,7 +248,6 @@ export default function VerificationPage() {
         <Section
           title="Government ID (required)"
           description="Clear photo of the front and back of your ID."
-          updated={!!idFront && !!idBack}
           processing={
             idFront?.status === "processing" || idBack?.status === "processing"
           }
@@ -308,7 +317,6 @@ export default function VerificationPage() {
         <Section
           title="Captain license"
           description="Upload image or any supporting document (PDF, DOCX, etc.)."
-          updated={!!captainLicense}
           processing={captainLicense?.status === "processing"}
           validated={captainLicense?.status === "validated"}
         >
@@ -354,7 +362,6 @@ export default function VerificationPage() {
         <Section
           title="Boat registration certificate"
           description="Upload image or any document file (PDF, DOCX, ZIP if needed)."
-          updated={!!boatReg}
           processing={boatReg?.status === "processing"}
           validated={boatReg?.status === "validated"}
         >
@@ -393,7 +400,6 @@ export default function VerificationPage() {
         <Section
           title="Fishing license"
           description="Upload image or any document file."
-          updated={!!fishingLicense}
           processing={fishingLicense?.status === "processing"}
           validated={fishingLicense?.status === "validated"}
         >
@@ -439,7 +445,6 @@ export default function VerificationPage() {
         <Section
           title="Additional documents"
           description="Upload any other supporting files (images, PDFs, docs, spreadsheets, zips). These are for your records and may not require verification."
-          updated={additionalDocs.length > 0}
           collapsible={false}
         >
           <MultiFileInput
@@ -485,9 +490,32 @@ function Section({
 
   const isCollapsed = collapsible ? collapsed : false;
 
+  // Animated height using ResizeObserver
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [measured, setMeasured] = useState(0);
+  const [animLock, setAnimLock] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const measure = () => {
+      setMeasured(el.getBoundingClientRect().height);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [children]);
+
+  useEffect(() => {
+    setAnimLock(true);
+    const t = setTimeout(() => setAnimLock(false), 320);
+    return () => clearTimeout(t);
+  }, [isCollapsed]);
+
   return (
     <div className="relative rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-      {/* Top bar: title + optional updated badge + optional toggle */}
       <div className="flex items-start justify-between gap-4">
         {collapsible ? (
           <button
@@ -520,12 +548,22 @@ function Section({
         ) : null}
       </div>
       <div
-        className={`mt-4 grid gap-3 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${
-          isCollapsed ? "max-h-0 opacity-0" : "max-h-[1500px] opacity-100"
-        }`}
+        ref={wrapperRef}
+        style={{
+          height: isCollapsed ? 0 : measured,
+          transition: "height 300ms ease",
+          overflow: "hidden",
+        }}
         aria-hidden={isCollapsed}
       >
-        {children}
+        <div
+          ref={contentRef}
+          className={`mt-4 grid gap-3 transition-opacity duration-300 ${
+            isCollapsed ? "opacity-0" : "opacity-100"
+          } ${animLock ? "pointer-events-none" : ""}`}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -641,9 +679,10 @@ function FileInput({
             </button>
           </div>
           {existing && (
-            <span className="text-xs text-slate-500 truncate max-w-[50%]">
-              {existing.name}
-            </span>
+            <div className="flex items-center gap-2 max-w-[60%] min-w-0">
+              <PreviewOrIcon file={existing} />
+              <span className="text-xs text-slate-500 truncate">{existing.name}</span>
+            </div>
           )}
           {icon}
         </div>
@@ -659,9 +698,10 @@ function FileInput({
             disabled={existing?.status === "validated"}
           />
           {existing && (
-            <span className="text-xs text-slate-500 truncate max-w-[50%]">
-              {existing.name}
-            </span>
+            <div className="flex items-center gap-2 max-w-[60%] min-w-0">
+              <PreviewOrIcon file={existing} />
+              <span className="text-xs text-slate-500 truncate">{existing.name}</span>
+            </div>
           )}
           {icon}
         </div>
@@ -717,7 +757,7 @@ function MultiFileInput({
                 className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700"
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <FileText className="h-4 w-4 text-slate-500" />
+                  <PreviewOrIcon file={f} />
                   <input
                     type="text"
                     defaultValue={f.name}
@@ -776,3 +816,48 @@ function SubmitRow({
 }
 
 // no SubmitAdditional, additional docs save instantly
+
+// -------------------------------------------------
+// Preview components for thumbnails & file type icons
+// -------------------------------------------------
+
+function isImageFile(name?: string, url?: string) {
+  const src = (name || "") + (url || "");
+  return /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp)$/i.test(src);
+}
+
+function fileExt(name?: string) {
+  if (!name) return "";
+  const m = /\.([a-z0-9]+)$/i.exec(name);
+  return m ? m[1].toLowerCase() : "";
+}
+
+function FileTypeIcon({ ext }: { ext: string }) {
+  if (["zip", "gz", "tar", "rar", "7z"].includes(ext))
+    return <FileArchive className="h-5 w-5 text-slate-500" />;
+  if (["xls", "xlsx", "csv"].includes(ext))
+    return <FileSpreadsheet className="h-5 w-5 text-green-600" />;
+  if (ext === "pdf") return <FileText className="h-5 w-5 text-rose-600" />;
+  if (["doc", "docx", "rtf"].includes(ext))
+    return <FileText className="h-5 w-5 text-blue-600" />;
+  return <FileGeneric className="h-5 w-5 text-slate-500" />;
+}
+
+function PreviewOrIcon({ file }: { file: Statused }) {
+  const e = fileExt(file.name);
+  if (isImageFile(file.name, file.url)) {
+    return (
+      <div className="relative h-10 w-10 overflow-hidden rounded-md border border-slate-300 bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+            src={file.url}
+            alt={file.name}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+        />
+      </div>
+    );
+  }
+  return <FileTypeIcon ext={e} />;
+}
