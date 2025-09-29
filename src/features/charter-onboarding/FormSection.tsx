@@ -681,13 +681,6 @@ export default function FormSection() {
               Last saved {new Date(lastSavedAt).toLocaleTimeString()}
             </p>
           )}
-          {!isEditing && (
-            <SaveStatusIndicator
-              saving={serverSaving}
-              lastSavedAt={lastSavedAt}
-              dirty={isDirty && !serverSaving}
-            />
-          )}
           {process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1" && (
             <DevRenderCounter label="FormSection" />
           )}
@@ -740,35 +733,6 @@ const DevRenderCounter: React.FC<{ label: string }> = ({ label }) => {
     <span className="ml-2 rounded bg-slate-100 px-2 py-1 text-[10px] font-mono text-slate-500">
       {label} renders: {count}
     </span>
-  );
-};
-const SaveStatusIndicator: React.FC<{
-  saving: boolean;
-  lastSavedAt: string | null;
-  dirty: boolean;
-}> = ({ saving, lastSavedAt, dirty }) => {
-  const text = saving
-    ? "Saving…"
-    : dirty
-    ? "Unsaved changes"
-    : lastSavedAt
-    ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
-    : "";
-  if (!text) return null;
-  return (
-    <div className="mt-1 flex items-center justify-end text-[10px] font-medium text-slate-400">
-      <span
-        className={
-          saving
-            ? "animate-pulse text-amber-500"
-            : dirty
-            ? "text-amber-500"
-            : "text-emerald-500"
-        }
-      >
-        {text}
-      </span>
-    </div>
   );
 };
 

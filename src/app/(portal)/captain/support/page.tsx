@@ -2,8 +2,8 @@ import Link from "next/link";
 
 export default function SupportPage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-14">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+    <div className="px-6 py-8 space-y-6 max-w-3xl">
+      <h1 className="text-xl font-semibold tracking-tight text-slate-900">
         Support
       </h1>
       <p className="mt-4 text-sm text-slate-600">

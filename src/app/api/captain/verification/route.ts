@@ -116,17 +116,18 @@ export async function POST(req: Request) {
   if (typeof data.remove === "string") {
     const field = data.remove as string;
     if ((singleFields as readonly string[]).includes(field)) {
-      const existing = row[field as (typeof singleFields)[number]] as unknown as
-        | (Uploaded & { status?: string })
-        | null;
+      const existing = row[
+        field as (typeof singleFields)[number]
+      ] as unknown as (Uploaded & { status?: string }) | null;
       if (existing) {
         if (existing.status === "validated") {
           return applySecurityHeaders(
             NextResponse.json({ error: "locked" }, { status: 403 })
           );
         }
-  // Explicitly clear JSON field (cast for type compatibility)
-  updateData[field as (typeof singleFields)[number]] = null as unknown as Prisma.InputJsonValue;
+        // Explicitly clear JSON field (cast for type compatibility)
+        updateData[field as (typeof singleFields)[number]] =
+          null as unknown as Prisma.InputJsonValue;
         touched = true;
         // Best-effort blob delete
         try {

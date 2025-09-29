@@ -3,18 +3,30 @@ import { prisma } from "@/lib/prisma";
 import {
   BarChart3,
   Edit3,
-  Home as HomeIcon,
   Image as ImageIcon,
   Ship,
   Video,
-  AlertTriangle,
-  CheckCircle2,
-  FileWarning,
 } from "lucide-react";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import NotificationCenter, {
+  NotificationItem,
+} from "@/components/NotificationCenter";
+interface ProfileWithCharter {
+  id: string;
+  displayName: string;
+  charters: {
+    id: string;
+    name: string;
+    updatedAt: Date;
+    city: string;
+    state: string;
+    media: { kind: string }[];
+    trips: { durationHours: number; price: unknown }[];
+  }[];
+}
 async function getCharter() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id;
@@ -39,23 +51,32 @@ async function getCharter() {
       },
     },
   });
-  if (!profile || !profile.charters.length) {
+  const typed = profile as ProfileWithCharter | null;
+  if (!typed || !typed.charters || !typed.charters.length) {
     redirect("/auth?next=/captain/form");
   }
-  const charter = profile.charters[0];
-  return { profile, charter, userId };
+  const charter = typed.charters[0];
+  return { profile: typed, charter, userId };
 }
 
+interface DocStatusShape {
+  status?: string;
+  [k: string]: unknown;
+}
 interface VerificationRow {
-  idFront?: unknown | null;
-  idBack?: unknown | null;
-  captainLicense?: unknown | null;
-  boatRegistration?: unknown | null;
-  fishingLicense?: unknown | null;
+  idFront?: DocStatusShape | null;
+  idBack?: DocStatusShape | null;
+  captainLicense?: DocStatusShape | null;
+  boatRegistration?: DocStatusShape | null;
+  fishingLicense?: DocStatusShape | null;
   additional?: unknown;
 }
-async function getVerification(userId: string): Promise<VerificationRow | null> {
-  const row = await prisma.captainVerification.findUnique({ where: { userId } });
+async function getVerification(
+  userId: string
+): Promise<VerificationRow | null> {
+  const row = await prisma.captainVerification.findUnique({
+    where: { userId },
+  });
   return row as VerificationRow | null;
 }
 
@@ -75,37 +96,77 @@ function computeTripStats(trips: { durationHours: number; price: unknown }[]) {
 export default async function CaptainDashboardPage() {
   const { profile, charter, userId } = await getCharter();
   const verification = await getVerification(userId);
-  const requiredMap: { key: string; label: string; present: boolean }[] = [
+  const govFront = !!verification?.idFront;
+  const govBack = !!verification?.idBack;
+  function badgeStatus(doc: unknown): NotificationItem["status"] {
+    if (!doc) return "missing";
+    if (
+      typeof doc === "object" &&
+      doc &&
+      (doc as DocStatusShape).status === "validated"
+    )
+      return "validated";
+    if (
+      typeof doc === "object" &&
+      doc &&
+      (doc as DocStatusShape).status === "processing"
+    )
+      return "processing";
+    return "processing";
+  }
+  const items: NotificationItem[] = [
     {
-      key: "govId",
+      id: "govId",
       label: "Government ID (front & back)",
-      present: !!(verification?.idFront && verification?.idBack),
+      status:
+        govFront && govBack
+          ? badgeStatus(verification?.idFront) === "validated" &&
+            badgeStatus(verification?.idBack) === "validated"
+            ? "validated"
+            : badgeStatus(verification?.idFront) === "processing" ||
+              badgeStatus(verification?.idBack) === "processing"
+            ? "processing"
+            : "processing"
+          : govFront || govBack
+          ? "partial"
+          : "missing",
+      detail:
+        !govFront && !govBack
+          ? "Both sides required"
+          : govFront && !govBack
+          ? "Back side missing"
+          : !govFront && govBack
+          ? "Front side missing"
+          : undefined,
+      href: "/captain/verification",
     },
     {
-      key: "captainLicense",
+      id: "captainLicense",
       label: "Captain license",
-      present: !!verification?.captainLicense,
+      status: badgeStatus(verification?.captainLicense),
+      href: "/captain/verification",
     },
     {
-      key: "boatRegistration",
+      id: "boatRegistration",
       label: "Boat registration certificate",
-      present: !!verification?.boatRegistration,
+      status: badgeStatus(verification?.boatRegistration),
+      href: "/captain/verification",
     },
     {
-      key: "fishingLicense",
+      id: "fishingLicense",
       label: "Fishing license",
-      present: !!verification?.fishingLicense,
+      status: badgeStatus(verification?.fishingLicense),
+      href: "/captain/verification",
     },
   ];
-  const missing = requiredMap.filter((r) => !r.present);
   const photoCount = charter.media.filter(
-    (m) => m.kind === "CHARTER_PHOTO"
+    (m: { kind: string }) => m.kind === "CHARTER_PHOTO"
   ).length;
   const videoCount = charter.media.filter(
-    (m) => m.kind === "CHARTER_VIDEO"
+    (m: { kind: string }) => m.kind === "CHARTER_VIDEO"
   ).length;
   const { totalHours, avgPrice } = computeTripStats(
-    charter.trips.map((t) => ({
+    charter.trips.map((t: { durationHours: number; price: unknown }) => ({
       durationHours: t.durationHours,
       price: t.price,
     }))
@@ -113,38 +174,33 @@ export default async function CaptainDashboardPage() {
 
   return (
     <div className="px-6 py-8 space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="space-y-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Welcome back, {profile.displayName}
           </h1>
           <p className="text-sm text-slate-500">
-            Manage your charter and upcoming features here.
+            Manage your charter and documents here.
           </p>
         </div>
-        <div className="flex gap-3">
-          <Link
-            href={`/captain/form?editCharterId=${charter.id}`}
-            prefetch={false}
-            className="inline-flex items-center gap-2 rounded-full bg-[#ec2227] px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-[#d81e23]"
-          >
-            <Edit3 className="h-4 w-4" /> Edit charter
-          </Link>
-          <Link
-            href={`/`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-slate-400"
-          >
-            <HomeIcon className="h-4 w-4" /> Home
-          </Link>
-        </div>
+        <NotificationCenter items={items} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="font-medium text-slate-700 flex items-center gap-2">
-            <Ship className="h-4 w-4" /> Charter
-          </h2>
-          <p className="mt-1 text-sm font-semibold text-slate-900">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-medium text-slate-700 flex items-center gap-2">
+              <Ship className="h-4 w-4" /> Charter
+            </h2>
+            <Link
+              href={`/captain/form?editCharterId=${charter.id}`}
+              prefetch={false}
+              className="inline-flex items-center gap-1 rounded-full bg-[#ec2227] px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-[#d81e23]"
+            >
+              <Edit3 className="h-3.5 w-3.5" /> Edit
+            </Link>
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-900 truncate">
             {charter.name}
           </p>
           <p className="mt-1 text-xs text-slate-500">
@@ -197,45 +253,7 @@ export default async function CaptainDashboardPage() {
         </div>
       </div>
 
-      {/* Reminders / Notifications */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-2">
-          <FileWarning className="h-4 w-4 text-slate-600" />
-          <h2 className="text-sm font-semibold text-slate-700">Reminders</h2>
-        </div>
-        {missing.length === 0 ? (
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-            <CheckCircle2 className="h-4 w-4" /> All required verification documents have been uploaded.
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-              <div className="text-xs text-amber-800 leading-relaxed">
-                <p className="font-medium mb-1">
-                  {missing.length} required document{missing.length > 1 ? "s" : ""} pending
-                </p>
-                <ul className="list-disc pl-4 space-y-0.5">
-                  {missing.map((m) => (
-                    <li key={m.key} className="marker:text-amber-500">
-                      {m.label}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/captain/verification"
-                  className="mt-2 inline-flex text-[11px] font-semibold text-[#ec2227] hover:underline"
-                >
-                  Go to verification
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-        <p className="mt-6 text-[11px] uppercase tracking-wide text-slate-400">
-          This panel will also display future notifications & info.
-        </p>
-      </div>
+      {/* NotificationCenter already shown at top; legacy reminders removed */}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-700">

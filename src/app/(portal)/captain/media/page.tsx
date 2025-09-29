@@ -1,6 +1,8 @@
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PenLineIcon } from "lucide-react";
 import { getServerSession } from "next-auth";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -59,7 +61,7 @@ export default async function MediaManagementPage({
   const videoPages = Math.max(1, Math.ceil(videosAll.length / pageSize));
 
   return (
-    <div className="px-6 py-8 space-y-8">
+    <div className="px-6 py-8 space-y-8 ">
       <div className="flex items-start justify-between flex-col sm:flex-row gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">
@@ -73,14 +75,15 @@ export default async function MediaManagementPage({
         <Link
           href={`/captain/form?editCharterId=${charter.id}#media`}
           prefetch={false}
-          className="inline-flex items-center rounded-full bg-[#ec2227] px-5 py-2 text-sm font-semibold text-white shadow hover:bg-[#d81e23]"
+          className="flex gap-2 items-center rounded-full bg-[#ec2227] px-5 py-2 text-sm font-semibold text-white shadow hover:bg-[#d81e23]"
         >
-          Edit media
+          <PenLineIcon />
+          <span> Edit media</span>
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="grid gap-6 md:grid-cols-2 ">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm w-full">
           <h2 className="font-medium text-slate-700 mb-3">
             Photos ({photos.length})
           </h2>
@@ -93,11 +96,11 @@ export default async function MediaManagementPage({
                   key={p.id}
                   className="relative aspect-video overflow-hidden rounded-lg bg-slate-100"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={p.url}
                     alt="Charter photo"
                     className="h-full w-full object-cover"
+                    fill
                   />
                 </li>
               ))}
@@ -138,13 +141,13 @@ export default async function MediaManagementPage({
               {videos.map((v) => (
                 <li
                   key={v.id}
-                  className="rounded-lg border border-slate-200 p-2 flex items-center gap-3 bg-white"
+                  className="rounded-lg border border-slate-200 p-2 flex items-center gap-3 bg-white w-full overflow-hidden"
                 >
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-[10px] font-medium text-slate-600">
                     VID
                   </span>
-                  <span className="truncate text-xs text-slate-600">
-                    {v.url}
+                  <span className="truncate text-xs text-slate-600 break-all">
+                    {v.url.split("/").splice(-1)[0]}
                   </span>
                 </li>
               ))}
@@ -174,7 +177,7 @@ export default async function MediaManagementPage({
             </div>
           )}
         </div>
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 shadow-sm flex flex-col items-start justify-between">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 shadow-sm flex flex-col items-start justify-between sm:col-span-2">
           <div>
             <h2 className="font-medium text-slate-700 mb-2">
               Angler Submissions
@@ -183,7 +186,7 @@ export default async function MediaManagementPage({
               Future: curate photos submitted by your guests.
             </p>
           </div>
-          <span className="mt-4 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="mt-4 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-30">
             Coming Soon
           </span>
         </div>
