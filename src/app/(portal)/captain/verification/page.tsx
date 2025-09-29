@@ -55,6 +55,14 @@ export default function VerificationPage() {
   } | null>(null);
   // Track unsent changes (uploads that have not been submitted yet)
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
+  // Confirmation dialog state
+  const [confirmState, setConfirmState] = useState<
+    { message: string; onConfirm: () => Promise<void> | void; busy?: boolean } | null
+  >(null);
+
+  function openConfirm(message: string, onConfirm: () => Promise<void> | void) {
+    setConfirmState({ message, onConfirm });
+  }
 
   // Hydrate from server so we reflect current statuses and validity
   useEffect(() => {
@@ -268,6 +276,7 @@ export default function VerificationPage() {
               setLoading((s) => ({ ...s, idFront: false }));
               setDirty((d) => ({ ...d, idFront: false }));
             }}
+            openConfirm={openConfirm}
             loading={!!loading["idFront"]}
             accept="image/*"
           />
@@ -288,6 +297,7 @@ export default function VerificationPage() {
               setLoading((s) => ({ ...s, idBack: false }));
               setDirty((d) => ({ ...d, idBack: false }));
             }}
+            openConfirm={openConfirm}
             loading={!!loading["idBack"]}
             accept="image/*"
           />
@@ -327,7 +337,8 @@ export default function VerificationPage() {
                 !idBack ||
                 idFront.status === "processing" ||
                 idBack.status === "processing" ||
-                idFront.status === "validated" && idBack.status === "validated" ||
+                (idFront.status === "validated" &&
+                  idBack.status === "validated") ||
                 (!dirty.idFront && !dirty.idBack)
               }
             >
@@ -366,6 +377,7 @@ export default function VerificationPage() {
               setLoading((s) => ({ ...s, captainLicense: false }));
               setDirty((d) => ({ ...d, captainLicense: false }));
             }}
+            openConfirm={openConfirm}
             loading={!!loading["captainLicense"]}
             accept="*/*"
           />
@@ -423,6 +435,7 @@ export default function VerificationPage() {
               setLoading((s) => ({ ...s, boatRegistration: false }));
               setDirty((d) => ({ ...d, boatRegistration: false }));
             }}
+            openConfirm={openConfirm}
             loading={!!loading["boatRegistration"]}
             accept="*/*"
           />
@@ -484,6 +497,7 @@ export default function VerificationPage() {
               setLoading((s) => ({ ...s, fishingLicense: false }));
               setDirty((d) => ({ ...d, fishingLicense: false }));
             }}
+            openConfirm={openConfirm}
             loading={!!loading["fishingLicense"]}
             accept="*/*"
           />
@@ -534,10 +548,26 @@ export default function VerificationPage() {
             }
             loading={!!loading["additional"]}
             accept="*/*"
+            openConfirm={openConfirm}
           />
           {/* Additional documents are saved instantly; no verification step. */}
         </Section>
       </div>
+      {confirmState && (
+        <ConfirmDialog
+          message={confirmState.message}
+          onCancel={() => setConfirmState(null)}
+          onConfirm={async () => {
+            setConfirmState((s) => (s ? { ...s, busy: true } : s));
+            try {
+              await confirmState.onConfirm();
+            } finally {
+              setConfirmState(null);
+            }
+          }}
+          busy={!!confirmState.busy}
+        />
+      )}
     </div>
   );
 }
@@ -617,6 +647,7 @@ function FileInput({
   existing,
   onReplace,
   onRemove,
+  openConfirm,
   loading,
   accept,
   capture,
@@ -627,6 +658,7 @@ function FileInput({
   existing: Statused | null;
   onReplace: (file: File) => void;
   onRemove?: () => void;
+  openConfirm?: (message: string, run: () => void | Promise<void>) => void;
   loading?: boolean;
   accept: string;
   capture?: "user" | "environment";
@@ -701,11 +733,14 @@ function FileInput({
           {existing && existing.status !== "validated" && onRemove && (
             <button
               type="button"
-              onClick={() => {
-                if (window.confirm("Remove this file? This cannot be undone.")) {
-                  onRemove();
-                }
-              }}
+              onClick={() =>
+                openConfirm
+                  ? openConfirm(
+                      `Remove ${label}? This cannot be undone.`,
+                      () => onRemove()
+                    )
+                  : onRemove()
+              }
               className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
             >
               Remove
@@ -733,6 +768,7 @@ function MultiFileInput({
   onRename,
   loading,
   accept,
+  openConfirm,
 }: {
   label: string;
   files: Statused[];
@@ -741,6 +777,7 @@ function MultiFileInput({
   onRename: (key: string, name: string) => void;
   loading?: boolean;
   accept: string;
+  openConfirm?: (message: string, run: () => void | Promise<void>) => void;
 }) {
   return (
     <div>
@@ -795,7 +832,11 @@ function MultiFileInput({
                 </div>
                 <button
                   type="button"
-                  onClick={() => onRemove(i)}
+                  onClick={() =>
+                    openConfirm
+                      ? openConfirm("Remove this document?", () => onRemove(i))
+                      : onRemove(i)
+                  }
                   className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Remove
@@ -804,6 +845,47 @@ function MultiFileInput({
             ))}
           </ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Simple confirmation dialog component
+function ConfirmDialog({
+  message,
+  onCancel,
+  onConfirm,
+  busy,
+}: {
+  message: string;
+  onCancel: () => void;
+  onConfirm: () => void | Promise<void>;
+  busy?: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+      <div className="relative w-full max-w-sm rounded-lg border border-slate-200 bg-white p-5 shadow-xl">
+        <h3 className="text-sm font-medium text-slate-800">Confirm removal</h3>
+        <p className="mt-2 text-xs text-slate-600 leading-relaxed">{message}</p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className="inline-flex items-center rounded-full bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow hover:bg-red-500 disabled:opacity-50"
+          >
+            {busy ? "Removing..." : "Remove"}
+          </button>
+        </div>
       </div>
     </div>
   );
