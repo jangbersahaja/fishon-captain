@@ -54,6 +54,7 @@ export async function POST(req: Request) {
     additionalRemove?: string;
     additionalUpdateName?: { key: string; name: string };
     additional?: Uploaded[];
+    remove?: string; // remove a single-field document (idFront, idBack, etc.)
   };
   const data = body as Body;
 
@@ -108,6 +109,34 @@ export async function POST(req: Request) {
         updatedAt: u.updatedAt ?? new Date().toISOString(),
       };
       touched = true;
+    }
+  }
+
+  // Remove a single-field document (set to null) if not validated
+  if (typeof data.remove === "string") {
+    const field = data.remove as string;
+    if ((singleFields as readonly string[]).includes(field)) {
+      const existing = row[field as (typeof singleFields)[number]] as unknown as
+        | (Uploaded & { status?: string })
+        | null;
+      if (existing) {
+        if (existing.status === "validated") {
+          return applySecurityHeaders(
+            NextResponse.json({ error: "locked" }, { status: 403 })
+          );
+        }
+  // Explicitly clear JSON field (cast for type compatibility)
+  updateData[field as (typeof singleFields)[number]] = null as unknown as Prisma.InputJsonValue;
+        touched = true;
+        // Best-effort blob delete
+        try {
+          if (existing.key) {
+            await del(existing.key, {
+              token: process.env.BLOB_READ_WRITE_TOKEN,
+            });
+          }
+        } catch {}
+      }
     }
   }
 

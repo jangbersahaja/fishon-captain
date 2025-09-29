@@ -1,14 +1,12 @@
 "use client";
 import {
   AlertCircle,
-  Camera,
   CheckCircle2,
   FileArchive,
   File as FileGeneric,
   FileSpreadsheet,
   FileText,
   IdCard,
-  ImagePlus,
   Info,
   Loader2,
   Save,
@@ -255,18 +253,38 @@ export default function VerificationPage() {
             required
             existing={idFront}
             onReplace={(f) => handleReplace("idFront", f, idFront, setIdFront)}
+            onRemove={async () => {
+              if (!idFront || idFront.status === "validated") return;
+              setLoading((s) => ({ ...s, idFront: true }));
+              await fetch("/api/captain/verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remove: "idFront" }),
+              });
+              setIdFront(null);
+              setLoading((s) => ({ ...s, idFront: false }));
+            }}
             loading={!!loading["idFront"]}
             accept="image/*"
-            variant="govId"
           />
           <FileInput
             label="Back side"
             required
             existing={idBack}
             onReplace={(f) => handleReplace("idBack", f, idBack, setIdBack)}
+            onRemove={async () => {
+              if (!idBack || idBack.status === "validated") return;
+              setLoading((s) => ({ ...s, idBack: true }));
+              await fetch("/api/captain/verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remove: "idBack" }),
+              });
+              setIdBack(null);
+              setLoading((s) => ({ ...s, idBack: false }));
+            }}
             loading={!!loading["idBack"]}
             accept="image/*"
-            variant="govId"
           />
           <div className="flex justify-end mt-2">
             <button
@@ -321,6 +339,17 @@ export default function VerificationPage() {
                 setCaptainLicense
               )
             }
+            onRemove={async () => {
+              if (!captainLicense || captainLicense.status === "validated") return;
+              setLoading((s) => ({ ...s, captainLicense: true }));
+              await fetch("/api/captain/verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remove: "captainLicense" }),
+              });
+              setCaptainLicense(null);
+              setLoading((s) => ({ ...s, captainLicense: false }));
+            }}
             loading={!!loading["captainLicense"]}
             accept="*/*"
           />
@@ -360,6 +389,17 @@ export default function VerificationPage() {
             onReplace={(f) =>
               handleReplace("boatRegistration", f, boatReg, setBoatReg)
             }
+            onRemove={async () => {
+              if (!boatReg || boatReg.status === "validated") return;
+              setLoading((s) => ({ ...s, boatRegistration: true }));
+              await fetch("/api/captain/verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remove: "boatRegistration" }),
+              });
+              setBoatReg(null);
+              setLoading((s) => ({ ...s, boatRegistration: false }));
+            }}
             loading={!!loading["boatRegistration"]}
             accept="*/*"
           />
@@ -402,6 +442,17 @@ export default function VerificationPage() {
                 setFishingLicense
               )
             }
+            onRemove={async () => {
+              if (!fishingLicense || fishingLicense.status === "validated") return;
+              setLoading((s) => ({ ...s, fishingLicense: true }));
+              await fetch("/api/captain/verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remove: "fishingLicense" }),
+              });
+              setFishingLicense(null);
+              setLoading((s) => ({ ...s, fishingLicense: false }));
+            }}
             loading={!!loading["fishingLicense"]}
             accept="*/*"
           />
@@ -528,6 +579,7 @@ function FileInput({
   label,
   existing,
   onReplace,
+  onRemove,
   loading,
   accept,
   capture,
@@ -537,21 +589,14 @@ function FileInput({
   label: string;
   existing: Statused | null;
   onReplace: (file: File) => void;
+  onRemove?: () => void;
   loading?: boolean;
   accept: string;
   capture?: "user" | "environment";
   required?: boolean;
   variant?: "govId";
 }) {
-  const idCamera = useMemo(
-    () => `${label}-camera-input`.replace(/\s+/g, "-"),
-    [label]
-  );
-  const idGallery = useMemo(
-    () => `${label}-gallery-input`.replace(/\s+/g, "-"),
-    [label]
-  );
-  const idSingle = useMemo(
+  const inputId = useMemo(
     () => `${label}-file-input`.replace(/\s+/g, "-"),
     [label]
   );
@@ -596,84 +641,45 @@ function FileInput({
           <span className="text-xs text-slate-500">Not uploaded</span>
         )}
       </div>
-      {variant === "govId" ? (
-        <div className="mt-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              id={idCamera}
-              type="file"
-              accept={accept}
-              capture={capture || "environment"}
-              onChange={handleSelect}
-              className="hidden"
-              required={required && !existing}
-              disabled={existing?.status === "validated"}
-            />
-            <input
-              id={idGallery}
-              type="file"
-              accept={accept}
-              onChange={handleSelect}
-              className="hidden"
-              required={required && !existing}
-              disabled={existing?.status === "validated"}
-            />
-            <button
-              type="button"
-              onClick={() => document.getElementById(idCamera)?.click()}
-              disabled={existing?.status === "validated"}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <Camera className="h-4 w-4" /> Take Photo
-            </button>
-            <button
-              type="button"
-              onClick={() => document.getElementById(idGallery)?.click()}
-              disabled={existing?.status === "validated"}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <ImagePlus className="h-4 w-4" /> Choose Photo
-            </button>
-          </div>
-          {existing && (
-            <div className="mt-3 flex items-center gap-2 max-w-sm">
-              <PreviewOrIcon file={existing} />
-              <span className="text-xs text-slate-600 truncate">
-                {existing.name}
-              </span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="mt-2">
-          <input
-            id={idSingle}
-            type="file"
-            accept={accept}
-            capture={capture}
-            onChange={handleSelect}
-            className="hidden"
-            required={required && !existing}
-            disabled={existing?.status === "validated"}
-          />
+      <div className="mt-2">
+        <input
+          id={inputId}
+          type="file"
+          accept={accept}
+          capture={variant === "govId" ? (capture || "environment") : capture}
+          onChange={handleSelect}
+          className="hidden"
+          required={required && !existing}
+          disabled={existing?.status === "validated"}
+        />
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            onClick={() => document.getElementById(idSingle)?.click()}
+            onClick={() => document.getElementById(inputId)?.click()}
             disabled={existing?.status === "validated"}
-            className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            {existing ? "Replace File" : "Choose File"}
+            {existing ? "Replace File" : "Upload File"}
           </button>
-          {existing && (
-            <div className="mt-3 flex items-center gap-2 max-w-sm">
-              <PreviewOrIcon file={existing} />
-              <span className="text-xs text-slate-600 truncate">
-                {existing.name}
-              </span>
-            </div>
+          {existing && existing.status !== "validated" && onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            >
+              Remove
+            </button>
           )}
         </div>
-      )}
+        {existing && (
+          <div className="mt-3 flex items-center gap-2 max-w-sm">
+            <PreviewOrIcon file={existing} />
+            <span className="text-xs text-slate-600 truncate">
+              {existing.name}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
