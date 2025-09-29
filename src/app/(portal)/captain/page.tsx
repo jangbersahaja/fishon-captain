@@ -172,6 +172,53 @@ export default async function CaptainDashboardPage() {
     }))
   );
 
+  // Grouped status summary for consolidated offline banner
+  const missingDocs = items.filter(
+    (i) => i.status === "missing" || i.status === "partial"
+  );
+  const processingDocs = items.filter((i) => i.status === "processing");
+  const anyActionable = missingDocs.length > 0 || processingDocs.length > 0;
+  // Charter considered offline if any required doc not validated
+  const charterOffline = anyActionable; // future: refine with explicit charter.isActive gate if needed
+
+  function renderOfflineBanner() {
+    if (!charterOffline) return null;
+    const missingList = missingDocs.map((d) => d.label).join(", ");
+    const processingList = processingDocs.map((d) => d.label).join(", ");
+    return (
+      <div className="mt-2 mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <p className="font-semibold text-red-900">
+          Your charter is currently offline.
+        </p>
+        <div className="mt-1 space-y-1">
+          <p className="leading-snug">
+            Verification incomplete. Please provide the required documents
+            below.
+          </p>
+          {missingList && (
+            <p className="leading-snug">
+              <span className="font-medium">Missing:</span> {missingList}
+            </p>
+          )}
+          {processingList && (
+            <p className="leading-snug">
+              <span className="font-medium">Processing:</span> {processingList}
+            </p>
+          )}
+        </div>
+        <div className="mt-3">
+          <Link
+            href="/captain/verification"
+            className="inline-flex items-center rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-slate-800"
+            prefetch={false}
+          >
+            Manage documents
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-6 py-8 space-y-8">
       <div className="space-y-3">
@@ -183,6 +230,8 @@ export default async function CaptainDashboardPage() {
             Manage your charter and documents here.
           </p>
         </div>
+        {renderOfflineBanner()}
+        {/* Keep granular list of items below the banner for clarity */}
         <NotificationCenter items={items} />
       </div>
 
