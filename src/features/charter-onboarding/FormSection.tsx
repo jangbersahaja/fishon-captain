@@ -538,7 +538,7 @@ export default function FormSection() {
       }}
     >
       <div
-        className={`space-y-10 px-4 pt-6 max-w-5xl mx-auto ${bottomPaddingClass}`}
+        className={`space-y-10 pt-6 max-w-6xl mx-auto ${bottomPaddingClass}`}
         // Keyboard toggle: cmd+shift+D (mac) / ctrl+shift+D
         onKeyDown={(e) => {
           const mac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);

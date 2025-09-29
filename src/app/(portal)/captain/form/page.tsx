@@ -50,8 +50,8 @@ export default async function CaptainFormPage({
     }
   }
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <h1 className="text-2xl font-semibold mb-6">Charter Form</h1>
+    <div className="mx-auto max-w-6xl px-2 sm-px-4 py-12">
+      <h1 className="text-2xl font-semibold">Captain & Charter Form</h1>
       <FormSection />
     </div>
   );
