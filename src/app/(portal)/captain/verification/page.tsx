@@ -56,9 +56,11 @@ export default function VerificationPage() {
   // Track unsent changes (uploads that have not been submitted yet)
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
   // Confirmation dialog state
-  const [confirmState, setConfirmState] = useState<
-    { message: string; onConfirm: () => Promise<void> | void; busy?: boolean } | null
-  >(null);
+  const [confirmState, setConfirmState] = useState<{
+    message: string;
+    onConfirm: () => Promise<void> | void;
+    busy?: boolean;
+  } | null>(null);
 
   function openConfirm(message: string, onConfirm: () => Promise<void> | void) {
     setConfirmState({ message, onConfirm });
@@ -348,7 +350,7 @@ export default function VerificationPage() {
         </Section>
 
         <Section
-          title="Captain license"
+          title="Captain license (required)"
           description="Upload image or any supporting document (PDF, DOCX, etc.)."
           processing={captainLicense?.status === "processing"}
           validated={captainLicense?.status === "validated"}
@@ -380,6 +382,7 @@ export default function VerificationPage() {
             openConfirm={openConfirm}
             loading={!!loading["captainLicense"]}
             accept="*/*"
+            required
           />
           <SubmitRow
             disabled={
@@ -412,7 +415,7 @@ export default function VerificationPage() {
         </Section>
 
         <Section
-          title="Boat registration certificate"
+          title="Boat registration certificate (required)"
           description="Upload image or any document file (PDF, DOCX, ZIP if needed)."
           processing={boatReg?.status === "processing"}
           validated={boatReg?.status === "validated"}
@@ -438,6 +441,7 @@ export default function VerificationPage() {
             openConfirm={openConfirm}
             loading={!!loading["boatRegistration"]}
             accept="*/*"
+            required
           />
           <SubmitRow
             disabled={
@@ -468,7 +472,7 @@ export default function VerificationPage() {
         </Section>
 
         <Section
-          title="Fishing license"
+          title="Fishing license (required)"
           description="Upload image or any document file."
           processing={fishingLicense?.status === "processing"}
           validated={fishingLicense?.status === "validated"}
@@ -500,6 +504,7 @@ export default function VerificationPage() {
             openConfirm={openConfirm}
             loading={!!loading["fishingLicense"]}
             accept="*/*"
+            required
           />
           <SubmitRow
             disabled={
@@ -735,9 +740,8 @@ function FileInput({
               type="button"
               onClick={() =>
                 openConfirm
-                  ? openConfirm(
-                      `Remove ${label}? This cannot be undone.`,
-                      () => onRemove()
+                  ? openConfirm(`Remove ${label}? This cannot be undone.`, () =>
+                      onRemove()
                     )
                   : onRemove()
               }

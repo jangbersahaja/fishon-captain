@@ -2,18 +2,18 @@ import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   BarChart3,
-  Clock,
   Edit3,
   Home as HomeIcon,
   Image as ImageIcon,
   Ship,
-  UploadCloud,
   Video,
+  AlertTriangle,
+  CheckCircle2,
+  FileWarning,
 } from "lucide-react";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { RemoveDraftButton } from "../../../features/charter-onboarding/components/RemoveDraftButton";
 
 async function getCharter() {
   const session = await getServerSession(authOptions);
@@ -46,13 +46,17 @@ async function getCharter() {
   return { profile, charter, userId };
 }
 
-async function fetchActiveDraft(userId: string) {
-  // Find latest active draft (not submitted) that is associated to a charter (edit in progress)
-  return prisma.charterDraft.findFirst({
-    where: { userId, status: "DRAFT", charterId: { not: null } },
-    select: { id: true, charterId: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-  });
+interface VerificationRow {
+  idFront?: unknown | null;
+  idBack?: unknown | null;
+  captainLicense?: unknown | null;
+  boatRegistration?: unknown | null;
+  fishingLicense?: unknown | null;
+  additional?: unknown;
+}
+async function getVerification(userId: string): Promise<VerificationRow | null> {
+  const row = await prisma.captainVerification.findUnique({ where: { userId } });
+  return row as VerificationRow | null;
 }
 
 function computeTripStats(trips: { durationHours: number; price: unknown }[]) {
@@ -70,7 +74,30 @@ function computeTripStats(trips: { durationHours: number; price: unknown }[]) {
 
 export default async function CaptainDashboardPage() {
   const { profile, charter, userId } = await getCharter();
-  const draft = await fetchActiveDraft(userId);
+  const verification = await getVerification(userId);
+  const requiredMap: { key: string; label: string; present: boolean }[] = [
+    {
+      key: "govId",
+      label: "Government ID (front & back)",
+      present: !!(verification?.idFront && verification?.idBack),
+    },
+    {
+      key: "captainLicense",
+      label: "Captain license",
+      present: !!verification?.captainLicense,
+    },
+    {
+      key: "boatRegistration",
+      label: "Boat registration certificate",
+      present: !!verification?.boatRegistration,
+    },
+    {
+      key: "fishingLicense",
+      label: "Fishing license",
+      present: !!verification?.fishingLicense,
+    },
+  ];
+  const missing = requiredMap.filter((r) => !r.present);
   const photoCount = charter.media.filter(
     (m) => m.kind === "CHARTER_PHOTO"
   ).length;
@@ -86,35 +113,6 @@ export default async function CaptainDashboardPage() {
 
   return (
     <div className="px-6 py-8 space-y-8">
-      {draft && draft.charterId && (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <p className="font-medium flex items-center gap-2">
-                <Edit3 className="h-4 w-4" /> You have unsaved changes in a
-                draft
-              </p>
-              <p className="text-xs opacity-80 mt-0.5 flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> Last edited{" "}
-                {new Date(draft.updatedAt).toLocaleString()} — resume editing to
-                finalize your updates.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/captain/form?editCharterId=${draft.charterId}`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-amber-500"
-                prefetch={false}
-                aria-label="Resume draft"
-                title="Resume draft"
-              >
-                <UploadCloud className="h-3.5 w-3.5" /> Resume
-              </Link>
-              <RemoveDraftButton draftId={draft.id} />
-            </div>
-          </div>
-        </div>
-      )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -141,7 +139,7 @@ export default async function CaptainDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-medium text-slate-700 flex items-center gap-2">
             <Ship className="h-4 w-4" /> Charter
@@ -197,6 +195,46 @@ export default async function CaptainDashboardPage() {
             Avg base price RM {avgPrice.toFixed(0)}
           </p>
         </div>
+      </div>
+
+      {/* Reminders / Notifications */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-2">
+          <FileWarning className="h-4 w-4 text-slate-600" />
+          <h2 className="text-sm font-semibold text-slate-700">Reminders</h2>
+        </div>
+        {missing.length === 0 ? (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            <CheckCircle2 className="h-4 w-4" /> All required verification documents have been uploaded.
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+              <div className="text-xs text-amber-800 leading-relaxed">
+                <p className="font-medium mb-1">
+                  {missing.length} required document{missing.length > 1 ? "s" : ""} pending
+                </p>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  {missing.map((m) => (
+                    <li key={m.key} className="marker:text-amber-500">
+                      {m.label}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/captain/verification"
+                  className="mt-2 inline-flex text-[11px] font-semibold text-[#ec2227] hover:underline"
+                >
+                  Go to verification
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+        <p className="mt-6 text-[11px] uppercase tracking-wide text-slate-400">
+          This panel will also display future notifications & info.
+        </p>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
