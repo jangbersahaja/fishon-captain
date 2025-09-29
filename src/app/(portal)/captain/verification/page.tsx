@@ -8,8 +8,10 @@ import {
   Info,
   Loader2,
   Trash2,
+  ImagePlus,
+  Camera,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Uploaded = { key: string; url: string; name: string; updatedAt: string };
 type Statused = Uploaded & {
@@ -190,6 +192,16 @@ export default function VerificationPage() {
     }
   }
 
+  // Mobile detection (best-effort) to restrict certain accepts (e.g. additional docs images only on mobile)
+  const isMobile = useMemo(
+    () =>
+      typeof navigator !== "undefined" &&
+      /Android|iPhone|iPad|iPod|Mobile|IEMobile|BlackBerry/i.test(
+        navigator.userAgent
+      ),
+    []
+  );
+
   return (
     <div className="px-6 py-8 space-y-6">
       <div className="flex items-center gap-2">
@@ -239,6 +251,12 @@ export default function VerificationPage() {
           processing={
             idFront?.status === "processing" || idBack?.status === "processing"
           }
+          validated={
+            !!idFront?.status &&
+            !!idBack?.status &&
+            idFront?.status === "validated" &&
+            idBack?.status === "validated"
+          }
           startCollapsed
         >
           <FileInput
@@ -248,7 +266,7 @@ export default function VerificationPage() {
             onReplace={(f) => handleReplace("idFront", f, idFront, setIdFront)}
             loading={!!loading["idFront"]}
             accept="image/*"
-            capture="environment"
+            variant="govId"
             icon={<ImageIcon className="h-4 w-4" />}
           />
           <FileInput
@@ -258,7 +276,7 @@ export default function VerificationPage() {
             onReplace={(f) => handleReplace("idBack", f, idBack, setIdBack)}
             loading={!!loading["idBack"]}
             accept="image/*"
-            capture="environment"
+            variant="govId"
             icon={<ImageIcon className="h-4 w-4" />}
           />
           <div className="flex justify-end mt-2">
@@ -302,6 +320,7 @@ export default function VerificationPage() {
           description="Upload an image or PDF."
           updated={!!captainLicense}
           processing={captainLicense?.status === "processing"}
+          validated={captainLicense?.status === "validated"}
           startCollapsed
         >
           <FileInput
@@ -348,6 +367,7 @@ export default function VerificationPage() {
           description="Upload an image or PDF."
           updated={!!boatReg}
           processing={boatReg?.status === "processing"}
+          validated={boatReg?.status === "validated"}
           startCollapsed
         >
           <FileInput
@@ -387,6 +407,7 @@ export default function VerificationPage() {
           description="Upload an image or PDF."
           updated={!!fishingLicense}
           processing={fishingLicense?.status === "processing"}
+          validated={fishingLicense?.status === "validated"}
           startCollapsed
         >
           <FileInput
@@ -430,7 +451,7 @@ export default function VerificationPage() {
 
         <Section
           title="Additional documents"
-          description="Upload any other relevant documents (images or PDFs). These are for your records and are not verified."
+          description="Upload any other relevant documents. (On mobile, images only.) These are for your records and may not require verification."
           updated={additionalDocs.length > 0}
           collapsible={false}
         >
@@ -445,7 +466,7 @@ export default function VerificationPage() {
               )
             }
             loading={!!loading["additional"]}
-            accept="image/*,application/pdf"
+            accept={isMobile ? "image/*" : "image/*,application/pdf"}
           />
           {/* Additional documents are saved instantly; no verification step. */}
         </Section>
@@ -460,6 +481,7 @@ function Section({
   children,
   updated,
   processing,
+  validated,
   startCollapsed,
   collapsible = true,
 }: {
@@ -468,6 +490,7 @@ function Section({
   children: React.ReactNode;
   updated?: boolean;
   processing?: boolean;
+  validated?: boolean;
   startCollapsed?: boolean;
   collapsible?: boolean;
 }) {
@@ -503,7 +526,11 @@ function Section({
             )}
           </div>
         )}
-        {processing ? (
+        {validated ? (
+          <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+            <CheckCircle2 className="h-3.5 w-3.5" /> validated
+          </span>
+        ) : processing ? (
           <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
             processing
           </span>
@@ -523,6 +550,7 @@ function FileInput({
   capture,
   required,
   icon,
+  variant,
 }: {
   label: string;
   existing: Statused | null;
@@ -532,9 +560,22 @@ function FileInput({
   capture?: "user" | "environment";
   required?: boolean;
   icon?: React.ReactNode;
+  variant?: "govId";
 }) {
+  const idCamera = useMemo(() => `${label}-camera-input`.replace(/\s+/g, "-"), [label]);
+  const idGallery = useMemo(() => `${label}-gallery-input`.replace(/\s+/g, "-"), [label]);
+
+  const handleSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const f = e.target.files?.[0];
+      if (f) onReplace(f);
+      e.currentTarget.value = ""; // allow re-select same file
+    },
+    [onReplace]
+  );
+
   return (
-    <label className="block">
+    <div className="block">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-slate-700">
           {label}
@@ -564,29 +605,72 @@ function FileInput({
           <span className="text-xs text-slate-500">Not uploaded</span>
         )}
       </div>
-      <div className="mt-1 flex items-center gap-3">
-        <input
-          type="file"
-          accept={accept}
-          capture={capture}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onReplace(f);
-            // allow selecting same file again
-            e.currentTarget.value = "";
-          }}
-          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-full file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-100"
-          required={required && !existing}
-          disabled={existing?.status === "validated"}
-        />
-        {existing && (
-          <span className="text-xs text-slate-500 truncate max-w-[50%]">
-            {existing.name}
-          </span>
-        )}
-        {icon}
-      </div>
-    </label>
+      {variant === "govId" ? (
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <input
+            id={idCamera}
+            type="file"
+            accept={accept}
+            capture={capture || "environment"}
+            onChange={handleSelect}
+            className="hidden"
+            required={required && !existing}
+            disabled={existing?.status === "validated"}
+          />
+          <input
+            id={idGallery}
+            type="file"
+            accept={accept}
+            onChange={handleSelect}
+            className="hidden"
+            required={required && !existing}
+            disabled={existing?.status === "validated"}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => document.getElementById(idCamera)?.click()}
+              disabled={existing?.status === "validated"}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              <Camera className="h-4 w-4" /> Take Photo
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById(idGallery)?.click()}
+              disabled={existing?.status === "validated"}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              <ImagePlus className="h-4 w-4" /> Choose Photo
+            </button>
+          </div>
+          {existing && (
+            <span className="text-xs text-slate-500 truncate max-w-[50%]">
+              {existing.name}
+            </span>
+          )}
+          {icon}
+        </div>
+      ) : (
+        <div className="mt-1 flex items-center gap-3">
+          <input
+            type="file"
+            accept={accept}
+            capture={capture}
+            onChange={handleSelect}
+            className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-full file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-100"
+            required={required && !existing}
+            disabled={existing?.status === "validated"}
+          />
+          {existing && (
+            <span className="text-xs text-slate-500 truncate max-w-[50%]">
+              {existing.name}
+            </span>
+          )}
+          {icon}
+        </div>
+      )}
+    </div>
   );
 }
 
