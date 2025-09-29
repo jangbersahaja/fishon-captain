@@ -1,4 +1,5 @@
 "use client";
+import { SpeciesPills } from "@/components/charter/SpeciesPills";
 import {
   ALL_SPECIES,
   SPECIES_BY_CATEGORY,
@@ -10,12 +11,14 @@ import clsx from "clsx";
 import Image from "next/image";
 import { useMemo, useState } from "react";
 
+// Unified selector uses action-style callback names to satisfy Next.js serializable props rule
+// (functions named *Action are treated as intentional callbacks).
 type SpeciesSelectorProps = {
   value?: string[];
-  onChange: (next: string[]) => void;
-  maxVisiblePerCategory?: number;
+  onChangeAction: (next: string[]) => void;
+  maxVisiblePerCategory?: number; // (reserved for later virtualization / paging)
   activeTab?: SpeciesCategory;
-  onActiveTabChange?: (tab: SpeciesCategory) => void;
+  onActiveTabChangeAction?: (tab: SpeciesCategory) => void;
   maxSelected?: number;
 };
 
@@ -32,9 +35,9 @@ const TAB_LABEL: Record<SpeciesCategory, string> = {
 
 export function SpeciesSelector({
   value = [],
-  onChange,
+  onChangeAction,
   activeTab: controlledTab,
-  onActiveTabChange,
+  onActiveTabChangeAction,
   maxSelected = 5,
 }: SpeciesSelectorProps) {
   const [uncontrolledTab, setUncontrolledTab] = useState<SpeciesCategory>(
@@ -82,7 +85,7 @@ export function SpeciesSelector({
       if (value.length >= maxSelected) return;
       set.add(id);
     }
-    onChange(Array.from(set));
+    onChangeAction(Array.from(set));
   }
   const reachedLimit = value.length >= maxSelected;
   return (
@@ -104,10 +107,10 @@ export function SpeciesSelector({
                 type="button"
                 onClick={() => {
                   if (controlledTab) {
-                    onActiveTabChange?.(tab);
+                    onActiveTabChangeAction?.(tab);
                   } else {
                     setUncontrolledTab(tab);
-                    onActiveTabChange?.(tab);
+                    onActiveTabChangeAction?.(tab);
                   }
                 }}
                 className={clsx(
@@ -236,24 +239,29 @@ export function SpeciesSelector({
       {value.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-[10px]">
           <span className="font-semibold text-slate-600">Selected:</span>
-          {value.map((id) => {
-            const item = ALL_SPECIES.find((s) => s.id === id);
-            if (!item) return null;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => toggle(id)}
-                className="group flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2 py-0.5 font-medium text-slate-600 hover:border-red-300 hover:text-red-600"
-              >
-                {item.english_name}
-                <span className="text-red-400 group-hover:text-red-600">×</span>
-              </button>
-            );
-          })}
+          <SpeciesPills
+            items={value
+              .map((id) => ALL_SPECIES.find((s) => s.id === id))
+              .filter(Boolean)
+              .map((s) => ({
+                id: s!.id,
+                english: s!.english_name,
+                local: s!.local_name,
+                imageSrc:
+                  typeof s!.image === "object" &&
+                  s!.image &&
+                  "src" in (s!.image as Record<string, unknown>)
+                    ? (s!.image as { src?: string }).src
+                    : (s!.image as string | undefined) || undefined,
+              }))}
+            readOnly={false}
+            onRemoveAction={(item) => toggle(item.id || "")}
+            size="sm"
+            stackedNames={false}
+          />
           <button
             type="button"
-            onClick={() => onChange([])}
+            onClick={() => onChangeAction([])}
             className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-500 hover:bg-slate-200"
           >
             Clear all

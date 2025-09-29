@@ -9,6 +9,19 @@ export function createPreviewCharter(
   media: MediaPreview[],
   avatarPreview: string | null
 ): Charter {
+  // Helper: remove unresolved placeholder tokens like [[Add a hype line]] or other [[...]] markers
+  const sanitizeGeneratedText = (text: string | undefined | null): string => {
+    if (!text) return "";
+    // Remove any [[...]] sequences (non-greedy) and trim surrounding whitespace
+    let cleaned = text.replace(/\[\[[^\]]+]]/g, "");
+    // Collapse more than 2 blank lines into max 2
+    cleaned = cleaned
+      .split(/\n{1,}/)
+      .map((l) => l.trimEnd())
+      .join("\n");
+    cleaned = cleaned.replace(/\n{3,}/g, "\n\n").trim();
+    return cleaned;
+  };
   const mediaUrls = media.map((item) => item.url).filter(Boolean);
   const images = mediaUrls.length ? mediaUrls : PREVIEW_PLACEHOLDER_IMAGES;
   const locationParts = [values.city?.trim(), values.state?.trim()].filter(
@@ -95,7 +108,11 @@ export function createPreviewCharter(
       : undefined;
   const pickupAreas = (values.pickup.areas ?? []).filter(Boolean);
   const captainName = values.operator.displayName?.trim() || "Charter operator";
-  const captainIntro = values.operator.bio?.trim() || values.description || "";
+  const rawDescription = values.description || "";
+  const description = sanitizeGeneratedText(rawDescription);
+  const captainIntro = sanitizeGeneratedText(
+    values.operator.bio?.trim() || rawDescription
+  );
   return {
     id: 0,
     name: values.charterName || "Your charter name",
@@ -104,7 +121,7 @@ export function createPreviewCharter(
     coordinates,
     images,
     imageUrl: images[0],
-    description: values.description || "",
+    description,
     trip: trips,
     species: previewSpecies,
     techniques: previewTechniques,

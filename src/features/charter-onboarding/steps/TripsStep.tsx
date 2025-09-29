@@ -283,9 +283,9 @@ export function TripsStep({ form }: TripsStepProps) {
                   activeTab={
                     activeSpeciesTab as (typeof SPECIES_CATEGORIES)[keyof typeof SPECIES_CATEGORIES]
                   }
-                  onActiveTabChange={(tab) => setActiveSpeciesTab(tab)}
+                  onActiveTabChangeAction={(tab) => setActiveSpeciesTab(tab)}
                   maxSelected={5}
-                  onChange={(next) =>
+                  onChangeAction={(next) =>
                     update(index, { ...trips?.[index], species: next })
                   }
                 />

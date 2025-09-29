@@ -194,7 +194,7 @@ export default function Navbar() {
     variant?: "default" | "card";
   }) => (
     <div
-      className={`relative h-12 w-12 sm:h-10 sm:w-10 overflow-hidden rounded-full shadow-inner ${
+      className={`relative h-10 w-10 overflow-hidden rounded-full shadow-inner ${
         variant === "card"
           ? "border border-slate-200 bg-slate-100"
           : "border border-white/30 bg-white/10"
@@ -239,17 +239,21 @@ export default function Navbar() {
           sizes="(min-width: 640px) 112px, 96px"
         />
       </span>
-      <h1 className="text-xl font-semibold sm:text-2xl">| Captains</h1>
+      <div className="bg-white px-2 py-1 rounded-r-lg inset-shadow-2xs">
+        <h1 className="text-lg font-bold sm:text-xl text-[#ec2227] ">
+          Captains
+        </h1>
+      </div>
     </Link>
   );
 
   return (
     <header className="z-40 w-full border-t border-white/20 bg-[#ec2227] text-white backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex w-full flex-col gap-3 px-4 py-3 sm:px-6">
         <div className="flex w-full items-center gap-3 md:hidden">
           {logo}
           <div className="ml-auto flex min-w-0 items-center gap-2">
-            <div className="flex max-w-[65vw] min-w-0 items-center gap-1 overflow-x-auto rounded-full border border-white/30 bg-white/10 px-2 py-1.5 shadow-sm">
+            <div className="flex max-w-[65vw] min-w-0 items-center gap-1 overflow-x-auto rounded-full border border-white/30 bg-white/10 px-2 py-1 shadow-sm">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -258,7 +262,7 @@ export default function Navbar() {
                       href={item.href}
                       target={item.external ? "_blank" : undefined}
                       rel={item.external ? "noreferrer" : undefined}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
                     >
                       <Icon className="h-5 w-5" aria-hidden />
                       <span className="sr-only">{item.label}</span>
@@ -271,7 +275,7 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={handleSignOut}
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
                   >
                     <LogOut className="h-5 w-5" aria-hidden />
                     <span className="sr-only">Sign out</span>
@@ -281,7 +285,7 @@ export default function Navbar() {
                 <Tooltip content="Sign in">
                   <Link
                     href="/auth?mode=signin"
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
                   >
                     <LogIn className="h-5 w-5" aria-hidden />
                     <span className="sr-only">Sign in</span>

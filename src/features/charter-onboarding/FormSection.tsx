@@ -650,7 +650,19 @@ export default function FormSection() {
             )}
             seedVideos={existingVideos}
           />
-          {isReviewStep && <ReviewStep charter={previewCharter} />}
+          {isReviewStep && (
+            <ReviewStep
+              charter={previewCharter}
+              videos={normalizedVideoPreviews.map((v) => {
+                const maybeThumb = v as unknown as { thumbnailUrl?: string };
+                return {
+                  url: v.url,
+                  name: v.name,
+                  thumbnailUrl: maybeThumb.thumbnailUrl || null,
+                };
+              })}
+            />
+          )}
           {submitState?.type === "error" && (
             <div
               className={`rounded-2xl px-4 py-3 text-sm ${feedbackTokens.error.subtle}`}

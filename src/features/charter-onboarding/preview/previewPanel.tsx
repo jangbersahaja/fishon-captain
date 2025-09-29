@@ -149,9 +149,25 @@ const SpeciesTechniquesCard = dynamic(
   }
 );
 
-type PreviewPanelProps = { charter: Charter };
+type PreviewPanelProps = {
+  charter: Charter;
+  videos?: { url: string; name?: string; thumbnailUrl?: string | null }[];
+};
 
-export function PreviewPanel({ charter }: PreviewPanelProps) {
+const VideoPreviewCarousel = dynamic(
+  async () => {
+    const mod = await import("@/components/charter/VideoPreviewCarousel");
+    return mod.VideoPreviewCarousel;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="text-[10px] text-slate-400">Loading videos…</div>
+    ),
+  }
+);
+
+export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
   const images =
     charter.images && charter.images.length
       ? charter.images
@@ -179,8 +195,14 @@ export function PreviewPanel({ charter }: PreviewPanelProps) {
           <p className="text-sm text-slate-500">{charter.location}</p>
         </header>
       </div>
-      <div className="mt-6 px-5">
+      <div className="mt-6 px-5 space-y-8">
         <CharterGallery images={images} title={charter.name} />
+        {videos && videos.length > 0 && (
+          <VideoPreviewCarousel
+            videos={videos}
+            className="border-t border-neutral-200 pt-6"
+          />
+        )}
       </div>
       <section className="mt-6 grid grid-cols-1 gap-6 px-6 pb-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-stretch">
         <div className="lg:col-span-1">

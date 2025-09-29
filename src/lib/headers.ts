@@ -54,6 +54,8 @@ export function applySecurityHeaders(res: Response): Response {
       objectSrc,
       baseUri,
       formAction,
+      // Allow embedding Google Maps iframe in review preview
+      `frame-src 'self' ${GOOGLE_SCRIPT} ${GOOGLE_STATIC} https://www.google.com https://maps.googleapis.com`,
       "frame-ancestors 'none'",
     ].join("; ") + ";";
   res.headers.set("Content-Security-Policy", csp);

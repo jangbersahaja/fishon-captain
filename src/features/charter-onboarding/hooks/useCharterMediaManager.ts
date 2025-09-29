@@ -206,6 +206,27 @@ export function useCharterMediaManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep avatar preview in sync when operator.avatarUrl is populated later (e.g. async edit hydration)
+  useEffect(() => {
+    // react-hook-form watch subscription
+    const subscription = form.watch((value, info) => {
+      if (!info.name || info.name === "operator.avatarUrl") {
+        const next = (value as unknown as { operator?: { avatarUrl?: string } })
+          .operator?.avatarUrl;
+        setCaptainAvatarPreview((prev) =>
+          next && next !== prev
+            ? next
+            : next
+            ? next
+            : prev && !next
+            ? null
+            : prev
+        );
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   // Persist to form for draft autosave compatibility
   useEffect(() => {
     setValue(

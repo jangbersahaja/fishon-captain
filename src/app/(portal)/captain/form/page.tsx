@@ -2,7 +2,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import FormSection from "@features/charter-onboarding/FormSection";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic"; // ensure fresh session check
 
@@ -30,6 +30,23 @@ export default async function CaptainFormPage({
       if (profile && profile.charters.length > 0) {
         redirect("/captain");
       }
+    }
+  } else {
+    // Editing mode: validate that the charter exists and belongs to this user; otherwise 404.
+    const editCharterId = resolvedSearchParams.editCharterId;
+    const userId = (session.user as { id?: string } | undefined)?.id;
+    if (editCharterId && userId) {
+      const charter = await prisma.charter.findFirst({
+        where: { id: editCharterId, captain: { userId } },
+        select: { id: true },
+      });
+      if (!charter) {
+        // Unknown or unauthorized charter id -> trigger notFound route
+        notFound();
+      }
+    } else if (editCharterId) {
+      // No user id in session (should not reach here due to earlier auth check) but guard anyway
+      notFound();
     }
   }
   return (
