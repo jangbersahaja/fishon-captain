@@ -10,6 +10,7 @@ import {
   Info,
   Loader2,
   Trash2,
+  Save,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -192,7 +193,6 @@ export default function VerificationPage() {
     }
   }
 
-
   return (
     <div className="px-6 py-8 space-y-6">
       <div className="flex items-center gap-2">
@@ -248,7 +248,6 @@ export default function VerificationPage() {
             idFront?.status === "validated" &&
             idBack?.status === "validated"
           }
-          startCollapsed
         >
           <FileInput
             label="Front side"
@@ -301,7 +300,7 @@ export default function VerificationPage() {
               }}
               className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
             >
-              Save
+              <Save className="h-4 w-4" /> Save
             </button>
           </div>
         </Section>
@@ -312,7 +311,6 @@ export default function VerificationPage() {
           updated={!!captainLicense}
           processing={captainLicense?.status === "processing"}
           validated={captainLicense?.status === "validated"}
-          startCollapsed
         >
           <FileInput
             label="Captain license"
@@ -359,7 +357,6 @@ export default function VerificationPage() {
           updated={!!boatReg}
           processing={boatReg?.status === "processing"}
           validated={boatReg?.status === "validated"}
-          startCollapsed
         >
           <FileInput
             label="Boat registration"
@@ -399,7 +396,6 @@ export default function VerificationPage() {
           updated={!!fishingLicense}
           processing={fishingLicense?.status === "processing"}
           validated={fishingLicense?.status === "validated"}
-          startCollapsed
         >
           <FileInput
             label="Fishing license"
@@ -470,26 +466,22 @@ function Section({
   title,
   description,
   children,
-  updated,
   processing,
   validated,
-  startCollapsed,
   collapsible = true,
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
-  updated?: boolean;
   processing?: boolean;
   validated?: boolean;
-  startCollapsed?: boolean;
   collapsible?: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(!!startCollapsed && !!updated);
-  // Auto-collapse when updated becomes true
+  const [collapsed, setCollapsed] = useState(false);
+  // Collapse only after submission (processing) or validated state reached
   useEffect(() => {
-    if (updated && collapsible) setCollapsed(true);
-  }, [updated, collapsible]);
+    if ((processing || validated) && collapsible) setCollapsed(true);
+  }, [processing, validated, collapsible]);
 
   const isCollapsed = collapsible ? collapsed : false;
 
@@ -527,7 +519,14 @@ function Section({
           </span>
         ) : null}
       </div>
-      {!isCollapsed && <div className="mt-4 grid gap-3">{children}</div>}
+      <div
+        className={`mt-4 grid gap-3 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${
+          isCollapsed ? "max-h-0 opacity-0" : "max-h-[1500px] opacity-100"
+        }`}
+        aria-hidden={isCollapsed}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -770,7 +769,7 @@ function SubmitRow({
         onClick={onSubmit}
         className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
       >
-        Save
+        <Save className="h-4 w-4" /> Save
       </button>
     </div>
   );
