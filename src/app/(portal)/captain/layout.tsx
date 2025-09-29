@@ -17,6 +17,7 @@ export default function CaptainLayout({
         <main className="flex-1 bg-slate-50/60 min-h-[calc(100vh-0px)]">
           {children}
         </main>
+        <aside className="hidden 2xl:flex md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60"></aside>
       </div>
     </div>
   );

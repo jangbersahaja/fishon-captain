@@ -538,7 +538,7 @@ export default function FormSection() {
       }}
     >
       <div
-        className={`space-y-10 pt-6 max-w-6xl mx-auto ${bottomPaddingClass}`}
+        className={`space-y-6 pt-6 mx-auto ${bottomPaddingClass}`}
         // Keyboard toggle: cmd+shift+D (mac) / ctrl+shift+D
         onKeyDown={(e) => {
           const mac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
@@ -580,7 +580,7 @@ export default function FormSection() {
             <p>Sign in to save your progress on the server.</p>
           </div>
         )}
-        <form onSubmit={handleFormSubmit} className="space-y-8">
+        <form onSubmit={handleFormSubmit} className="space-y-6">
           <StepProgress
             steps={STEP_SEQUENCE}
             currentStep={currentStep}
