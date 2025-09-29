@@ -8,9 +8,11 @@ export const textareaClass =
   "w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-normal shadow-sm transition focus:border-slate-400 focus:ring-2 focus:ring-slate-300 focus:outline-none";
 
 export const policyOptions = [
-  { key: "catchAndKeep" as const, label: "Catch & keep allowed" },
-  { key: "catchAndRelease" as const, label: "Catch & release encouraged" },
-  { key: "childFriendly" as const, label: "Child friendly" },
+  { key: "catchAndKeep" as const, label: "Catch & Keep (Bag Limit)" },
+  { key: "catchAndRelease" as const, label: "Catch & Release" },
+  { key: "childFriendly" as const, label: "Child Friendly" },
+  { key: "smokingNotAllowed" as const, label: "No Smoking" },
+  { key: "alcoholNotAllowed" as const, label: "No Alcohol" },
 ];
 
 export const PREVIEW_PLACEHOLDER_IMAGES = [

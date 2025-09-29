@@ -94,14 +94,12 @@ export function SpeciesPills({
                 </span>
               </span>
             ) : (
-              <span>
-                {english}
+              <div className="flex flex-col leading-tight">
+                <span>{english}</span>
                 {hasBoth && (
-                  <span className="ml-1 font-normal text-slate-500">
-                    {local}
-                  </span>
+                  <span className="font-normal text-slate-500">{local}</span>
                 )}
-              </span>
+              </div>
             )}
             {!readOnly && onRemoveAction && (
               <button

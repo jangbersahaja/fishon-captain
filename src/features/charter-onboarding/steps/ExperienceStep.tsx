@@ -9,7 +9,10 @@ import {
   Field,
   TagInput,
 } from "@features/charter-onboarding/components";
-import { inputClass, policyOptions } from "@features/charter-onboarding/constants";
+import {
+  inputClass,
+  policyOptions,
+} from "@features/charter-onboarding/constants";
 
 type ExperienceStepProps = {
   form: UseFormReturn<CharterFormValues>;
@@ -143,7 +146,7 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
               {...register("policies.licenseProvided")}
               className="h-4 w-4 rounded border-slate-300"
             />
-            Fishing license provided
+            Fishing Permit Provided
           </label>
           {policyOptions.map((policy) => (
             <label

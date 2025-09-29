@@ -192,9 +192,10 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
 
 export const CHARTER_TYPES = [
   { value: "lake", label: "Lake / Dam" },
-  { value: "stream", label: "Stream / River" },
+  { value: "stream", label: "Stream" },
   { value: "inshore", label: "Inshore / Island" },
   { value: "offshore", label: "Offshore / Deepsea" },
+  { value: "jungle", label: "Jungle / Waterfall" },
 ];
 
 export const SPECIES_OPTIONS = [
@@ -230,14 +231,17 @@ export const TECHNIQUE_OPTIONS = [
   "Fly Fishing",
   "Prawn Fishing",
   "Trolling",
+  "Apollo",
 ];
 
 export const AMENITIES_OPTIONS = [
-  "Bait & lures",
-  "Rods, reels & tackle",
+  "Live bait",
+  "Lures",
+  "Rod & reel",
+  "Terminal tackle",
   "Snacks",
-  "Light drinks",
-  "Lunch",
+  "Drinks",
+  "Meals",
   "Life jackets",
 ];
 
@@ -248,6 +252,11 @@ export const BOAT_FEATURE_OPTIONS = [
   "Ice box",
   "Trolling motor",
   "Sound system",
+  "Thruster/Trolling motor",
+  "Kitchen",
+  "Dorm",
+  "Rod holders",
+  "Air conditioning",
 ];
 
 export const BOAT_TYPES = [
@@ -266,7 +275,7 @@ export const BOAT_TYPES = [
 export const TRIP_TYPE_OPTIONS = [
   { value: "Half-Day Trip", label: "Half-Day Trip" },
   { value: "Full Day Trip", label: "Full Day Trip" },
-  { value: "Night Trip", label: "Night Trip" },
+  { value: "Overnight Trip", label: "Overnight Trip" },
   { value: "Custom", label: "Custom" },
 ];
 

@@ -7,9 +7,13 @@ export function applySecurityHeaders(res: Response): Response {
   // NOTE: Next.js emits a small inline bootstrap script. Long-term we should migrate to a nonce-based CSP.
   // Interim approach: keep 'unsafe-inline' (plus 'strict-dynamic' to reduce risk) in prod until nonce wiring is added.
   // If an env flag FORCE_CSP_NONCE is introduced later, we can branch and inject a nonce instead.
+  // QUICK FIX: Removed 'strict-dynamic' in production because we are not yet attaching a nonce/hash
+  // to the initial Next.js inline bootstrap script. Without a trust anchor, 'strict-dynamic'
+  // causes host allow-lists to be ignored and blocks framework chunks. Reintroduce with a
+  // nonce when we implement a per-request nonce pipeline.
   const scriptSrc = isDev
     ? `script-src 'self' 'unsafe-inline' ${GOOGLE_SCRIPT} ${GOOGLE_STATIC}`
-    : `script-src 'self' 'unsafe-inline' 'strict-dynamic' ${GOOGLE_SCRIPT} ${GOOGLE_STATIC}`;
+    : `script-src 'self' 'unsafe-inline' ${GOOGLE_SCRIPT} ${GOOGLE_STATIC}`;
   // Allow images/videos from Vercel Blob public host(s)
   const vercelBlobWildcard = "https://*.public.blob.vercel-storage.com";
   // Optionally allow a specific hostname via env if provided
