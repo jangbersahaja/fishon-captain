@@ -11,9 +11,7 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import NotificationCenter, {
-  NotificationItem,
-} from "@/components/NotificationCenter";
+import { NotificationItem } from "@/components/NotificationCenter";
 interface ProfileWithCharter {
   id: string;
   displayName: string;
@@ -114,6 +112,7 @@ export default async function CaptainDashboardPage() {
       return "processing";
     return "processing";
   }
+  // Only government ID is required; other documents are optional and should not trigger offline state.
   const items: NotificationItem[] = [
     {
       id: "govId",
@@ -140,24 +139,6 @@ export default async function CaptainDashboardPage() {
           : undefined,
       href: "/captain/verification",
     },
-    {
-      id: "captainLicense",
-      label: "Captain license",
-      status: badgeStatus(verification?.captainLicense),
-      href: "/captain/verification",
-    },
-    {
-      id: "boatRegistration",
-      label: "Boat registration certificate",
-      status: badgeStatus(verification?.boatRegistration),
-      href: "/captain/verification",
-    },
-    {
-      id: "fishingLicense",
-      label: "Fishing license",
-      status: badgeStatus(verification?.fishingLicense),
-      href: "/captain/verification",
-    },
   ];
   const photoCount = charter.media.filter(
     (m: { kind: string }) => m.kind === "CHARTER_PHOTO"
@@ -178,8 +159,8 @@ export default async function CaptainDashboardPage() {
   );
   const processingDocs = items.filter((i) => i.status === "processing");
   const anyActionable = missingDocs.length > 0 || processingDocs.length > 0;
-  // Charter considered offline if any required doc not validated
-  const charterOffline = anyActionable; // future: refine with explicit charter.isActive gate if needed
+  // Only gov ID influences offline state now
+  const charterOffline = anyActionable;
 
   function renderOfflineBanner() {
     if (!charterOffline) return null;
@@ -221,7 +202,7 @@ export default async function CaptainDashboardPage() {
 
   return (
     <div className="px-6 py-8 space-y-8">
-      <div className="space-y-3">
+      <div className="space-y-3 min-h-80">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Welcome back, {profile.displayName}
@@ -231,8 +212,6 @@ export default async function CaptainDashboardPage() {
           </p>
         </div>
         {renderOfflineBanner()}
-        {/* Keep granular list of items below the banner for clarity */}
-        <NotificationCenter items={items} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
