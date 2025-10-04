@@ -112,8 +112,8 @@ export default async function CaptainDashboardPage() {
       return "processing";
     return "processing";
   }
-  // Only government ID is required; other documents are optional and should not trigger offline state.
-  const items: NotificationItem[] = [
+  // Only government ID is required; other documents are optional and shown separately.
+  const requiredItems: NotificationItem[] = [
     {
       id: "govId",
       label: "Government ID (front & back)",
@@ -140,6 +140,28 @@ export default async function CaptainDashboardPage() {
       href: "/captain/verification",
     },
   ];
+
+  // Optional documents (do not affect offline state)
+  const optionalItems: NotificationItem[] = [
+    {
+      id: "captainLicense",
+      label: "Captain license (optional)",
+      status: badgeStatus(verification?.captainLicense),
+      href: "/captain/verification",
+    },
+    {
+      id: "boatRegistration",
+      label: "Boat registration certificate (optional)",
+      status: badgeStatus(verification?.boatRegistration),
+      href: "/captain/verification",
+    },
+    {
+      id: "fishingLicense",
+      label: "Fishing license (optional)",
+      status: badgeStatus(verification?.fishingLicense),
+      href: "/captain/verification",
+    },
+  ];
   const photoCount = charter.media.filter(
     (m: { kind: string }) => m.kind === "CHARTER_PHOTO"
   ).length;
@@ -154,10 +176,10 @@ export default async function CaptainDashboardPage() {
   );
 
   // Grouped status summary for consolidated offline banner
-  const missingDocs = items.filter(
+  const missingDocs = requiredItems.filter(
     (i) => i.status === "missing" || i.status === "partial"
   );
-  const processingDocs = items.filter((i) => i.status === "processing");
+  const processingDocs = requiredItems.filter((i) => i.status === "processing");
   const anyActionable = missingDocs.length > 0 || processingDocs.length > 0;
   // Only gov ID influences offline state now
   const charterOffline = anyActionable;
@@ -212,6 +234,49 @@ export default async function CaptainDashboardPage() {
           </p>
         </div>
         {renderOfflineBanner()}
+        {/* Optional documents section */}
+        <div className="mt-2">
+          <div className="mb-1 text-xs font-semibold text-slate-500">Optional documents</div>
+          <div className="space-y-2">
+            {optionalItems.map((item) => (
+              <div
+                key={item.id}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
+                  item.status === "validated"
+                    ? "border-slate-200 bg-white text-slate-400"
+                    : item.status === "processing"
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                    : "border-slate-200 bg-white text-slate-500"
+                }`}
+              >
+                <span className="inline-block h-2 w-2 rounded-full mr-2" style={{
+                  backgroundColor:
+                    item.status === "validated"
+                      ? "#22c55e"
+                      : item.status === "processing"
+                      ? "#fbbf24"
+                      : "#cbd5e1",
+                }} />
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.status === "validated" && (
+                  <span className="text-xs text-green-500 font-medium ml-2">Validated</span>
+                )}
+                {item.status === "processing" && (
+                  <span className="text-xs text-amber-600 font-medium ml-2">Processing</span>
+                )}
+                {(item.status === "missing" || item.status === "partial") && (
+                  <span className="text-xs text-slate-400 ml-2">Not uploaded</span>
+                )}
+                <Link
+                  href={item.href!}
+                  className="ml-3 inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-[11px] font-medium text-white hover:bg-slate-800"
+                >
+                  Manage
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
