@@ -41,6 +41,7 @@ import { StepSwitch } from "@features/charter-onboarding/components/StepSwitch";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mergeReadyVideos } from "@features/charter-onboarding/utils/videoDedupe";
 import { useForm, type Resolver } from "react-hook-form";
 // Local draft (localStorage) removed in revised flow – server draft only for new users.
 
@@ -768,54 +769,7 @@ export default function FormSection() {
             onReadyVideosChange={useCallback(
               (ready: { name: string; url: string }[]) => {
                 if (!ready.length) return;
-                setExistingVideos((prev) => {
-                  // Fast path: identical arrays
-                  if (
-                    prev.length === ready.length &&
-                    prev.every((p) => ready.some((r) => r.name === p.name))
-                  ) {
-                    // Still check URLs; if all match, bail.
-                    const allMatch = prev.every((p) => {
-                      const r = ready.find((x) => x.name === p.name);
-                      return r && r.url === p.url;
-                    });
-                    if (allMatch) return prev;
-                  }
-                  const byName = new Map(prev.map((v) => [v.name, v] as const));
-                  const byUrl = new Map(prev.map((v) => [v.url, v] as const));
-                  let changed = false;
-                  for (const r of ready) {
-                    // If a video with the same URL already exists (even if name differs), keep the existing entry (avoid duplicate)
-                    const existingByUrl = byUrl.get(r.url);
-                    if (existingByUrl) {
-                      // Optionally unify on canonical name (prefer storage-key like names containing '/media/')
-                      const looksLikeStorageKey = /\/media\//.test(r.name);
-                      if (
-                        looksLikeStorageKey &&
-                        existingByUrl.name !== r.name &&
-                        !byName.has(r.name)
-                      ) {
-                        // Rename entry to canonical storage key for consistency
-                        byName.delete(existingByUrl.name);
-                        byName.set(r.name, { ...existingByUrl, name: r.name });
-                        changed = true;
-                      }
-                      continue; // already represented
-                    }
-                    // Not present by URL; if name existing but URL differs update URL; else add new
-                    const existingByName = byName.get(r.name);
-                    if (existingByName) {
-                      if (existingByName.url !== r.url) {
-                        byName.set(r.name, { ...existingByName, url: r.url });
-                        changed = true;
-                      }
-                    } else {
-                      byName.set(r.name, r);
-                      changed = true;
-                    }
-                  }
-                  return changed ? Array.from(byName.values()) : prev;
-                });
+                setExistingVideos((prev) => mergeReadyVideos(prev, ready));
               },
               [setExistingVideos]
             )}
