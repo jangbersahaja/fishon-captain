@@ -10,6 +10,10 @@ const tripSchema = z.object({
   name: z.string().min(1, "Trip name is required"),
   tripType: z.string().min(1, "Select a trip type"),
   price: z.number().min(0, { message: "Price must be zero or more" }),
+  promoPrice: z
+    .number()
+    .min(0, { message: "Promo/low season price must be zero or more" })
+    .optional(),
   durationHours: z
     .number()
     .int({ message: "Duration must be whole hours" })
@@ -52,6 +56,12 @@ export const charterFormSchema = z.object({
       .string()
       .min(1, "Phone number is required")
       .regex(/^[+]?[-\d\s()]{6,}$/u, "Enter a valid phone number"),
+    backupPhone: z
+      .string()
+      .min(1)
+      .regex(/^[+]?[-\d\s()]{6,}$/u, "Enter a valid phone number")
+      .optional()
+      .or(z.literal("")),
     avatar: fileSchema.optional(),
     avatarUrl: z.string().url().optional(),
   }),

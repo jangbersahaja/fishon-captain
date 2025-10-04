@@ -38,10 +38,10 @@ import { DraftDevPanel } from "@features/charter-onboarding/components/DraftDevP
 import { ErrorSummary } from "@features/charter-onboarding/components/ErrorSummary";
 import { ReviewBar } from "@features/charter-onboarding/components/ReviewBar";
 import { StepSwitch } from "@features/charter-onboarding/components/StepSwitch";
+import { mergeReadyVideos } from "@features/charter-onboarding/utils/videoDedupe";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { mergeReadyVideos } from "@features/charter-onboarding/utils/videoDedupe";
 import { useForm, type Resolver } from "react-hook-form";
 // Local draft (localStorage) removed in revised flow – server draft only for new users.
 

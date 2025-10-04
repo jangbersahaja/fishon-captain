@@ -145,19 +145,19 @@ export default async function CaptainDashboardPage() {
   const optionalItems: NotificationItem[] = [
     {
       id: "captainLicense",
-      label: "Captain license (optional)",
+      label: "Captain license",
       status: badgeStatus(verification?.captainLicense),
       href: "/captain/verification",
     },
     {
       id: "boatRegistration",
-      label: "Boat registration certificate (optional)",
+      label: "Boat registration certificate",
       status: badgeStatus(verification?.boatRegistration),
       href: "/captain/verification",
     },
     {
       id: "fishingLicense",
-      label: "Fishing license (optional)",
+      label: "Fishing license",
       status: badgeStatus(verification?.fishingLicense),
       href: "/captain/verification",
     },
@@ -224,7 +224,7 @@ export default async function CaptainDashboardPage() {
 
   return (
     <div className="px-6 py-8 space-y-8">
-      <div className="space-y-3 min-h-80">
+      <div className="space-y-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Welcome back, {profile.displayName}
@@ -233,53 +233,66 @@ export default async function CaptainDashboardPage() {
             Manage your charter and documents here.
           </p>
         </div>
-        {renderOfflineBanner()}
-        {/* Optional documents section */}
-        <div className="mt-2">
-          <div className="mb-1 text-xs font-semibold text-slate-500">Optional documents</div>
-          <div className="space-y-2">
-            {optionalItems.map((item) => (
-              <div
-                key={item.id}
-                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
-                  item.status === "validated"
-                    ? "border-slate-200 bg-white text-slate-400"
-                    : item.status === "processing"
-                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                    : "border-slate-200 bg-white text-slate-500"
-                }`}
-              >
-                <span className="inline-block h-2 w-2 rounded-full mr-2" style={{
-                  backgroundColor:
+        <div className="flex flex-col gap-2">
+          {renderOfflineBanner()}
+          {/* Optional documents section */}
+          <div className="">
+            <div className="mb-1 text-xs font-semibold text-slate-500">
+              Other documents
+            </div>
+            <div className="space-y-2">
+              {optionalItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
                     item.status === "validated"
-                      ? "#22c55e"
+                      ? "border-slate-200 bg-white text-slate-400"
                       : item.status === "processing"
-                      ? "#fbbf24"
-                      : "#cbd5e1",
-                }} />
-                <span className="flex-1 truncate">{item.label}</span>
-                {item.status === "validated" && (
-                  <span className="text-xs text-green-500 font-medium ml-2">Validated</span>
-                )}
-                {item.status === "processing" && (
-                  <span className="text-xs text-amber-600 font-medium ml-2">Processing</span>
-                )}
-                {(item.status === "missing" || item.status === "partial") && (
-                  <span className="text-xs text-slate-400 ml-2">Not uploaded</span>
-                )}
-                <Link
-                  href={item.href!}
-                  className="ml-3 inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-[11px] font-medium text-white hover:bg-slate-800"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-slate-200 bg-white text-slate-500"
+                  }`}
                 >
-                  Manage
-                </Link>
-              </div>
-            ))}
+                  <span
+                    className="inline-block h-2 w-2 rounded-full mr-2"
+                    style={{
+                      backgroundColor:
+                        item.status === "validated"
+                          ? "#22c55e"
+                          : item.status === "processing"
+                          ? "#fbbf24"
+                          : "#cbd5e1",
+                    }}
+                  />
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.status === "validated" && (
+                    <span className="text-xs text-green-500 font-medium ml-2">
+                      Validated
+                    </span>
+                  )}
+                  {item.status === "processing" && (
+                    <span className="text-xs text-amber-600 font-medium ml-2">
+                      Processing
+                    </span>
+                  )}
+                  {(item.status === "missing" || item.status === "partial") && (
+                    <span className="text-xs text-slate-400 ml-2">
+                      Not uploaded
+                    </span>
+                  )}
+                  <Link
+                    href={item.href!}
+                    className="ml-3 inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-[11px] font-medium text-white hover:bg-slate-800"
+                  >
+                    Manage
+                  </Link>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 mt-20">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-medium text-slate-700 flex items-center gap-2">

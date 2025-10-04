@@ -206,6 +206,21 @@ export function TripsStep({ form }: TripsStepProps) {
                   />
                 </Field>
                 <Field
+                  label="Promotional/Low season price (MYR)"
+                  error={tripErrors?.promoPrice?.message}
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    {...register(`trips.${index}.promoPrice` as const, {
+                      valueAsNumber: true,
+                    })}
+                    className={inputClass}
+                    placeholder="0"
+                  />
+                </Field>
+                <Field
                   label="Max anglers"
                   error={tripErrors?.maxAnglers?.message}
                   hint={

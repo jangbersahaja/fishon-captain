@@ -35,6 +35,7 @@ interface TripRecord {
   name: string;
   tripType: string;
   price: unknown;
+  promoPrice?: unknown;
   durationHours: number;
   maxAnglers: number;
   style: string;
@@ -87,6 +88,7 @@ export function mapCharterToDraftValues(params: {
       experienceYears: captainProfile.experienceYrs ?? 0,
       bio: captainProfile.bio || "",
       phone: captainProfile.phone || "",
+      backupPhone: "",
     },
     charterType: charter.charterType || "",
     charterName: charter.name || "",
@@ -129,6 +131,7 @@ export function mapCharterToDraftValues(params: {
       name: t.name || "",
       tripType: t.tripType || "",
       price: t.price ? Number(t.price) : Number.NaN,
+      promoPrice: t.promoPrice ? Number(t.promoPrice) : Number.NaN,
       durationHours:
         typeof t.durationHours === "number" ? t.durationHours : Number.NaN,
       startTimes: (t.startTimes || []).map((st) => st.value),

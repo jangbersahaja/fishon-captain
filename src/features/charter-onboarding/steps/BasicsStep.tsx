@@ -161,6 +161,23 @@ export function BasicsStep({
             )}
           />
         </Field>
+        <Field
+          label="Backup phone (emergency/colleague)"
+          error={fieldError("operator.backupPhone")}
+          hint="Will be used if primary phone can't be contacted."
+        >
+          <Controller
+            control={control}
+            name="operator.backupPhone"
+            render={({ field }) => (
+              <PhoneInput
+                {...field}
+                value={field.value ?? ""}
+                error={Boolean(fieldError("operator.backupPhone"))}
+              />
+            )}
+          />
+        </Field>
 
         <Field
           label="Captain/Operator name"

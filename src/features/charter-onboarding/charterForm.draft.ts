@@ -23,7 +23,11 @@ export function sanitizeForDraft(values: CharterFormValues) {
 
   return {
     ...rest,
-    operator: { ...operatorRest, avatarUrl },
+    operator: {
+      ...operatorRest,
+      avatarUrl,
+      backupPhone: operator.backupPhone || "",
+    },
     uploadedPhotos: [...(uploadedPhotos || [])],
     uploadedVideos: [...(uploadedVideos || [])],
     trips: (values.trips ?? []).map((trip) => ({ ...trip })),
@@ -48,6 +52,7 @@ export function hydrateDraftValues(
   merged.operator = {
     ...defaults.operator,
     ...draft.operator,
+    backupPhone: draft.operator?.backupPhone || "",
     experienceYears: normalizeNumber(
       draft.operator?.experienceYears,
       Number.NaN
@@ -100,6 +105,10 @@ export function hydrateDraftValues(
       ...base,
       ...trip,
       price: normalizeNumber(trip?.price, Number.NaN),
+      promoPrice: normalizeNumber(
+        (trip as unknown as { promoPrice?: number }).promoPrice,
+        Number.NaN
+      ),
       durationHours: normalizeNumber(trip?.durationHours, Number.NaN),
       maxAnglers: normalizeNumber(trip?.maxAnglers, Number.NaN),
     };

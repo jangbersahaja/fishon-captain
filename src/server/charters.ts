@@ -166,6 +166,10 @@ export async function createCharterFromDraftData(params: {
             name: t.name,
             tripType: t.tripType ?? `custom-${index + 1}`,
             price: toDecimal(t.price),
+            promoPrice:
+              t.promoPrice !== undefined && t.promoPrice !== null
+                ? toDecimal(t.promoPrice)
+                : undefined,
             durationHours: Number.isFinite(t.durationHours)
               ? (t.durationHours as number)
               : 0,

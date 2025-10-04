@@ -29,6 +29,7 @@ export async function patchEditCharter({
     captain: {
       displayName: values.operator.displayName,
       phone: values.operator.phone,
+      backupPhone: values.operator.backupPhone || null,
       bio: values.operator.bio,
       experienceYrs: values.operator.experienceYears,
       // Include avatarUrl when editing so live charter updates get propagated without separate endpoint.
@@ -62,6 +63,7 @@ export async function patchEditCharter({
             name: string;
             tripType: string;
             price?: number | null;
+            promoPrice?: number | null;
             durationHours?: number | null;
             maxAnglers?: number | null;
             charterStyle?: string;
@@ -74,6 +76,7 @@ export async function patchEditCharter({
             name: t.name,
             tripType: t.tripType,
             price: t.price ?? null,
+            promoPrice: t.promoPrice ?? null,
             durationHours: t.durationHours ?? null,
             maxAnglers: t.maxAnglers ?? null,
             style: t.charterStyle?.toLowerCase(),

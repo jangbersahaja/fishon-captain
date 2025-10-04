@@ -69,6 +69,7 @@ model Charter {
   policies      Policies?
   trips         Trip[]
   draft         CharterDraft?
+  backupPhone   String?
 }
 
 model Boat {
@@ -228,6 +229,7 @@ model Trip {
   maxAnglers    Int
   style         CharterStyle
   description   String?
+  promoPrice    Decimal? @db.Decimal(10, 2)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   media         CharterMedia[]

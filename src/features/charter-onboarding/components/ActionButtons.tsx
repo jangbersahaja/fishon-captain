@@ -150,7 +150,7 @@ export const ActionButtons: React.FC = () => {
             }
             aria-label="Save"
             onClick={saveEditChanges}
-            className="inline-flex items-center justify-center rounded-full bg-emerald-600 p-3 text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600"
+            className="inline-flex items-center justify-center rounded-full bg-emerald-600 p-3 text-white shadow-sm transition hover:bg-emerald-500 disabled:bg-white disabled:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600"
           >
             {savingEdit ? (
               <Loader2 className="h-4 w-4 animate-spin" />
