@@ -88,12 +88,12 @@ export const StepSwitch: React.FC<StepSwitchProps> = (props) => {
         <MediaPricingStep
           form={props.form}
           photoPreviews={props.normalizedPhotoPreviews}
-          onAddPhotoFiles={props.addPhotoFiles}
-          onRemovePhoto={props.removePhoto}
-          onReorderPhotos={props.onReorderPhotos}
+          onAddPhotoFilesAction={props.addPhotoFiles}
+          onRemovePhotoAction={props.removePhoto}
+          onReorderPhotosAction={props.onReorderPhotos}
           currentCharterId={props.currentCharterId}
-          onVideoBlockingChange={props.onVideoBlockingChange}
-          onReadyVideosChange={props.onReadyVideosChange}
+          onVideoBlockingChangeAction={props.onVideoBlockingChange}
+          onReadyVideosChangeAction={props.onReadyVideosChange}
           seedVideos={props.seedVideos}
         />
       );

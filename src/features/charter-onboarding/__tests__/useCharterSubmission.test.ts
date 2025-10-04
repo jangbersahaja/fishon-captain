@@ -62,7 +62,6 @@ const makeDefaults = (): CharterFormValues => ({
   ],
   photos: [],
   videos: [],
-  supportedLanguages: ["Malay", "English"],
   uploadedPhotos: [],
   uploadedVideos: [],
 });

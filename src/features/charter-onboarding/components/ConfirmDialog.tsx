@@ -4,6 +4,7 @@
  * Keeping it standalone reduces noise in the main orchestration component and lets us test/future-enhance easily.
  */
 "use client";
+import { zIndexClasses } from "@/config/zIndex";
 import { useCallback, useEffect, useRef } from "react";
 
 export interface ConfirmDialogProps {
@@ -85,7 +86,7 @@ export function ConfirmDialog({
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-desc"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 py-6"
+      className={`fixed inset-0 ${zIndexClasses.backdrop} flex items-end sm:items-center justify-center bg-black/40 px-4 py-6`}
     >
       <div
         ref={dialogRef}

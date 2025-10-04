@@ -41,8 +41,7 @@ export function createDefaultCharterFormValues(): CharterFormValues {
     placeId: undefined,
     postcode: "",
     latitude: Number.NaN,
-    longitude: Number.NaN,
-    supportedLanguages: ["Malay", "English"],
+    longitude: 0,
     description: "",
     generatedDescription: undefined,
     tone: "friendly",
@@ -74,6 +73,7 @@ export function createDefaultCharterFormValues(): CharterFormValues {
     videos: [],
     uploadedPhotos: [],
     uploadedVideos: [],
+    withoutBoat: false,
   };
 }
 

@@ -168,7 +168,7 @@ export default function ChartersClient({
 
       {/* Quick View Modal */}
       {quickViewId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-xl bg-white p-4 shadow-xl">
             {(() => {
               const item = itemById(quickViewId);

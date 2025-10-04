@@ -93,8 +93,8 @@ export async function createCharterFromDraftData(params: {
   const { charter } = await prisma.$transaction(async (tx) => {
     const boatRecord = await tx.boat.create({
       data: {
-        name: draft.boat.name,
-        type: draft.boat.type,
+        name: draft.boat.name ?? "",
+        type: draft.boat.type ?? "",
         lengthFt: Number.isFinite(draft.boat.lengthFeet)
           ? Math.trunc(draft.boat.lengthFeet as number)
           : 0,

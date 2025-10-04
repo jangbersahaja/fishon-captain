@@ -1,4 +1,5 @@
 "use client";
+import PasswordInput from "@/components/ui/PasswordInput";
 import { feedbackTokens } from "@/config/designTokens";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
@@ -112,6 +113,7 @@ export default function SignUpForm({
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountCreated, setAccountCreated] = useState(false);
@@ -126,9 +128,27 @@ export default function SignUpForm({
     "social sign up"
   )} for faster verification and secure access.`;
 
+  // Validation helpers
+  const isPasswordValid = password.length >= 8;
+  const doPasswordsMatch = password === confirmPassword;
+  const canSubmit =
+    firstName && lastName && email && isPasswordValid && doPasswordsMatch;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Validate password confirmation
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/auth/signup", {
@@ -144,7 +164,28 @@ export default function SignUpForm({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || "Signup failed");
+        let errorMessage = "Signup failed";
+
+        // Provide specific error messages based on status and error content
+        if (res.status === 409 || j.error === "Email already in use") {
+          errorMessage =
+            "An account with this email already exists. Please sign in instead.";
+        } else if (res.status === 400) {
+          if (j.error === "Missing fields") {
+            errorMessage = "Please fill in all required fields.";
+          } else if (j.error === "Invalid JSON") {
+            errorMessage = "Invalid request format. Please try again.";
+          } else {
+            errorMessage =
+              j.error || "Please check your information and try again.";
+          }
+        } else if (res.status >= 500) {
+          errorMessage = "Server error. Please try again later.";
+        } else {
+          errorMessage = j.error || errorMessage;
+        }
+
+        throw new Error(errorMessage);
       }
       // auto-login
       const csrf = await fetch("/api/auth/csrf").then((r) => r.json());
@@ -222,6 +263,17 @@ export default function SignUpForm({
             className={`rounded-md px-3 py-2 text-xs ${feedbackTokens.error.subtle}`}
           >
             {error}
+            {error.includes("already exists") && (
+              <>
+                {" "}
+                <span
+                  className="underline cursor-pointer text-[#ec2227] ml-1"
+                  onClick={() => (window.location.href = "/auth?mode=signin")}
+                >
+                  Sign in instead?
+                </span>
+              </>
+            )}
           </div>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -271,18 +323,49 @@ export default function SignUpForm({
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium text-slate-600">Password</label>
-          <input
-            type="password"
+          <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-inner focus:border-[#ec2227] focus:outline-none"
             required
           />
+          <div className="space-y-1">
+            <p className="text-[10px] text-slate-500">
+              Must be at least 8 characters long
+            </p>
+            {password && password.length > 0 && password.length < 8 && (
+              <p className="text-[10px] text-red-500">
+                Password is too short ({password.length}/8 characters)
+              </p>
+            )}
+            {password && password.length >= 8 && (
+              <p className="text-[10px] text-green-600">
+                ✓ Password length requirement met
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-slate-600">
+            Confirm password
+          </label>
+          <PasswordInput
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+          {confirmPassword && password !== confirmPassword && (
+            <p className="text-[10px] text-red-500">Passwords do not match</p>
+          )}
+          {confirmPassword &&
+            password === confirmPassword &&
+            password.length >= 8 && (
+              <p className="text-[10px] text-green-600">✓ Passwords match</p>
+            )}
         </div>
         <p className="text-[11px] text-slate-400">{recommendationCopy}</p>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !canSubmit}
           className="w-full rounded-xl bg-[#ec2227] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#c81e23] disabled:opacity-60"
         >
           {loading ? "Creating account…" : "Create account with email"}

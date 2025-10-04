@@ -1,4 +1,5 @@
 "use client";
+import PasswordInput from "@/components/ui/PasswordInput";
 import { feedbackTokens } from "@/config/designTokens";
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
@@ -113,11 +114,13 @@ export default function SignInForm({
   const [error, setError] = useState<string | null>(null);
   const [oauthOnly, setOauthOnly] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [accountExists, setAccountExists] = useState<boolean | null>(null);
 
   // Debounced check if email belongs to an OAuth-only account (no passwordHash)
   useEffect(() => {
     if (!email) {
       setOauthOnly(false);
+      setAccountExists(null);
       return;
     }
     const handle = setTimeout(async () => {
@@ -128,11 +131,14 @@ export default function SignInForm({
         );
         if (res.ok) {
           const j = await res.json();
+          setAccountExists(j?.exists === true);
           setOauthOnly(j?.oauthOnly === true);
         } else {
+          setAccountExists(null);
           setOauthOnly(false);
         }
       } catch {
+        setAccountExists(null);
         setOauthOnly(false);
       } finally {
         setChecking(false);
@@ -159,6 +165,7 @@ export default function SignInForm({
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     if (oauthOnly) {
       setLoading(false);
       setError(
@@ -166,17 +173,36 @@ export default function SignInForm({
       );
       return;
     }
+
+    // Check if account exists before attempting login
+    if (accountExists === false) {
+      setLoading(false);
+      setError(
+        "No account found with this email address. Please sign up first."
+      );
+      return;
+    }
+
     const res = await signIn("credentials", {
       redirect: false,
       email,
       password,
       callbackUrl: next,
     });
+
     setLoading(false);
+
     if (res?.error) {
-      setError("Invalid credentials");
+      // More specific error handling based on the type of error
+      if (accountExists === true) {
+        setError("Incorrect password. Please try again.");
+      } else {
+        // Fallback for cases where account existence is unknown
+        setError("Invalid email or password. Please check your credentials.");
+      }
       return;
     }
+
     window.location.href = res?.url || next;
   }
 
@@ -219,6 +245,17 @@ export default function SignInForm({
           above to continue.
         </div>
       )}
+      {accountExists === false && email && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+          No account found with this email.{" "}
+          <span
+            className="underline cursor-pointer"
+            onClick={() => (window.location.href = "/auth?mode=signup")}
+          >
+            Create an account instead?
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.25em] text-slate-400">
         <span className="h-px flex-1 bg-slate-200" />
         <span>Or use email</span>
@@ -245,20 +282,32 @@ export default function SignInForm({
         {!oauthOnly && (
           <>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">
-                Password
-              </label>
-              <input
-                type="password"
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-600">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  className="text-[10px] text-slate-500 hover:text-[#ec2227] transition-colors"
+                  onClick={() => {
+                    // TODO: Implement forgot password functionality
+                    alert("Forgot password functionality coming soon!");
+                  }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-inner focus:border-[#ec2227] focus:outline-none"
                 required
               />
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading || !email || !password || accountExists === false
+              }
               className="w-full rounded-xl bg-[#ec2227] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#c81e23] disabled:opacity-60"
             >
               {loading ? "Signing in…" : "Sign In with Email"}
@@ -266,11 +315,14 @@ export default function SignInForm({
           </>
         )}
       </div>
-      {checking && (
-        <p className="text-center text-[11px] text-slate-400">
-          Checking account…
-        </p>
-      )}
+      {/* Reserve space for status message to prevent layout shift */}
+      <div className="h-4 flex items-center justify-center">
+        {checking && (
+          <p className="text-center text-[11px] text-slate-400">
+            Checking account…
+          </p>
+        )}
+      </div>
     </form>
   );
 }

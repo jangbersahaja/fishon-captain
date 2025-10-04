@@ -1,6 +1,7 @@
 // Extracted submission strategy helpers to keep hook lean.
 import { emitCharterFormEvent } from "@features/charter-onboarding/analytics";
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
+import { CharterMessages } from "./errors";
 
 export interface PatchEditArgs {
   charterId: string;
@@ -117,7 +118,12 @@ export interface FinalizeArgs {
   existingVideos?: { name: string; url: string }[];
 }
 
-export async function finalizeDraftSubmission(args: FinalizeArgs) {
+export async function finalizeDraftSubmission(args: FinalizeArgs): Promise<{
+  ok: boolean;
+  status?: number;
+  errorCode?: string;
+  details?: unknown;
+}> {
   const {
     values,
     isEditing,
@@ -157,6 +163,15 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
 
   // Seed payload with already-uploaded media in create flow (not editing). These were
   // uploaded earlier then moved from form.photos -> existingImages to keep the UI clean.
+  // Only include videos with valid name and url
+  const filteredExistingVideos = existingVideos.filter(
+    (v) =>
+      typeof v.name === "string" &&
+      v.name.length > 0 &&
+      typeof v.url === "string" &&
+      v.url.length > 0
+  );
+
   if (!isEditing) {
     if (existingImages.length) {
       for (const img of existingImages) {
@@ -165,10 +180,35 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
         }
       }
     }
-    if (existingVideos.length) {
-      for (const vid of existingVideos) {
+    if (filteredExistingVideos.length) {
+      for (const vid of filteredExistingVideos) {
         if (!videosPayload.some((v) => v.name === vid.name)) {
           videosPayload.push(vid);
+        }
+      }
+    }
+    // Fallback: if no existingImages/videos state (hydration missed) but form still has uploadedPhotos/uploadedVideos arrays
+    if (
+      photosPayload.length === 0 &&
+      Array.isArray(values.uploadedPhotos) &&
+      values.uploadedPhotos.length
+    ) {
+      for (const p of values.uploadedPhotos) {
+        if (p && typeof p.name === "string" && typeof p.url === "string") {
+          if (!photosPayload.some((x) => x.name === p.name))
+            photosPayload.push({ name: p.name, url: p.url });
+        }
+      }
+    }
+    if (
+      videosPayload.length === 0 &&
+      Array.isArray(values.uploadedVideos) &&
+      values.uploadedVideos.length
+    ) {
+      for (const v of values.uploadedVideos) {
+        if (v && typeof v.name === "string" && typeof v.url === "string") {
+          if (!videosPayload.some((x) => x.name === v.name))
+            videosPayload.push({ name: v.name, url: v.url });
         }
       }
     }
@@ -236,9 +276,9 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
   if (!serverDraftId) {
     setSubmitState({
       type: "error",
-      message: "Please sign in before submitting.",
+      message: CharterMessages.finalize.authRequired,
     });
-    return;
+    return { ok: false, errorCode: "no_draft" };
   }
   const patchedVersion = await saveServerDraftSnapshot();
   const versionForFinalize =
@@ -253,16 +293,70 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
     {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        media: {
-          images: photosPayload,
-          videos: videosPayload,
-          imagesOrder: photosPayload.map((_, i) => i),
-          videosOrder: videosPayload.map((_, i) => i),
-          imagesCoverIndex: 0,
-          ...(avatarPayload !== undefined ? { avatar: avatarPayload } : {}),
-        },
-      }),
+      body: (() => {
+        // Sanitize storage keys to match backend schema expectations.
+        const extractKey = (url: string): string | null => {
+          if (typeof url !== "string") return null;
+          const idxCapt = url.indexOf("captains/");
+          if (idxCapt !== -1) {
+            const slice = url.slice(idxCapt);
+            const m = slice.match(
+              /^(captains\/[A-Za-z0-9_-]+\/(?:media|avatar)\/[A-Za-z0-9._-]+)/
+            );
+            if (m) return m[1];
+          }
+          const idxChar = url.indexOf("charters/");
+          if (idxChar !== -1) {
+            const slice = url.slice(idxChar);
+            const m = slice.match(
+              /^(charters\/[A-Za-z0-9_-]+\/media\/[A-Za-z0-9._-]+)/
+            );
+            if (m) return m[1];
+          }
+          return null;
+        };
+        const isValidKey = (name: string) =>
+          /^[\w.-]+\.(jpg|jpeg|png|webp|gif)$/i.test(name) ||
+          (name.startsWith("captains/") && name.includes("/avatar/")) ||
+          (name.startsWith("captains/") && name.includes("/media/")) ||
+          (name.startsWith("charters/") && name.includes("/media/"));
+
+        const sanitizeList = (
+          items: { name: string; url: string }[]
+        ): { name: string; url: string }[] =>
+          items.map((m) => {
+            if (isValidKey(m.name)) return m;
+            const extracted = extractKey(m.url);
+            return extracted && isValidKey(extracted)
+              ? { ...m, name: extracted }
+              : m; // fallback (will let backend validate)
+          });
+
+        const sanitizedImages = sanitizeList(photosPayload);
+        const sanitizedVideos = sanitizeList(videosPayload);
+        let sanitizedAvatar: { name: string; url: string } | null | undefined =
+          avatarPayload;
+        if (sanitizedAvatar) {
+          if (!isValidKey(sanitizedAvatar.name)) {
+            const extracted = extractKey(sanitizedAvatar.url);
+            if (extracted && isValidKey(extracted)) {
+              sanitizedAvatar = { ...sanitizedAvatar, name: extracted };
+            } else sanitizedAvatar = null; // drop invalid avatar to avoid rejection
+          }
+        }
+        return JSON.stringify({
+          media: {
+            images: sanitizedImages,
+            videos: sanitizedVideos,
+            imagesOrder: sanitizedImages.map((_, i) => i),
+            videosOrder: sanitizedVideos.map((_, i) => i),
+            imagesCoverIndex: sanitizedImages.length ? 0 : undefined,
+            ...(sanitizedAvatar !== undefined
+              ? { avatar: sanitizedAvatar }
+              : {}),
+          },
+        });
+      })(),
     }
   );
   if (finalizeRes.ok) {
@@ -285,27 +379,33 @@ export async function finalizeDraftSubmission(args: FinalizeArgs) {
     initializeDraftState(defaultState, null);
     setLastSavedAt(null);
     router.push(isEditing ? "/captain" : "/thank-you");
-  } else {
-    const err = await finalizeRes.json().catch(() => ({}));
-    if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-      console.error("[submission] finalize 400", {
-        status: finalizeRes.status,
-        err,
-        payload: {
-          images: photosPayload.map((p) => p.name),
-          videos: videosPayload.map((v) => v.name),
-          avatar: avatarPayload?.name,
-        },
-        headersSent: headers,
-        versionForFinalize,
-      });
-    }
-    setSubmitState({
-      type: "error",
-      message:
-        err?.error === "validation"
-          ? "Please fix highlighted fields."
-          : "Submission failed. Please try again.",
+    return { ok: true, status: finalizeRes.status };
+  }
+  const err = await finalizeRes.json().catch(() => ({}));
+  if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+    console.error("[submission] finalize non-200", {
+      status: finalizeRes.status,
+      err,
+      payload: {
+        images: photosPayload.map((p) => p.name),
+        videos: videosPayload.map((v) => v.name),
+        avatar: avatarPayload?.name,
+      },
+      headersSent: headers,
+      versionForFinalize,
     });
   }
+  setSubmitState({
+    type: "error",
+    message:
+      err?.error === "validation"
+        ? CharterMessages.finalize.validationFail
+        : CharterMessages.finalize.genericFail,
+  });
+  return {
+    ok: false,
+    status: finalizeRes.status,
+    errorCode: typeof err?.error === "string" ? err.error : undefined,
+    details: err,
+  };
 }

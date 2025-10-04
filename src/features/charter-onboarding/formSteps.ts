@@ -52,7 +52,6 @@ export const STEP_SEQUENCE: FormStep[] = [
       "postcode",
       "latitude",
       "longitude",
-      "supportedLanguages",
     ],
   },
   {

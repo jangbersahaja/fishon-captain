@@ -184,7 +184,7 @@ export default function ListYourBusinessPage() {
           Choose a commission tier that matches your goals. Free to list; fees
           apply on successful bookings.
         </p>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
           <Plan
             percent="10%"
             name="Basic"
@@ -205,13 +205,11 @@ export default function ListYourBusinessPage() {
             percent="20%"
             name="Silver"
             disabled
-            points={["Everything in Basic", "More Marketing Tools"]}
-          />
-          <Plan
-            disabled
-            percent="30%"
-            name="Gold"
-            points={["Everything in Silver", "Premium Placement"]}
+            points={[
+              "Everything in Basic",
+              "More Marketing Tools",
+              "Premium Placement",
+            ]}
           />
         </div>
         <p className="mt-3 text-xs text-neutral-500">
@@ -426,16 +424,18 @@ function Plan({
         ) : (
           <h3 className="text-lg md:text-xl font-semibold">{name}</h3>
         )}
+        {!disabled && (
+          <div className="flex flex-col items-center">
+            <div
+              className="text-2xl md:text-3xl font-extrabold"
+              style={{ color: highlight ? BRAND : "inherit" }}
+            >
+              {percent}
+            </div>
 
-        <div className="flex flex-col items-center">
-          <div
-            className="text-2xl md:text-3xl font-extrabold"
-            style={{ color: highlight ? BRAND : "inherit" }}
-          >
-            {percent}
+            <span className="text-[10px] uppercase">Commission</span>
           </div>
-          <span className="text-[10px] uppercase">Commission</span>
-        </div>
+        )}
       </div>
       <ul className="mt-3 space-y-2 text-sm md:text-base text-neutral-700">
         {points.map((p) => (

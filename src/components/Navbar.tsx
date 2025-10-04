@@ -14,8 +14,10 @@ import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Tooltip } from "@/components/ui/Tooltip";
+import { zIndexClasses } from "@/config/zIndex";
 
 type AccountStatus =
   | { authenticated: false }
@@ -46,11 +48,46 @@ export default function Navbar() {
   );
   const [loadingAccount, setLoadingAccount] = useState(false);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    right: 16,
+  });
+  const [mounted, setMounted] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   const desktopTriggerRef = useRef<HTMLButtonElement | null>(null);
   const desktopMenuRef = useRef<HTMLDivElement | null>(null);
 
   const authenticated = status === "authenticated";
+
+  // Handle client-side mounting for portal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Update dropdown position when menu opens
+  useEffect(() => {
+    if (desktopMenuOpen && desktopTriggerRef.current) {
+      const updatePosition = () => {
+        const triggerRect = desktopTriggerRef.current?.getBoundingClientRect();
+        if (triggerRect) {
+          setDropdownPosition({
+            top: triggerRect.bottom + 8,
+            right: window.innerWidth - triggerRect.right,
+          });
+        }
+      };
+
+      updatePosition();
+      window.addEventListener("resize", updatePosition);
+      window.addEventListener("scroll", updatePosition);
+
+      return () => {
+        window.removeEventListener("resize", updatePosition);
+        window.removeEventListener("scroll", updatePosition);
+      };
+    }
+  }, [desktopMenuOpen]);
 
   useEffect(() => {
     if (!authenticated) {
@@ -141,9 +178,14 @@ export default function Navbar() {
   const profileImage = useMemo(() => {
     const imageCandidate =
       account?.avatarUrl || account?.image || session?.user?.image || null;
-    return imageCandidate && imageCandidate.trim().length
-      ? imageCandidate
-      : null;
+    const hasImage = imageCandidate && imageCandidate.trim().length;
+
+    // Reset error state when image changes
+    if (hasImage) {
+      setImageLoadError(false);
+    }
+
+    return hasImage ? imageCandidate : null;
   }, [account?.avatarUrl, account?.image, session?.user?.image]);
 
   const navItems = useMemo<NavItem[]>(() => {
@@ -192,36 +234,43 @@ export default function Navbar() {
     variant = "default",
   }: {
     variant?: "default" | "card";
-  }) => (
-    <div
-      className={`relative h-10 w-10 overflow-hidden rounded-full shadow-inner ${
-        variant === "card"
-          ? "border border-slate-200 bg-slate-100"
-          : "border border-white/30 bg-white/10"
-      }`}
-    >
-      {profileImage ? (
-        <Image
-          src={profileImage}
-          alt={`${displayName}'s avatar`}
-          fill
-          sizes="40px"
-          className="object-cover"
-          unoptimized={
-            profileImage.startsWith("http://") ||
-            profileImage.startsWith("https://")
-          }
-        />
-      ) : (
-        <CircleUser
-          className={`h-full w-full p-1.5 ${
-            variant === "card" ? "text-slate-400" : "text-white/70"
-          }`}
-          aria-hidden
-        />
-      )}
-    </div>
-  );
+  }) => {
+    const handleImageError = () => {
+      setImageLoadError(true);
+    };
+
+    return (
+      <div
+        className={`relative h-10 w-10 overflow-hidden rounded-full shadow-inner ${
+          variant === "card"
+            ? "border border-slate-200 bg-slate-100"
+            : "border border-white/30 bg-white/10"
+        }`}
+      >
+        {profileImage && !imageLoadError ? (
+          <Image
+            src={profileImage}
+            alt={`${displayName}'s avatar`}
+            fill
+            sizes="40px"
+            className="object-cover"
+            onError={handleImageError}
+            unoptimized={
+              profileImage.startsWith("http://") ||
+              profileImage.startsWith("https://")
+            }
+          />
+        ) : (
+          <CircleUser
+            className={`h-full w-full p-1.5 ${
+              variant === "card" ? "text-slate-400" : "text-white/70"
+            }`}
+            aria-hidden
+          />
+        )}
+      </div>
+    );
+  };
 
   const logo = (
     <Link
@@ -248,7 +297,9 @@ export default function Navbar() {
   );
 
   return (
-    <header className="z-40 w-full border-t border-white/20 bg-[#ec2227] text-white backdrop-blur">
+    <header
+      className={`${zIndexClasses.navigation} w-full border-t border-white/20 bg-[#ec2227] text-white backdrop-blur`}
+    >
       <div className="mx-auto flex w-full flex-col gap-3 px-4 py-3 sm:px-6">
         <div className="flex w-full items-center gap-3 md:hidden">
           {logo}
@@ -293,22 +344,26 @@ export default function Navbar() {
                 </Tooltip>
               )}
             </div>
-            <Tooltip content={displayName}>
-              <div className="shrink-0">
-                <ProfileAvatar />
-              </div>
-            </Tooltip>
+            {authenticated && (
+              <Tooltip content={displayName}>
+                <div className="shrink-0">
+                  <ProfileAvatar />
+                </div>
+              </Tooltip>
+            )}
           </div>
         </div>
 
         <div className="hidden w-full items-center justify-between gap-3 md:flex">
           {logo}
           <div className="flex items-center gap-3">
-            <Tooltip content={displayName}>
-              <div>
-                <ProfileAvatar />
-              </div>
-            </Tooltip>
+            {authenticated && (
+              <Tooltip content={displayName}>
+                <div>
+                  <ProfileAvatar />
+                </div>
+              </Tooltip>
+            )}
             <div className="relative">
               <button
                 ref={desktopTriggerRef}
@@ -321,70 +376,77 @@ export default function Navbar() {
                 <Menu className="h-5 w-5" aria-hidden />
                 <span className="sr-only">Open navigation</span>
               </button>
-              {desktopMenuOpen ? (
-                <div
-                  ref={desktopMenuRef}
-                  className="absolute right-0 z-50 mt-2 w-72 overflow-hidden rounded-xl border border-white/20 bg-white text-slate-900 shadow-2xl"
-                >
-                  <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
-                    <ProfileAvatar variant="card" />
-                    <div className="flex-1 text-sm">
-                      <div className="font-semibold text-slate-900">
-                        {displayName}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {loadingAccount
-                          ? "Updating..."
-                          : authenticated
-                          ? "Signed in"
-                          : "Guest access"}
+              {mounted &&
+                desktopMenuOpen &&
+                createPortal(
+                  <div
+                    ref={desktopMenuRef}
+                    className={`fixed ${zIndexClasses.navigationDropdown} w-72 overflow-hidden rounded-xl border border-white/20 bg-white text-slate-900 shadow-2xl`}
+                    style={{
+                      top: dropdownPosition.top,
+                      right: dropdownPosition.right,
+                    }}
+                  >
+                    <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+                      <ProfileAvatar variant="card" />
+                      <div className="flex-1 text-sm">
+                        <div className="font-semibold text-slate-900">
+                          {displayName}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {loadingAccount
+                            ? "Updating..."
+                            : authenticated
+                            ? "Signed in"
+                            : "Guest access"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <nav className="flex flex-col gap-1 px-2 py-2">
-                    {navItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.key}
-                          href={item.href}
-                          target={item.external ? "_blank" : undefined}
-                          rel={item.external ? "noreferrer" : undefined}
-                          onClick={closeDesktopMenu}
-                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-100"
+                    <nav className="flex flex-col gap-1 px-2 py-2">
+                      {navItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.key}
+                            href={item.href}
+                            target={item.external ? "_blank" : undefined}
+                            rel={item.external ? "noreferrer" : undefined}
+                            onClick={closeDesktopMenu}
+                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-100"
+                          >
+                            <Icon className="h-4 w-4" aria-hidden />
+                            <span>{item.label}</span>
+                            {item.external ? (
+                              <span className="ml-auto text-xs text-slate-400">
+                                ↗
+                              </span>
+                            ) : null}
+                          </Link>
+                        );
+                      })}
+                      {authenticated ? (
+                        <button
+                          type="button"
+                          onClick={handleSignOut}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-100"
                         >
-                          <Icon className="h-4 w-4" aria-hidden />
-                          <span>{item.label}</span>
-                          {item.external ? (
-                            <span className="ml-auto text-xs text-slate-400">
-                              ↗
-                            </span>
-                          ) : null}
+                          <LogOut className="h-4 w-4" aria-hidden />
+                          <span>Sign out</span>
+                        </button>
+                      ) : (
+                        <Link
+                          href="/auth?mode=signin"
+                          onClick={closeDesktopMenu}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+                        >
+                          <LogIn className="h-4 w-4" aria-hidden />
+                          <span>Sign in</span>
                         </Link>
-                      );
-                    })}
-                    {authenticated ? (
-                      <button
-                        type="button"
-                        onClick={handleSignOut}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-100"
-                      >
-                        <LogOut className="h-4 w-4" aria-hidden />
-                        <span>Sign out</span>
-                      </button>
-                    ) : (
-                      <Link
-                        href="/auth?mode=signin"
-                        onClick={closeDesktopMenu}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
-                      >
-                        <LogIn className="h-4 w-4" aria-hidden />
-                        <span>Sign in</span>
-                      </Link>
-                    )}
-                  </nav>
-                </div>
-              ) : null}
+                      )}
+                    </nav>
+                  </div>,
+                  document.body
+                )}
             </div>
           </div>
         </div>

@@ -66,9 +66,6 @@ const makeDefaults = (): CharterFormValues => ({
   ],
   photos: [],
   videos: [],
-  // Provide languages so basics step schema passes (schema requires at least one; form schema default would normally fill this in production code path)
-  // Tests use explicit defaultValues, so we must mirror runtime default.
-  supportedLanguages: ["Malay", "English"],
   uploadedPhotos: [],
   uploadedVideos: [],
 });

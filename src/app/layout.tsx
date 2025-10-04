@@ -1,4 +1,5 @@
 import AuthSessionProvider from "@/components/AuthSessionProvider";
+import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import OfflineBanner from "@/components/OfflineBanner";
 import { ToastProvider } from "@/components/toast/ToastContext";
@@ -40,12 +41,13 @@ export default function RootLayout({
   }
   return (
     <html lang="en">
-      <body className={`${inter.className} h-full`}>
+      <body className={`${inter.className} min-h-screen flex flex-col`}>
         <AuthSessionProvider>
           <ToastProvider>
             <Navbar />
             <OfflineBanner />
-            {children}
+            <main className="flex-1">{children}</main>
+            <Footer />
             <SpeedInsights />
           </ToastProvider>
         </AuthSessionProvider>

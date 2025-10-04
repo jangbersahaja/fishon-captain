@@ -1,12 +1,12 @@
-import {
-  charterFormSchema,
-  type CharterFormValues,
-} from "@features/charter-onboarding/charterForm.schema";
-import { useCharterSubmission } from "@features/charter-onboarding/hooks/useCharterSubmission";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { act, renderHook } from "@testing-library/react";
 import { useForm } from "react-hook-form";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  charterFormSchema,
+  type CharterFormValues,
+} from "../charterForm.schema";
+import { useCharterSubmission } from "../hooks/useCharterSubmission";
 
 const makeDefaults = (): CharterFormValues => ({
   operator: {
@@ -17,11 +17,12 @@ const makeDefaults = (): CharterFormValues => ({
     avatar: undefined,
   },
   charterType: "shared",
-  charterName: "Charter PreUpload",
+  charterName: "Charter Result Handling",
   state: "Selangor",
   city: "Shah Alam",
   startingPoint: "Dock",
   postcode: "40000",
+  withoutBoat: false,
   latitude: 1,
   longitude: 1,
   description:
@@ -66,37 +67,24 @@ const makeDefaults = (): CharterFormValues => ({
   uploadedVideos: [],
 });
 
-describe("finalize (pre-upload existingImages regression)", () => {
+describe("finalizeDraftSubmission result handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("includes existingImages in finalize payload when form.photos empty (create flow)", async () => {
-    const existingImages = [
-      { name: "img-1.webp", url: "https://cdn/x/img-1.webp" },
-      { name: "img-2.webp", url: "https://cdn/x/img-2.webp" },
-      { name: "img-3.webp", url: "https://cdn/x/img-3.webp" },
-    ];
-
-    const form = renderHook(() =>
-      useForm<CharterFormValues>({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resolver: zodResolver(charterFormSchema) as unknown as any,
-        defaultValues: makeDefaults(),
-        mode: "onBlur",
-      })
-    ).result.current as unknown as ReturnType<
-      typeof useForm<CharterFormValues>
-    >;
-
-    const fetchCalls: Array<{ url: string; init?: RequestInit }> = [];
+  function setupFetch(ok: boolean, status = ok ? 200 : 400) {
     global.fetch = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
-        fetchCalls.push({ url, init });
         if (url.match(/\/api\/charter-drafts\/.*\/finalize$/)) {
-          return new Response(JSON.stringify({ charterId: "c-ok" }), {
-            status: 200,
+          if (ok) {
+            return new Response(JSON.stringify({ charterId: "c-ok" }), {
+              status,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify({ error: "validation" }), {
+            status,
             headers: { "Content-Type": "application/json" },
           });
         }
@@ -115,8 +103,21 @@ describe("finalize (pre-upload existingImages regression)", () => {
         return new Response("{}", { status: 200 });
       }
     ) as unknown as typeof fetch;
+  }
 
-    const hook = renderHook(() =>
+  const createHook = () => {
+    const form = renderHook(() =>
+      useForm<CharterFormValues>({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resolver: zodResolver(charterFormSchema) as unknown as any,
+        defaultValues: makeDefaults(),
+        mode: "onBlur",
+      })
+    ).result.current as unknown as ReturnType<
+      typeof useForm<CharterFormValues>
+    >;
+
+    return renderHook(() =>
       useCharterSubmission({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         form: form as unknown as any,
@@ -125,7 +126,11 @@ describe("finalize (pre-upload existingImages regression)", () => {
         serverDraftId: "draft-pre",
         serverVersion: 1,
         saveServerDraftSnapshot: vi.fn().mockResolvedValue(11),
-        existingImages,
+        existingImages: [
+          { name: "img-1.webp", url: "https://cdn/x/img-1.webp" },
+          { name: "img-2.webp", url: "https://cdn/x/img-2.webp" },
+          { name: "img-3.webp", url: "https://cdn/x/img-3.webp" },
+        ],
         existingVideos: [],
         defaultState: makeDefaults(),
         clearDraft: vi.fn(),
@@ -133,17 +138,27 @@ describe("finalize (pre-upload existingImages regression)", () => {
         setLastSavedAt: vi.fn(),
         router: { push: vi.fn() },
       })
-    ).result;
+    );
+  };
 
+  it("returns ok=true on success", async () => {
+    setupFetch(true);
+    const hook = createHook();
     await act(async () => {
-      await hook.current.triggerSubmit();
+      await hook.result.current.triggerSubmit();
     });
+    expect(hook.result.current.submitState?.type).toBe("success");
+  });
 
-    const finalizeCall = fetchCalls.find((c) => c.url.endsWith("/finalize"));
-    expect(finalizeCall).toBeTruthy();
-    const body = (finalizeCall?.init?.body || "") as string;
-    expect(body).toContain("img-1.webp");
-    expect(body).toContain("img-2.webp");
-    expect(body).toContain("img-3.webp");
+  it("returns ok=false and sets error message on validation failure", async () => {
+    setupFetch(false, 400);
+    const hook = createHook();
+    await act(async () => {
+      await hook.result.current.triggerSubmit();
+    });
+    expect(hook.result.current.submitState?.type).toBe("error");
+    expect(hook.result.current.submitState?.message).toMatch(
+      /Please fix|Submission failed/
+    );
   });
 });

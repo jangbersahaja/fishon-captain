@@ -59,75 +59,12 @@ export function VideoUploadSection({
   onItemsChange,
   seedVideos = [],
 }: VideoUploadSectionProps) {
-  const [items, setItems] = useState<SimpleVideoItem[]>([]);
-  // Queue for batched thumbnail persistence (debounced)
-  const persistQueueRef = useRef<
-    {
-      storageKey: string;
-      dataUrl: string;
-      durationSeconds?: number;
-      id: string;
-      attempts: number;
-    }[]
-  >([]);
-  const persistTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const destroyed = useRef(false);
-
+  // Utility: stable log function
   const log = useCallback((phase: string, extra?: unknown) => {
-    // Single consistent namespace for grep/debugging
-    // Intentionally using console.log for developer visibility.
     console.log("[videoFlow]", phase, extra || "");
   }, []);
-  const itemsRef = useRef<SimpleVideoItem[]>([]);
-  // Stable refs for callback props to avoid re-running effects due to identity churn
-  const onItemsChangeRef = useRef<typeof onItemsChange>(onItemsChange);
-  const onBlockingChangeRef = useRef<typeof onBlockingChange>(onBlockingChange);
-  useEffect(() => {
-    onItemsChangeRef.current = onItemsChange;
-  }, [onItemsChange]);
-  useEffect(() => {
-    onBlockingChangeRef.current = onBlockingChange;
-  }, [onBlockingChange]);
 
-  // Emit upstream changes and keep ref in sync for polling closure.
-  // Depend ONLY on items; function identity changes are handled via refs to prevent effect loop.
-  useEffect(() => {
-    itemsRef.current = items;
-    onItemsChangeRef.current?.(items);
-    const blocking = items.some(
-      (i) =>
-        i.status === "queued" ||
-        i.status === "transcoding" ||
-        i.status === "local"
-    );
-    onBlockingChangeRef.current?.(blocking);
-  }, [items]);
-
-  // Seed existing ready videos from DB on first mount (only if list is empty)
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (seededRef.current) return;
-    if (!itemsRef.current.length && seedVideos.length) {
-      const now = Date.now();
-      const seeded: SimpleVideoItem[] = seedVideos.map((v) => ({
-        id: v.storageKey || v.name,
-        name: v.name,
-        previewUrl: v.url,
-        finalUrl: v.url,
-        finalKey: v.storageKey || v.name,
-        thumbnailDataUrl: v.thumbnailUrl,
-        status: "ready",
-        readyAt: now,
-        origin: "seed",
-        durationSeconds: v.durationSeconds,
-      }));
-      setItems(seeded);
-      seededRef.current = true;
-      log("seed.apply", { count: seeded.length });
-    }
-  }, [seedVideos, log]);
-
+  // Utility: capture first frame for thumbnail
   const captureFirstFrame = (file: File): Promise<string | undefined> => {
     return new Promise((resolve) => {
       try {
@@ -169,6 +106,12 @@ export function VideoUploadSection({
     });
   };
 
+  // Main upload logic
+  const [items, setItems] = useState<SimpleVideoItem[]>([]);
+  const itemsRef = useRef<SimpleVideoItem[]>([]);
+  const onItemsChangeRef = useRef<typeof onItemsChange>(onItemsChange);
+  const onBlockingChangeRef = useRef<typeof onBlockingChange>(onBlockingChange);
+
   const uploadSingle = useCallback(
     async (file: File) => {
       const tempId = `temp-${Date.now()}-${Math.random()
@@ -181,8 +124,6 @@ export function VideoUploadSection({
         size: file.size,
         type: file.type,
       });
-
-      // Insert local placeholder
       setItems((prev) => [
         ...prev,
         {
@@ -192,8 +133,6 @@ export function VideoUploadSection({
           status: "local",
         },
       ]);
-
-      // Kick off fast frame capture (non-blocking)
       const framePromise = captureFirstFrame(file).then((thumb) => {
         if (!thumb) return;
         setItems((prev) =>
@@ -203,7 +142,6 @@ export function VideoUploadSection({
         );
         log("thumbnail.captured", { tempId });
       });
-
       // Begin upload to existing endpoint
       const fd = new FormData();
       fd.set("file", file);
@@ -260,7 +198,6 @@ export function VideoUploadSection({
           queueError: data.queueError,
         },
       });
-
       const inlineReady = (data.finalUrl && data.status === "READY") || false;
       if (inlineReady) {
         log("upload.inline_ready", {
@@ -269,8 +206,6 @@ export function VideoUploadSection({
           hasThumb: !!data.thumbnailUrl,
         });
       }
-
-      // Promote temp -> queued or ready (inline)
       setItems((prev) =>
         prev.map((it) => {
           if (it.id !== tempId) return it;
@@ -296,8 +231,6 @@ export function VideoUploadSection({
           };
         })
       );
-
-      // Debug post-state snapshot
       setTimeout(() => {
         const snap = itemsRef.current.find((i) => i.id === pendingId);
         log("upload.post_state", {
@@ -306,8 +239,6 @@ export function VideoUploadSection({
           hasFinal: !!snap?.finalUrl,
         });
       }, 50);
-
-      // Ensure framePromise resolution does not reference stale temp id (id changed to pendingId above)
       framePromise.catch(() => {});
     },
     [charterId, log]
@@ -325,6 +256,83 @@ export function VideoUploadSection({
     },
     [items.length, max, uploadSingle]
   );
+  const persistQueueRef = useRef<
+    {
+      storageKey: string;
+      dataUrl: string;
+      durationSeconds?: number;
+      id: string;
+      attempts: number;
+    }[]
+  >([]);
+  const persistTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const destroyed = useRef(false);
+
+  // ...existing code...
+  useEffect(() => {
+    onItemsChangeRef.current = onItemsChange;
+  }, [onItemsChange]);
+  useEffect(() => {
+    onBlockingChangeRef.current = onBlockingChange;
+  }, [onBlockingChange]);
+
+  // Emit upstream changes and keep ref in sync for polling closure.
+  // Depend ONLY on items; function identity changes are handled via refs to prevent effect loop.
+  useEffect(() => {
+    itemsRef.current = items;
+    onItemsChangeRef.current?.(items);
+    const blocking = items.some(
+      (i) =>
+        i.status === "queued" ||
+        i.status === "transcoding" ||
+        i.status === "local"
+    );
+    onBlockingChangeRef.current?.(blocking);
+  }, [items]);
+
+  // Seed (and re-seed) existing ready videos from DB when seedVideos appears AFTER mount.
+  // We only apply seeding when there are no current items, so user-added uploads are never overwritten.
+  const lastSeedSignatureRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!seedVideos.length) return; // nothing to seed
+    const sig = JSON.stringify(
+      seedVideos.map((v) => `${v.storageKey || v.name}|${v.url}`)
+    );
+    if (lastSeedSignatureRef.current === sig) return; // identical
+    lastSeedSignatureRef.current = sig;
+    const now = Date.now();
+    setItems((prev) => {
+      // Build a map of existing final keys or names to avoid duplicates
+      const existingKeys = new Set(
+        prev.map((p) => (p.finalKey || p.id || p.name).toString())
+      );
+      let changed = false;
+      const next = [...prev];
+      for (const v of seedVideos) {
+        const key = v.storageKey || v.name;
+        if (existingKeys.has(key)) continue; // already present (local upload promoted or previous seed)
+        next.push({
+          id: key,
+          name: v.name,
+          previewUrl: v.url,
+          finalUrl: v.url,
+          finalKey: key,
+          thumbnailDataUrl: v.thumbnailUrl,
+          status: "ready",
+          readyAt: now,
+          origin: "seed",
+          durationSeconds: v.durationSeconds,
+        });
+        changed = true;
+      }
+      if (changed) {
+        log("seed.merge", { added: next.length - prev.length });
+        return next;
+      }
+      return prev;
+    });
+  }, [seedVideos, log]);
 
   // Removal
   const removeItem = (id: string) => {
@@ -581,7 +589,7 @@ export function VideoUploadSection({
 
   // Polling logic: query existing pending ids
   const poll = useCallback(async () => {
-    const snapshot = itemsRef.current; // always use ref to avoid stale closure lint noise
+    const snapshot = itemsRef.current;
     const pendingIds = snapshot
       .filter(
         (i) =>
@@ -593,7 +601,6 @@ export function VideoUploadSection({
     if (!pendingIds.length) return;
     try {
       const params = new URLSearchParams();
-      // Server endpoint expects 'ids' (plural). Using repeated 'ids' params.
       for (const id of pendingIds) params.append("ids", id);
       const resp = await fetch(`/api/media/pending?${params.toString()}`);
       if (!resp.ok) {
@@ -633,7 +640,6 @@ export function VideoUploadSection({
             return { ...it, status: "transcoding", transcodingAt: now };
           }
           if (p.status === "READY") {
-            // Transition to ready even if finalUrl momentarily absent; fill in when available.
             if (it.status !== "ready" || (p.finalUrl && !it.finalUrl)) {
               log("status.ready", {
                 id: it.id,

@@ -9,14 +9,22 @@
 //
 // This mirrors the logic embedded in FormSection's onReadyVideosChange handler.
 
-export interface VideoItem { name: string; url: string }
+export interface VideoItem {
+  name: string;
+  url: string;
+}
 
-export function mergeReadyVideos(existing: VideoItem[], ready: VideoItem[]): VideoItem[] {
+export function mergeReadyVideos(
+  existing: VideoItem[],
+  ready: VideoItem[]
+): VideoItem[] {
   if (!ready.length) return existing;
   // Fast-path identical set (by name + url)
   if (
     existing.length === ready.length &&
-    existing.every((e) => ready.some((r) => r.name === e.name && r.url === e.url))
+    existing.every((e) =>
+      ready.some((r) => r.name === e.name && r.url === e.url)
+    )
   ) {
     return existing;
   }

@@ -21,6 +21,10 @@ interface ToastContextValue {
   dismiss: (id: string) => void;
   update: (id: string, patch: Partial<Omit<Toast, "id">>) => void;
   registerBottomAnchor: (id: string, getHeight: () => number) => () => void;
+  pushEphemeralError: (
+    message: string,
+    opts?: { id?: string; autoDismiss?: number }
+  ) => string;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -132,7 +136,7 @@ export const ToastProvider: React.FC<ProviderProps> = ({
           }
         }
         // Persist last error toast to sessionStorage
-        if (toast.type === "error") {
+        if (toast.type === "error" && toast.persist !== false) {
           lastErrorRef.current = toast;
           try {
             sessionStorage.setItem(
@@ -155,6 +159,18 @@ export const ToastProvider: React.FC<ProviderProps> = ({
   const dismiss: ToastContextValue["dismiss"] = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+  const pushEphemeralError: ToastContextValue["pushEphemeralError"] =
+    useCallback(
+      (message, opts) =>
+        push({
+          id: opts?.id || `err_${Date.now()}`,
+          type: "error",
+          message,
+          autoDismiss: opts?.autoDismiss ?? 5000,
+          persist: false,
+        }),
+      [push]
+    );
 
   const update: ToastContextValue["update"] = useCallback((id, patch) => {
     setToasts((prev) =>
@@ -203,6 +219,15 @@ export const ToastProvider: React.FC<ProviderProps> = ({
       if (!parsed.message) return;
       // Only restore if within last 6 minutes to avoid stale noise
       if (parsed.ts && Date.now() - parsed.ts < 6 * 60 * 1000) {
+        // Skip rehydrating known ephemeral submission failure toast
+        if (parsed.message === "Submission failed. Please try again.") {
+          try {
+            sessionStorage.removeItem("last_error_toast");
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
         push({
           id: "persisted-error",
           type: "error",
@@ -218,7 +243,13 @@ export const ToastProvider: React.FC<ProviderProps> = ({
 
   return (
     <ToastContext.Provider
-      value={{ push, dismiss, update, registerBottomAnchor }}
+      value={{
+        push,
+        dismiss,
+        update,
+        registerBottomAnchor,
+        pushEphemeralError,
+      }}
     >
       {children}
       {mounted &&

@@ -73,15 +73,9 @@ npx ts-node scripts/migrate-legacy-charter-media-paths.ts
 
 Apply changes:
 
-```bash
+````bash
 RUN=apply npx ts-node scripts/migrate-legacy-charter-media-paths.ts
-```
 
-Required env: `BLOB_READ_WRITE_TOKEN` (must allow list / put / delete for the involved prefixes).
-
-After successful migration:
-
-1. Tighten Zod validation to reject any new `charters/` keys entirely
 2. Remove temporary allowances in upload/replace routes
 3. (Optional) Emit audit log entries per migrated asset
 4. Add a one-time metric for number migrated to verify counts
@@ -102,7 +96,6 @@ Monitoring Enhancements (future): Add structured log ingestion for `legacy-media
 
 ## Starting Point Autocomplete & Map
 
-The captain registration form now supports Google Places-powered address suggestions and an interactive map for refining coordinates.
 
 ### Environment Variables
 
@@ -111,8 +104,7 @@ Copy `.env.example` to `.env.local` and fill in real, non-placeholder values. `.
 Run the environment sanity checker:
 
 ```bash
-npm run check:env
-```
+````
 
 If any required variables are missing the script will exit non‑zero and list them. Placeholder detection warns if values look like defaults.
 
@@ -185,17 +177,12 @@ The captain registration process now supports resilient multi-session progress v
 
 If PATCH returns 409 (version mismatch), the client discards local unsaved changes (Phase 1 strategy) and overwrites with server snapshot. Future improvement: diff/merge UI.
 
-### Key Files
-
 ### Validation Layers
 
-| Layer                                              | Purpose                             |
-| -------------------------------------------------- | ----------------------------------- |
-| Zod schema (client)                                | Immediate user feedback             |
-| `validateDraftForFinalizeFeature` (feature server) | Guard rails & basic integrity       |
-| Database constraints                               | Referential & uniqueness guarantees |
-
-### Media Ordering Logic
+| Layer | Purpose |
+| Zod schema (client) | Immediate user feedback |
+| `validateDraftForFinalizeFeature` (feature server) | Guard rails & basic integrity |
+| Database constraints | Referential & uniqueness guarantees |
 
 1. Optional `imagesOrder` / `videosOrder` arrays (0..n-1 permutation). Invalid arrays (duplicates / gaps) are ignored.
 2. Optional cover index moved to front if valid (resulting media[0] = cover).
@@ -218,12 +205,9 @@ npm test
 
 CI / single-run optimized reporter:
 
-```bash
+````bash
 npm run test:ci
-```
-
 See `src/server/__tests__/charters.test.ts` for scenarios: validation failures, ordering, cover handling, pickup branch, style mapping.
-
 ## Production Hardening Checklist
 
 Tracking items to reach production confidence for the draft → finalize pipeline:
@@ -250,7 +234,7 @@ Tracking items to reach production confidence for the draft → finalize pipelin
 
 ```ts
 rateLimit({ key: `finalize:${userId}`, windowMs: 60_000, max: 5 });
-```
+````
 
 Current store: in-memory (suitable for single-instance dev). To plug in Redis/Upstash implement `RateLimiterStore` and call `useRateLimiterStore(new RedisStore(...))` during app bootstrap (e.g. inside a server-only init module imported by routes needing it).
 
@@ -265,7 +249,6 @@ Draft endpoints now also use the limiter:
 ```json
 {
   "msg": "request_timing",
-  "level": "debug",
   "name": "finalize_transformAndCreate",
   "ms": 12.34
 }
@@ -308,9 +291,6 @@ Update this list as items are implemented.
 ## Feature-Scoped Server Module (Charter Form)
 
 Server logic directly tied to the multi‑step charter form now lives beside the client feature under:
-
-`src/features/charter-onboarding/server/`
-
 Contents:
 
 - `validation.ts` → `validateDraftForFinalizeFeature(draft, media)` (pure sync validation returning `{ ok:true } | { ok:false, errors }`).

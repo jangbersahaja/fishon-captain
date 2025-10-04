@@ -1,3 +1,4 @@
+import { zIndexClasses } from "@/config/zIndex";
 import authOptions from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { headers } from "next/headers";
@@ -22,7 +23,9 @@ export default async function StaffLayout({
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 border-b border-slate-200 bg-white/80 backdrop-blur">
+      <header
+        className={`sticky top-0 ${zIndexClasses.subNavigation} border-b border-slate-200 bg-white/80 backdrop-blur`}
+      >
         <div className="mx-auto max-w-6xl px-6 py-3">
           <div className="flex items-center justify-between">
             <Link

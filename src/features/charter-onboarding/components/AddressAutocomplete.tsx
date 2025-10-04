@@ -1,7 +1,8 @@
 "use client";
+import { zIndexClasses } from "@/config/zIndex";
 import { inputClass } from "@features/charter-onboarding/constants";
 import clsx from "clsx";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 
 export interface AddressSuggestion {
   description: string;
@@ -140,7 +141,7 @@ export function AddressAutocomplete({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg"
+          className={`absolute ${zIndexClasses.dropdown} mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg`}
         >
           {suggestions.map((s, i) => (
             <li

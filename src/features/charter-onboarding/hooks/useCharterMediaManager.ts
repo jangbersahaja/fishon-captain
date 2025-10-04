@@ -206,6 +206,32 @@ export function useCharterMediaManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Late hydration watcher: handles case where draft reset happens AFTER initial mount (common on reload)
+  useEffect(() => {
+    const subscription = form.watch(() => {
+      // Only hydrate if we don't already have local state
+      if (existingImages.length === 0) {
+        const photos = form.getValues("uploadedPhotos") as
+          | Array<{ name: string; url: string }>
+          | undefined;
+        if (Array.isArray(photos) && photos.length) {
+          setExistingImages(photos);
+          dlog("late_photos_hydration", { count: photos.length });
+        }
+      }
+      if (existingVideos.length === 0) {
+        const vids = form.getValues("uploadedVideos") as
+          | Array<{ name: string; url: string }>
+          | undefined;
+        if (Array.isArray(vids) && vids.length) {
+          setExistingVideos(vids);
+          dlog("late_videos_hydration", { count: vids.length });
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, existingImages.length, existingVideos.length, dlog]);
+
   // Keep avatar preview in sync when operator.avatarUrl is populated later (e.g. async edit hydration)
   useEffect(() => {
     // react-hook-form watch subscription
@@ -643,32 +669,32 @@ export function useCharterMediaManager({
     if (readyVideosWithFinal.length) {
       dlog("video_ready_promote", { count: readyVideosWithFinal.length });
       setExistingVideos((prev) => {
-        let next = [...prev];
+        const map = new Map(prev.map((v) => [v.name, v] as const));
+        let changed = false;
         for (const r of readyVideosWithFinal) {
-          const idx = next.findIndex(
-            (e) =>
-              e.pendingId === r.id ||
-              e.url === r.originalUrl ||
-              e.name === r.id ||
-              e.name === r.finalKey
-          );
+          const key = r.finalKey;
+          if (!key) continue;
+          const current = map.get(key);
           const replacement = {
-            name: r.finalKey,
+            name: key,
             url: r.finalUrl,
-            thumbnailUrl: r.thumbnailUrl || undefined,
-            durationSeconds: r.durationSeconds || undefined,
+            thumbnailUrl: r.thumbnailUrl || current?.thumbnailUrl,
+            durationSeconds: r.durationSeconds || current?.durationSeconds,
             status: "ready" as const,
             pendingId: undefined,
           };
-          if (idx !== -1) {
-            next[idx] = replacement;
-            continue;
-          }
-          if (!next.some((e) => e.name === r.finalKey)) {
-            next = [...next, replacement];
+          if (!current) {
+            map.set(key, replacement);
+            changed = true;
+          } else {
+            // Replace only if URL differs (avoid duplicate entry)
+            if (current.url !== replacement.url || current.status !== "ready") {
+              map.set(key, replacement);
+              changed = true;
+            }
           }
         }
-        return next;
+        return changed ? Array.from(map.values()) : prev;
       });
       setPendingVideoIds((ids) =>
         ids.filter((id) => !readyVideosWithFinal.some((r) => r.id === id))

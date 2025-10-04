@@ -83,7 +83,6 @@ const makeDefaults = (): CharterFormValues => ({
     "Description over forty chars long to satisfy validation rules here.",
   generatedDescription: undefined,
   tone: "friendly",
-  supportedLanguages: ["ms"],
   boat: {
     name: "Boat",
     type: "Center",

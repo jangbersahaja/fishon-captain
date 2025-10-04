@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
+import { zIndexClasses } from "@/config/zIndex";
 import { type BookingReview } from "@/dummy/receipts";
 import { resolveBadges } from "@/utils/reviewBadges";
 
@@ -263,7 +264,7 @@ export default function ReviewsList({ reviews }: { reviews: BookingReview[] }) {
 
       {showModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8"
+          className={`fixed inset-0 ${zIndexClasses.backdrop} flex items-center justify-center bg-black/60 px-4 py-8`}
           role="dialog"
           aria-modal="true"
         >

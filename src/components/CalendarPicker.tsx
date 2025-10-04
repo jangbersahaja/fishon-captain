@@ -1,5 +1,6 @@
 "use client";
 
+import { zIndexClasses } from "@/config/zIndex";
 import { useEffect, useMemo, useState } from "react";
 
 // Local date helpers (no UTC conversion)
@@ -141,7 +142,7 @@ export default function CalendarPicker({
         <div
           role="dialog"
           aria-label="Choose date"
-          className="absolute z-20 mt-2 w-[min(20rem,100%)] rounded-xl border border-black/10 bg-white shadow-lg"
+          className={`absolute ${zIndexClasses.dropdown} mt-2 w-[min(20rem,100%)] rounded-xl border border-black/10 bg-white shadow-lg`}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-black/10 px-3 py-2">

@@ -19,103 +19,62 @@ type VideoPreview = MediaPreview & {
   durationSeconds?: number;
 };
 
+// Function props renamed with *Action suffix per Next.js serializable prop rule.
 type MediaPricingStepProps = {
   form: UseFormReturn<CharterFormValues>;
   photoPreviews: MediaPreview[];
   videoPreviews?: VideoPreview[]; // legacy (ignored by new video uploader)
-  onPhotoChange?: (e: ChangeEvent<HTMLInputElement>) => void;
-  // onVideoChange?: (e: ChangeEvent<HTMLInputElement>) => void; // removed
-  onAddPhotoFiles?: (files: File[]) => void;
-  onAddVideoFiles?: (files: File[]) => void; // legacy
-  onRemovePhoto: (index: number) => void;
-  onRemoveVideo?: (index: number) => void; // legacy optional
-  onReorderPhotos?: (from: number, to: number) => void; // still supported externally
-  onRetryVideo?: (index: number) => void;
+  onPhotoChangeAction?: (e: ChangeEvent<HTMLInputElement>) => void;
+  onAddPhotoFilesAction?: (files: File[]) => void;
+  onRemovePhotoAction: (index: number) => void;
+  onReorderPhotosAction?: (from: number, to: number) => void;
   currentCharterId?: string | null;
-  onVideoBlockingChange?: (blocking: boolean) => void;
-  onReadyVideosChange?: (videos: { name: string; url: string }[]) => void;
-  seedVideos?: { name: string; url: string; thumbnailUrl?: string }[]; // new: hydrate existing DB videos
+  onVideoBlockingChangeAction?: (blocking: boolean) => void;
+  onReadyVideosChangeAction?: (videos: { name: string; url: string }[]) => void;
+  seedVideos?: { name: string; url: string; thumbnailUrl?: string }[];
 };
 
 export function MediaPricingStep({
   form,
   photoPreviews,
-  onPhotoChange,
-  onAddPhotoFiles,
-  onRemovePhoto,
-  onReorderPhotos,
+  onPhotoChangeAction,
+  onAddPhotoFilesAction,
+  onRemovePhotoAction,
+  onReorderPhotosAction,
   currentCharterId,
-  onVideoBlockingChange,
-  onReadyVideosChange,
+  onVideoBlockingChangeAction,
+  onReadyVideosChangeAction,
   seedVideos,
 }: MediaPricingStepProps) {
   const { watch, setValue } = form;
   const [draggingPhotos, setDraggingPhotos] = useState(false);
-  // Legacy draggingVideos state removed (video uploader handles its own UX)
 
   const watchedPhotosAlt = watch("photosAlt" as keyof CharterFormValues);
-  // const watchedVideosAlt = watch("videosAlt" as keyof CharterFormValues); // reserved for future video alt feature
+  const photosAlt: string[] = useMemo(
+    () => (Array.isArray(watchedPhotosAlt) ? watchedPhotosAlt : []) as string[],
+    [watchedPhotosAlt]
+  );
+  const photoCoverIndex = 0; // first photo acts as cover
 
-  const photosAlt = useMemo(() => watchedPhotosAlt || [], [watchedPhotosAlt]);
-  // Video alt currently unused (reserved for future enhancement)
-  // const videosAlt = useMemo(() => (watchedVideosAlt as string[]) || [], [watchedVideosAlt]);
-
-  // Cover logic: first item is always cover; no explicit controls.
-  const photoCoverIndex = 0;
-
-  const handleRemovePhoto = (index: number) => onRemovePhoto(index);
-
-  // handleRemoveVideo no longer used; removal handled inside new VideoUploadSection
+  const handleRemovePhoto = (index: number) => onRemovePhotoAction(index);
 
   const handleMovePhoto = (from: number, to: number) => {
-    if (onReorderPhotos) onReorderPhotos(from, to);
+    if (onReorderPhotosAction) onReorderPhotosAction(from, to);
   };
 
-  const handleUpdatePhotoAlt = (i: number, alt: string) => {
-    const arr = Array.isArray(photosAlt) ? [...photosAlt] : [];
-    arr[i] = alt;
-    setValue("photosAlt" as keyof CharterFormValues, arr, {
-      shouldValidate: false,
-    });
-  };
-
-  // Video alt editing not supported in dedicated grid
-
-  const photoItems = useMemo(
-    () =>
-      (photoPreviews || []).map((p, i) => ({
-        ...p,
-        alt: Array.isArray(photosAlt) ? photosAlt[i] ?? p.alt : p.alt,
-        isCover: i === photoCoverIndex,
-      })),
-    [photoPreviews, photosAlt]
-  );
-  // Legacy videoItems computation retained for fallback but replaced by new VideoUploadSection below.
-  // Legacy videoItems removed.
-
-  const photoCount = photoPreviews?.length ?? 0;
-  // videoCount unused after migration.
-  const PHOTO_MAX = 15;
-  const VIDEO_MAX = 10;
-
-  // Fallback input change handlers: if parent didn't provide onPhotoChange/onVideoChange,
-  // call the addFiles delegates directly so "Add" buttons work.
   const handlePhotoInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (typeof onPhotoChange === "function") {
-      onPhotoChange(e);
+    if (typeof onPhotoChangeAction === "function") {
+      onPhotoChangeAction(e);
       return;
     }
     const list = Array.from(e.target.files || []);
     if (list.length) {
       const filtered = list.filter((f) => f.type.startsWith("image/"));
-      onAddPhotoFiles?.(filtered);
+      onAddPhotoFilesAction?.(filtered);
     }
-    // allow selecting same file again
     e.target.value = "";
   };
-  // Legacy file input change handler for videos removed.
 
-  // Drop/paste handlers
   const handleFilesDrop = (
     e: React.DragEvent<HTMLDivElement>,
     kind: "photo"
@@ -126,9 +85,10 @@ export function MediaPricingStep({
     if (!files.length) return;
     const filtered = files.filter((f) => f.type.startsWith("image/"));
     if (!filtered.length) return;
-    if (kind === "photo") onAddPhotoFiles?.(filtered);
+    if (kind === "photo") onAddPhotoFilesAction?.(filtered);
     if (kind === "photo") setDraggingPhotos(false);
   };
+
   const handleDragOver = (
     e: React.DragEvent<HTMLDivElement>,
     kind: "photo"
@@ -136,9 +96,11 @@ export function MediaPricingStep({
     e.preventDefault();
     if (kind === "photo") setDraggingPhotos(true);
   };
+
   const handleDragLeave = (kind: "photo") => {
     if (kind === "photo") setDraggingPhotos(false);
   };
+
   const handlePaste = (
     e: React.ClipboardEvent<HTMLDivElement>,
     kind: "photo"
@@ -149,8 +111,22 @@ export function MediaPricingStep({
     if (!items.length) return;
     const filtered = items.filter((f) => f.type.startsWith("image/"));
     if (!filtered.length) return;
-    if (kind === "photo") onAddPhotoFiles?.(filtered);
+    if (kind === "photo") onAddPhotoFilesAction?.(filtered);
   };
+
+  const photoCount = photoPreviews?.length ?? 0;
+  const PHOTO_MAX = 15;
+  const VIDEO_MAX = 10;
+
+  const photoItems = useMemo(
+    () =>
+      (photoPreviews || []).map((p, i) => ({
+        ...p,
+        alt: photosAlt[i] ?? p.alt,
+        isCover: i === photoCoverIndex,
+      })),
+    [photoPreviews, photosAlt]
+  );
 
   return (
     <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
@@ -166,7 +142,6 @@ export function MediaPricingStep({
 
       <hr className="border-t my-6 border-neutral-200" />
       <div className="space-y-6">
-        {/* Photos */}
         <div
           className={`rounded-2xl border p-4 ${
             draggingPhotos
@@ -208,23 +183,23 @@ export function MediaPricingStep({
             items={photoItems}
             emptyLabel="No photos uploaded"
             onRemove={handleRemovePhoto}
-            onUpdateAlt={handleUpdatePhotoAlt}
+            onUpdateAlt={(i, alt) => {
+              const next = [...photosAlt];
+              next[i] = alt;
+              setValue("photosAlt" as keyof CharterFormValues, next, {
+                shouldValidate: false,
+              });
+            }}
             onMove={handleMovePhoto}
-            // Retry removed; image uploads are atomic
           />
         </div>
 
-        {/* Videos - new minimal uploader section */}
         <div className="rounded-2xl border p-4 border-neutral-200">
           <VideoUploadSection
             charterId={currentCharterId || null}
             max={VIDEO_MAX}
-            onBlockingChange={onVideoBlockingChange}
+            onBlockingChange={onVideoBlockingChangeAction}
             onItemsChange={(items) => {
-              if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
-                console.log("[VideoUploadSection bridge] items update", items);
-              }
-              // Derive ready videos (finalUrl present)
               const ready = items
                 .filter((i) => i.status === "ready" && i.finalUrl)
                 .map((i) => {
@@ -239,9 +214,11 @@ export function MediaPricingStep({
                       );
                     } catch {}
                   }
-                  return { name: display, url: i.finalUrl as string };
+                  const canonical = i.finalKey || display;
+                  return { name: canonical, url: i.finalUrl as string };
                 });
-              onReadyVideosChange?.(ready);
+              setValue("uploadedVideos", ready, { shouldValidate: true });
+              onReadyVideosChangeAction?.(ready);
             }}
             seedVideos={seedVideos}
           />

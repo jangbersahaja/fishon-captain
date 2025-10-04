@@ -54,7 +54,7 @@ export const DraftDevPanel: React.FC<DraftDevPanelProps> = ({
       </div>
     );
   return (
-    <div className="mt-10 space-y-2 rounded-xl border border-slate-300 bg-slate-50 p-4">
+    <div className="mt-10 space-y-2 max-w-4xl w-full rounded-xl border border-slate-300 bg-slate-50 p-4">
       <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-slate-600">
         <span>Draft ID: {draftId}</span>
         <span>

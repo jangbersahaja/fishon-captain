@@ -1,5 +1,6 @@
 "use client";
 import { useToasts } from "@/components/toast/ToastContext";
+import { zIndexClasses } from "@/config/zIndex";
 import { useCharterFormSelectors } from "@features/charter-onboarding/context/CharterFormContext";
 import { logFormDebug } from "@features/charter-onboarding/debug";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
@@ -64,7 +65,7 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
   return (
     <div
       ref={barRef}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-4"
+      className={`pointer-events-none fixed inset-x-0 bottom-0 ${zIndexClasses.navigation} flex justify-center pb-4`}
     >
       <div className="pointer-events-auto mx-auto w-full max-w-xl px-4">
         <div

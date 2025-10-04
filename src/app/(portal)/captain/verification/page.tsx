@@ -1,4 +1,5 @@
 "use client";
+import { zIndexClasses } from "@/config/zIndex";
 import {
   AlertCircle,
   CheckCircle2,
@@ -213,7 +214,8 @@ export default function VerificationPage() {
         <h1 className="text-xl font-semibold text-slate-900">ID & Documents</h1>
       </div>
       <p className="text-sm text-slate-600">
-        Upload required identification and licenses to finish your registration.
+        Upload your government ID (front and back) to proceed. Other documents
+        are optional but can help speed up approval.
       </p>
 
       {/* Guidance banner: prompt for both ID sides until uploaded */}
@@ -350,8 +352,8 @@ export default function VerificationPage() {
         </Section>
 
         <Section
-          title="Captain license (required)"
-          description="Upload image or any supporting document (PDF, DOCX, etc.)."
+          title="Captain license"
+          description="Upload an image or document (PDF, DOCX, etc.). Optional, but recommended."
           processing={captainLicense?.status === "processing"}
           validated={captainLicense?.status === "validated"}
         >
@@ -382,7 +384,6 @@ export default function VerificationPage() {
             openConfirm={openConfirm}
             loading={!!loading["captainLicense"]}
             accept="*/*"
-            required
           />
           <SubmitRow
             disabled={
@@ -415,8 +416,8 @@ export default function VerificationPage() {
         </Section>
 
         <Section
-          title="Boat registration certificate (required)"
-          description="Upload image or any document file (PDF, DOCX, ZIP if needed)."
+          title="Boat registration certificate"
+          description="Upload any supporting document (PDF, image, DOCX, ZIP). Optional."
           processing={boatReg?.status === "processing"}
           validated={boatReg?.status === "validated"}
         >
@@ -441,7 +442,6 @@ export default function VerificationPage() {
             openConfirm={openConfirm}
             loading={!!loading["boatRegistration"]}
             accept="*/*"
-            required
           />
           <SubmitRow
             disabled={
@@ -472,8 +472,8 @@ export default function VerificationPage() {
         </Section>
 
         <Section
-          title="Fishing license (required)"
-          description="Upload image or any document file."
+          title="Fishing license"
+          description="Upload image or document. Optional."
           processing={fishingLicense?.status === "processing"}
           validated={fishingLicense?.status === "validated"}
         >
@@ -504,7 +504,6 @@ export default function VerificationPage() {
             openConfirm={openConfirm}
             loading={!!loading["fishingLicense"]}
             accept="*/*"
-            required
           />
           <SubmitRow
             disabled={
@@ -867,7 +866,9 @@ function ConfirmDialog({
   busy?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className={`fixed inset-0 ${zIndexClasses.backdrop} flex items-center justify-center p-4`}
+    >
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
       <div className="relative w-full max-w-sm rounded-lg border border-slate-200 bg-white p-5 shadow-xl">
         <h3 className="text-sm font-medium text-slate-800">Confirm removal</h3>

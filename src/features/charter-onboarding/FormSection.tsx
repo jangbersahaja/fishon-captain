@@ -32,6 +32,7 @@ import { getFieldError } from "@features/charter-onboarding/utils/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 // (Icons now handled in extracted components)
 import { feedbackTokens } from "@/config/designTokens";
+import { zIndexClasses } from "@/config/zIndex";
 import { ActionButtons } from "@features/charter-onboarding/components/ActionButtons";
 import { DraftDevPanel } from "@features/charter-onboarding/components/DraftDevPanel";
 import { ErrorSummary } from "@features/charter-onboarding/components/ErrorSummary";
@@ -245,6 +246,149 @@ export default function FormSection() {
       .current()
       .then(() => setInitialDirtySaved(true));
   }, [initialDirtySaved, isEditing, isDirty, serverDraftId, draftSnapshot]);
+
+  // Create-flow media hydration: if we have a server draft with previously uploaded media
+  // (uploadedPhotos / uploadedVideos) but the form + media manager state are empty (e.g. page reload),
+  // fetch the current draft once and hydrate media + avatarUrl into the form and manager.
+  const createMediaHydratedRef = useRef(false);
+  useEffect(() => {
+    if (isEditing) return; // edit mode handled elsewhere
+    if (!serverDraftId) return; // need a draft id
+    if (createMediaHydratedRef.current) return; // already attempted
+    // Avoid clobbering if user has already added media this session
+    const existingPhotoCount = (form.getValues("uploadedPhotos") || []).length;
+    const existingVideoCount = (form.getValues("uploadedVideos") || []).length;
+    if (existingPhotoCount || existingVideoCount) {
+      createMediaHydratedRef.current = true;
+      return;
+    }
+    let cancelled = false;
+
+    interface DraftMediaHydrationResponse {
+      draft?: {
+        id: string;
+        data?: {
+          uploadedPhotos?: Array<{ name: string; url: string }>;
+          uploadedVideos?: Array<{ name: string; url: string }>;
+          operator?: { avatarUrl?: string };
+        };
+      };
+    }
+
+    const hydrateOnce = async (attempt = 0): Promise<boolean> => {
+      try {
+        const res = await fetch(`/api/charter-drafts/${serverDraftId}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+            console.warn(
+              "[create-media-hydration] draft fetch not ok",
+              res.status
+            );
+          }
+          return false;
+        }
+        const json: DraftMediaHydrationResponse | null = await res
+          .json()
+          .catch(() => null);
+        const draft = json?.draft;
+        const data = draft?.data;
+        if (!data) return false;
+        const photos = Array.isArray(data.uploadedPhotos)
+          ? data.uploadedPhotos
+          : [];
+        const videos = Array.isArray(data.uploadedVideos)
+          ? data.uploadedVideos
+          : [];
+        const avatarUrl = data?.operator?.avatarUrl;
+        if (cancelled) return true; // stop retries silently
+        if (photos.length) {
+          form.setValue("uploadedPhotos", photos, {
+            shouldDirty: false,
+            shouldValidate: false,
+          });
+          setExistingImages(photos);
+        }
+        if (videos.length) {
+          form.setValue("uploadedVideos", videos, {
+            shouldDirty: false,
+            shouldValidate: false,
+          });
+          setExistingVideos(videos);
+        }
+        if (avatarUrl) {
+          form.setValue("operator.avatarUrl", avatarUrl, {
+            shouldDirty: false,
+            shouldValidate: false,
+          });
+        }
+        const hydrated = photos.length > 0 || videos.length > 0 || !!avatarUrl;
+        if (hydrated && process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.log("[create-media-hydration] success", {
+            attempt,
+            photos: photos.length,
+            videos: videos.length,
+            hasAvatar: !!avatarUrl,
+          });
+        }
+        return hydrated;
+      } catch (e) {
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+          console.warn("[create-media-hydration] error", e);
+        }
+        return false;
+      }
+    };
+
+    (async () => {
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
+        const ok = await hydrateOnce(attempt);
+        if (ok) break;
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      }
+      if (!cancelled) createMediaHydratedRef.current = true;
+    })();
+
+    if (typeof window !== "undefined") {
+      // Expose manual debug helper for console testing
+      (
+        window as unknown as { __rehydrateDraftMedia?: () => Promise<boolean> }
+      ).__rehydrateDraftMedia = () => hydrateOnce(999);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditing, serverDraftId, form, setExistingImages, setExistingVideos]);
+
+  // Auto-save draft when media counts change (create flow) so a reload hydrates them.
+  const lastMediaSignatureRef = useRef<string>("__init");
+  useEffect(() => {
+    if (isEditing) return; // edit mode only uses live PATCH on order update elsewhere
+    if (!serverDraftId) return;
+    const sig = JSON.stringify({
+      images: existingImages.map((m) => m.name),
+      videos: existingVideos.map((m) => m.name),
+    });
+    if (sig === lastMediaSignatureRef.current) return;
+    lastMediaSignatureRef.current = sig;
+    if (existingImages.length === 0 && existingVideos.length === 0) return;
+    const timer = setTimeout(() => {
+      draftSnapshot
+        .saveServerDraftSnapshot()
+        .then(() => {
+          if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+            console.log("[media-autosave] saved draft after media change", {
+              images: existingImages.length,
+              videos: existingVideos.length,
+            });
+          }
+        })
+        .catch(() => {});
+    }, 500); // slight debounce to batch rapid additions
+    return () => clearTimeout(timer);
+  }, [existingImages, existingVideos, isEditing, serverDraftId, draftSnapshot]);
 
   // (ReviewBar now handles its own enter animation)
 
@@ -560,7 +704,9 @@ export default function FormSection() {
         tabIndex={0}
       >
         {isFormDebug() && (
-          <div className="fixed top-2 right-2 z-[100] rounded bg-indigo-600/80 px-2 py-1 text-[10px] font-mono text-white shadow">
+          <div
+            className={`fixed top-2 right-2 ${zIndexClasses.debug} rounded bg-indigo-600/80 px-2 py-1 text-[10px] font-mono text-white shadow`}
+          >
             FORM DEBUG
           </div>
         )}
@@ -623,27 +769,52 @@ export default function FormSection() {
               (ready: { name: string; url: string }[]) => {
                 if (!ready.length) return;
                 setExistingVideos((prev) => {
+                  // Fast path: identical arrays
                   if (
                     prev.length === ready.length &&
-                    prev.every(
-                      (p, i) =>
-                        p.name === ready[i].name && p.url === ready[i].url
-                    )
-                  )
-                    return prev;
-                  const map = new Map(prev.map((v) => [v.name, v]));
+                    prev.every((p) => ready.some((r) => r.name === p.name))
+                  ) {
+                    // Still check URLs; if all match, bail.
+                    const allMatch = prev.every((p) => {
+                      const r = ready.find((x) => x.name === p.name);
+                      return r && r.url === p.url;
+                    });
+                    if (allMatch) return prev;
+                  }
+                  const byName = new Map(prev.map((v) => [v.name, v] as const));
+                  const byUrl = new Map(prev.map((v) => [v.url, v] as const));
                   let changed = false;
                   for (const r of ready) {
-                    const existing = map.get(r.name);
-                    if (!existing) {
-                      map.set(r.name, r);
-                      changed = true;
-                    } else if (existing.url !== r.url) {
-                      map.set(r.name, { ...existing, url: r.url });
+                    // If a video with the same URL already exists (even if name differs), keep the existing entry (avoid duplicate)
+                    const existingByUrl = byUrl.get(r.url);
+                    if (existingByUrl) {
+                      // Optionally unify on canonical name (prefer storage-key like names containing '/media/')
+                      const looksLikeStorageKey = /\/media\//.test(r.name);
+                      if (
+                        looksLikeStorageKey &&
+                        existingByUrl.name !== r.name &&
+                        !byName.has(r.name)
+                      ) {
+                        // Rename entry to canonical storage key for consistency
+                        byName.delete(existingByUrl.name);
+                        byName.set(r.name, { ...existingByUrl, name: r.name });
+                        changed = true;
+                      }
+                      continue; // already represented
+                    }
+                    // Not present by URL; if name existing but URL differs update URL; else add new
+                    const existingByName = byName.get(r.name);
+                    if (existingByName) {
+                      if (existingByName.url !== r.url) {
+                        byName.set(r.name, { ...existingByName, url: r.url });
+                        changed = true;
+                      }
+                    } else {
+                      byName.set(r.name, r);
                       changed = true;
                     }
                   }
-                  return changed ? Array.from(map.values()) : prev;
+                  return changed ? Array.from(byName.values()) : prev;
                 });
               },
               [setExistingVideos]

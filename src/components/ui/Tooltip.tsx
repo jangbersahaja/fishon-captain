@@ -54,7 +54,7 @@ export function Tooltip({
         <span
           id={id}
           role="tooltip"
-          className={`pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-medium text-white shadow-md ${pos} animate-in fade-in`}
+          className={`pointer-events-none absolute z-[25] whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-medium text-white shadow-md ${pos} animate-in fade-in`}
         >
           {content}
           <span className="absolute inset-0 -z-10" aria-hidden />

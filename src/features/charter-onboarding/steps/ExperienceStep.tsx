@@ -28,6 +28,7 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
   const amenities = watch("amenities");
   const pickupAreas = watch("pickup.areas");
   const pickupAvailable = watch("pickup.available");
+  const withoutBoat = watch("withoutBoat");
 
   const toggleAmenity = useCallback(
     (value: string) => {
@@ -68,18 +69,52 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
 
       <hr className="border-t my-6 border-neutral-200" />
 
-      <div className="mt-6 grid gap-5 sm:grid-cols-2">
+      <div className="flex w-full justify-end">
+        <label className="mt-6 flex items-center gap-3 text-sm text-slate-700">
+          Service Without Boat{" "}
+          <input
+            type="checkbox"
+            {...register("withoutBoat")}
+            onChange={(e) => {
+              setValue("withoutBoat", e.target.checked, {
+                shouldValidate: true,
+              });
+              if (e.target.checked) {
+                // Clear all boat field values when checkbox is checked
+                setValue("boat.name", "", { shouldValidate: true });
+                setValue("boat.type", "", { shouldValidate: true });
+                setValue("boat.lengthFeet", undefined, {
+                  shouldValidate: true,
+                });
+                setValue("boat.capacity", undefined, { shouldValidate: true });
+              }
+            }}
+            className="h-4 w-4 rounded border-slate-300"
+          />
+        </label>
+      </div>
+
+      <div
+        className={`mt-4 grid gap-5 sm:grid-cols-2 transition-opacity ${
+          withoutBoat ? "opacity-40" : "opacity-100"
+        }`}
+      >
         <Field label="Boat name" error={fieldError("boat.name")}>
           <input
             {...register("boat.name", {
               setValueAs: (v) => (typeof v === "string" ? v.trim() : v),
             })}
+            disabled={withoutBoat}
             className={inputClass}
             placeholder="e.g. Sea Breeze"
           />
         </Field>
         <Field label="Boat type" error={fieldError("boat.type")}>
-          <select {...register("boat.type")} className={inputClass}>
+          <select
+            {...register("boat.type")}
+            disabled={withoutBoat}
+            className={inputClass}
+          >
             {BOAT_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
@@ -93,6 +128,7 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
             min={1}
             step={1}
             {...register("boat.lengthFeet", { valueAsNumber: true })}
+            disabled={withoutBoat}
             className={inputClass}
             placeholder="e.g. 28"
           />
@@ -103,6 +139,7 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
             min={1}
             step={1}
             {...register("boat.capacity", { valueAsNumber: true })}
+            disabled={withoutBoat}
             className={inputClass}
             placeholder="Max anglers"
           />
@@ -183,7 +220,7 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
               <input
                 type="radio"
                 value="no"
-                checked={!pickupAvailable}
+                checked={pickupAvailable === false}
                 onChange={() =>
                   setValue(
                     "pickup",

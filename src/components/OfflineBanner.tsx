@@ -1,5 +1,6 @@
 "use client";
 import { feedbackTokens } from "@/config/designTokens";
+import { zIndexClasses } from "@/config/zIndex";
 import { useOnlineStatusBanner } from "@/hooks/useOnlineStatusBanner";
 import { offlineQueue } from "@/lib/offlineQueue";
 import { useEffect, useState } from "react";
@@ -27,7 +28,7 @@ export default function OfflineBanner() {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed inset-x-0 top-0 z-[70] flex items-center justify-between gap-4 px-4 py-2 text-xs font-medium shadow-md ${feedbackTokens.warning.solid}`}
+      className={`fixed inset-x-0 top-0 ${zIndexClasses.offlineBanner} flex items-center justify-between gap-4 px-4 py-2 text-xs font-medium shadow-md ${feedbackTokens.warning.solid}`}
     >
       <span className="truncate">
         Offline.{" "}

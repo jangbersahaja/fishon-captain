@@ -14,4 +14,6 @@ export interface Toast {
   sticky?: boolean; // if true, never auto dismiss
   actions?: ToastAction[];
   replace?: boolean; // if true, newer with same id replaces immediately
+  /** If false, this error toast will not be persisted across route changes. */
+  persist?: boolean;
 }

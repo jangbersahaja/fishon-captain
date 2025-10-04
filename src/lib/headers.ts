@@ -26,6 +26,7 @@ export function applySecurityHeaders(res: Response): Response {
     specificBlobHost,
     GOOGLE_SCRIPT,
     GOOGLE_STATIC,
+    "https://lh3.googleusercontent.com",
   ]
     .filter(Boolean)
     .join(" ");

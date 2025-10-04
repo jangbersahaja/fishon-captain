@@ -143,6 +143,6 @@ export function mapCharterToDraftValues(params: {
     videos: [],
     uploadedPhotos: [],
     uploadedVideos: [],
-    supportedLanguages: [],
+    withoutBoat: false,
   } as DraftValues;
 }

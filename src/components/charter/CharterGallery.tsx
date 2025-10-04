@@ -1,5 +1,6 @@
 "use client";
 
+import { zIndexClasses } from "@/config/zIndex";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -340,7 +341,7 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-[999] bg-black/80 backdrop-blur-sm"
+      className={`fixed inset-0 ${zIndexClasses.modal} bg-black/80 backdrop-blur-sm`}
       role="dialog"
       aria-modal="true"
       ref={containerRef}

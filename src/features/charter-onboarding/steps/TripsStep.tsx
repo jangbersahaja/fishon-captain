@@ -157,10 +157,13 @@ export function TripsStep({ form }: TripsStepProps) {
                         tripType: nextValue,
                         name: isCustom ? current?.name || "" : nextValue,
                         maxAnglers:
-                          current?.maxAnglers ||
-                          (Number.isFinite(boatCapacity)
+                          typeof current?.maxAnglers === "number" &&
+                          !isNaN(current.maxAnglers)
+                            ? current.maxAnglers
+                            : typeof boatCapacity === "number" &&
+                              Number.isFinite(boatCapacity)
                             ? boatCapacity
-                            : Number.NaN),
+                            : 1, // fallback to 1 if undefined
                       });
                     }}
                   >
@@ -221,6 +224,12 @@ export function TripsStep({ form }: TripsStepProps) {
                     className={inputClass}
                     placeholder={
                       Number.isFinite(boatCapacity) ? String(boatCapacity) : "4"
+                    }
+                    value={
+                      typeof trips?.[index]?.maxAnglers === "number" &&
+                      !isNaN(trips[index].maxAnglers)
+                        ? trips[index].maxAnglers
+                        : 1
                     }
                   />
                 </Field>

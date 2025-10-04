@@ -70,12 +70,6 @@ export const charterFormSchema = z.object({
     .number()
     .min(-180, { message: "Longitude must be between -180 and 180" })
     .max(180, { message: "Longitude must be between -180 and 180" }),
-  // Languages captain can communicate in (scaffolding for future multi-language UI/description generation)
-  supportedLanguages: z
-    .array(z.string().min(2))
-    .optional()
-    .default(["Malay", "English"]) // Malay primary; English commonly second
-    .refine((arr) => arr.length > 0, "Select at least one language"),
   // User editable final description (can start from auto-generated). Increase minimum length.
   description: z
     .string()
@@ -84,17 +78,23 @@ export const charterFormSchema = z.object({
   generatedDescription: z.string().optional(),
   // Tone selection for generator.
   tone: z.enum(["friendly", "adventurous", "professional"]).default("friendly"),
+  // Service without boat checkbox
+  withoutBoat: z.boolean().optional().default(false),
   boat: z.object({
-    name: z.string().min(1, "Boat name is required"),
-    type: z.string().min(1, "Boat type is required"),
-    lengthFeet: z.number().positive({ message: "Length must be positive" }),
+    name: z.string().optional(),
+    type: z.string().optional(),
+    lengthFeet: z
+      .number()
+      .positive({ message: "Length must be positive" })
+      .optional(),
     capacity: z
       .number()
       .int({ message: "Whole numbers only" })
-      .min(1, { message: "At least 1 passenger" }),
+      .positive({ message: "Capacity must be positive" })
+      .optional(),
     features: z.array(z.string()).optional().default([]),
   }),
-  amenities: z.array(z.string()).optional().default([]),
+  amenities: z.array(z.string()).optional().default([]).optional(),
   policies: policiesSchema,
   pickup: z
     .object({
@@ -117,7 +117,11 @@ export const charterFormSchema = z.object({
     .array(fileSchema)
     .min(3, "Upload at least 3 photos")
     .max(15, "Maximum 15 photos"),
-  videos: z.array(fileSchema).max(3, "Maximum 3 videos").optional().default([]),
+  videos: z
+    .array(fileSchema)
+    .max(10, "Maximum 10 videos")
+    .optional()
+    .default([]),
   // Persisted (already uploaded) media metadata for draft reload (NOT validated as user input fields)
   uploadedPhotos: z
     .array(
@@ -152,7 +156,6 @@ export const basicsStepSchema = charterFormSchema.pick({
   postcode: true,
   latitude: true,
   longitude: true,
-  supportedLanguages: true,
 });
 
 export const experienceStepSchema = charterFormSchema.pick({
