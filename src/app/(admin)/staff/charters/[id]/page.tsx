@@ -230,12 +230,34 @@ export default async function StaffCharterDetailPage({
         </div>
         <div className="mt-3 flex gap-2">
           {c.captain?.userId ? (
-            <a
-              href={`/staff/verification/${c.captain.userId}`}
-              className="rounded-full border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
-            >
-              Open verification
-            </a>
+            <>
+              <a
+                href={`/staff/verification/${c.captain.userId}`}
+                className="rounded-full border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                Open verification
+              </a>
+              <a
+                href={`/captain?adminUserId=${c.captain.userId}`}
+                className="rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs text-orange-700 hover:bg-orange-100"
+              >
+                🛡️ Open Dashboard
+              </a>
+              <a
+                href={`/captain/form?adminUserId=${c.captain.userId}`}
+                className="rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs text-orange-700 hover:bg-orange-100"
+              >
+                🛡️ Open Form
+              </a>
+              {charter.id && (
+                <a
+                  href={`/captain/form?editCharterId=${charter.id}&adminUserId=${c.captain.userId}`}
+                  className="rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs text-orange-700 hover:bg-orange-100"
+                >
+                  🛡️ Edit Charter
+                </a>
+              )}
+            </>
           ) : null}
         </div>
       </section>

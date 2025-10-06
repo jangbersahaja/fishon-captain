@@ -471,6 +471,14 @@ export default async function StaffRegistrationsPage({
                         >
                           View
                         </Link>
+                        {role === "ADMIN" && (
+                          <a
+                            href={`/captain/form?adminUserId=${d.userId}`}
+                            className="rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs text-orange-700 hover:bg-orange-100"
+                          >
+                            🛡️ Open Draft
+                          </a>
+                        )}
                         {user?.email
                           ? (() => {
                               const body = encodeURIComponent(

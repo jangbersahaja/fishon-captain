@@ -6,12 +6,14 @@ import { CharterMessages } from "./errors";
 export interface PatchEditArgs {
   charterId: string;
   values: CharterFormValues;
+  adminUserId?: string | null;
   setLastSavedAt: (iso: string) => void;
 }
 
 export async function patchEditCharter({
   charterId,
   values,
+  adminUserId,
   setLastSavedAt,
 }: PatchEditArgs): Promise<{ ok: boolean }> {
   const payload = {
@@ -88,7 +90,10 @@ export async function patchEditCharter({
         )
         ?.filter(Boolean) || [],
   };
-  const res = await fetch(`/api/charters/${charterId}`, {
+  const adminParam = adminUserId
+    ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+    : "";
+  const res = await fetch(`/api/charters/${charterId}${adminParam}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

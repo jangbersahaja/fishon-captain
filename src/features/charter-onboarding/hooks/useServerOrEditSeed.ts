@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 
 export interface UseServerOrEditSeedArgs {
   editCharterId: string | null;
+  adminUserId: string | null;
   reset: (values: CharterFormValues, options?: { keepDirty?: boolean }) => void;
   setLastSavedAt: (iso: string | null) => void;
   clearLocalDraft: () => void;
@@ -51,6 +52,7 @@ export interface UseServerOrEditSeedResult {
 
 export function useServerOrEditSeed({
   editCharterId,
+  adminUserId,
   reset,
   setLastSavedAt,
   clearLocalDraft,
@@ -102,9 +104,15 @@ export function useServerOrEditSeed({
     (async () => {
       try {
         if (editCharterId) {
-          const res = await fetch(`/api/charters/${editCharterId}/get`, {
-            method: "GET",
-          });
+          const adminParam = adminUserId
+            ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+            : "";
+          const res = await fetch(
+            `/api/charters/${editCharterId}/get${adminParam}`,
+            {
+              method: "GET",
+            }
+          );
           if (!res.ok) return;
           const json = await res.json();
           if (cancelled) return;
@@ -135,7 +143,10 @@ export function useServerOrEditSeed({
         }
         // NEW FLOW: load or create draft (only if we don't already have a serverDraftId)
         if (serverDraftId) return;
-        const existingRes = await fetch("/api/charter-drafts", {
+        const adminParam = adminUserId
+          ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+          : "";
+        const existingRes = await fetch(`/api/charter-drafts${adminParam}`, {
           method: "GET",
         });
         if (existingRes.ok) {
@@ -148,7 +159,7 @@ export function useServerOrEditSeed({
             return;
           }
         }
-        const createRes = await fetch("/api/charter-drafts", {
+        const createRes = await fetch(`/api/charter-drafts${adminParam}`, {
           method: "POST",
         });
         if (createRes.ok) {

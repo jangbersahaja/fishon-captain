@@ -31,11 +31,9 @@ const BodySchema = z.object({
 
 export async function PATCH(
   req: Request,
-  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const paramsValue =
-    ctx.params instanceof Promise ? await ctx.params : ctx.params;
-  const charterId = paramsValue.id;
+  const { id: charterId } = await ctx.params;
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
   if (!userId) {

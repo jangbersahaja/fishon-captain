@@ -40,18 +40,23 @@ const sections: SectionDef[] = [
           </h3>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
             <li>
-              Customers may cancel a booking up to 7 days before the trip date
-              for a full refund, minus any payment gateway or processing fees.
+              Any cancellation made by the customer before the trip are
+              non-refundable.
             </li>
             <li>
-              Cancellations made within 7 days but more than 48 hours before the
-              trip are eligible for a 50% refund.
+              However, refund could be made up to 50% depends on the company
+              policies, minus any payment gateway, management and processing
+              fees.
             </li>
             <li>
-              Cancellations made less than 48 hours before the trip are
+              Cancellations made less than 7 days before the trip are
               non-refundable.
             </li>
           </ul>
+          <span>
+            Fishon will review any cases individually and may issue a credit
+            voucher at our discretion.
+          </span>
         </div>
         <div>
           <h3 className="text-sm font-semibold tracking-wide text-slate-700 flex items-center gap-2">

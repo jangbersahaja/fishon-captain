@@ -15,18 +15,19 @@ export const dynamic = "force-dynamic";
 export default async function StaffMediaPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (!session?.user) redirect("/auth?mode=signin&next=/staff/media");
   if (role !== "STAFF" && role !== "ADMIN") redirect("/captain");
 
-  const tab = parseTab(getParam(searchParams, "tab"));
+  const sp = searchParams ? await searchParams : {};
+  const tab = parseTab(getParam(sp, "tab"));
 
   const [pipelineData, storageData] = await Promise.all([
-    tab === "pipeline" ? loadPipelineData(searchParams) : Promise.resolve(null),
-    tab === "storage" ? loadStorageData(searchParams) : Promise.resolve(null),
+    tab === "pipeline" ? loadPipelineData(sp) : Promise.resolve(null),
+    tab === "storage" ? loadStorageData(sp) : Promise.resolve(null),
   ]);
 
   return (
@@ -44,7 +45,7 @@ export default async function StaffMediaPage({
 
       <div className="flex items-center gap-2">
         <Link
-          href={buildHref("/staff/media", searchParams, { tab: "pipeline" })}
+          href={buildHref("/staff/media", sp, { tab: "pipeline" })}
           className={clsx(
             "rounded-full px-4 py-2 text-sm font-medium",
             tab === "pipeline"
@@ -55,7 +56,7 @@ export default async function StaffMediaPage({
           Pending pipeline
         </Link>
         <Link
-          href={buildHref("/staff/media", searchParams, { tab: "storage" })}
+          href={buildHref("/staff/media", sp, { tab: "storage" })}
           className={clsx(
             "rounded-full px-4 py-2 text-sm font-medium",
             tab === "storage"
@@ -68,10 +69,10 @@ export default async function StaffMediaPage({
       </div>
 
       {tab === "storage" && storageData ? (
-        <StorageSection data={storageData} searchParams={searchParams} />
+        <StorageSection data={storageData} searchParams={sp} />
       ) : null}
       {tab === "pipeline" && pipelineData ? (
-        <PipelineSection data={pipelineData} searchParams={searchParams} />
+        <PipelineSection data={pipelineData} searchParams={sp} />
       ) : null}
     </div>
   );

@@ -55,7 +55,7 @@ const ReviewStep = dynamic(
 
 export default function FormSection() {
   const router = useRouter();
-  const { editCharterId } = useCharterFormMode();
+  const { editCharterId, adminUserId } = useCharterFormMode();
   // Revised draft system:
   // - New user: server draft created immediately (status DRAFT)
   // - Any field changed first time: save server draft snapshot
@@ -64,6 +64,7 @@ export default function FormSection() {
   // - Editing existing charter: no draft usage
   // Local storage draft removed, keep stubs for submission strategy API surface.
   const clearDraft = () => {};
+  const [isDraftLoading, setIsDraftLoading] = useState(!editCharterId); // Loading draft for new forms
   const defaultState = useMemo(createDefaultCharterFormValues, []);
   const form = useForm<CharterFormValues>({
     resolver: zodResolver(charterFormSchema) as Resolver<CharterFormValues>,
@@ -90,11 +91,39 @@ export default function FormSection() {
   // Remote / edit seed
   const seed = useCharterDataLoad({
     editCharterId,
+    adminUserId,
     reset,
     setLastSavedAt: (iso) => setLastSavedAt(iso),
     clearLocalDraft: clearDraft,
     initializeDraftState,
   });
+
+  // Set draft loading state based on whether we're editing or have loaded draft data
+  useEffect(() => {
+    if (editCharterId) {
+      setIsDraftLoading(false); // Edit mode doesn't need draft loading
+    } else if (seed.serverDraftId) {
+      // For draft loading, wait a bit to ensure form reset has completed
+      const timer = setTimeout(() => {
+        setIsDraftLoading(false);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [editCharterId, seed.serverDraftId]);
+
+  // Additional check: if we have a server draft but form is still empty, turn off loading state anyway
+  // This prevents infinite loading if draft hydration fails for some reason
+  useEffect(() => {
+    if (!editCharterId && seed.serverDraftId && isDraftLoading) {
+      const timer = setTimeout(() => {
+        setIsDraftLoading(false); // Force loading to stop after 2 seconds
+        console.log(
+          "[FormSection] Forced draft loading to stop to prevent infinite loading"
+        );
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [editCharterId, seed.serverDraftId, isDraftLoading]);
   const {
     effectiveEditing: isEditing,
     currentCharterId,
@@ -407,6 +436,7 @@ export default function FormSection() {
     isEditing,
     currentCharterId,
     fallbackEditCharterId: editCharterId,
+    adminUserId,
     serverDraftId,
     serverVersion,
     saveServerDraftSnapshot: () => draftSnapshot.saveServerDraftSnapshot(),
@@ -472,17 +502,32 @@ export default function FormSection() {
       try {
         const still = form.getValues();
         if (still.charterName) return; // got hydrated meanwhile
-        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        console.log(
+          "[FormSection fallback] primary hydration did not complete, trying fallback",
+          {
+            editCharterId,
+            adminUserId,
+            currentCharterName: still.charterName,
+          }
+        );
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1" || adminUserId) {
           console.log(
             "[FormSection fallback] triggering direct fetch hydration",
             {
               editCharterId,
+              adminUserId,
             }
           );
         }
-        const res = await fetch(`/api/charters/${editCharterId}/get`, {
-          cache: "no-store",
-        });
+        const adminParam = adminUserId
+          ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+          : "";
+        const res = await fetch(
+          `/api/charters/${editCharterId}/get${adminParam}`,
+          {
+            cache: "no-store",
+          }
+        );
         if (!res.ok) {
           console.warn("[FormSection fallback] fetch failed", res.status);
           return;
@@ -542,7 +587,7 @@ export default function FormSection() {
             shouldValidate: false,
           });
         }
-        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1" || adminUserId) {
           console.log("[FormSection fallback] applied reset", {
             charterName: draftValues.charterName,
             city: draftValues.city,
@@ -551,12 +596,19 @@ export default function FormSection() {
       } catch (e) {
         console.error("[FormSection fallback] error", e);
       }
-    }, 600); // allow primary hook ~600ms to hydrate first
+    }, 800); // allow primary hook ~800ms to hydrate first (increased for admin override)
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [isEditing, editCharterId, form, setExistingImages, setExistingVideos]);
+  }, [
+    isEditing,
+    editCharterId,
+    adminUserId,
+    form,
+    setExistingImages,
+    setExistingVideos,
+  ]);
 
   // Listen for diagnostic hydration patch events dispatched by useCharterDataLoad (edit mode)
   useEffect(() => {
@@ -643,6 +695,34 @@ export default function FormSection() {
 
   // Upload newly added local media (create mode) after successfully advancing past media step.
   // Legacy deferred media upload removed. All media now uploads immediately via useCharterMediaManager.
+
+  // Prepare callbacks for StepSwitch (must be outside conditional return)
+  const onVideoBlockingChange = useCallback(
+    (b: boolean) => setVideoSectionBlocking(b),
+    [setVideoSectionBlocking]
+  );
+
+  const onReadyVideosChange = useCallback(
+    (ready: { name: string; url: string }[]) => {
+      if (!ready.length) return;
+      setExistingVideos((prev) => mergeReadyVideos(prev, ready));
+    },
+    [setExistingVideos]
+  );
+
+  // Show loading state while draft data is being loaded
+  if (isDraftLoading) {
+    return (
+      <div className="space-y-6 pt-6 mx-auto pb-16">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto mb-4"></div>
+            <p className="text-sm text-slate-500">Loading your draft...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <CharterFormProvider
@@ -732,14 +812,36 @@ export default function FormSection() {
             steps={STEP_SEQUENCE}
             currentStep={currentStep}
             completed={stepCompleted}
-            clickable={isEditing}
+            clickable={isEditing || stepCompleted.some(Boolean)} // Enable if editing OR any step is completed
+            isEditing={isEditing} // Pass editing mode to enable full navigation
             onStepClick={(idx) => {
-              if (!isEditing || idx === currentStep) return;
-              // Persist intended target step first (empty diff save) so reload lands correctly.
-              draftSnapshot.setCurrentStep(idx);
-              draftSnapshot
-                .saveServerDraftSnapshot()
-                .finally(() => gotoStep(idx, { force: true }));
+              if (isEditing) {
+                // Edit mode: can navigate to any step
+                if (idx === currentStep) return;
+                console.log("[FormSection] Edit mode: navigating to step", idx);
+                // Persist intended target step first (empty diff save) so reload lands correctly.
+                draftSnapshot.setCurrentStep(idx);
+                draftSnapshot
+                  .saveServerDraftSnapshot()
+                  .finally(() => gotoStep(idx, { force: true }));
+              } else {
+                // Draft mode: can navigate to completed steps or any step up to current step
+                const canNavigate = stepCompleted[idx] || idx <= currentStep; // Allow navigation up to current step
+                console.log("[FormSection] Draft mode: step click", {
+                  targetStep: idx,
+                  currentStep,
+                  stepCompleted: stepCompleted[idx],
+                  canNavigate,
+                });
+                if (canNavigate && idx !== currentStep) {
+                  // Save the step navigation in draft mode too
+                  draftSnapshot.setCurrentStep(idx);
+                  if (serverDraftId) {
+                    draftSnapshot.saveServerDraftSnapshot();
+                  }
+                  gotoStep(idx, { force: true });
+                }
+              }
             }}
           />
           {!isEditing && (
@@ -765,14 +867,8 @@ export default function FormSection() {
             existingVideosCount={existingVideos.length}
             onReorderPhotos={reorderExistingPhotos}
             currentCharterId={currentCharterId}
-            onVideoBlockingChange={(b) => setVideoSectionBlocking(b)}
-            onReadyVideosChange={useCallback(
-              (ready: { name: string; url: string }[]) => {
-                if (!ready.length) return;
-                setExistingVideos((prev) => mergeReadyVideos(prev, ready));
-              },
-              [setExistingVideos]
-            )}
+            onVideoBlockingChange={onVideoBlockingChange}
+            onReadyVideosChange={onReadyVideosChange}
             seedVideos={existingVideos}
           />
           {isReviewStep && (
@@ -826,6 +922,7 @@ export default function FormSection() {
         {showConfirm && (
           <ConfirmDialog
             isEditing={isEditing}
+            requireAgreements={!isEditing}
             onCancel={() => setShowConfirm(false)}
             onConfirm={() => {
               logFormDebug("confirm_submit", {});

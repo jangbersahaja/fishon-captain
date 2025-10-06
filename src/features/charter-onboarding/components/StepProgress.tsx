@@ -8,6 +8,7 @@ type StepProgressProps = {
   completed?: boolean[];
   onStepClick?: (index: number) => void;
   clickable?: boolean;
+  isEditing?: boolean; // Enable full navigation in edit mode
 };
 
 export function StepProgress({
@@ -16,6 +17,7 @@ export function StepProgress({
   completed,
   onStepClick,
   clickable = false,
+  isEditing = false,
 }: StepProgressProps) {
   return (
     <ol
@@ -31,7 +33,10 @@ export function StepProgress({
             ? "current"
             : "upcoming";
         const isDone = completed?.[index];
-        const interactive = clickable && (isDone || index <= currentStep + 1);
+        // In edit mode: allow navigation to all steps
+        // In draft mode: allow navigation up to current step or completed steps
+        const interactive =
+          clickable && (isEditing || isDone || index <= currentStep);
         const handleActivate = () => {
           if (interactive && onStepClick) onStepClick(index);
         };
@@ -54,7 +59,7 @@ export function StepProgress({
               className={clsx(
                 "group flex items-center gap-2 rounded-full px-1 py-1 outline-none transition disabled:cursor-default",
                 interactive
-                  ? "hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-400"
+                  ? "cursor-pointer hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-400"
                   : "opacity-60",
                 status === "current" && "bg-slate-100"
               )}

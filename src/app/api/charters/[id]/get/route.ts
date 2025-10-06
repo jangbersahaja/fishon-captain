@@ -6,18 +6,23 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
-  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const paramsValue =
-    ctx.params instanceof Promise ? await ctx.params : ctx.params;
-  const charterId = paramsValue.id;
+  const { id: charterId } = await ctx.params;
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id;
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
   if (!userId) {
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized" }, { status: 401 })
     );
   }
+
+  // Check for admin override
+  const url = new URL(req.url);
+  const adminUserId = url.searchParams.get("adminUserId");
+  const isAdminOverride = userRole === "ADMIN" && adminUserId;
+
   const charter = await prisma.charter.findUnique({
     where: { id: charterId },
     include: {
@@ -50,7 +55,15 @@ export async function GET(
       },
     },
   });
-  if (!charter || charter.captain.userId !== userId) {
+
+  if (!charter) {
+    return applySecurityHeaders(
+      NextResponse.json({ error: "not_found" }, { status: 404 })
+    );
+  }
+
+  // Check ownership or admin override
+  if (!isAdminOverride && charter.captain.userId !== userId) {
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found" }, { status: 404 })
     );

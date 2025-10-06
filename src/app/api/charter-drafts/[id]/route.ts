@@ -16,44 +16,79 @@ function getUserId(session: unknown): string | null {
   return typeof id === "string" ? id : null;
 }
 
+function getUserRole(session: unknown): string | null {
+  if (!session || typeof session !== "object") return null;
+  const user = (session as Record<string, unknown>).user;
+  if (!user || typeof user !== "object") return null;
+  const role = (user as Record<string, unknown>).role;
+  return typeof role === "string" ? role : null;
+}
+
 export async function GET(
   req: Request,
-  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
   const requestId = getRequestId(req);
-  const paramsValue: { id: string } =
-    ctx.params instanceof Promise ? await ctx.params : ctx.params;
-  const draftId: string = paramsValue.id;
+  const { id: draftId } = await ctx.params;
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
+  const userRole = getUserRole(session);
   if (!userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
     );
+
   const draft = await prisma.charterDraft.findUnique({
     where: { id: draftId },
   });
-  if (!draft || draft.userId !== userId)
+
+  if (!draft)
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found", requestId }, { status: 404 })
     );
+
+  // Check ownership or admin override
+  if (userRole !== "ADMIN" && draft.userId !== userId)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "not_found", requestId }, { status: 404 })
+    );
+
   return applySecurityHeaders(NextResponse.json({ draft, requestId }));
 }
 
 export async function PATCH(
   req: Request,
-  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
   const requestId = getRequestId(req);
-  const paramsValue: { id: string } =
-    ctx.params instanceof Promise ? await ctx.params : ctx.params;
-  const draftId: string = paramsValue.id;
+  const { id: draftId } = await ctx.params;
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
+  const userRole = getUserRole(session);
   if (!userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
     );
+
+  // Check draft ownership or admin override
+  const draft = await prisma.charterDraft.findUnique({
+    where: { id: draftId },
+    select: { id: true, userId: true },
+  });
+
+  if (!draft)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "not_found", requestId }, { status: 404 })
+    );
+
+  // Use the draft's owner for operations, but allow admin to edit
+  const effectiveUserId = userRole === "ADMIN" ? draft.userId : userId;
+
+  if (userRole !== "ADMIN" && draft.userId !== userId)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "not_found", requestId }, { status: 404 })
+    );
+
   const json = await req.json().catch(() => null);
   if (!json || typeof json !== "object")
     return applySecurityHeaders(
@@ -81,7 +116,7 @@ export async function PATCH(
     const result = await withTiming("patchDraft", () =>
       patchDraft({
         id: draftId,
-        userId,
+        userId: effectiveUserId,
         clientVersion,
         dataPartial,
         currentStep,
@@ -114,14 +149,13 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
   const requestId = getRequestId(req);
-  const paramsValue: { id: string } =
-    ctx.params instanceof Promise ? await ctx.params : ctx.params;
-  const draftId: string = paramsValue.id;
+  const { id: draftId } = await ctx.params;
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
+  const userRole = getUserRole(session);
   if (!userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
@@ -129,10 +163,18 @@ export async function DELETE(
   const draft = await prisma.charterDraft.findUnique({
     where: { id: draftId },
   });
-  if (!draft || draft.userId !== userId)
+
+  if (!draft)
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found", requestId }, { status: 404 })
     );
+
+  // Check ownership or admin override
+  if (userRole !== "ADMIN" && draft.userId !== userId)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "not_found", requestId }, { status: 404 })
+    );
+
   if (draft.status !== "DRAFT")
     return applySecurityHeaders(
       NextResponse.json({ error: "invalid_status", requestId }, { status: 400 })

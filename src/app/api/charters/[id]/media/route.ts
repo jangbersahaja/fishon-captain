@@ -59,10 +59,9 @@ export const runtime = "nodejs";
 
 export async function PUT(
   req: Request,
-  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const paramsValue: { id: string } =
-    ctx.params instanceof Promise ? await ctx.params : ctx.params;
+  const { id: charterId } = await ctx.params;
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
   if (!userId)
@@ -70,7 +69,6 @@ export async function PUT(
       NextResponse.json({ error: "unauthorized" }, { status: 401 })
     );
 
-  const charterId = paramsValue.id;
   const charter = await prisma.charter.findUnique({
     where: { id: charterId },
     select: { captain: { select: { userId: true } }, media: true, id: true },

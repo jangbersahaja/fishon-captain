@@ -17,14 +17,14 @@ export default function RefundPolicyPage() {
             Refund & Cancellation Policy
           </h1>
           <p className="text-slate-300 max-w-2xl text-sm sm:text-base leading-relaxed">
-            Last updated: 1 October 2025
+            Last updated: 4 October 2025
           </p>
         </div>
       </section>
       <div className="mx-auto max-w-6xl px-4 py-12 prose prose-slate dark:prose-invert prose-headings:scroll-mt-24">
         <p className="not-prose text-sm text-slate-500 mb-8">
           Fishon.my (&quot;Fishon&quot;, &quot;we&quot;, &quot;our&quot;, or
-          &quot;us&quot;) is owned and operated by Kartel Motion Venture
+          &quot;us&quot;) is owned and operated by Kartel Motion Ventures
           (Business Registration No: 202203267096 (003441013-T)). This Refund &
           Cancellation Policy explains how cancellations, rescheduling, and
           refunds are handled for bookings made through our platform Fishon.my.

@@ -31,6 +31,7 @@ export interface UseCharterSubmissionArgs {
   currentCharterId: string | null;
   /** Raw editCharterId from URL (fallback when currentCharterId not yet set by data loader). */
   fallbackEditCharterId?: string | null;
+  adminUserId?: string | null;
   serverDraftId: string | null;
   serverVersion: number | null; // used only for finalize headers
   saveServerDraftSnapshot: () => Promise<number | null>;
@@ -69,6 +70,7 @@ export function useCharterSubmission({
   isEditing,
   currentCharterId,
   fallbackEditCharterId = null,
+  adminUserId = null,
   serverDraftId,
   serverVersion,
   saveServerDraftSnapshot,
@@ -137,6 +139,7 @@ export function useCharterSubmission({
       const { ok } = await patchEditCharter({
         charterId: effectiveId,
         values: vals,
+        adminUserId,
         setLastSavedAt: (iso) => setLastSavedAt(iso),
       });
       if (ok) {
@@ -193,6 +196,7 @@ export function useCharterSubmission({
     isEditing,
     currentCharterId,
     fallbackEditCharterId,
+    adminUserId,
     form,
     setLastSavedAt,
     pushToast,

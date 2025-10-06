@@ -103,6 +103,12 @@ export default async function StaffRegistrationDetailPage({
           >
             Email User
           </a>
+          <a
+            href={`/captain/form?adminUserId=${draft.user.id}`}
+            className="rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-sm text-orange-700 hover:bg-orange-100"
+          >
+            🛡️ Open Form
+          </a>
         </div>
       </div>
 

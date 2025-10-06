@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 export interface UseCharterDataLoadArgs {
   editCharterId: string | null;
+  adminUserId: string | null;
   reset: (values: CharterFormValues, options?: { keepDirty?: boolean }) => void;
   setLastSavedAt: (iso: string | null) => void;
   initializeDraftState: (
@@ -27,6 +28,7 @@ export interface UseCharterDataLoadResult {
 
 export function useCharterDataLoad({
   editCharterId,
+  adminUserId,
   reset,
   setLastSavedAt,
   initializeDraftState,
@@ -47,8 +49,16 @@ export function useCharterDataLoad({
   // may be unstable (recreated each provider render) causing an infinite loop.
   const initRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (initRef.current === editCharterId) return; // already initialized for this id value
-    initRef.current = editCharterId;
+    const cacheKey = `${editCharterId}-${adminUserId}`; // Include adminUserId in cache key
+    if (initRef.current === cacheKey) return; // already initialized for this combination
+    initRef.current = cacheKey;
+
+    console.log("[charterDataLoad] initializing", {
+      editCharterId,
+      adminUserId,
+      mode: editCharterId ? "edit" : "draft",
+    });
+
     const defaults = createDefaultCharterFormValues();
     if (editCharterId) {
       // Only update state if changing from non-editing -> editing
@@ -82,16 +92,33 @@ export function useCharterDataLoad({
     if (!draftLoaded || fetchedRef.current) return;
     fetchedRef.current = true;
     let cancelled = false;
+
+    // Log admin override status
+    if (adminUserId) {
+      console.log("[charterDataLoad] admin override mode", {
+        adminUserId,
+        editCharterId,
+        mode: editCharterId ? "edit" : "draft",
+      });
+    }
+
     (async () => {
       try {
         if (editCharterId) {
           console.log(
             "[charterDataLoad] starting fetch for editCharterId",
-            editCharterId
+            editCharterId,
+            adminUserId ? `(admin override for ${adminUserId})` : ""
           );
-          const res = await fetch(`/api/charters/${editCharterId}/get`, {
-            cache: "no-store",
-          });
+          const adminParam = adminUserId
+            ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+            : "";
+          const res = await fetch(
+            `/api/charters/${editCharterId}/get${adminParam}`,
+            {
+              cache: "no-store",
+            }
+          );
           console.log("[charterDataLoad] fetch status", res.status, res.ok);
           if (!res.ok) {
             // If unauthorized, revert editing flag so sign-in banner can appear upstream (if implemented)
@@ -191,6 +218,16 @@ export function useCharterDataLoad({
               "[charterDataLoad] charter object type",
               typeof jsonObj.charter
             );
+            console.log("[charterDataLoad] charter data preview", {
+              name: jsonObj.charter.name,
+              city: jsonObj.charter.city,
+              captain: jsonObj.charter.captain
+                ? {
+                    displayName: jsonObj.charter.captain.displayName,
+                    phone: jsonObj.charter.captain.phone,
+                  }
+                : null,
+            });
             const charter = jsonObj.charter as {
               charterType?: string;
               name?: string;
@@ -262,7 +299,10 @@ export function useCharterDataLoad({
               console.error("[charterDataLoad] mapping function threw", e);
               return;
             }
-            if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+            if (
+              process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1" ||
+              adminUserId
+            ) {
               console.log("[charterDataLoad] mapped draftValues", draftValues);
             }
             // Primary hydration path: reset entire form with mapped values
@@ -270,7 +310,10 @@ export function useCharterDataLoad({
               // We assume DraftValues is structurally compatible with CharterFormValues root (validated elsewhere)
               if (!draftValues) throw new Error("draftValues undefined");
               reset(draftValues, { keepDirty: false });
-              if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+              if (
+                process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1" ||
+                adminUserId
+              ) {
                 console.log(
                   "[charterDataLoad] applied reset",
                   draftValues.charterName,
@@ -323,10 +366,22 @@ export function useCharterDataLoad({
           }
           return;
         }
-        const existingRes = await fetch("/api/charter-drafts");
+        const adminParam = adminUserId
+          ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+          : "";
+        console.log(
+          "[charterDataLoad] fetching existing drafts",
+          adminUserId ? `(admin override for ${adminUserId})` : "(current user)"
+        );
+        const existingRes = await fetch(`/api/charter-drafts${adminParam}`);
         if (existingRes.ok) {
           const existingJson = await existingRes.json();
           if (existingJson?.draft && !existingJson.draft.charterId) {
+            console.log("[charterDataLoad] found existing draft", {
+              draftId: existingJson.draft.id,
+              hasData: !!existingJson.draft.data,
+              currentStep: existingJson.draft.currentStep,
+            });
             setServerDraftId(existingJson.draft.id);
             setServerVersion(existingJson.draft.version);
             setLastSavedAt(new Date().toISOString());
@@ -338,10 +393,29 @@ export function useCharterDataLoad({
                 existingJson.draft.dataPartial ||
                 null;
               if (draftData && typeof draftData === "object") {
+                console.log("[charterDataLoad] hydrating draft data", {
+                  hasCharterName: !!draftData.charterName,
+                  hasCity: !!draftData.city,
+                  hasOperator: !!draftData.operator,
+                  keys: Object.keys(draftData),
+                });
                 const defaults = createDefaultCharterFormValues();
                 const hydrated = hydrateDraftValues(defaults, draftData);
-                reset(hydrated, { keepDirty: false });
+                console.log("[charterDataLoad] hydrated values", {
+                  charterName: hydrated.charterName,
+                  city: hydrated.city,
+                  operatorDisplayName: hydrated.operator?.displayName,
+                });
+                // Use a small delay to ensure the form is ready
+                setTimeout(() => {
+                  reset(hydrated, { keepDirty: false });
+                  console.log(
+                    "[charterDataLoad] form reset with draft data completed"
+                  );
+                }, 50);
                 // Fire-and-forget event so FormSection media manager can pick up persisted uploaded media via form values
+              } else {
+                console.log("[charterDataLoad] no draft data to hydrate");
               }
               if (
                 typeof existingJson.draft.currentStep === "number" &&
@@ -349,13 +423,17 @@ export function useCharterDataLoad({
               ) {
                 setSavedCurrentStep(existingJson.draft.currentStep);
               }
-            } catch {
-              /* ignore hydration problems */
+            } catch (error) {
+              console.error("[charterDataLoad] draft hydration error", error);
             }
             return;
           }
         }
-        const createRes = await fetch("/api/charter-drafts", {
+        console.log(
+          "[charterDataLoad] creating new draft",
+          adminUserId ? `(admin override for ${adminUserId})` : "(current user)"
+        );
+        const createRes = await fetch(`/api/charter-drafts${adminParam}`, {
           method: "POST",
         });
         if (createRes.ok) {
@@ -373,7 +451,7 @@ export function useCharterDataLoad({
     return () => {
       cancelled = true;
     };
-  }, [draftLoaded, editCharterId, reset, setLastSavedAt]);
+  }, [draftLoaded, editCharterId, adminUserId, reset, setLastSavedAt]);
 
   return {
     effectiveEditing,

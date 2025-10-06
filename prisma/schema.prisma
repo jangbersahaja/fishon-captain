@@ -393,3 +393,27 @@ model AuditLog {
   @@index([entityType, entityId, createdAt])
   @@index([actorUserId, createdAt])
 }
+
+/// --------------------------------------------------
+/// Captain short-form video library (30s trimmed clips)
+/// --------------------------------------------------
+model CaptainVideo {
+  id            String   @id @default(cuid())
+  ownerId       String
+  originalUrl   String   // Uploaded 30s slice (or full if shorter)
+  blobKey       String?  // Underlying blob storage key for deletion / normalization
+  thumbnailUrl  String?
+  thumbnailBlobKey String? // Blob key for persisted thumbnail
+  trimStartSec  Float    @default(0)
+  ready720pUrl  String?  // Optional normalized output
+  normalizedBlobKey String? // Key for normalized 720p variant
+  processStatus String   @default("queued") // queued | processing | ready | failed
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  didFallback   Boolean  @default(false) // Whether client-side trim fell back to untrimmed media
+  fallbackReason String? // Reason provided by client for fallback (parser failure, etc.)
+  updatedAt     DateTime @updatedAt
+  // Minimal future relations: could link to Charter if needed
+  @@index([ownerId, processStatus])
+  @@index([createdAt])
+}

@@ -7,12 +7,10 @@ export default defineConfig({
       "src/server/__tests__/**/*.test.{ts,tsx}",
       "src/server/__tests__/**/*.test.ts",
       "src/features/charter-onboarding/__tests__/**/*.test.{ts,tsx}",
+      "src/lib/**/__tests__/**/*.test.{ts,tsx}",
+      "src/hooks/**/__tests__/**/*.test.{ts,tsx}",
     ],
-    // Use node for server tests, jsdom for client feature tests
-    environmentMatchGlobs: [
-      ["src/server/__tests__/**", "node"],
-      ["src/features/charter-onboarding/__tests__/**", "jsdom"],
-    ],
+    environment: "jsdom", // Default to jsdom for most tests
     setupFiles: ["vitest.setup.ts"],
     globals: true,
   },

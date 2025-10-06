@@ -40,14 +40,15 @@ export const dynamic = "force-dynamic";
 export default async function MediaManagementPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) redirect("/auth?mode=signin");
   const charter = await getCharterWithMedia(userId);
   if (!charter) redirect("/auth?next=/captain/form");
-  const page = Number(searchParams?.page ?? 1) || 1;
+  const sp = searchParams ? await searchParams : {};
+  const page = Number(sp?.page ?? 1) || 1;
   const pageSize = 24;
   const photosAll = charter.media
     .filter((m) => m.kind === "CHARTER_PHOTO")

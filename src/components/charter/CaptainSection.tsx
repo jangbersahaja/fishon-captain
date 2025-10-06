@@ -34,11 +34,6 @@ export default function CaptainSection({ charter }: { charter: Charter }) {
                 {charter.fishingType} fishing
               </span>
             )}
-            {charter.boat?.name && (
-              <span className="inline-flex items-center rounded-full border border-black/10 bg-gray-50 px-2.5 py-1">
-                Boat: {charter.boat.name}
-              </span>
-            )}
           </div>
         </div>
       </div>

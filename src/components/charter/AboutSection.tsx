@@ -12,7 +12,20 @@ export default function AboutSection({
       <div className="prose prose-sm mt-2 max-w-none text-sm leading-6 text-gray-700">
         {(description || "").split(/\n{2,}/).map((p, i) => (
           <p key={i} className="mb-4 last:mb-0">
-            {p.trim()}
+            {p
+              .trim()
+              .split(/\n/)
+              .map((line, j, arr) =>
+                j < arr.length - 1 ? (
+                  <span key={j}>
+                    {line}
+                    <br />
+                    <br />
+                  </span>
+                ) : (
+                  line
+                )
+              )}
           </p>
         ))}
       </div>

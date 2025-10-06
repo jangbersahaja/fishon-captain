@@ -1,6 +1,21 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/**
+ * @deprecated This component is deprecated as of Phase 13.
+ * Please use EnhancedVideoUploader from "@/components/captain/EnhancedVideoUploader" instead.
+ *
+ * The new component provides:
+ * - Automatic retry and persistence with IndexedDB
+ * - Better progress tracking and state management
+ * - Queue management for multiple uploads with concurrency control
+ * - Enhanced error handling with exponential backoff
+ * - Thumbnail capture integration
+ * - Comprehensive test coverage
+ *
+ * Migration guide: /docs/VIDEO_UPLOAD_MIGRATION.md
+ */
+
 // Extremely focused video upload section with detailed lifecycle logging.
 // Responsibilities:
 // 1. Select multiple videos

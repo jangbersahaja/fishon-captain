@@ -28,35 +28,50 @@ function getUserId(session: unknown): string | null {
   return typeof id === "string" ? id : null;
 }
 
+function getUserRole(session: unknown): string | null {
+  if (!session || typeof session !== "object") return null;
+  const user = (session as Record<string, unknown>).user;
+  if (!user || typeof user !== "object") return null;
+  const role = (user as Record<string, unknown>).role;
+  return typeof role === "string" ? role : null;
+}
+
 // Rate limiting constants
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 
-export { __resetMemoryRateLimiter as __resetFinalizeRateLimiter } from "@/lib/rateLimiter";
+// Exported for testing purposes in test environment only
+// export { __resetMemoryRateLimiter as __resetFinalizeRateLimiter } from "@/lib/rateLimiter";
 
 export async function POST(
   req: Request,
-  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
   const requestId = getRequestId(req);
-  const paramsValue: { id: string } =
-    ctx.params instanceof Promise ? await ctx.params : ctx.params;
+  const { id: draftId } = await ctx.params;
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
+  const userRole = getUserRole(session);
   if (!userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
     );
 
+  // Check for admin override
+  const url = new URL(req.url);
+  const adminUserId = url.searchParams.get("adminUserId");
+  const effectiveUserId =
+    userRole === "ADMIN" && adminUserId ? adminUserId : userId;
+
   // Rate limiting via abstraction
   const rl = await rateLimit({
-    key: `finalize:${userId}`,
+    key: `finalize:${effectiveUserId}`,
     windowMs: RATE_LIMIT_WINDOW_MS,
     max: RATE_LIMIT_MAX,
   });
   if (!rl.allowed) {
     logger.warn("finalize_rate_limited", {
-      userId,
+      userId: effectiveUserId,
       remaining: rl.remaining,
       requestId,
     });
@@ -68,10 +83,17 @@ export async function POST(
 
   const draft = await withTiming("finalize_fetchDraft", () =>
     prisma.charterDraft.findUnique({
-      where: { id: paramsValue.id },
+      where: { id: draftId },
     })
   );
-  if (!draft || draft.userId !== userId)
+
+  if (!draft)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "not_found", requestId }, { status: 404 })
+    );
+
+  // Check ownership or admin override
+  if (userRole !== "ADMIN" && draft.userId !== userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found", requestId }, { status: 404 })
     );

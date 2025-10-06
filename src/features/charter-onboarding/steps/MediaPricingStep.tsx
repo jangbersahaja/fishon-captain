@@ -2,9 +2,14 @@
 
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import { PhotoGrid } from "@features/charter-onboarding/components";
-import { VideoUploadSection } from "@features/charter-onboarding/components/VideoUploadSection";
-import { useMemo, useState, type ChangeEvent } from "react";
+// Enhanced video upload system with queue management, retry, and persistence
+import { EnhancedVideoUploader } from "@/components/captain/EnhancedVideoUploader";
+import { VideoManager } from "@/components/captain/VideoManager";
+import { useSession } from "next-auth/react";
+import React, { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import type { UseFormReturn } from "react-hook-form";
+
+// (User type extension moved to src/types/next-auth.d.ts)
 
 type MediaPreview = {
   url: string;
@@ -31,7 +36,8 @@ type MediaPricingStepProps = {
   currentCharterId?: string | null;
   onVideoBlockingChangeAction?: (blocking: boolean) => void;
   onReadyVideosChangeAction?: (videos: { name: string; url: string }[]) => void;
-  seedVideos?: { name: string; url: string; thumbnailUrl?: string }[];
+  seedVideos?: { name: string; url: string }[];
+  // seedVideos removed: legacy video ingestion path deprecated
 };
 
 export function MediaPricingStep({
@@ -41,10 +47,8 @@ export function MediaPricingStep({
   onAddPhotoFilesAction,
   onRemovePhotoAction,
   onReorderPhotosAction,
-  currentCharterId,
   onVideoBlockingChangeAction,
   onReadyVideosChangeAction,
-  seedVideos,
 }: MediaPricingStepProps) {
   const { watch, setValue } = form;
   const [draggingPhotos, setDraggingPhotos] = useState(false);
@@ -116,7 +120,8 @@ export function MediaPricingStep({
 
   const photoCount = photoPreviews?.length ?? 0;
   const PHOTO_MAX = 15;
-  const VIDEO_MAX = 10;
+  // Legacy constant retained for potential future display; new pipeline enforces its own limit server-side
+  // const VIDEO_MAX = 10;
 
   const photoItems = useMemo(
     () =>
@@ -127,6 +132,35 @@ export function MediaPricingStep({
       })),
     [photoPreviews, photosAlt]
   );
+
+  // --- New short-form video integration ---
+  // Use next-auth session user id as ownerId for video grid/upload
+  const { data: session } = useSession();
+  // Type assertion to include 'id' on user
+  const ownerId = (
+    session?.user as typeof session extends { user: infer U }
+      ? U & { id?: string }
+      : { id?: string }
+  )?.id;
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const handleVideoSet = useCallback(
+    (list: { id: string; originalUrl: string; processStatus: string }[]) => {
+      const ready = list
+        .filter((v) => v.processStatus === "ready")
+        .map((v) => ({ name: v.id, url: v.originalUrl }));
+      setValue("uploadedVideos", ready, { shouldValidate: false });
+      onReadyVideosChangeAction?.(ready);
+    },
+    [setValue, onReadyVideosChangeAction]
+  );
+
+  const handleVideoUploaded = useCallback(() => {
+    // Trigger a one-off refresh via VideoManager props pattern (using key bump)
+    setRefreshToken((t) => t + 1);
+    // Also notify parent about blocking state change
+    onVideoBlockingChangeAction?.(false);
+  }, [onVideoBlockingChangeAction]);
 
   return (
     <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
@@ -194,34 +228,34 @@ export function MediaPricingStep({
           />
         </div>
 
-        <div className="rounded-2xl border p-4 border-neutral-200">
-          <VideoUploadSection
-            charterId={currentCharterId || null}
-            max={VIDEO_MAX}
-            onBlockingChange={onVideoBlockingChangeAction}
-            onItemsChange={(items) => {
-              const ready = items
-                .filter((i) => i.status === "ready" && i.finalUrl)
-                .map((i) => {
-                  const candidate = i.finalUrl || i.previewUrl || i.name;
-                  let display = i.name;
-                  if (candidate) {
-                    try {
-                      const clean = candidate.split("?")[0];
-                      const segs = clean.split("/");
-                      display = decodeURIComponent(
-                        segs[segs.length - 1] || i.name
-                      );
-                    } catch {}
-                  }
-                  const canonical = i.finalKey || display;
-                  return { name: canonical, url: i.finalUrl as string };
-                });
-              setValue("uploadedVideos", ready, { shouldValidate: true });
-              onReadyVideosChangeAction?.(ready);
-            }}
-            seedVideos={seedVideos}
-          />
+        <div className="rounded-2xl border p-4 border-neutral-200 space-y-6">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800 mb-2">
+              Short videos
+            </h3>
+            {!ownerId && (
+              <div className="text-xs text-amber-600 mb-3">
+                Save earlier steps to unlock video uploads.
+              </div>
+            )}
+            {ownerId && (
+              <EnhancedVideoUploader
+                onUploaded={handleVideoUploaded}
+                maxFiles={5}
+                allowMultiple={true}
+                autoStart={true}
+                showQueue={true}
+              />
+            )}
+          </div>
+          {ownerId && (
+            <VideoManager
+              ownerId={ownerId}
+              refreshToken={refreshToken}
+              onVideosChange={handleVideoSet}
+              onPendingChange={onVideoBlockingChangeAction}
+            />
+          )}
         </div>
       </div>
     </section>

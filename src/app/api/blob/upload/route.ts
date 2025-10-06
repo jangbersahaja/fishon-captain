@@ -1,4 +1,5 @@
 // app/api/blob/upload/route.ts
+import { MAX_SHORT_VIDEO_BYTES } from "@/config/mediaProcessing";
 import authOptions from "@/lib/auth";
 import { counter } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     const file = form.get("file");
     const docTypeRaw = form.get("docType");
     const charterIdRaw = form.get("charterId");
+    const shortVideo = form.get("shortVideo") === "true"; // new flag for captain short-form videos
     const session = await getServerSession(authOptions);
     const userId = getUserId(session);
     if (!userId) {
@@ -56,11 +58,30 @@ export async function POST(req: Request) {
 
     // Detect video files for transcoding
     const isVideo = /\.(mp4|mov|webm|ogg|avi|mkv)$/i.test(originalName);
+    if (shortVideo && isVideo) {
+      if (file.size > MAX_SHORT_VIDEO_BYTES) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "short_video_too_large",
+            maxBytes: MAX_SHORT_VIDEO_BYTES,
+            size: file.size,
+            message: `Short video exceeds limit of ${Math.round(
+              MAX_SHORT_VIDEO_BYTES / 1024 / 1024
+            )}MB`,
+          },
+          { status: 413 }
+        );
+      }
+    }
 
     const allowOverwriteRaw = form.get("overwrite");
     const allowOverwrite = allowOverwriteRaw === "true";
     let key: string;
-    if (docType === "charter_media") {
+    if (shortVideo) {
+      // Short-form captain video (already trimmed client-side) stored under dedicated path
+      key = `captain-videos/${userId}/${timestamp}-${sanitized}`;
+    } else if (docType === "charter_media") {
       if (isVideo && charterId) {
         // Videos go to temp location for transcoding (charter-scoped for uniqueness)
         key = `temp/${charterId}/original/${sanitized}`;

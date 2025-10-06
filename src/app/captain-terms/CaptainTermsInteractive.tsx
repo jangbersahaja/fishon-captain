@@ -17,9 +17,10 @@ const sections: SectionDef[] = [
         registration and participation of Captains and Charter Operators
         (&quot;You&quot; or &quot;Operator&quot;) on the Fishon.my platform,
         owned and operated by Kartel Motion Venture (Company Registration No:
-        [insert no.]) (&quot;We&quot;, &quot;Us&quot;, or &quot;Fishon&quot;).
-        By registering as an Operator, you agree to comply with these terms, our
-        platform policies, and all applicable Malaysian laws and regulations.
+        202203267096 (003441013-T)) (&quot;We&quot;, &quot;Us&quot;, or
+        &quot;Fishon&quot;). By registering as an Operator, you agree to comply
+        with these terms, our platform policies, and all applicable Malaysian
+        laws and regulations.
       </p>
     ),
   },
@@ -33,6 +34,7 @@ const sections: SectionDef[] = [
           by local maritime authorities.
         </li>
         <li>You must submit verifiable documents, including:</li>
+        <li className="ml-4 list-[circle]">Government ID</li>
         <li className="ml-4 list-[circle]">Business Registration (SSM)</li>
         <li className="ml-4 list-[circle]">
           Boat Registration Certificate (if applicable)
@@ -77,11 +79,6 @@ const sections: SectionDef[] = [
         </p>
         <ul className="list-disc pl-5 space-y-1 text-sm">
           <li>10% — Standard Listing</li>
-          <li>20% — Competitive Listing</li>
-          <li>
-            30% — Premium Listing (includes top listing, ad promotion, and
-            content support)
-          </li>
         </ul>
         <p>
           Payment from customers will be collected through Fishon’s secure
@@ -272,23 +269,20 @@ export default function CaptainTermsInteractive() {
                   id={s.id}
                   className="scroll-mt-28 border-b border-slate-200 pb-6 last:border-none last:pb-0"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={() => toggle(s.id)}
                       aria-expanded={isOpen}
                       aria-controls={`${s.id}-content`}
-                      className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded border border-slate-300 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#ec2227]/40"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-300 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#ec2227]/40"
                     >
-                      {isOpen ? "−" : "+"}
+                      {isOpen ? i + 1 : "+"}
                     </button>
                     <h2
                       data-captain-terms-heading
                       data-captain-terms-heading-id={s.id}
                       className="text-xl font-semibold text-slate-900 flex items-start gap-2"
                     >
-                      <span className="inline-block rounded bg-slate-900/5 px-2 py-0.5 text-xs font-medium tracking-wide text-slate-500 ring-1 ring-inset ring-slate-200 min-w-[2ch] text-center">
-                        {i + 1}
-                      </span>
                       <span>{s.title}</span>
                     </h2>
                   </div>
@@ -325,7 +319,7 @@ export default function CaptainTermsInteractive() {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">
               Contents
             </p>
-            <ol className="list-decimal pl-5 space-y-2 text-sm">
+            <ol className="list-none pl-5 space-y-2 text-sm">
               {sections.map((s, i) => (
                 <li key={s.id} className="marker:text-slate-400">
                   <a
@@ -358,7 +352,7 @@ export default function CaptainTermsInteractive() {
           </span>
         </summary>
         <div className="px-4 pb-4">
-          <ol className="list-decimal pl-5 space-y-2 text-sm">
+          <ol className="list-none pl-5 space-y-2 text-sm">
             {sections.map((s, i) => (
               <li key={s.id}>
                 <a

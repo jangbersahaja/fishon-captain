@@ -44,7 +44,7 @@ async function getQueue(all?: boolean) {
 export default async function VerificationQueuePage({
   searchParams,
 }: {
-  searchParams?: { [k: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [k: string]: string | string[] | undefined }>;
 }) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;

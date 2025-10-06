@@ -5,6 +5,7 @@
  */
 "use client";
 import { zIndexClasses } from "@/config/zIndex";
+import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 
 export interface ConfirmDialogProps {
@@ -13,6 +14,7 @@ export interface ConfirmDialogProps {
   onConfirm: () => void;
   busy: boolean; // disables confirm while async ops in flight
   errorMessage?: string | null;
+  requireAgreements?: boolean;
 }
 
 /**
@@ -21,13 +23,19 @@ export interface ConfirmDialogProps {
  * - Escape key closes (cancel).
  * - Returns focus to previously focused element on unmount.
  */
+import { useState } from "react";
+
 export function ConfirmDialog({
   isEditing,
   onCancel,
   onConfirm,
   busy,
   errorMessage,
+  requireAgreements = false,
 }: ConfirmDialogProps) {
+  // Agreement checkboxes (only for new registration, not edit)
+  const [checked, setChecked] = useState([false, false, false]);
+  const allChecked = checked.every(Boolean);
   const cancelRef = useCallback((el: HTMLButtonElement | null) => {
     if (el) setTimeout(() => el.focus(), 0);
   }, []);
@@ -94,15 +102,83 @@ export function ConfirmDialog({
       >
         <h2
           id="confirm-dialog-title"
-          className="text-base font-semibold text-slate-900 mb-2"
+          className="text-xl font-semibold text-slate-900"
         >
-          {isEditing ? "Save changes?" : "Submit charter?"}
+          {isEditing ? "Save changes?" : "Confirm Submission"}
         </h2>
-        <p id="confirm-dialog-desc" className="text-sm text-slate-600 mb-3">
+
+        <hr className="border-t my-6 border-neutral-200" />
+        {requireAgreements && !isEditing && (
+          <div className="mb-10 space-y-3">
+            <p id="confirm-dialog-desc" className="text-sm text-slate-600 mb-3">
+              To complete your registration, please review and agree to the
+              following.
+            </p>
+            <div className="ml-5 space-y-3">
+              <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="mt-1 accent-slate-900"
+                  checked={checked[0]}
+                  onChange={(e) =>
+                    setChecked([e.target.checked, checked[1], checked[2]])
+                  }
+                />
+                <span>
+                  I have read and agree to the{" "}
+                  <Link
+                    href="/captain-terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-slate-900 hover:text-blue-700"
+                  >
+                    Terms &amp; Conditions
+                  </Link>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="mt-1 accent-slate-900"
+                  checked={checked[1]}
+                  onChange={(e) =>
+                    setChecked([checked[0], e.target.checked, checked[2]])
+                  }
+                />
+                <span>
+                  I have read the{" "}
+                  <Link
+                    href="/refund-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-slate-900 hover:text-blue-700"
+                  >
+                    Refund &amp; Cancellation Policy
+                  </Link>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="mt-1 accent-slate-900"
+                  checked={checked[2]}
+                  onChange={(e) =>
+                    setChecked([checked[0], checked[1], e.target.checked])
+                  }
+                />
+                <span>All information provided is true and accurate.</span>
+              </label>
+            </div>
+          </div>
+        )}
+
+        <hr className="border-t my-6 border-neutral-200" />
+        <p id="confirm-dialog-desc" className="text-sm text-slate-600 mb-10">
           {isEditing
             ? "Your live charter will be updated. Media processing (videos) may continue in background. Continue?"
             : "We'll review and reach out if anything else is needed. You can still edit after submission."}
         </p>
+
         {errorMessage && !busy && (
           <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
             {errorMessage}
@@ -119,12 +195,12 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || (requireAgreements && !allChecked)}
             onClick={() => {
-              if (busy) return;
+              if (busy || (requireAgreements && !allChecked)) return;
               onConfirm();
             }}
-            className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-900"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-900"
           >
             {busy && (
               <svg

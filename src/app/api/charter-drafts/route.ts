@@ -17,16 +17,32 @@ function getUserId(session: unknown): string | null {
   return typeof id === "string" ? id : null;
 }
 
+function getUserRole(session: unknown): string | null {
+  if (!session || typeof session !== "object") return null;
+  const user = (session as Record<string, unknown>).user;
+  if (!user || typeof user !== "object") return null;
+  const role = (user as Record<string, unknown>).role;
+  return typeof role === "string" ? role : null;
+}
+
 export async function GET(req: Request) {
   const requestId = getRequestId(req);
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
+  const userRole = getUserRole(session);
   if (!userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
     );
+
+  // Check for admin override
+  const url = new URL(req.url);
+  const adminUserId = url.searchParams.get("adminUserId");
+  const effectiveUserId =
+    userRole === "ADMIN" && adminUserId ? adminUserId : userId;
+
   const existing = await withTiming("drafts_getActive", () =>
-    getActiveDraft(userId)
+    getActiveDraft(effectiveUserId)
   );
   if (!existing)
     return applySecurityHeaders(NextResponse.json({ draft: null, requestId }));
@@ -40,13 +56,21 @@ export async function POST(req: Request) {
   const requestId = getRequestId(req);
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
+  const userRole = getUserRole(session);
   if (!userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
     );
+
+  // Check for admin override
+  const url = new URL(req.url);
+  const adminUserId = url.searchParams.get("adminUserId");
+  const effectiveUserId =
+    userRole === "ADMIN" && adminUserId ? adminUserId : userId;
+
   // Light rate limit: at most 3 new draft creation attempts per minute per user
   const rl = await rateLimit({
-    key: `draftCreate:${userId}`,
+    key: `draftCreate:${effectiveUserId}`,
     windowMs: 60_000,
     max: 3,
   });
@@ -57,7 +81,7 @@ export async function POST(req: Request) {
     );
   }
   const existing = await withTiming("drafts_getActive", () =>
-    getActiveDraft(userId)
+    getActiveDraft(effectiveUserId)
   );
   if (existing)
     return applySecurityHeaders(
@@ -65,7 +89,7 @@ export async function POST(req: Request) {
     );
   const initial = createDefaultCharterFormValues();
   const draft = await withTiming("drafts_create", () =>
-    createDraft({ userId, initial, step: 0 })
+    createDraft({ userId: effectiveUserId, initial, step: 0 })
   );
   counter("draft.create.success").inc();
   return applySecurityHeaders(NextResponse.json({ draft, requestId }));

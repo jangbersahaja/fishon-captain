@@ -25,12 +25,19 @@ interface ProfileWithCharter {
     trips: { durationHours: number; price: unknown }[];
   }[];
 }
-async function getCharter() {
+async function getCharter(adminUserId?: string) {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id?: string } | undefined)?.id;
-  if (!userId) redirect("/auth?mode=signin");
+  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
+  const role = (session?.user as { role?: string } | undefined)?.role;
+
+  if (!sessionUserId) redirect("/auth?mode=signin");
+
+  // Use adminUserId if provided and user is ADMIN, otherwise use session user ID
+  const effectiveUserId =
+    role === "ADMIN" && adminUserId ? adminUserId : sessionUserId;
+
   const profile = await prisma.captainProfile.findUnique({
-    where: { userId },
+    where: { userId: effectiveUserId },
     select: {
       id: true,
       displayName: true,
@@ -54,7 +61,13 @@ async function getCharter() {
     redirect("/auth?next=/captain/form");
   }
   const charter = typed.charters[0];
-  return { profile: typed, charter, userId };
+  return {
+    profile: typed,
+    charter,
+    userId: effectiveUserId,
+    isAdminOverride:
+      role === "ADMIN" && adminUserId && adminUserId !== sessionUserId,
+  };
 }
 
 interface DocStatusShape {
@@ -91,9 +104,44 @@ function computeTripStats(trips: { durationHours: number; price: unknown }[]) {
   return { totalHours, avgPrice: totalPrice / trips.length };
 }
 
-export default async function CaptainDashboardPage() {
-  const { profile, charter, userId } = await getCharter();
+export default async function CaptainDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [k: string]: string | undefined }>;
+}) {
+  const session = await getServerSession(authOptions);
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const adminUserId = resolvedSearchParams?.adminUserId;
+
+  // Allow ADMIN to access any user's dashboard with adminUserId parameter
+  if (role === "ADMIN" && adminUserId) {
+    // Admin is accessing another user's dashboard - validate the target user exists
+    const targetUser = await prisma.user.findUnique({
+      where: { id: adminUserId },
+      select: { id: true, email: true },
+    });
+    if (!targetUser) {
+      redirect("/staff");
+    }
+  } else if ((role === "STAFF" || role === "ADMIN") && !adminUserId) {
+    // Regular staff/admin without adminUserId go to staff dashboard
+    redirect("/staff");
+  }
+
+  const { profile, charter, userId, isAdminOverride } = await getCharter(
+    adminUserId
+  );
   const verification = await getVerification(userId);
+
+  // Get target user info for admin banner
+  let targetUserInfo = null;
+  if (adminUserId && role === "ADMIN") {
+    targetUserInfo = await prisma.user.findUnique({
+      where: { id: adminUserId },
+      select: { id: true, email: true, name: true },
+    });
+  }
   const govFront = !!verification?.idFront;
   const govBack = !!verification?.idBack;
   function badgeStatus(doc: unknown): NotificationItem["status"] {
@@ -224,13 +272,39 @@ export default async function CaptainDashboardPage() {
 
   return (
     <div className="px-6 py-8 space-y-8">
+      {targetUserInfo && (
+        <div className="rounded-lg border-2 border-orange-200 bg-orange-50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-orange-800">
+                🛡️ Admin Override Active
+              </h2>
+              <p className="text-xs text-orange-700">
+                Viewing dashboard for:{" "}
+                {targetUserInfo.name || targetUserInfo.email} (
+                {targetUserInfo.id})
+              </p>
+            </div>
+            <a
+              href="/staff"
+              className="rounded-full bg-orange-600 px-3 py-1 text-xs font-semibold text-white hover:bg-orange-700"
+            >
+              Exit Admin Mode
+            </a>
+          </div>
+        </div>
+      )}
       <div className="space-y-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Welcome back, {profile.displayName}
+            {targetUserInfo
+              ? `Dashboard - ${targetUserInfo.name || targetUserInfo.email}`
+              : `Welcome back, ${profile.displayName}`}
           </h1>
           <p className="text-sm text-slate-500">
-            Manage your charter and documents here.
+            {targetUserInfo
+              ? "Admin view of user's charter and documents"
+              : "Manage your charter and documents here."}
           </p>
         </div>
         <div className="flex flex-col gap-2">
@@ -299,7 +373,9 @@ export default async function CaptainDashboardPage() {
               <Ship className="h-4 w-4" /> Charter
             </h2>
             <Link
-              href={`/captain/form?editCharterId=${charter.id}`}
+              href={`/captain/form?editCharterId=${charter.id}${
+                adminUserId ? `&adminUserId=${adminUserId}` : ""
+              }`}
               prefetch={false}
               className="inline-flex items-center gap-1 rounded-full bg-[#ec2227] px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-[#d81e23]"
             >
@@ -324,7 +400,9 @@ export default async function CaptainDashboardPage() {
             {photoCount} photos · {videoCount} videos
           </p>
           <Link
-            href={`/captain/form?editCharterId=${charter.id}#media`}
+            href={`/captain/form?editCharterId=${charter.id}${
+              adminUserId ? `&adminUserId=${adminUserId}` : ""
+            }#media`}
             prefetch={false}
             className="mt-3 inline-flex text-xs font-semibold text-[#ec2227] hover:underline"
           >
@@ -339,7 +417,9 @@ export default async function CaptainDashboardPage() {
             {charter.trips.length} active trip(s)
           </p>
           <Link
-            href={`/captain/form?editCharterId=${charter.id}#trips`}
+            href={`/captain/form?editCharterId=${charter.id}${
+              adminUserId ? `&adminUserId=${adminUserId}` : ""
+            }#trips`}
             prefetch={false}
             className="mt-3 inline-flex text-xs font-semibold text-[#ec2227] hover:underline"
           >
