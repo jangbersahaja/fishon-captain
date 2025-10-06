@@ -20,6 +20,9 @@ import {
   StorageScope,
   StorageSortKey,
   StorageViewModel,
+  VideoRow,
+  VideoStatus,
+  VideoViewModel,
   classifyScope,
   extractKeyFromUrl,
   extractVerificationDocs,
@@ -191,6 +194,151 @@ export async function loadPipelineData(
     kindFilter,
     staleOnly,
     statusCounts,
+    staleCount,
+    filteredRows,
+    fetchLimit,
+    fetchedCount: rawItems.length,
+    displayCount: filteredRows.length,
+  };
+}
+
+export async function loadVideoData(
+  searchParams: SearchParams | undefined
+): Promise<VideoViewModel> {
+  const statusParam = (getParam(searchParams, "status") || "")
+    .toLowerCase()
+    .trim() as VideoStatus | "";
+  const fallbackParam = getParam(searchParams, "fallback");
+  const staleOnly = getParam(searchParams, "stale") === "true";
+
+  const statusFilter = ["queued", "processing", "ready", "failed"].includes(
+    statusParam
+  )
+    ? (statusParam as VideoStatus)
+    : null;
+  const fallbackFilter =
+    fallbackParam === "true" ? true : fallbackParam === "false" ? false : null;
+
+  const where: {
+    processStatus?: VideoStatus;
+    didFallback?: boolean;
+  } = {
+    ...(statusFilter ? { processStatus: statusFilter } : {}),
+    ...(fallbackFilter !== null ? { didFallback: fallbackFilter } : {}),
+  };
+
+  const fetchLimit = staleOnly ? FETCH_LIMIT_STALE : FETCH_LIMIT_DEFAULT;
+
+  const [statusGroups, fallbackCount, rawItems] = await Promise.all([
+    prisma.captainVideo.groupBy({
+      by: ["processStatus"],
+      _count: { _all: true },
+    }),
+    prisma.captainVideo.count({ where: { didFallback: true } }),
+    prisma.captainVideo.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: fetchLimit,
+    }),
+  ]);
+
+  const statusCounts = ["queued", "processing", "ready", "failed"].reduce<
+    Record<VideoStatus, number>
+  >(
+    (acc, status) => {
+      const match = statusGroups.find(
+        (g: { processStatus: string }) => g.processStatus === status
+      );
+      acc[status as VideoStatus] = match?._count._all ?? 0;
+      return acc;
+    },
+    { queued: 0, processing: 0, ready: 0, failed: 0 }
+  );
+
+  const ownerIds = Array.from(new Set(rawItems.map((item) => item.ownerId)));
+
+  const [users, profiles] = await Promise.all([
+    ownerIds.length
+      ? prisma.user.findMany({
+          where: { id: { in: ownerIds } },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            firstName: true,
+            lastName: true,
+          },
+        })
+      : Promise.resolve([]),
+    ownerIds.length
+      ? prisma.captainProfile.findMany({
+          where: { userId: { in: ownerIds } },
+          select: { userId: true, displayName: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const userMap = new Map(users.map((user) => [user.id, user]));
+  const profileMap = new Map(
+    profiles.map((profile) => [profile.userId, profile.displayName])
+  );
+
+  const nowMs = Date.now();
+  const staleThresholdMs = STALE_THRESHOLD_MINUTES * 60 * 1000;
+
+  const annotated: VideoRow[] = rawItems.map((item) => {
+    const user = userMap.get(item.ownerId);
+    const profileName = profileMap.get(item.ownerId);
+    const displayName =
+      profileName ||
+      user?.name ||
+      [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+      "(unknown)";
+    const email = user?.email ?? "-";
+    const createdAgoMs = nowMs - item.createdAt.getTime();
+    const updatedAgoMs = nowMs - item.updatedAt.getTime();
+    const stale =
+      (item.processStatus === "queued" ||
+        item.processStatus === "processing") &&
+      updatedAgoMs > staleThresholdMs;
+
+    return {
+      id: item.id,
+      ownerId: item.ownerId,
+      originalUrl: item.originalUrl,
+      blobKey: item.blobKey,
+      thumbnailUrl: item.thumbnailUrl,
+      thumbnailBlobKey: item.thumbnailBlobKey,
+      trimStartSec: item.trimStartSec,
+      ready720pUrl: item.ready720pUrl,
+      normalizedBlobKey: item.normalizedBlobKey,
+      processStatus: item.processStatus as VideoStatus,
+      errorMessage: item.errorMessage,
+      createdAt: item.createdAt,
+      didFallback: item.didFallback,
+      fallbackReason: item.fallbackReason,
+      updatedAt: item.updatedAt,
+      displayName,
+      email,
+      createdAgoLabel: formatRelative(createdAgoMs),
+      updatedAgoLabel: formatRelative(updatedAgoMs),
+      sizeBytes: null, // Could be fetched from blob metadata if needed
+      durationSeconds: null, // Could be extracted from video metadata if needed
+      stale,
+    };
+  });
+
+  const staleCount = annotated.filter((row) => row.stale).length;
+  const filteredRows = staleOnly
+    ? annotated.filter((row) => row.stale)
+    : annotated;
+
+  return {
+    statusFilter,
+    fallbackFilter,
+    staleOnly,
+    statusCounts,
+    fallbackCount,
     staleCount,
     filteredRows,
     fetchLimit,

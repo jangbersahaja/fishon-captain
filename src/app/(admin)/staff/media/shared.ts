@@ -3,8 +3,9 @@ import type { PendingMediaStatus } from "@prisma/client";
 export type SearchParams = Record<string, string | string[] | undefined>;
 
 export type Status = "QUEUED" | "TRANSCODING" | "READY" | "FAILED";
+export type VideoStatus = "queued" | "processing" | "ready" | "failed";
 export type Kind = "IMAGE" | "VIDEO";
-export type Tab = "pipeline" | "storage";
+export type Tab = "pipeline" | "storage" | "videos";
 
 export type Reference = {
   type: string;
@@ -50,6 +51,45 @@ export type PipelineViewModel = {
   statusCounts: Record<Status, number>;
   staleCount: number;
   filteredRows: AnnotatedRow[];
+  fetchLimit: number;
+  fetchedCount: number;
+  displayCount: number;
+};
+
+export type VideoRow = {
+  id: string;
+  ownerId: string;
+  originalUrl: string;
+  blobKey: string | null;
+  thumbnailUrl: string | null;
+  thumbnailBlobKey: string | null;
+  trimStartSec: number;
+  ready720pUrl: string | null;
+  normalizedBlobKey: string | null;
+  processStatus: VideoStatus;
+  errorMessage: string | null;
+  createdAt: Date;
+  didFallback: boolean;
+  fallbackReason: string | null;
+  updatedAt: Date;
+  // Enhanced with user data
+  displayName: string;
+  email: string;
+  createdAgoLabel: string;
+  updatedAgoLabel: string;
+  sizeBytes: number | null;
+  durationSeconds: number | null;
+  stale: boolean;
+};
+
+export type VideoViewModel = {
+  statusFilter: VideoStatus | null;
+  fallbackFilter: boolean | null;
+  staleOnly: boolean;
+  statusCounts: Record<VideoStatus, number>;
+  fallbackCount: number;
+  staleCount: number;
+  filteredRows: VideoRow[];
   fetchLimit: number;
   fetchedCount: number;
   displayCount: number;
@@ -308,8 +348,11 @@ export const classifyScope = (key: string): StorageScope => {
 export const isStorageScope = (value: string | null): value is StorageScope =>
   value !== null && STORAGE_SCOPES.includes(value as StorageScope);
 
-export const parseTab = (value: string | null): Tab =>
-  value === "storage" ? "storage" : "pipeline";
+export const parseTab = (value: string | null): Tab => {
+  if (value === "storage") return "storage";
+  if (value === "videos") return "videos";
+  return "videos"; // Default to videos instead of pipeline
+};
 
 export const toPendingStatus = (status: Status): PendingMediaStatus =>
   status as PendingMediaStatus;

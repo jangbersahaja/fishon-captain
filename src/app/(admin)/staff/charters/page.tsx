@@ -138,7 +138,7 @@ export default async function StaffChartersPage({
   }
 
   return (
-    <div className="px-6 py-8 space-y-4">
+    <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Charters</h1>
         <div className="flex items-center gap-2 text-xs">
@@ -247,11 +247,6 @@ export default async function StaffChartersPage({
       ) : (
         <ChartersClient
           items={items}
-          q={q}
-          activeParam={activeParam}
-          sort={sort}
-          order={order}
-          pageSize={pageSize}
           bulkAction={bulkAction}
           redirectTo={`/staff/charters?${new URLSearchParams({
             ...(q ? { q } : {}),

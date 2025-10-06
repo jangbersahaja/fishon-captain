@@ -56,7 +56,7 @@ export default async function VerificationQueuePage({
   const { items } = await getQueue(all);
 
   return (
-    <div className="px-6 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">
           Verification queue

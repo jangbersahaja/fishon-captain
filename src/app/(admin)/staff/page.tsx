@@ -59,7 +59,7 @@ export default async function StaffHomePage() {
     Array.isArray(inactiveRows) && inactiveRows[0] ? inactiveRows[0].count : 0;
 
   return (
-    <div className="px-6 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Staff Dashboard</h1>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4">

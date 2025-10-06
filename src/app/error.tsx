@@ -30,7 +30,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-800 flex flex-col items-center justify-center px-6 py-10">
+      <body className="min-h-screen bg-slate-50 text-slate-800 flex flex-col items-center justify-center">
         <main className="w-full max-w-xl text-center space-y-6">
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight">

@@ -150,7 +150,7 @@ export default async function StaffCharterDetailPage({
     : null;
 
   return (
-    <div className="space-y-4 px-6 py-6">
+    <div className="p-6 space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -164,16 +164,97 @@ export default async function StaffCharterDetailPage({
             {new Date(c.updatedAt).toLocaleString()}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span
-            className={
-              charter.isActive
-                ? "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
-                : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
-            }
-          >
-            {charter.isActive ? "Active" : "Inactive"}
-          </span>
+        <span
+          className={
+            charter.isActive
+              ? "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+              : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
+          }
+        >
+          {charter.isActive ? "Active" : "Inactive"}
+        </span>
+      </div>
+
+      {/* Actions */}
+      <section className="rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="mb-3 text-sm font-semibold text-slate-800">Actions</h2>
+        <div className="flex flex-wrap gap-3">
+          {c.captain?.userId ? (
+            <>
+              <a
+                href={`/staff/verification/${c.captain.userId}`}
+                className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="hidden sm:inline text-xs font-medium">
+                  View Verification
+                </span>
+              </a>
+              <a
+                href={`/captain?adminUserId=${c.captain.userId}`}
+                className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-orange-700 hover:bg-orange-100 transition-colors"
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 5a2 2 0 012-2h4a2 2 0 012 2v1H8V5z"
+                  />
+                </svg>
+                <span className="hidden sm:inline text-xs font-medium">
+                  🛡️ Open Dashboard
+                </span>
+              </a>
+
+              {charter.id && (
+                <a
+                  href={`/captain/form?editCharterId=${charter.id}&adminUserId=${c.captain.userId}`}
+                  className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-orange-700 hover:bg-orange-100 transition-colors"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                  <span className="hidden sm:inline text-xs font-medium">
+                    🛡️ Edit Charter
+                  </span>
+                </a>
+              )}
+            </>
+          ) : null}
           <form
             action={async () => {
               "use server";
@@ -181,12 +262,42 @@ export default async function StaffCharterDetailPage({
               redirect(`/staff/charters/${c.id}`);
             }}
           >
-            <button className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
-              {charter.isActive ? "Disable" : "Enable"}
+            <button
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors text-xs font-medium ${
+                charter.isActive
+                  ? "border-amber-300 text-amber-700 hover:bg-amber-50"
+                  : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              }`}
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {charter.isActive ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L5.636 5.636"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                )}
+              </svg>
+              <span className="hidden sm:inline">
+                {charter.isActive ? "Disable" : "Enable"}
+              </span>
             </button>
           </form>
         </div>
-      </div>
+      </section>
 
       {/* User */}
       <section className="rounded-xl border border-slate-200 bg-white p-4">
@@ -227,38 +338,6 @@ export default async function StaffCharterDetailPage({
               ? new Date(c.captain.user.updatedAt).toLocaleString()
               : "—"}
           </div>
-        </div>
-        <div className="mt-3 flex gap-2">
-          {c.captain?.userId ? (
-            <>
-              <a
-                href={`/staff/verification/${c.captain.userId}`}
-                className="rounded-full border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
-              >
-                Open verification
-              </a>
-              <a
-                href={`/captain?adminUserId=${c.captain.userId}`}
-                className="rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs text-orange-700 hover:bg-orange-100"
-              >
-                🛡️ Open Dashboard
-              </a>
-              <a
-                href={`/captain/form?adminUserId=${c.captain.userId}`}
-                className="rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs text-orange-700 hover:bg-orange-100"
-              >
-                🛡️ Open Form
-              </a>
-              {charter.id && (
-                <a
-                  href={`/captain/form?editCharterId=${charter.id}&adminUserId=${c.captain.userId}`}
-                  className="rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs text-orange-700 hover:bg-orange-100"
-                >
-                  🛡️ Edit Charter
-                </a>
-              )}
-            </>
-          ) : null}
         </div>
       </section>
 

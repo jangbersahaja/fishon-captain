@@ -118,7 +118,7 @@ export default async function VerificationReviewPage({
 
   if (!row) {
     return (
-      <div className="px-6 py-8">
+      <div className="p-6">
         <h1 className="text-2xl font-semibold tracking-tight">
           Review & approve
         </h1>
@@ -167,7 +167,7 @@ export default async function VerificationReviewPage({
   const charterName = sorted[0]?.name;
 
   return (
-    <div className="px-6 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">
         {charterName ? `Review: ${charterName}` : "Review & approve"}
       </h1>
