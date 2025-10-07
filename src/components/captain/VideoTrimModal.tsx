@@ -189,7 +189,9 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       // Kick a microtask to force a load() call after src is bound in the next paint
       queueMicrotask(() => {
         if (videoRef.current) {
-          try { videoRef.current.load(); } catch {}
+          try {
+            videoRef.current.load();
+          } catch {}
         }
       });
 
@@ -213,11 +215,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
 
     const finalizeIfReady = (source: string) => {
       if (metadataResolvedRef.current) return;
-      if (
-        video.readyState >= 1 &&
-        video.duration &&
-        !isNaN(video.duration)
-      ) {
+      if (video.readyState >= 1 && video.duration && !isNaN(video.duration)) {
         console.log(`[fast-load] metadata ready via ${source}`);
         metadataResolvedRef.current = true;
         setLoading(false);
@@ -484,77 +482,8 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
             </div>
           )}
 
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-8 h-8 border border-white border-t-transparent rounded-full animate-spin"></div>
-              <span className="ml-3 text-white">Loading video...</span>
-              <span className="mt-2 text-xs text-gray-400">
-                If stuck, check file type and browser support.
-              </span>
-
-              {/* Debug button to manually check video state */}
-              <button
-                type="button"
-                className="mt-4 px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                onClick={() => {
-                  console.log("=== MANUAL DEBUG CHECK ===");
-                  console.log("File:", file?.name, file?.type, file?.size);
-                  console.log("Object URL:", objectUrl);
-                  console.log("Loading state:", loading);
-
-                  const video = videoRef.current;
-                  if (video) {
-                    console.log("Video element found!");
-                    console.log("Video src:", video.src);
-                    console.log(
-                      "Video readyState:",
-                      video.readyState,
-                      "(0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA)"
-                    );
-                    console.log(
-                      "Video networkState:",
-                      video.networkState,
-                      "(0=EMPTY, 1=IDLE, 2=LOADING, 3=NO_SOURCE)"
-                    );
-                    console.log("Video duration:", video.duration);
-                    console.log("Video error:", video.error);
-                    console.log("Video videoWidth:", video.videoWidth);
-                    console.log("Video videoHeight:", video.videoHeight);
-                    console.log("Video currentSrc:", video.currentSrc);
-
-                    // Try to force load
-                    if (video.readyState === 0) {
-                      console.log("Attempting to force load...");
-                      video.load();
-                    }
-
-                    // Force stop loading if video seems ready
-                    if (video.readyState >= 1) {
-                      console.log("Video seems ready, forcing loading to stop");
-                      setLoading(false);
-                    }
-                  } else {
-                    console.log("❌ No video element found!");
-                  }
-                  console.log("=== END DEBUG CHECK ===");
-                }}
-              >
-                Debug Video State
-              </button>
-
-              <button
-                type="button"
-                className="mt-2 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                onClick={() => {
-                  console.log("Manually stopping loading state");
-                  setLoading(false);
-                }}
-              >
-                Force Stop Loading
-              </button>
-            </div>
-          ) : (
-            <>
+          {/* Always mount video so events can fire; overlay spinner while loading */}
+          <>
               <div className="relative">
                 <video
                   ref={videoRef}
@@ -617,6 +546,43 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                     }
                   }}
                 />
+                {loading && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-lg">
+                    <div className="w-8 h-8 border border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="mt-3 text-white text-sm">Loading video...</span>
+                    <span className="mt-1 text-xs text-gray-400">If stuck, click Debug.</span>
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        className="px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                        onClick={() => {
+                          const video = videoRef.current;
+                          console.log("[trim-debug] state", {
+                            readyState: video?.readyState,
+                            networkState: video?.networkState,
+                            duration: video?.duration,
+                            videoWidth: video?.videoWidth,
+                            videoHeight: video?.videoHeight,
+                            src: video?.currentSrc,
+                          });
+                          if (video && video.readyState === 0) {
+                            try { video.load(); } catch {}
+                          }
+                          if (video && video.readyState >= 1) setLoading(false);
+                        }}
+                      >
+                        Debug
+                      </button>
+                      <button
+                        type="button"
+                        className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                        onClick={() => setLoading(false)}
+                      >
+                        Force Stop
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="absolute bottom-2 left-2">
                   <button
                     type="button"
@@ -828,8 +794,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   </button>
                 </div>
               </div>
-            </>
-          )}
+          </>
         </div>
       </div>
     </div>
