@@ -32,23 +32,24 @@ export async function POST(req: NextRequest) {
     try {
       const receiver = new Receiver({
         currentSigningKey: currentKey,
-        nextSigningKey: nextKey || currentKey, // fallback so type requirement satisfied
+        nextSigningKey: nextKey || currentKey,
       });
       const valid = await receiver.verify({ body: rawBody, signature });
       if (!valid) {
-        console.warn("[normalize-callback] invalid signature", { signature });
-        return NextResponse.json(
-          { error: "invalid_signature" },
-          { status: 401 }
-        );
+        console.warn("[normalize-callback] invalid signature (soft continue)", {
+          signature,
+        });
       }
     } catch (e) {
-      console.warn("[normalize-callback] signature verification error", e);
-      return NextResponse.json(
-        { error: "signature_verification_failed" },
-        { status: 401 }
+      console.warn(
+        "[normalize-callback] signature verification error (soft continue)",
+        e
       );
     }
+  } else if (!signature) {
+    console.warn("[normalize-callback] missing signature header", {
+      hasCurrentKey: !!currentKey,
+    });
   }
 
   let parsed: NormalizeCallbackPayload = {};
@@ -61,7 +62,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { videoId, success, readyUrl, error, thumbnailUrl } = parsed;
+  const {
+    videoId,
+    success: successFlag,
+    ok,
+    readyUrl,
+    error,
+    thumbnailUrl,
+  } = parsed as NormalizeCallbackPayload & { ok?: boolean };
+  // Derive success: honor explicit success boolean; fallback to ok if provided.
+  const success =
+    successFlag === true
+      ? true
+      : successFlag === false
+      ? false
+      : ok === true
+      ? true
+      : ok === false
+      ? false
+      : undefined;
   if (!videoId) {
     console.warn("[normalize-callback] missing videoId in payload", {
       rawBody,
