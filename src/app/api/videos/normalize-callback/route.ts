@@ -62,14 +62,70 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const {
+  // If parsed is not an object (e.g. number, string), wrap it for downstream logic
+  if (parsed && typeof parsed !== "object") {
+    parsed = {};
+  }
+
+  // Attempt to unwrap common QStash forward envelopes if videoId missing later.
+  const attemptUnwrap = (
+    obj: unknown
+  ): NormalizeCallbackPayload | undefined => {
+    if (!obj || typeof obj !== "object") return undefined;
+    const rec = obj as Record<string, unknown>;
+    if (typeof rec.videoId === "string") {
+      return {
+        videoId: rec.videoId,
+        success: typeof rec.success === "boolean" ? rec.success : undefined,
+        readyUrl: typeof rec.readyUrl === "string" ? rec.readyUrl : undefined,
+        error: typeof rec.error === "string" ? rec.error : undefined,
+        thumbnailUrl:
+          typeof rec.thumbnailUrl === "string" ? rec.thumbnailUrl : undefined,
+      };
+    }
+    if (typeof rec.body === "string") {
+      try {
+        const inner = JSON.parse(rec.body);
+        const un = attemptUnwrap(inner);
+        if (un) return un;
+      } catch {}
+    }
+    if (typeof rec.bodyBase64 === "string") {
+      try {
+        const decoded = Buffer.from(rec.bodyBase64, "base64").toString("utf8");
+        const inner = JSON.parse(decoded);
+        const un = attemptUnwrap(inner);
+        if (un) return un;
+      } catch {}
+    }
+    for (const key of ["response", "data", "payload"]) {
+      if (rec[key] && typeof rec[key] === "object") {
+        const inner = attemptUnwrap(rec[key]);
+        if (inner) return inner;
+      }
+    }
+    return undefined;
+  };
+
+  let {
     videoId,
     success: successFlag,
-    ok,
     readyUrl,
     error,
     thumbnailUrl,
   } = parsed as NormalizeCallbackPayload & { ok?: boolean };
+  const ok = (parsed as { ok?: boolean }).ok;
+
+  if (!videoId) {
+    const unwrapped = attemptUnwrap(parsed);
+    if (unwrapped) {
+      videoId = unwrapped.videoId;
+      successFlag = unwrapped.success;
+      readyUrl = unwrapped.readyUrl;
+      error = unwrapped.error;
+      thumbnailUrl = unwrapped.thumbnailUrl;
+    }
+  }
   // Derive success: honor explicit success boolean; fallback to ok if provided.
   const success =
     successFlag === true
@@ -82,10 +138,27 @@ export async function POST(req: NextRequest) {
       ? false
       : undefined;
   if (!videoId) {
-    console.warn("[normalize-callback] missing videoId in payload", {
-      rawBody,
-      parsedKeys: Object.keys(parsed || {}),
+    // Collect a snapshot of headers for diagnostics (limited set)
+    const headerSnapshot: Record<string, string> = {};
+    const interesting = [
+      "content-type",
+      "upstash-signature",
+      "user-agent",
+      "x-forwarded-for",
+      "x-vercel-id",
+    ];
+    interesting.forEach((h) => {
+      const v = req.headers.get(h);
+      if (v) headerSnapshot[h] = v;
     });
+    console.warn(
+      "[normalize-callback] missing videoId in payload AFTER unwrap",
+      {
+        rawBody,
+        parsedKeys: parsed ? Object.keys(parsed) : [],
+        headerSnapshot,
+      }
+    );
     return NextResponse.json({ error: "missing_videoId" }, { status: 400 });
   }
 
