@@ -319,7 +319,9 @@ class VideoUploadQueue {
   private kick() {
     // Maintain up to maxConcurrent active (uploading|processing)
     if (this.paused) return;
-    const pendingCount = this.items.filter((i) => i.status === "pending").length;
+    const pendingCount = this.items.filter(
+      (i) => i.status === "pending"
+    ).length;
     dbg("kick", {
       active: this.activeCount,
       max: this.config.maxConcurrent,
@@ -381,7 +383,12 @@ class VideoUploadQueue {
           );
           if (VIDEO_QUEUE_DEBUG()) {
             const pct = (progress * 100).toFixed(1);
-            dbg("progress", { id: started.id, pct, bytes: ev.loaded, total: ev.total });
+            dbg("progress", {
+              id: started.id,
+              pct,
+              bytes: ev.loaded,
+              total: ev.total,
+            });
           }
 
           // mutate through replace to keep immutable pattern
@@ -498,7 +505,10 @@ class VideoUploadQueue {
       // Remove completed item from persistent storage
       this.cleanupStoredItem(done.id);
     } catch (e) {
-      dbg("error", { id: item.id, message: e instanceof Error ? e.message : String(e) });
+      dbg("error", {
+        id: item.id,
+        message: e instanceof Error ? e.message : String(e),
+      });
       // Phase 7: Enhanced error handling with categorization and retry logic
       const current = this.items.find((i) => i.id === item.id);
       if (current && current.status !== "canceled") {
@@ -663,7 +673,7 @@ class VideoUploadQueue {
 
     const delay = this.calculateRetryDelay(retryCount - 1);
     const retryAt = Date.now() + delay;
-  dbg("scheduleRetry", { id: item.id, attempt: retryCount, inMs: delay });
+    dbg("scheduleRetry", { id: item.id, attempt: retryCount, inMs: delay });
 
     // Clear any existing retry timeout
     const existingTimeout = this.retryTimeouts.get(item.id);

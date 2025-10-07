@@ -78,6 +78,7 @@ describe("VideoUploadQueue", () => {
     vi.clearAllMocks();
 
     // Mock successful fetch responses
+    // Mock successful fetch responses
     const mockFetch = vi.mocked(fetch);
     mockFetch.mockResolvedValue({
       ok: true,
@@ -116,6 +117,15 @@ describe("VideoUploadQueue", () => {
     });
 
     it("should maintain queue order", () => {
+      // Mock Date.now and Math.random for predictable IDs
+      let timeCounter = 1000;
+      const mockDateNow = vi
+        .spyOn(Date, "now")
+        .mockImplementation(() => timeCounter++);
+      const mockMathRandom = vi
+        .spyOn(Math, "random")
+        .mockImplementation(() => 0.123456);
+
       const item1 = queue.enqueue(testFile);
       const item2 = queue.enqueue(testFile);
 
@@ -126,8 +136,13 @@ describe("VideoUploadQueue", () => {
       });
 
       expect(receivedItems).toHaveLength(2);
+      // item2 should come first (newer items have higher priority due to same priority + createdAt comparison)
       expect(receivedItems[0].id).toBe(item2.id);
       expect(receivedItems[1].id).toBe(item1.id);
+
+      // Clean up mocks
+      mockDateNow.mockRestore();
+      mockMathRandom.mockRestore();
     });
   });
 
