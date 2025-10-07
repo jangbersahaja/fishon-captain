@@ -19,6 +19,32 @@ import { captureThumbnailFromSrc } from "@/utils/captureThumbnail";
 
 export type VideoQueueListener = (items: VideoUploadItem[]) => void;
 
+// Debug flag (browser + build-time env). Can also be toggled at runtime via window.__VIDEO_QUEUE_DEBUG__ = true
+const VIDEO_QUEUE_DEBUG = () => {
+  try {
+    if (typeof window === "undefined") return false;
+    // Allow dynamic runtime toggle
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runtime = (window as any).__VIDEO_QUEUE_DEBUG__;
+    if (runtime !== undefined) return !!runtime;
+  } catch {
+    /* ignore */
+  }
+  if (typeof process !== "undefined") {
+    return (
+      process.env.NEXT_PUBLIC_VIDEO_QUEUE_DEBUG === "true" ||
+      process.env.NEXT_PUBLIC_VIDEO_QUEUE_DEBUG === "1"
+    );
+  }
+  return false;
+};
+
+const dbg = (...args: unknown[]) => {
+  if (VIDEO_QUEUE_DEBUG()) {
+    console.log("[video-queue]", ...args);
+  }
+};
+
 class VideoUploadQueue {
   private items: VideoUploadItem[] = [];
   private listeners: Set<VideoQueueListener> = new Set();
@@ -65,6 +91,10 @@ class VideoUploadQueue {
         if (this.config.autoStart) this.kick();
       }, 0);
     }
+    dbg("constructed", {
+      autoStart: this.config.autoStart,
+      maxConcurrent: this.config.maxConcurrent,
+    });
   }
 
   subscribe(fn: VideoQueueListener) {
@@ -122,6 +152,13 @@ class VideoUploadQueue {
 
     // Phase 10: Insert based on priority
     this.insertByPriority(item);
+    dbg("enqueue", {
+      id: item.id,
+      name: file.name,
+      priority: item.priority,
+      size: file.size,
+      queueLength: this.items.length + 1,
+    });
     this.updateQueuePositions();
     this.emit();
     if (this.config.autoStart) this.kick();
@@ -282,6 +319,12 @@ class VideoUploadQueue {
   private kick() {
     // Maintain up to maxConcurrent active (uploading|processing)
     if (this.paused) return;
+    const pendingCount = this.items.filter((i) => i.status === "pending").length;
+    dbg("kick", {
+      active: this.activeCount,
+      max: this.config.maxConcurrent,
+      pending: pendingCount,
+    });
     while (
       this.activeCount < this.config.maxConcurrent &&
       this.items.some((i) => i.status === "pending")
@@ -294,6 +337,7 @@ class VideoUploadQueue {
 
   private async start(item: VideoUploadItem) {
     if (item.status !== "pending") return;
+    dbg("start", { id: item.id, name: item.file.name, size: item.file.size });
 
     // Phase 8: Initialize progress tracking
     this.initializeProgressTracker(item.id);
@@ -335,6 +379,10 @@ class VideoUploadQueue {
             ev.total,
             "uploading"
           );
+          if (VIDEO_QUEUE_DEBUG()) {
+            const pct = (progress * 100).toFixed(1);
+            dbg("progress", { id: started.id, pct, bytes: ev.loaded, total: ev.total });
+          }
 
           // mutate through replace to keep immutable pattern
           const current = this.items.find((i) => i.id === started.id);
@@ -399,6 +447,7 @@ class VideoUploadQueue {
         videoUrl,
       };
       this.replaceItem(processing);
+      dbg("uploaded", { id: started.id, blobKey, url: videoUrl });
       this.xhrMap.delete(started.id);
       counter("video_queue_uploaded").inc();
 
@@ -442,12 +491,14 @@ class VideoUploadQueue {
         completedAt: Date.now(),
       };
       this.replaceItem(done);
+      dbg("done", { id: done.id, totalMs: done.completedAt - done.startedAt });
       counter("video_queue_done").inc();
       // Phase 8: Cleanup progress tracking for completed uploads
       this.cleanupProgressTracker(done.id);
       // Remove completed item from persistent storage
       this.cleanupStoredItem(done.id);
     } catch (e) {
+      dbg("error", { id: item.id, message: e instanceof Error ? e.message : String(e) });
       // Phase 7: Enhanced error handling with categorization and retry logic
       const current = this.items.find((i) => i.id === item.id);
       if (current && current.status !== "canceled") {
@@ -494,7 +545,16 @@ class VideoUploadQueue {
   }
 
   private replaceItem(next: VideoUploadItem) {
+    const prev = this.items.find((i) => i.id === next.id);
     this.items = this.items.map((i) => (i.id === next.id ? next : i));
+    if (prev && prev.status !== next.status) {
+      dbg("transition", {
+        id: next.id,
+        from: prev.status,
+        to: next.status,
+        progress: next.progress,
+      });
+    }
     this.emit();
   }
 
@@ -603,6 +663,7 @@ class VideoUploadQueue {
 
     const delay = this.calculateRetryDelay(retryCount - 1);
     const retryAt = Date.now() + delay;
+  dbg("scheduleRetry", { id: item.id, attempt: retryCount, inMs: delay });
 
     // Clear any existing retry timeout
     const existingTimeout = this.retryTimeouts.get(item.id);
@@ -849,7 +910,7 @@ class VideoUploadQueue {
       if (
         priority > existingPriority ||
         (priority === existingPriority &&
-          item.createdAt < existingItem.createdAt)
+          item.createdAt > existingItem.createdAt)
       ) {
         insertIndex = i;
         break;
@@ -973,6 +1034,7 @@ class VideoUploadQueue {
     // Clear all items
     this.items = [];
     this.emit();
+    dbg("clearAll");
   }
 
   /**
@@ -987,6 +1049,7 @@ class VideoUploadQueue {
       this.insertByPriority(item as PendingUploadItem);
       this.updateQueuePositions();
       this.emit();
+      dbg("priority", { id, priority });
     }
   }
 
@@ -1064,6 +1127,18 @@ class VideoUploadQueue {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = undefined;
     }
+  }
+
+  /** Debug helper: dump current snapshot */
+  debugDump() {
+    return this.items.map((i) => ({
+      id: i.id,
+      status: i.status,
+      progress: i.progress,
+      priority: i.priority,
+      queuePosition: (i as PendingUploadItem).queuePosition,
+      size: i.sizeBytes,
+    }));
   }
 }
 
