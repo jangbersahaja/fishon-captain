@@ -183,6 +183,15 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       setIsPlaying(false);
       setProbe({ width: 0, height: 0, codec: "", size: file.size });
       setThumbnails([]);
+      // Reset metadata resolved guard for new file
+      metadataResolvedRef.current = false;
+
+      // Kick a microtask to force a load() call after src is bound in the next paint
+      queueMicrotask(() => {
+        if (videoRef.current) {
+          try { videoRef.current.load(); } catch {}
+        }
+      });
 
       return () => {
         console.log("Revoking object URL");
@@ -192,6 +201,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       console.log("No file or modal closed, clearing object URL");
       setObjectUrl(null);
       setLoading(true);
+      metadataResolvedRef.current = false;
     }
   }, [file, open]);
 
@@ -206,23 +216,23 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       if (
         video.readyState >= 1 &&
         video.duration &&
-        !isNaN(video.duration) &&
-        video.videoWidth > 0 &&
-        video.videoHeight > 0
+        !isNaN(video.duration)
       ) {
         console.log(`[fast-load] metadata ready via ${source}`);
         metadataResolvedRef.current = true;
         setLoading(false);
+        const vw = video.videoWidth || 0;
+        const vh = video.videoHeight || 0;
         setDuration(video.duration);
         setEndSec(Math.min(30, video.duration));
         setProbe({
-          width: video.videoWidth,
-          height: video.videoHeight,
+          width: vw,
+          height: vh,
           codec: "h264",
           size: file.size,
         });
-        queueMicrotask(() =>
-          videoRef.current && generateFrameThumbnails(videoRef.current)
+        queueMicrotask(
+          () => videoRef.current && generateFrameThumbnails(videoRef.current)
         );
         return true;
       }
