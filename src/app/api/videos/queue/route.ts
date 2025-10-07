@@ -72,6 +72,10 @@ export async function POST(req: NextRequest) {
           "Upstash-Forward-Authorization": `Bearer ${process.env.VIDEO_WORKER_SECRET}`,
           "Upstash-Callback": `${env.NEXT_PUBLIC_SITE_URL}/api/videos/normalize-callback`,
           "Upstash-Retries": "2",
+          // Ensure QStash forwards the worker's response JSON (so callback has videoId/success)
+          "Upstash-Forward-Response": "1",
+          // Some deployments expect boolean string
+          "Upstash-Forward-Response-Body": "1",
         },
         // Body is the actual JSON forwarded to worker
         body,

@@ -63,6 +63,10 @@ export async function POST(req: NextRequest) {
 
   const { videoId, success, readyUrl, error, thumbnailUrl } = parsed;
   if (!videoId) {
+    console.warn("[normalize-callback] missing videoId in payload", {
+      rawBody,
+      parsedKeys: Object.keys(parsed || {}),
+    });
     return NextResponse.json({ error: "missing_videoId" }, { status: 400 });
   }
 
