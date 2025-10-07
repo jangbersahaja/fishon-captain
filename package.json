@@ -47,6 +47,7 @@
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^16.0.0",
+    "@types/fluent-ffmpeg": "^2.1.27",
     "@types/google.maps": "^3.55.9",
     "@types/node": "^20",
     "@types/react": "^19",

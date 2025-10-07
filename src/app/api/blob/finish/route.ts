@@ -74,10 +74,20 @@ export async function POST(req: NextRequest) {
       console.warn("thumbnail.put_failed", e);
     }
   }
-  // Improved heuristic: if mp4 and presumed <=15MB skip normalization
-  // (Cannot know size on server unless client sent header; treat blobKey hint: .mp4 assumed safe)
-  const skip = /\.mp4$/i.test(parsed.data.videoUrl);
-  const normalize = !skip && needsNormalizePlaceholder(parsed.data.videoUrl);
+  // If external worker is configured, always normalize to ensure consistent processing
+  // Otherwise, skip mp4 files as they're likely already optimized
+  const hasExternalWorker = !!process.env.EXTERNAL_WORKER_URL;
+  const skip = !hasExternalWorker && /\.mp4$/i.test(parsed.data.videoUrl);
+  const normalize =
+    !skip &&
+    (hasExternalWorker || needsNormalizePlaceholder(parsed.data.videoUrl));
+
+  console.log(`[blob-finish] Processing video:`, {
+    videoUrl: parsed.data.videoUrl,
+    hasExternalWorker,
+    skip,
+    normalize,
+  });
 
   // NOTE: CaptainVideo model may not yet be migrated; wrap in try for now.
   interface CreatedVideo {
@@ -110,8 +120,21 @@ export async function POST(req: NextRequest) {
 
   // Optionally enqueue normalize (placeholder - real call to job queue)
   if (normalize && video) {
+    console.log(`[blob-finish] Triggering queue for video ${video.id}`);
     const secret = process.env.VIDEO_WORKER_SECRET;
-    fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/videos/queue`, {
+
+    // Use the correct base URL for development vs production
+    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    if (process.env.NODE_ENV === "development") {
+      // Extract port from current request headers
+      const host = req.headers.get("host") || "localhost:3000";
+      baseUrl = `http://${host}`;
+    }
+
+    const queueUrl = `${baseUrl}/api/videos/queue`;
+    console.log(`[blob-finish] Calling queue at: ${queueUrl}`);
+
+    fetch(queueUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -119,6 +142,11 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({ videoId: video.id }),
     }).catch((e) => console.warn("enqueue failed", e));
+  } else {
+    console.log(`[blob-finish] Skipping queue:`, {
+      normalize,
+      hasVideo: !!video,
+    });
   }
 
   return NextResponse.json({ ok: true, video });

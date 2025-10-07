@@ -38,25 +38,83 @@ export async function POST(req: NextRequest) {
   const target =
     env.EXTERNAL_WORKER_URL ||
     `${env.NEXT_PUBLIC_SITE_URL}/api/videos/worker-normalize`;
-  const body = JSON.stringify({ videoId });
+
+  // Prepare payload with all required data for external worker
+  const payload = env.EXTERNAL_WORKER_URL
+    ? {
+        videoId: video.id,
+        originalUrl: video.originalUrl,
+        trimStartSec: video.trimStartSec || 0,
+      }
+    : { videoId: video.id }; // Internal worker only needs videoId
+
+  const body = JSON.stringify(payload);
+
   try {
     if (env.QSTASH_TOKEN && env.QSTASH_URL) {
-      await fetch(`${env.QSTASH_URL}/v2/publish`, {
+      // QStash dynamic URL pattern: /v2/publish/{FULL_RAW_DESTINATION_URL}
+      // Docs show the raw https://... appended directly (NOT url-encoded). Encoding produces an invalid scheme error.
+      // Example: https://qstash.upstash.io/v2/publish/https://your-app.vercel.app/api/worker
+      const destination =
+        target.startsWith("http://") || target.startsWith("https://")
+          ? target
+          : `https://${target}`; // ensure scheme
+      const publishUrl = `${env.QSTASH_URL}/v2/publish/${destination}`;
+      console.log(`[queue] Sending to QStash (raw path) → ${destination}`, {
+        payload,
+        publishUrl,
+      });
+      const publishRes = await fetch(publishUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${env.QSTASH_TOKEN}`,
           "Content-Type": "application/json",
-          "Upstash-Forward-Authorization": `Bearer ${env.QSTASH_TOKEN}`,
+          "Upstash-Forward-Authorization": `Bearer ${process.env.VIDEO_WORKER_SECRET}`,
           "Upstash-Callback": `${env.NEXT_PUBLIC_SITE_URL}/api/videos/normalize-callback`,
           "Upstash-Retries": "2",
         },
-        body: JSON.stringify({ url: target, body }),
+        // Body is the actual JSON forwarded to worker
+        body,
       });
+      let publishText = "";
+      try {
+        publishText = await publishRes.text();
+      } catch {}
+      if (!publishRes.ok) {
+        console.warn(
+          `[queue] QStash publish failed status=${publishRes.status} body=${publishText}`
+        );
+        // Revert status to queued so can retry
+        await prisma.captainVideo.update({
+          where: { id: videoId },
+          data: {
+            processStatus: "queued",
+            errorMessage: `qstash_status_${publishRes.status}`,
+          },
+        });
+        return NextResponse.json(
+          {
+            error: "qstash_publish_failed",
+            status: publishRes.status,
+            body: publishText,
+          },
+          { status: 502 }
+        );
+      }
+      console.log(
+        `[queue] QStash accepted job for video ${videoId} response=${
+          publishText || "<empty>"
+        }`
+      );
     } else {
+      console.log(`[queue] Direct call to ${target}`, payload);
       // Fallback direct call (non-async) for local dev
       await fetch(target, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.VIDEO_WORKER_SECRET}`,
+        },
         body,
       });
     }
