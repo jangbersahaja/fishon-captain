@@ -47,6 +47,100 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
     codec: string;
     size: number;
   } | null>(null);
+  // Frame thumbnails (WhatsApp-style timeline)
+  const [thumbnails, setThumbnails] = useState<string[]>([]);
+  const [thumbsLoading, setThumbsLoading] = useState(false);
+  const [thumbsError, setThumbsError] = useState<string | null>(null);
+
+  // ---------- Frame Thumbnail Generation Logic ----------
+  const generateFrameThumbnails = useCallback(
+    async (video: HTMLVideoElement, frameCount: number = 20) => {
+      if (!video || !video.videoWidth || !video.videoHeight || !duration) return;
+      setThumbsLoading(true);
+      setThumbsError(null);
+      const frames: string[] = [];
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        setThumbsError("Canvas context unavailable");
+        setThumbsLoading(false);
+        return;
+      }
+      // Fixed thumbnail size (maintain aspect ratio approximate)
+      const targetW = 60;
+      const targetH = 34;
+      canvas.width = targetW;
+      canvas.height = targetH;
+
+      let cancelled = false;
+      // Capture previous src/time to restore if needed
+      const originalTime = video.currentTime;
+      const captureTimes = Array.from({ length: frameCount }, (_, i) =>
+        (i / (frameCount - 1)) * duration
+      );
+
+      const seekTo = (time: number) =>
+        new Promise<void>((resolve) => {
+          const handle = () => {
+            video.removeEventListener("seeked", handle);
+            resolve();
+          };
+            // Some browsers (Safari) may fire 'timeupdate' only; add fallback
+          const fallback = () => {
+            if (Math.abs(video.currentTime - time) < 0.05) {
+              cleanup();
+              resolve();
+            }
+          };
+          const cleanup = () => {
+            video.removeEventListener("seeked", handle);
+            video.removeEventListener("timeupdate", fallback);
+          };
+          video.addEventListener("seeked", handle);
+          video.addEventListener("timeupdate", fallback);
+          try {
+            video.currentTime = time;
+          } catch (e) {
+            // If seeking fails, resolve anyway to avoid hanging
+            cleanup();
+            resolve();
+          }
+        });
+
+      for (const t of captureTimes) {
+        if (cancelled) break;
+        // Pause to stabilize frame
+        try { video.pause(); } catch {}
+        await seekTo(t);
+        try {
+          ctx.drawImage(video, 0, 0, targetW, targetH);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          frames.push(dataUrl);
+        } catch (e) {
+          console.warn("Frame capture failed", e);
+        }
+      }
+      if (!cancelled) setThumbnails(frames);
+      setThumbsLoading(false);
+      // Restore original time (non-blocking)
+      try { video.currentTime = originalTime; } catch {}
+      return () => {
+        cancelled = true;
+      };
+    },
+    [duration]
+  );
+
+  // Trigger frame generation after metadata ready
+  useEffect(() => {
+    if (!open) return;
+    const video = videoRef.current;
+    if (video && duration > 0) {
+      // Reset previous frames when file changes
+      setThumbnails([]);
+      generateFrameThumbnails(video);
+    }
+  }, [file, duration, open, generateFrameThumbnails]);
 
   // Create object URL when file changes
   useEffect(() => {
@@ -60,6 +154,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
 
       // Validate file type
       if (!file.type.startsWith("video/")) {
+        console.error("Invalid file type:", file.type);
         setError(
           `Invalid file type: ${file.type}. Please select a video file.`
         );
@@ -68,8 +163,10 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       }
 
       const url = URL.createObjectURL(file);
+      console.log("Object URL created:", url);
       setObjectUrl(url);
       setLoading(true);
+      console.log("Loading state set to true, waiting for video events...");
       setError(null);
       setDuration(0);
       setStartSec(0);
@@ -77,6 +174,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       setCurrentTime(0);
       setIsPlaying(false);
       setProbe({ width: 0, height: 0, codec: "", size: file.size });
+  setThumbnails([]);
 
       return () => {
         console.log("Revoking object URL");
@@ -88,6 +186,100 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       setLoading(true);
     }
   }, [file, open]);
+
+  // Force video to load when objectUrl is available
+  useEffect(() => {
+    if (objectUrl && videoRef.current) {
+      console.log("Forcing video to load with new object URL");
+      const video = videoRef.current;
+      video.load(); // Force reload with new source
+
+      // Also try to force events by checking state immediately
+      setTimeout(() => {
+        if (video.readyState >= 1) {
+          console.log("Video ready state detected after forced load");
+          setLoading(false);
+        }
+      }, 100);
+    }
+  }, [objectUrl]);
+
+  // Loading timeout to prevent infinite loading
+  useEffect(() => {
+    if (loading && objectUrl) {
+      // Proactive checking - poll the video element to see if it's ready
+      const checkVideoReady = () => {
+        const video = videoRef.current;
+        if (video) {
+          console.log(
+            `Video check - readyState: ${video.readyState}, duration: ${video.duration}, networkState: ${video.networkState}`
+          );
+
+          // If video has metadata or can play, stop loading
+          if (
+            video.readyState >= 1 ||
+            (video.duration && !isNaN(video.duration))
+          ) {
+            console.log(
+              "Video is ready during periodic check - stopping loading"
+            );
+            setLoading(false);
+
+            // Trigger metadata handling if we have duration
+            if (video.duration && !isNaN(video.duration)) {
+              console.log("Triggering metadata handling from polling");
+              // Trigger metadata handling by calling the handleLoadedMetadata logic directly
+              setDuration(video.duration);
+              setEndSec(Math.min(30, video.duration));
+              setProbe({
+                width: video.videoWidth || 0,
+                height: video.videoHeight || 0,
+                codec: "",
+                size: file?.size || 0,
+              });
+            }
+
+            return true; // Stop checking
+          }
+        }
+        return false; // Continue checking
+      };
+
+      // Check immediately
+      if (checkVideoReady()) {
+        return;
+      }
+
+      // Then check every 100ms for faster detection
+      const pollInterval = setInterval(() => {
+        if (checkVideoReady()) {
+          clearInterval(pollInterval);
+        }
+      }, 100);
+
+      // Final timeout after 15 seconds
+      const timeout = setTimeout(() => {
+        clearInterval(pollInterval);
+        console.log("Loading timeout reached, stopping loading");
+        setLoading(false);
+
+        // Check one more time if video is actually ready despite events not firing
+        const video = videoRef.current;
+        if (video && video.readyState >= 1) {
+          console.log("Video was actually ready, clearing error");
+        } else {
+          setError(
+            "Video loading timed out. Please try again or check if the file format is supported."
+          );
+        }
+      }, 15000);
+
+      return () => {
+        clearInterval(pollInterval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [loading, objectUrl, file]);
 
   // Handle video metadata loaded
   const handleLoadedMetadata = useCallback(() => {
@@ -108,12 +300,16 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
         codec: "h264",
         size: file.size,
       });
+      // Kick off thumbnail generation (deferred to next microtask so videoRef updates)
+      queueMicrotask(() => {
+        if (videoRef.current) generateFrameThumbnails(videoRef.current);
+      });
     } else {
       console.error("Invalid video duration:", videoRef.current?.duration);
       setError("Invalid video file or corrupted data");
       setLoading(false);
     }
-  }, [file]);
+  }, [file, generateFrameThumbnails]);
 
   // Handle video time updates
   const handleTimeUpdate = useCallback(() => {
@@ -230,8 +426,8 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       );
       if (probe) {
         onConfirm(result.blob, startSec, actualDuration, probe, {
-          didFallback: false,
-          fallbackReason: null,
+          didFallback: result.didFallback,
+          fallbackReason: result.fallbackReason || null,
         });
       }
     } catch (err) {
@@ -300,6 +496,67 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
               <span className="mt-2 text-xs text-gray-400">
                 If stuck, check file type and browser support.
               </span>
+
+              {/* Debug button to manually check video state */}
+              <button
+                type="button"
+                className="mt-4 px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                onClick={() => {
+                  console.log("=== MANUAL DEBUG CHECK ===");
+                  console.log("File:", file?.name, file?.type, file?.size);
+                  console.log("Object URL:", objectUrl);
+                  console.log("Loading state:", loading);
+
+                  const video = videoRef.current;
+                  if (video) {
+                    console.log("Video element found!");
+                    console.log("Video src:", video.src);
+                    console.log(
+                      "Video readyState:",
+                      video.readyState,
+                      "(0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA)"
+                    );
+                    console.log(
+                      "Video networkState:",
+                      video.networkState,
+                      "(0=EMPTY, 1=IDLE, 2=LOADING, 3=NO_SOURCE)"
+                    );
+                    console.log("Video duration:", video.duration);
+                    console.log("Video error:", video.error);
+                    console.log("Video videoWidth:", video.videoWidth);
+                    console.log("Video videoHeight:", video.videoHeight);
+                    console.log("Video currentSrc:", video.currentSrc);
+
+                    // Try to force load
+                    if (video.readyState === 0) {
+                      console.log("Attempting to force load...");
+                      video.load();
+                    }
+
+                    // Force stop loading if video seems ready
+                    if (video.readyState >= 1) {
+                      console.log("Video seems ready, forcing loading to stop");
+                      setLoading(false);
+                    }
+                  } else {
+                    console.log("❌ No video element found!");
+                  }
+                  console.log("=== END DEBUG CHECK ===");
+                }}
+              >
+                Debug Video State
+              </button>
+
+              <button
+                type="button"
+                className="mt-2 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                onClick={() => {
+                  console.log("Manually stopping loading state");
+                  setLoading(false);
+                }}
+              >
+                Force Stop Loading
+              </button>
             </div>
           ) : (
             <>
@@ -309,50 +566,65 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   src={objectUrl || undefined}
                   className="w-full max-h-80 bg-black rounded-lg cursor-pointer"
                   muted={isMuted}
-                  preload="metadata"
+                  preload="auto"
                   playsInline
                   controls={false}
                   onClick={togglePlayPause}
-                  onLoadedMetadata={handleLoadedMetadata}
+                  onLoadedMetadata={() => {
+                    console.log("onLoadedMetadata fired - stopping loading");
+                    setLoading(false);
+                    handleLoadedMetadata();
+                  }}
                   onTimeUpdate={handleTimeUpdate}
                   onError={(e) => {
                     console.error("Video loading error:", e);
                     const target = e.target as HTMLVideoElement;
-                    console.error("Video error details:", {
+                    const errorDetails = {
                       error: target.error,
+                      errorCode: target.error?.code,
+                      errorMessage: target.error?.message,
                       networkState: target.networkState,
                       readyState: target.readyState,
                       src: target.src,
-                    });
+                      fileType: file?.type,
+                      fileSize: file?.size,
+                    };
+                    console.error("Detailed video error:", errorDetails);
                     setError(
                       `Failed to load video: ${
                         target.error?.message || "Unknown error"
-                      }`
+                      }. Error code: ${target.error?.code || "unknown"}`
                     );
                     setLoading(false);
                   }}
                   onCanPlay={() => {
-                    console.log("Video can play");
-                    if (
-                      videoRef.current &&
-                      videoRef.current.duration &&
-                      !isNaN(videoRef.current.duration)
-                    ) {
-                      setLoading(false);
-                    }
+                    console.log("Video can play - stopping loading");
+                    setLoading(false);
                   }}
                   onLoadStart={() => {
-                    console.log("Video loading started");
-                    setLoading(true);
+                    console.log(
+                      "Video loading started (not changing loading state)"
+                    );
+                    // Don't set loading here as it conflicts with other handlers
                   }}
                   onLoadedData={() => {
-                    console.log("Video data loaded");
+                    console.log("Video data loaded - stopping loading");
+                    const video = videoRef.current;
+                    if (video) {
+                      console.log("Video state:", {
+                        duration: video.duration,
+                        readyState: video.readyState,
+                        networkState: video.networkState,
+                        videoWidth: video.videoWidth,
+                        videoHeight: video.videoHeight,
+                      });
+                    }
+                    setLoading(false);
                     // Sometimes onLoadedMetadata doesn't fire, so we try here too
                     if (
                       videoRef.current &&
                       videoRef.current.duration &&
-                      !isNaN(videoRef.current.duration) &&
-                      loading
+                      !isNaN(videoRef.current.duration)
                     ) {
                       console.log(
                         "Triggering metadata handling from onLoadedData"
@@ -361,13 +633,13 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                     }
                   }}
                   onCanPlayThrough={() => {
-                    console.log("Video can play through");
-                    // Final fallback to ensure we're not stuck loading
+                    console.log("Video can play through - stopping loading");
+                    setLoading(false); // Always stop loading
+                    // Final fallback to ensure metadata is handled
                     if (
                       videoRef.current &&
                       videoRef.current.duration &&
-                      !isNaN(videoRef.current.duration) &&
-                      loading
+                      !isNaN(videoRef.current.duration)
                     ) {
                       console.log(
                         "Triggering metadata handling from onCanPlayThrough"
@@ -451,52 +723,76 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 <div className="text-white text-sm font-medium">
                   Select clip duration (max 30s)
                 </div>
-                <div className="relative">
-                  <div
-                    ref={timelineRef}
-                    className="relative h-16 bg-neutral-800 rounded overflow-hidden cursor-pointer"
-                  >
-                    <div className="absolute inset-0">
-                      <div
-                        className="absolute top-0 bottom-0 bg-black/60"
-                        style={{ left: 0, width: `${startPercentage}%` }}
-                      />
-                      <div
-                        className="absolute top-0 bottom-0 bg-black/60"
-                        style={{ left: `${endPercentage}%`, right: 0 }}
-                      />
-                      <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
-                        style={{ left: `${(currentTime / duration) * 100}%` }}
-                      />
-                      <div
-                        className="absolute top-0 bottom-0 border-2 border-blue-400 cursor-move hover:bg-blue-400/10 transition-colors"
-                        style={{
-                          left: `${startPercentage}%`,
-                          width: `${endPercentage - startPercentage}%`,
-                        }}
-                        onMouseDown={(e) => handleTimelineDrag(e, "selection")}
-                      />
-                      <div
-                        className="absolute top-0 bottom-0 w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 transition-colors flex items-center justify-center z-10"
-                        style={{
-                          left: `${startPercentage}%`,
-                          transform: "translateX(-50%)",
-                        }}
-                        onMouseDown={(e) => handleTimelineDrag(e, "start")}
-                      >
-                        <div className="w-1 h-4 bg-white rounded"></div>
-                      </div>
-                      <div
-                        className="absolute top-0 bottom-0 w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 transition-colors flex items-center justify-center z-10"
-                        style={{
-                          left: `${endPercentage}%`,
-                          transform: "translateX(-50%)",
-                        }}
-                        onMouseDown={(e) => handleTimelineDrag(e, "end")}
-                      >
-                        <div className="w-1 h-4 bg-white rounded"></div>
-                      </div>
+                <div className="relative" ref={timelineRef}>
+                  <div className="relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none">
+                    {/* Thumbnails Row */}
+                    <div className="absolute inset-0 flex">
+                      {thumbnails.length > 0 ? (
+                        thumbnails.map((src, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 h-full bg-neutral-700 bg-center bg-cover"
+                            style={{ backgroundImage: `url(${src})` }}
+                          />
+                        ))
+                      ) : thumbsLoading ? (
+                        <div className="flex-1 flex items-center justify-center text-xs text-gray-400">
+                          Generating previews...
+                        </div>
+                      ) : thumbsError ? (
+                        <div className="flex-1 flex items-center justify-center text-xs text-red-400">
+                          {thumbsError}
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center text-xs text-gray-500">
+                          No previews
+                        </div>
+                      )}
+                    </div>
+                    {/* Unselected masks */}
+                    <div
+                      className="absolute top-0 bottom-0 bg-black/60 pointer-events-none"
+                      style={{ left: 0, width: `${startPercentage}%` }}
+                    />
+                    <div
+                      className="absolute top-0 bottom-0 bg-black/60 pointer-events-none"
+                      style={{ left: `${endPercentage}%`, right: 0 }}
+                    />
+                    {/* Current playhead */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none"
+                      style={{ left: `${(currentTime / duration) * 100}%` }}
+                    />
+                    {/* Selection overlay */}
+                    <div
+                      className="absolute top-0 bottom-0 border-2 border-blue-400 cursor-move hover:bg-blue-400/10 transition-colors z-20"
+                      style={{
+                        left: `${startPercentage}%`,
+                        width: `${endPercentage - startPercentage}%`,
+                      }}
+                      onMouseDown={(e) => handleTimelineDrag(e, "selection")}
+                    />
+                    {/* Start handle */}
+                    <div
+                      className="absolute top-0 bottom-0 w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 transition-colors flex items-center justify-center z-30"
+                      style={{
+                        left: `${startPercentage}%`,
+                        transform: "translateX(-50%)",
+                      }}
+                      onMouseDown={(e) => handleTimelineDrag(e, "start")}
+                    >
+                      <div className="w-1 h-6 bg-white rounded"></div>
+                    </div>
+                    {/* End handle */}
+                    <div
+                      className="absolute top-0 bottom-0 w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 transition-colors flex items-center justify-center z-30"
+                      style={{
+                        left: `${endPercentage}%`,
+                        transform: "translateX(-50%)",
+                      }}
+                      onMouseDown={(e) => handleTimelineDrag(e, "end")}
+                    >
+                      <div className="w-1 h-6 bg-white rounded"></div>
                     </div>
                   </div>
                 </div>
