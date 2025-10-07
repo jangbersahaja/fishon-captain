@@ -53,12 +53,26 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [thumbsLoading, setThumbsLoading] = useState(false);
   const [thumbsError, setThumbsError] = useState<string | null>(null);
+  // Track cancellers for async work
+  const thumbGenCancelRef = useRef<(() => void) | null>(null);
+
+  // Derived readiness
+  const isReady = !loading && duration > 0 && !!probe;
 
   // ---------- Frame Thumbnail Generation Logic ----------
   const generateFrameThumbnails = useCallback(
     async (video: HTMLVideoElement, frameCount: number = 20) => {
-      if (!video || !video.videoWidth || !video.videoHeight || !duration)
-        return;
+      if (!video || !duration) return;
+      // If dimension metadata not yet settled, wait a tick
+      if (!video.videoWidth || !video.videoHeight) return;
+
+      // Cancel any previous generation
+      if (thumbGenCancelRef.current) {
+        try {
+          thumbGenCancelRef.current();
+        } catch {}
+      }
+
       setThumbsLoading(true);
       setThumbsError(null);
       const frames: string[] = [];
@@ -69,32 +83,33 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
         setThumbsLoading(false);
         return;
       }
-      // Fixed thumbnail size (maintain aspect ratio approximate)
       const targetW = 60;
       const targetH = 34;
       canvas.width = targetW;
       canvas.height = targetH;
-
       let cancelled = false;
-      // Capture previous src/time to restore if needed
+      thumbGenCancelRef.current = () => {
+        cancelled = true;
+      };
+
+      const originalPaused = video.paused;
       const originalTime = video.currentTime;
-      const captureTimes = Array.from(
-        { length: frameCount },
-        (_, i) => (i / (frameCount - 1)) * duration
+      const captureTimes = Array.from({ length: frameCount }, (_, i) =>
+        (i / (frameCount - 1)) * duration
       );
 
       const seekTo = (time: number) =>
         new Promise<void>((resolve) => {
-          const handle = () => {
-            video.removeEventListener("seeked", handle);
+          let settled = false;
+            const finish = () => {
+            if (settled) return;
+            settled = true;
+            cleanup();
             resolve();
           };
-          // Some browsers (Safari) may fire 'timeupdate' only; add fallback
+          const handle = () => finish();
           const fallback = () => {
-            if (Math.abs(video.currentTime - time) < 0.05) {
-              cleanup();
-              resolve();
-            }
+            if (Math.abs(video.currentTime - time) < 0.06) finish();
           };
           const cleanup = () => {
             video.removeEventListener("seeked", handle);
@@ -105,36 +120,37 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
           try {
             video.currentTime = time;
           } catch {
-            // If seeking fails, resolve anyway to avoid hanging
-            cleanup();
-            resolve();
+            finish();
           }
+          // Safety timeout (Safari long seek)
+          setTimeout(finish, 350);
         });
 
       for (const t of captureTimes) {
         if (cancelled) break;
-        // Pause to stabilize frame
         try {
           video.pause();
         } catch {}
         await seekTo(t);
+        if (cancelled) break;
         try {
           ctx.drawImage(video, 0, 0, targetW, targetH);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-          frames.push(dataUrl);
+          frames.push(canvas.toDataURL("image/jpeg", 0.7));
         } catch (e) {
           console.warn("Frame capture failed", e);
         }
       }
       if (!cancelled) setThumbnails(frames);
-      setThumbsLoading(false);
-      // Restore original time (non-blocking)
+      if (!originalPaused) {
+        try {
+          video.play();
+        } catch {}
+      }
+      // Restore position (best-effort)
       try {
         video.currentTime = originalTime;
       } catch {}
-      return () => {
-        cancelled = true;
-      };
+      if (!cancelled) setThumbsLoading(false);
     },
     [duration]
   );
@@ -148,6 +164,14 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       setThumbnails([]);
       generateFrameThumbnails(video);
     }
+    return () => {
+      // Cancel any ongoing thumbnail generation when dependencies change/unmount
+      if (thumbGenCancelRef.current) {
+        try {
+          thumbGenCancelRef.current();
+        } catch {}
+      }
+    };
   }, [file, duration, open, generateFrameThumbnails]);
 
   // Create object URL when file changes
@@ -361,6 +385,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   // Handle timeline drag
   const handleTimelineDrag = useCallback(
     (e: React.MouseEvent, handle: "start" | "end" | "selection") => {
+      if (!isReady) return; // guard during loading
       if (!timelineRef.current) return;
       const video = videoRef.current;
       if (video && !video.paused) {
@@ -377,19 +402,23 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
         const percentage = Math.max(0, Math.min(1, x / rect.width));
         const time = percentage * duration;
 
+        // Clamp helpers
+        const clamp = (v: number, min = 0, max = duration) =>
+          Math.max(min, Math.min(max, v));
         if (handle === "start") {
-          const newStart = Math.max(0, Math.min(time, endSec - 1));
+          const newStart = clamp(Math.min(time, endSec - 0.25));
           setStartSec(newStart);
+          // Ensure at least 0.25s selection window
+          if (endSec - newStart < 0.25) setEndSec(clamp(newStart + 0.25));
         } else if (handle === "end") {
-          const newEnd = Math.min(duration, Math.max(time, startSec + 1));
-          const maxEnd = Math.min(startSec + 30, duration);
+          const newEnd = clamp(Math.max(time, startSec + 0.25));
+          const maxEnd = clamp(startSec + 30, 0, duration);
           setEndSec(Math.min(newEnd, maxEnd));
         } else if (handle === "selection") {
-          const newStart = Math.max(
-            0,
+          const newStart = clamp(
             Math.min(time, duration - initialSelectionDuration)
           );
-          const newEnd = newStart + initialSelectionDuration;
+          const newEnd = clamp(newStart + initialSelectionDuration);
           setStartSec(newStart);
           setEndSec(newEnd);
         }
@@ -404,7 +433,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [duration, startSec, endSec]
+    [duration, startSec, endSec, isReady]
   );
 
   const handleConfirm = useCallback(async () => {
@@ -547,45 +576,48 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 }}
               />
               {loading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-lg">
-                  <div className="w-8 h-8 border border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="mt-3 text-white text-sm">
-                    Loading video...
-                  </span>
-                  <span className="mt-1 text-xs text-gray-400">
-                    If stuck, click Debug.
-                  </span>
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      className="px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                      onClick={() => {
-                        const video = videoRef.current;
-                        console.log("[trim-debug] state", {
-                          readyState: video?.readyState,
-                          networkState: video?.networkState,
-                          duration: video?.duration,
-                          videoWidth: video?.videoWidth,
-                          videoHeight: video?.videoHeight,
-                          src: video?.currentSrc,
-                        });
-                        if (video && video.readyState === 0) {
-                          try {
-                            video.load();
-                          } catch {}
-                        }
-                        if (video && video.readyState >= 1) setLoading(false);
-                      }}
-                    >
-                      Debug
-                    </button>
-                    <button
-                      type="button"
-                      className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                      onClick={() => setLoading(false)}
-                    >
-                      Force Stop
-                    </button>
+                <div className="absolute inset-0 flex flex-col gap-3 p-4 bg-neutral-900/80 backdrop-blur-sm rounded-lg">
+                  <div className="flex-1 w-full flex items-center justify-center">
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-24 h-24 rounded-full border-4 border-neutral-600 border-t-blue-500 animate-spin" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 w-40 bg-neutral-700 rounded animate-pulse" />
+                    <div className="h-2 w-64 bg-neutral-800 rounded animate-pulse" />
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        className="px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                        onClick={() => {
+                          const video = videoRef.current;
+                          console.log("[trim-debug] state", {
+                            readyState: video?.readyState,
+                            networkState: video?.networkState,
+                            duration: video?.duration,
+                            videoWidth: video?.videoWidth,
+                            videoHeight: video?.videoHeight,
+                            src: video?.currentSrc,
+                          });
+                          if (video && video.readyState === 0) {
+                            try { video.load(); } catch {}
+                          }
+                          if (video && video.readyState >= 1) setLoading(false);
+                        }}
+                      >
+                        Debug
+                      </button>
+                      <button
+                        type="button"
+                        className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                        onClick={() => setLoading(false)}
+                      >
+                        Force Stop
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Loading video metadata...
+                    </div>
                   </div>
                 </div>
               )}
@@ -665,29 +697,25 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 Select clip duration (max 30s)
               </div>
               <div className="relative" ref={timelineRef}>
-                <div className="relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none">
+                <div className={`relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none ${!isReady ? 'opacity-60 pointer-events-none' : ''}`}>
                   {/* Thumbnails Row */}
                   <div className="absolute inset-0 flex">
-                    {thumbnails.length > 0 ? (
+                    {thumbnails.length > 0 && !thumbsLoading ? (
                       thumbnails.map((src, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 h-full bg-neutral-700 bg-center bg-cover"
-                          style={{ backgroundImage: `url(${src})` }}
-                        />
+                        <div key={i} className="flex-1 h-full bg-neutral-700 bg-center bg-cover" style={{ backgroundImage: `url(${src})` }} />
                       ))
-                    ) : thumbsLoading ? (
-                      <div className="flex-1 flex items-center justify-center text-xs text-gray-400">
-                        Generating previews...
-                      </div>
+                    ) : thumbsLoading || loading ? (
+                      Array.from({ length: 20 }).map((_, i) => (
+                        <div key={i} className="flex-1 h-full bg-neutral-700/40 animate-pulse" />
+                      ))
                     ) : thumbsError ? (
                       <div className="flex-1 flex items-center justify-center text-xs text-red-400">
                         {thumbsError}
                       </div>
                     ) : (
-                      <div className="flex-1 flex items-center justify-center text-xs text-gray-500">
-                        No previews
-                      </div>
+                      Array.from({ length: 20 }).map((_, i) => (
+                        <div key={i} className="flex-1 h-full bg-neutral-700/20" />
+                      ))
                     )}
                   </div>
                   {/* Unselected masks */}
