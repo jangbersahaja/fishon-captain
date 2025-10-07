@@ -4,6 +4,7 @@ import {
   TrimResult,
 } from "@/lib/video/trimMp4BoxKeyframeSlice";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+// TODO(worker): Integrate AbortController + web worker pipeline for thumbnail & probe extraction.
 
 interface VideoTrimModalProps {
   file: File;
@@ -94,14 +95,15 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
 
       const originalPaused = video.paused;
       const originalTime = video.currentTime;
-      const captureTimes = Array.from({ length: frameCount }, (_, i) =>
-        (i / (frameCount - 1)) * duration
+      const captureTimes = Array.from(
+        { length: frameCount },
+        (_, i) => (i / (frameCount - 1)) * duration
       );
 
       const seekTo = (time: number) =>
         new Promise<void>((resolve) => {
           let settled = false;
-            const finish = () => {
+          const finish = () => {
             if (settled) return;
             settled = true;
             cleanup();
@@ -493,15 +495,42 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
             </button>
           </div>
 
-          {/* Debug info for troubleshooting infinite loading */}
-          <div className="p-2 bg-neutral-800 rounded text-xs text-gray-300 mb-2">
-            <div>
-              file: <b>{file?.name}</b> ({file?.type}, {file?.size} bytes)
+          {/* File + metadata summary */}
+          <div className="p-3 bg-neutral-800 rounded text-xs text-gray-200 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium text-white break-all max-w-[70vw] sm:max-w-none">
+                {file.name}
+              </div>
+              <div className="text-[11px] text-gray-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>{file.type || 'unknown type'}</span>
+                {probe && (
+                  <>
+                    <span>
+                      {probe.width}×{probe.height}
+                    </span>
+                    <span>{(probe.size / 1024 / 1024).toFixed(2)}MB</span>
+                    <span>{duration.toFixed(1)}s total</span>
+                  </>
+                )}
+              </div>
             </div>
-            <div>
-              objectUrl:{" "}
-              <span className="break-all">{objectUrl || "(none)"}</span>
-            </div>
+            {error && (
+              <button
+                type="button"
+                onClick={() => {
+                  // Retry: reset loading flow
+                  if (objectUrl && videoRef.current) {
+                    setLoading(true);
+                    setError(null);
+                    metadataResolvedRef.current = false;
+                    try { videoRef.current.load(); } catch {}
+                  }
+                }}
+                className="self-start sm:self-auto px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-medium"
+              >
+                Retry Load
+              </button>
+            )}
           </div>
 
           {error && (
@@ -576,7 +605,12 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 }}
               />
               {loading && (
-                <div className="absolute inset-0 flex flex-col gap-3 p-4 bg-neutral-900/80 backdrop-blur-sm rounded-lg">
+                <div
+                  className="absolute inset-0 flex flex-col gap-3 p-4 bg-neutral-900/80 backdrop-blur-sm rounded-lg"
+                  role="alert"
+                  aria-busy="true"
+                  aria-live="polite"
+                >
                   <div className="flex-1 w-full flex items-center justify-center">
                     <div className="w-full h-full flex items-center justify-center">
                       <div className="w-24 h-24 rounded-full border-4 border-neutral-600 border-t-blue-500 animate-spin" />
@@ -600,7 +634,9 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                             src: video?.currentSrc,
                           });
                           if (video && video.readyState === 0) {
-                            try { video.load(); } catch {}
+                            try {
+                              video.load();
+                            } catch {}
                           }
                           if (video && video.readyState >= 1) setLoading(false);
                         }}
@@ -613,6 +649,20 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                         onClick={() => setLoading(false)}
                       >
                         Force Stop
+                      </button>
+                      <button
+                        type="button"
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                        onClick={() => {
+                          if (objectUrl && videoRef.current) {
+                            setLoading(true);
+                            setError(null);
+                            metadataResolvedRef.current = false;
+                            try { videoRef.current.load(); } catch {}
+                          }
+                        }}
+                      >
+                        Retry
                       </button>
                     </div>
                     <div className="text-xs text-gray-400">
@@ -693,20 +743,31 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
               </div>
             </div>
             <div className="space-y-3">
-              <div className="text-white text-sm font-medium">
+              <div className="text-white text-sm sm:text-base font-medium">
                 Select clip duration (max 30s)
               </div>
               <div className="relative" ref={timelineRef}>
-                <div className={`relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none ${!isReady ? 'opacity-60 pointer-events-none' : ''}`}>
+                <div
+                  className={`relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none ${
+                    !isReady ? "opacity-60 pointer-events-none" : ""
+                  }`}
+                >
                   {/* Thumbnails Row */}
                   <div className="absolute inset-0 flex">
                     {thumbnails.length > 0 && !thumbsLoading ? (
                       thumbnails.map((src, i) => (
-                        <div key={i} className="flex-1 h-full bg-neutral-700 bg-center bg-cover" style={{ backgroundImage: `url(${src})` }} />
+                        <div
+                          key={i}
+                          className="flex-1 h-full bg-neutral-700 bg-center bg-cover"
+                          style={{ backgroundImage: `url(${src})` }}
+                        />
                       ))
                     ) : thumbsLoading || loading ? (
                       Array.from({ length: 20 }).map((_, i) => (
-                        <div key={i} className="flex-1 h-full bg-neutral-700/40 animate-pulse" />
+                        <div
+                          key={i}
+                          className="flex-1 h-full bg-neutral-700/40 animate-pulse"
+                        />
                       ))
                     ) : thumbsError ? (
                       <div className="flex-1 flex items-center justify-center text-xs text-red-400">
@@ -714,7 +775,10 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                       </div>
                     ) : (
                       Array.from({ length: 20 }).map((_, i) => (
-                        <div key={i} className="flex-1 h-full bg-neutral-700/20" />
+                        <div
+                          key={i}
+                          className="flex-1 h-full bg-neutral-700/20"
+                        />
                       ))
                     )}
                   </div>
@@ -765,7 +829,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between text-xs text-gray-400">
+              <div className="flex justify-between text-[11px] sm:text-xs text-gray-400">
                 <span>0:00</span>
                 <span className="text-white font-medium">
                   {Math.floor(selectedDuration / 60)}:
@@ -778,27 +842,20 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 </span>
               </div>
             </div>
-            {probe && (
-              <div className="flex items-center gap-6 text-xs text-gray-400">
-                <span>
-                  {probe.width}×{probe.height}
-                </span>
-                <span>{(probe.size / 1024 / 1024).toFixed(2)}MB</span>
-                <span>Duration: {duration.toFixed(1)}s</span>
-                {selectedDuration > 30 && (
-                  <span className="text-amber-400">⚠️ Max 30s allowed</span>
-                )}
+            {selectedDuration > 30 && (
+              <div className="text-amber-400 text-xs sm:text-sm">
+                ⚠️ Max 30s allowed
               </div>
             )}
-            <div className="flex items-center justify-between pt-4 border-t border-neutral-700">
-              <div className="text-xs text-gray-400">
-                Tip: Click video to play/pause, drag handles to adjust timing
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-neutral-700">
+              <div className="text-[11px] sm:text-xs text-gray-400 order-2 sm:order-1">
+                Tip: Tap video to play/pause; drag handles to adjust timing.
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 order-1 sm:order-2 flex-wrap">
                 {onChangeVideo && (
                   <button
                     type="button"
-                    className="px-4 py-2 rounded-lg bg-neutral-700 text-white hover:bg-neutral-600 transition-colors"
+                    className="px-3 sm:px-4 py-2 rounded-lg bg-neutral-700 text-white hover:bg-neutral-600 transition-colors text-xs sm:text-sm"
                     onClick={onChangeVideo}
                   >
                     Change Video
@@ -806,14 +863,14 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 )}
                 <button
                   type="button"
-                  className="px-4 py-2 rounded-lg bg-neutral-700 text-white hover:bg-neutral-600 transition-colors"
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-neutral-700 text-white hover:bg-neutral-600 transition-colors text-xs sm:text-sm"
                   onClick={onClose}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  className="px-5 sm:px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
                   onClick={handleConfirm}
                   disabled={exporting || selectedDuration > 30}
                 >
