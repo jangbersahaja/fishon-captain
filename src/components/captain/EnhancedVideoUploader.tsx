@@ -112,7 +112,7 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
   maxFiles = 5,
   allowMultiple = true,
   autoStart = true,
-  showQueue = false, // Changed default to false for better UX
+  showQueue = true, // Changed default to true so users can see trim buttons
 }) => {
   const {
     items,
@@ -196,7 +196,15 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
   };
 
   const openTrimModal = (item: VideoUploadItem) => {
-    if (item.status === "pending") {
+    // Allow trimming for pending items, or if upload hasn't started processing yet
+    if (
+      item.status === "pending" ||
+      (item.status === "uploading" && item.progress < 0.1)
+    ) {
+      // If uploading, cancel it first to allow trimming
+      if (item.status === "uploading") {
+        cancel(item.id);
+      }
       setTrimTargetId(item.id);
       setTrimFile(item.file);
       setIsModalOpen(true);
@@ -248,11 +256,14 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
   };
 
   const handleTrimClose = () => {
-    // If this was an auto-opened trim modal and user cancels, upload the original file
-    if (trimTargetId?.startsWith("temp-") && trimFile) {
-      enqueue(trimFile);
+    // Requirement update: User cancellation should fully discard the file (do NOT enqueue)
+    // If this was an auto-opened trim (temp id) we simply drop it and clear the file input so the
+    // user can pick the same file again if desired.
+    if (trimTargetId?.startsWith("temp-")) {
+      if (inputRef.current) {
+        inputRef.current.value = ""; // allow re-selecting same file
+      }
     }
-
     setIsModalOpen(false);
     setTrimTargetId(null);
     setTrimFile(null);
@@ -400,24 +411,31 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
                       {item.status.toUpperCase()}
                     </span>
 
-                    {item.status === "pending" && (
+                    {(item.status === "pending" ||
+                      (item.status === "uploading" && item.progress < 0.1)) && (
                       <div className="flex gap-1">
                         <button
                           type="button"
                           onClick={() => openTrimModal(item)}
                           className="text-blue-600 hover:text-blue-700 text-xs px-2 py-1 border border-blue-200 rounded hover:bg-blue-50"
-                          title="Trim video"
+                          title={
+                            item.status === "uploading"
+                              ? "Cancel and trim video"
+                              : "Trim video"
+                          }
                         >
                           Trim
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => startUpload(item.id)}
-                          className="text-green-600 hover:text-green-700 text-xs px-2 py-1 border border-green-200 rounded hover:bg-green-50"
-                          title="Start upload"
-                        >
-                          Start
-                        </button>
+                        {item.status === "pending" && (
+                          <button
+                            type="button"
+                            onClick={() => startUpload(item.id)}
+                            className="text-green-600 hover:text-green-700 text-xs px-2 py-1 border border-green-200 rounded hover:bg-green-50"
+                            title="Start upload"
+                          >
+                            Start
+                          </button>
+                        )}
                       </div>
                     )}
 
