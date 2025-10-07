@@ -4,6 +4,7 @@ import {
   TrimResult,
 } from "@/lib/video/trimMp4BoxKeyframeSlice";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { generateFrameThumbnails } from "./utils/generateFrameThumbnails";
 // TODO(worker): Integrate AbortController + web worker pipeline for thumbnail & probe extraction.
 
 interface VideoTrimModalProps {
@@ -60,99 +61,49 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   // Derived readiness
   const isReady = !loading && duration > 0 && !!probe;
 
-  // ---------- Frame Thumbnail Generation Logic ----------
-  const generateFrameThumbnails = useCallback(
-    async (video: HTMLVideoElement, frameCount: number = 20) => {
-      if (!video || !duration) return;
-      // If dimension metadata not yet settled, wait a tick
-      if (!video.videoWidth || !video.videoHeight) return;
+  // Check if video already meets requirements (≤30s, ≥720p)
+  const isAlreadyCompliant =
+    isReady &&
+    probe &&
+    duration <= 30 &&
+    probe.width >= 1280 &&
+    probe.height >= 720; // 720p minimum
 
-      // Cancel any previous generation
+  // Check if user made any changes to the default selection
+  const hasUserChanges = startSec !== 0 || endSec !== Math.min(30, duration);
+
+  // Refactored: Use utility with AbortController stub
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const runThumbnailGeneration = useCallback(
+    (video: HTMLVideoElement) => {
+      if (!video || !duration || !video.videoWidth || !video.videoHeight)
+        return;
+      // Cancel previous
       if (thumbGenCancelRef.current) {
         try {
           thumbGenCancelRef.current();
         } catch {}
       }
-
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
       setThumbsLoading(true);
       setThumbsError(null);
-      const frames: string[] = [];
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        setThumbsError("Canvas context unavailable");
-        setThumbsLoading(false);
-        return;
-      }
-      const targetW = 60;
-      const targetH = 34;
-      canvas.width = targetW;
-      canvas.height = targetH;
-      let cancelled = false;
-      thumbGenCancelRef.current = () => {
-        cancelled = true;
-      };
-
-      const originalPaused = video.paused;
-      const originalTime = video.currentTime;
-      const captureTimes = Array.from(
-        { length: frameCount },
-        (_, i) => (i / (frameCount - 1)) * duration
-      );
-
-      const seekTo = (time: number) =>
-        new Promise<void>((resolve) => {
-          let settled = false;
-          const finish = () => {
-            if (settled) return;
-            settled = true;
-            cleanup();
-            resolve();
-          };
-          const handle = () => finish();
-          const fallback = () => {
-            if (Math.abs(video.currentTime - time) < 0.06) finish();
-          };
-          const cleanup = () => {
-            video.removeEventListener("seeked", handle);
-            video.removeEventListener("timeupdate", fallback);
-          };
-          video.addEventListener("seeked", handle);
-          video.addEventListener("timeupdate", fallback);
-          try {
-            video.currentTime = time;
-          } catch {
-            finish();
-          }
-          // Safety timeout (Safari long seek)
-          setTimeout(finish, 350);
+      const { promise, cancel } = generateFrameThumbnails(video, duration, {
+        frameCount: 20,
+        // Future: pass abortControllerRef.current.signal to worker
+      });
+      thumbGenCancelRef.current = cancel;
+      promise
+        .then((frames) => {
+          setThumbnails(frames);
+          setThumbsLoading(false);
+        })
+        .catch((err) => {
+          setThumbsError(err?.message || "Thumbnail generation failed");
+          setThumbsLoading(false);
         });
-
-      for (const t of captureTimes) {
-        if (cancelled) break;
-        try {
-          video.pause();
-        } catch {}
-        await seekTo(t);
-        if (cancelled) break;
-        try {
-          ctx.drawImage(video, 0, 0, targetW, targetH);
-          frames.push(canvas.toDataURL("image/jpeg", 0.7));
-        } catch (e) {
-          console.warn("Frame capture failed", e);
-        }
-      }
-      if (!cancelled) setThumbnails(frames);
-      if (!originalPaused) {
-        try {
-          video.play();
-        } catch {}
-      }
-      // Restore position (best-effort)
-      try {
-        video.currentTime = originalTime;
-      } catch {}
-      if (!cancelled) setThumbsLoading(false);
     },
     [duration]
   );
@@ -162,19 +113,20 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
     if (!open) return;
     const video = videoRef.current;
     if (video && duration > 0) {
-      // Reset previous frames when file changes
       setThumbnails([]);
-      generateFrameThumbnails(video);
+      runThumbnailGeneration(video);
     }
     return () => {
-      // Cancel any ongoing thumbnail generation when dependencies change/unmount
       if (thumbGenCancelRef.current) {
         try {
           thumbGenCancelRef.current();
         } catch {}
       }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
-  }, [file, duration, open, generateFrameThumbnails]);
+  }, [file, duration, open, runThumbnailGeneration]);
 
   // Create object URL when file changes
   useEffect(() => {
@@ -186,11 +138,19 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
         file.type
       );
 
-      // Validate file type
+      // Validate file type and size
       if (!file.type.startsWith("video/")) {
-        console.error("Invalid file type:", file.type);
         setError(
           `Invalid file type: ${file.type}. Please select a video file.`
+        );
+        setLoading(false);
+        return;
+      }
+      if (file.size > 100 * 1024 * 1024) {
+        setError(
+          `File too large (${(file.size / 1024 / 1024).toFixed(
+            1
+          )}MB). Max allowed is 100MB.`
         );
         setLoading(false);
         return;
@@ -256,7 +216,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
           size: file.size,
         });
         queueMicrotask(
-          () => videoRef.current && generateFrameThumbnails(videoRef.current)
+          () => videoRef.current && runThumbnailGeneration(videoRef.current)
         );
         return true;
       }
@@ -298,7 +258,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       video.removeEventListener("loadeddata", handleLoadedDataFast);
       video.removeEventListener("canplay", handleCanPlay);
     };
-  }, [objectUrl, loading, file, generateFrameThumbnails]);
+  }, [objectUrl, loading, file, runThumbnailGeneration]);
 
   // Handle video metadata loaded
   const handleLoadedMetadata = useCallback(() => {
@@ -321,14 +281,14 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       });
       // Kick off thumbnail generation (deferred to next microtask so videoRef updates)
       queueMicrotask(() => {
-        if (videoRef.current) generateFrameThumbnails(videoRef.current);
+        if (videoRef.current) runThumbnailGeneration(videoRef.current);
       });
     } else {
       console.error("Invalid video duration:", videoRef.current?.duration);
       setError("Invalid video file or corrupted data");
       setLoading(false);
     }
-  }, [file, generateFrameThumbnails]);
+  }, [file, runThumbnailGeneration]);
 
   // Handle video time updates
   const handleTimeUpdate = useCallback(() => {
@@ -443,6 +403,19 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
     setError(null);
     try {
       const actualDuration = endSec - startSec;
+
+      // Optimization: Skip trimming for compliant videos with no user changes
+      if (isAlreadyCompliant && !hasUserChanges) {
+        console.log("Video already compliant, skipping trim processing");
+        if (probe) {
+          onConfirm(file, 0, duration, probe, {
+            didFallback: false,
+            fallbackReason: "No processing needed - video already compliant",
+          });
+        }
+        return;
+      }
+
       const result: TrimResult = await trimMp4BoxKeyframeSlice(
         file,
         startSec,
@@ -460,7 +433,16 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
     } finally {
       setExporting(false);
     }
-  }, [file, startSec, endSec, probe, onConfirm]);
+  }, [
+    file,
+    startSec,
+    endSec,
+    probe,
+    onConfirm,
+    isAlreadyCompliant,
+    hasUserChanges,
+    duration,
+  ]);
 
   if (!open || !file) return null;
 
@@ -478,6 +460,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
               type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-white transition-colors"
+              aria-label="Close trim modal"
             >
               <svg
                 className="w-6 h-6"
@@ -502,7 +485,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 {file.name}
               </div>
               <div className="text-[11px] text-gray-400 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span>{file.type || 'unknown type'}</span>
+                <span>{file.type || "unknown type"}</span>
                 {probe && (
                   <>
                     <span>
@@ -514,23 +497,16 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 )}
               </div>
             </div>
-            {error && (
-              <button
-                type="button"
-                onClick={() => {
-                  // Retry: reset loading flow
-                  if (objectUrl && videoRef.current) {
-                    setLoading(true);
-                    setError(null);
-                    metadataResolvedRef.current = false;
-                    try { videoRef.current.load(); } catch {}
-                  }
-                }}
-                className="self-start sm:self-auto px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-medium"
-              >
-                Retry Load
-              </button>
-            )}
+            {error &&
+              (onChangeVideo ? (
+                <button
+                  type="button"
+                  onClick={onChangeVideo}
+                  className="self-start sm:self-auto px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                >
+                  Change Video
+                </button>
+              ) : null)}
           </div>
 
           {error && (
@@ -658,7 +634,9 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                             setLoading(true);
                             setError(null);
                             metadataResolvedRef.current = false;
-                            try { videoRef.current.load(); } catch {}
+                            try {
+                              videoRef.current.load();
+                            } catch {}
                           }
                         }}
                       >
@@ -676,6 +654,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   type="button"
                   onClick={togglePlayPause}
                   className="flex items-center justify-center w-10 h-10 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
+                  aria-label={isPlaying ? "Pause video" : "Play video"}
                 >
                   {isPlaying ? (
                     <svg
@@ -709,6 +688,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   type="button"
                   onClick={toggleMute}
                   className="flex items-center justify-center w-10 h-10 bg-black/70 hover:bg-black/80 text-white rounded-full transition-colors"
+                  aria-label={isMuted ? "Unmute video" : "Mute video"}
                 >
                   {isMuted ? (
                     <svg
@@ -847,11 +827,30 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 ⚠️ Max 30s allowed
               </div>
             )}
+            {isAlreadyCompliant && (
+              <div className="text-green-400 text-xs sm:text-sm flex items-center gap-2">
+                ✅ Video already meets requirements ({probe?.width}×
+                {probe?.height}, {duration.toFixed(1)}s)
+                {!hasUserChanges && (
+                  <span className="text-green-300">• No processing needed</span>
+                )}
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-neutral-700">
               <div className="text-[11px] sm:text-xs text-gray-400 order-2 sm:order-1">
                 Tip: Tap video to play/pause; drag handles to adjust timing.
               </div>
               <div className="flex items-center gap-2 sm:gap-3 order-1 sm:order-2 flex-wrap">
+                {isAlreadyCompliant && !hasUserChanges && (
+                  <button
+                    type="button"
+                    className="px-3 sm:px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium"
+                    onClick={handleConfirm}
+                    disabled={!!error || exporting}
+                  >
+                    {exporting ? "Processing..." : "Use Original"}
+                  </button>
+                )}
                 {onChangeVideo && (
                   <button
                     type="button"
@@ -872,13 +871,17 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   type="button"
                   className="px-5 sm:px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
                   onClick={handleConfirm}
-                  disabled={exporting || selectedDuration > 30}
+                  disabled={!!error || exporting || selectedDuration > 30}
                 >
                   {exporting ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin"></div>
-                      Exporting...
+                      {isAlreadyCompliant && !hasUserChanges
+                        ? "Processing..."
+                        : "Exporting..."}
                     </div>
+                  ) : isAlreadyCompliant && !hasUserChanges ? (
+                    `Use Original (${duration.toFixed(1)}s)`
                   ) : (
                     `Confirm (${selectedDuration.toFixed(1)}s)`
                   )}

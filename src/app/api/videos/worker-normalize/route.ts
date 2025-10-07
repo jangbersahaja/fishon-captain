@@ -29,6 +29,13 @@ export async function POST(req: NextRequest) {
   });
   if (!video) return NextResponse.json({ error: "not_found" }, { status: 404 });
   if (video.processStatus !== "processing") {
+    // Handle cancelled videos gracefully
+    if (video.processStatus === "cancelled") {
+      console.log(
+        `[normalize] Video ${videoId} was cancelled, skipping processing`
+      );
+      return NextResponse.json({ video, skipped: true, reason: "cancelled" });
+    }
     return NextResponse.json({ video, skipped: true });
   }
   try {

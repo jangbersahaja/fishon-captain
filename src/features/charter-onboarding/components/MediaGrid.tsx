@@ -61,7 +61,7 @@ export function MediaGrid({
     );
   }
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item, index) => {
         const isProcessing = Boolean(item.processing);
         const disabled =
@@ -76,10 +76,10 @@ export function MediaGrid({
         return (
           <div
             key={`${item.url}-${index}`}
-            className={`group relative overflow-hidden rounded-2xl border bg-white shadow-sm ${
+            className={`group relative overflow-hidden rounded-2xl border bg-black shadow-sm ${
               dragOver === index
                 ? "border-slate-400 ring-2 ring-slate-300"
-                : "border-neutral-200"
+                : "border-neutral-700"
             } ${justCompleted ? "animate-[fadeOut_0.25s_ease-in]" : ""}`}
             draggable={Boolean(onMove) && !disabled}
             onDragStart={(e) => {
@@ -119,12 +119,14 @@ export function MediaGrid({
               </span>
             )}
             {status === "processing" && (
-              <span className="absolute right-2 top-2 z-10 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
-                Processing
+              <span className="absolute right-2 top-2 z-10 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></span>
+                Optimizing Video
               </span>
             )}
             {status === "failed" && (
-              <span className="absolute right-2 top-2 z-10 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
+              <span className="absolute right-2 top-2 z-10 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
                 Failed
               </span>
             )}
@@ -154,10 +156,10 @@ export function MediaGrid({
                           aria-hidden="true"
                         />
                         <p className="text-xs font-semibold uppercase tracking-wide">
-                          Processing…
+                          Optimizing Video
                         </p>
                         <p className="mt-1 px-4 text-center text-[11px] text-slate-500">
-                          Optimizing video & thumbnail
+                          Processing video & thumbnail
                         </p>
                       </div>
                     </div>
@@ -208,8 +210,9 @@ export function MediaGrid({
                     </div>
                     {/* Ready indicator */}
                     <div className="absolute top-2 left-2">
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
-                        ✓ Ready
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800 gap-1">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                        Ready
                       </span>
                     </div>
                   </div>

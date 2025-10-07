@@ -499,7 +499,7 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
                             // In Progress - Spinner
                             <div className="w-6 h-6 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin"></div>
                           ) : (
-                            // Pending
+                            // Pending≈
                             <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
                               <span className="text-gray-400 text-sm">
                                 {stepInfo.step + 1}
@@ -550,7 +550,8 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
                       {/* Additional Info */}
                       {item.trim && (
                         <div className="text-xs text-blue-600 ml-9">
-                          Trimmed ({item.trim.startSec}s - {item.trim.endSec}s)
+                          Trimmed ({item.trim.startSec.toFixed(2)}s -{" "}
+                          {item.trim.endSec.toFixed(2)}s)
                         </div>
                       )}
                     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -31,6 +32,10 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
   const [localThumbs, setLocalThumbs] = useState<Record<string, string>>({});
   const [retrying, setRetrying] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    video: VideoRecord;
+    show: boolean;
+  } | null>(null);
   const prevPendingRef = useRef<boolean | null>(null);
   const prevVideosRef = useRef<VideoRecord[]>([]);
 
@@ -102,7 +107,22 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
 
   const remove = async (id: string) => {
     await fetch(`/api/videos/${id}`, { method: "DELETE" });
+    setDeleteConfirm(null);
     load();
+  };
+
+  const handleDeleteClick = (video: VideoRecord) => {
+    setDeleteConfirm({ video, show: true });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirm?.video) {
+      remove(deleteConfirm.video.id);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm(null);
   };
 
   const retry = async (id: string) => {
@@ -177,25 +197,40 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
     switch (v.processStatus) {
       case "ready":
         return (
-          <span className={`${base} bg-green-600/90 text-white`}>READY</span>
+          <span className={`${base} text-white flex items-center gap-1`}>
+            <span className="w-3 h-3 bg-green-400 rounded-full"></span>
+            Ready
+          </span>
         );
       case "processing":
         return (
-          <span className={`${base} bg-amber-500/90 text-white animate-pulse`}>
-            PROCESSING
+          <span
+            className={`${base} text-white animate-pulse flex items-center gap-1`}
+          >
+            <span className="w-3 h-3 bg-yellow-400 rounded-full"></span>
+            Optimizing Video
           </span>
         );
       case "queued":
         return (
-          <span className={`${base} bg-gray-400/80 text-white`}>QUEUED</span>
+          <span className={`${base} text-white flex items-center gap-1`}>
+            <span className="w-3 h-3 bg-orange-400 rounded-full"></span>
+            Queued
+          </span>
         );
       case "failed":
         return (
-          <span className={`${base} bg-red-600/90 text-white`}>FAILED</span>
+          <span className={`${base} text-white flex items-center gap-1`}>
+            <span className="w-3 h-3 bg-red-400 rounded-full"></span>
+            Failed
+          </span>
         );
       default:
         return (
-          <span className={`${base} bg-gray-500 text-white`}>
+          <span
+            className={`${base} bg-gray-500 text-white flex items-center gap-1`}
+          >
+            <span className="w-3 h-3 bg-gray-400 rounded-full"></span>
             {v.processStatus}
           </span>
         );
@@ -204,13 +239,15 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
 
   return (
     <div className="space-y-2">
-      <h3 className="font-semibold">Your Short Videos</h3>
-      {loading && <div className="text-sm text-gray-500">Loading...</div>}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="flex gap-2 items-center justify-between">
+        <h3 className="font-semibold">Your Short Videos</h3>
+        {loading && <div className="text-sm text-gray-500">Loading...</div>}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {videos.map((v) => (
           <div
             key={v.id}
-            className="border rounded p-2 space-y-1 bg-white/40 backdrop-blur"
+            className="border border-neutral-700 rounded-2xl p-2 space-y-1 bg-black backdrop-blur"
           >
             <div className="aspect-video bg-gray-100 flex items-center justify-center text-xs text-gray-600 relative overflow-hidden rounded-sm group">
               {v.thumbnailUrl || localThumbs[v.id] ? (
@@ -234,7 +271,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
                 <span className="animate-pulse">{v.processStatus}</span>
               )}
             </div>
-            <div className="flex justify-between items-start gap-2">
+            <div className="flex justify-between items-center gap-2 pt-1">
               {statusPill(v)}
               <div className="flex gap-1">
                 {v.processStatus === "failed" && (
@@ -249,10 +286,10 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
                 )}
                 <button
                   type="button"
-                  onClick={() => remove(v.id)}
+                  onClick={() => handleDeleteClick(v)}
                   className="text-[10px] px-2 py-0.5 rounded bg-red-600 text-white hover:bg-red-700"
                 >
-                  Del
+                  <Trash2Icon className="w-3 h-3" />
                 </button>
               </div>
             </div>
@@ -269,6 +306,59 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm?.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Delete Video?
+              </h3>
+              <p className="text-sm text-gray-600 mb-1">
+                This will permanently delete the video and cannot be undone.
+              </p>
+              <p className="text-xs text-gray-500">
+                Status:{" "}
+                <span className="font-medium">
+                  {deleteConfirm.video.processStatus}
+                </span>
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleDeleteCancel}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete Video
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -5,7 +5,10 @@
 export interface GenerateThumbnailsOptions {
   frameCount?: number;
   // Custom frame capture hook for tests; returns a data URL string.
-  captureFrame?: (video: HTMLVideoElement, canvas: HTMLCanvasElement) => string | null;
+  captureFrame?: (
+    video: HTMLVideoElement,
+    canvas: HTMLCanvasElement
+  ) => string | null;
   quality?: number; // JPEG quality 0-1
 }
 
@@ -43,8 +46,9 @@ export function generateFrameThumbnails(
     const originalPaused = video.paused;
     const originalTime = video.currentTime;
 
-    const captureTimes = Array.from({ length: frameCount }, (_, i) =>
-      (i / (frameCount - 1)) * duration
+    const captureTimes = Array.from(
+      { length: frameCount },
+      (_, i) => (i / (frameCount - 1)) * duration
     );
 
     const seekTo = (time: number) =>
@@ -76,13 +80,15 @@ export function generateFrameThumbnails(
 
     for (const t of captureTimes) {
       if (cancelled) break;
-      try { video.pause(); } catch {}
+      try {
+        video.pause();
+      } catch {}
       await seekTo(t);
       if (cancelled) break;
       try {
         if (captureFrame) {
           const data = captureFrame(video, canvas);
-            if (data) frames.push(data);
+          if (data) frames.push(data);
         } else {
           ctx.drawImage(video, 0, 0, targetW, targetH);
           frames.push(canvas.toDataURL("image/jpeg", quality));
@@ -93,9 +99,13 @@ export function generateFrameThumbnails(
     }
 
     // Restore state
-    try { video.currentTime = originalTime; } catch {}
+    try {
+      video.currentTime = originalTime;
+    } catch {}
     if (!originalPaused) {
-      try { video.play(); } catch {}
+      try {
+        video.play();
+      } catch {}
     }
 
     return frames;

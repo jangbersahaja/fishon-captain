@@ -117,6 +117,14 @@ export async function POST(req: Request) {
 - `src/components/captain/EnhancedVideoUploader.tsx` - Production UI component
 - `src/hooks/useVideoQueue.ts` - React integration
 
+**Video API Routes**: See `docs/API_VIDEO_ROUTES.md` for comprehensive documentation of all video endpoints including:
+
+- `/api/videos/list` - List user videos with status
+- `/api/videos/[id]` - Get/Delete specific video with queue cancellation
+- `/api/videos/queue` - Enqueue processing or retry failed videos
+- `/api/videos/worker-normalize` - Internal processing worker
+- Queue cancellation system for safe deletion of processing videos
+
 ## Authentication & Authorization
 
 - **NextAuth** with JWT strategy

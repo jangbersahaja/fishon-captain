@@ -37,9 +37,43 @@ export async function DELETE(
     if (!sessionUserId || sessionUserId !== existing.ownerId) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
+
+    // Handle queue cancellation for non-ready videos
+    let queueCancelled = false;
+    if (
+      existing.processStatus === "queued" ||
+      existing.processStatus === "processing"
+    ) {
+      console.log(
+        `[video delete] Cancelling ${existing.processStatus} video ${id}`
+      );
+      try {
+        // Mark as cancelled in database to prevent worker processing
+        await prisma.captainVideo.update({
+          where: { id },
+          data: {
+            processStatus: "cancelled",
+            errorMessage: "Deleted by user",
+          },
+        });
+        queueCancelled = true;
+        console.log(
+          `[video delete] Successfully cancelled processing for ${id}`
+        );
+      } catch (e) {
+        console.warn(
+          `[video delete] Failed to cancel processing for ${id}:`,
+          e
+        );
+        // Continue with deletion even if cancellation fails
+      }
+    }
+
     const video = await prisma.captainVideo.delete({
       where: { id },
     });
+
+    // Clean up blob storage
     const deletes: Promise<unknown>[] = [];
     if (existing.blobKey) deletes.push(del(existing.blobKey).catch(() => null));
     if (
@@ -56,7 +90,13 @@ export async function DELETE(
       if (failed.length)
         console.warn("[video delete] blob deletion issues", failed);
     });
-    return NextResponse.json({ ok: true, video });
+
+    return NextResponse.json({
+      ok: true,
+      video,
+      queueCancelled,
+      originalStatus: existing.processStatus,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: "delete_failed", message: (e as Error).message },
