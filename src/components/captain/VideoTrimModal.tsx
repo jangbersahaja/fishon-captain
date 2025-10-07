@@ -47,6 +47,8 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
     codec: string;
     size: number;
   } | null>(null);
+  // Internal guard to avoid double-resolving metadata
+  const metadataResolvedRef = useRef(false);
   // Frame thumbnails (WhatsApp-style timeline)
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [thumbsLoading, setThumbsLoading] = useState(false);
@@ -55,7 +57,8 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   // ---------- Frame Thumbnail Generation Logic ----------
   const generateFrameThumbnails = useCallback(
     async (video: HTMLVideoElement, frameCount: number = 20) => {
-      if (!video || !video.videoWidth || !video.videoHeight || !duration) return;
+      if (!video || !video.videoWidth || !video.videoHeight || !duration)
+        return;
       setThumbsLoading(true);
       setThumbsError(null);
       const frames: string[] = [];
@@ -75,8 +78,9 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       let cancelled = false;
       // Capture previous src/time to restore if needed
       const originalTime = video.currentTime;
-      const captureTimes = Array.from({ length: frameCount }, (_, i) =>
-        (i / (frameCount - 1)) * duration
+      const captureTimes = Array.from(
+        { length: frameCount },
+        (_, i) => (i / (frameCount - 1)) * duration
       );
 
       const seekTo = (time: number) =>
@@ -85,7 +89,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
             video.removeEventListener("seeked", handle);
             resolve();
           };
-            // Some browsers (Safari) may fire 'timeupdate' only; add fallback
+          // Some browsers (Safari) may fire 'timeupdate' only; add fallback
           const fallback = () => {
             if (Math.abs(video.currentTime - time) < 0.05) {
               cleanup();
@@ -100,7 +104,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
           video.addEventListener("timeupdate", fallback);
           try {
             video.currentTime = time;
-          } catch (e) {
+          } catch {
             // If seeking fails, resolve anyway to avoid hanging
             cleanup();
             resolve();
@@ -110,7 +114,9 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       for (const t of captureTimes) {
         if (cancelled) break;
         // Pause to stabilize frame
-        try { video.pause(); } catch {}
+        try {
+          video.pause();
+        } catch {}
         await seekTo(t);
         try {
           ctx.drawImage(video, 0, 0, targetW, targetH);
@@ -123,7 +129,9 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       if (!cancelled) setThumbnails(frames);
       setThumbsLoading(false);
       // Restore original time (non-blocking)
-      try { video.currentTime = originalTime; } catch {}
+      try {
+        video.currentTime = originalTime;
+      } catch {}
       return () => {
         cancelled = true;
       };
@@ -174,7 +182,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       setCurrentTime(0);
       setIsPlaying(false);
       setProbe({ width: 0, height: 0, codec: "", size: file.size });
-  setThumbnails([]);
+      setThumbnails([]);
 
       return () => {
         console.log("Revoking object URL");
@@ -187,99 +195,76 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
     }
   }, [file, open]);
 
-  // Force video to load when objectUrl is available
+  // Improved fast-load logic with short fallback (3s) instead of 15s
   useEffect(() => {
-    if (objectUrl && videoRef.current) {
-      console.log("Forcing video to load with new object URL");
-      const video = videoRef.current;
-      video.load(); // Force reload with new source
+    if (!objectUrl || !loading) return;
+    const video = videoRef.current;
+    if (!video) return;
 
-      // Also try to force events by checking state immediately
-      setTimeout(() => {
-        if (video.readyState >= 1) {
-          console.log("Video ready state detected after forced load");
-          setLoading(false);
-        }
-      }, 100);
-    }
-  }, [objectUrl]);
-
-  // Loading timeout to prevent infinite loading
-  useEffect(() => {
-    if (loading && objectUrl) {
-      // Proactive checking - poll the video element to see if it's ready
-      const checkVideoReady = () => {
-        const video = videoRef.current;
-        if (video) {
-          console.log(
-            `Video check - readyState: ${video.readyState}, duration: ${video.duration}, networkState: ${video.networkState}`
-          );
-
-          // If video has metadata or can play, stop loading
-          if (
-            video.readyState >= 1 ||
-            (video.duration && !isNaN(video.duration))
-          ) {
-            console.log(
-              "Video is ready during periodic check - stopping loading"
-            );
-            setLoading(false);
-
-            // Trigger metadata handling if we have duration
-            if (video.duration && !isNaN(video.duration)) {
-              console.log("Triggering metadata handling from polling");
-              // Trigger metadata handling by calling the handleLoadedMetadata logic directly
-              setDuration(video.duration);
-              setEndSec(Math.min(30, video.duration));
-              setProbe({
-                width: video.videoWidth || 0,
-                height: video.videoHeight || 0,
-                codec: "",
-                size: file?.size || 0,
-              });
-            }
-
-            return true; // Stop checking
-          }
-        }
-        return false; // Continue checking
-      };
-
-      // Check immediately
-      if (checkVideoReady()) {
-        return;
-      }
-
-      // Then check every 100ms for faster detection
-      const pollInterval = setInterval(() => {
-        if (checkVideoReady()) {
-          clearInterval(pollInterval);
-        }
-      }, 100);
-
-      // Final timeout after 15 seconds
-      const timeout = setTimeout(() => {
-        clearInterval(pollInterval);
-        console.log("Loading timeout reached, stopping loading");
+    const finalizeIfReady = (source: string) => {
+      if (metadataResolvedRef.current) return;
+      if (
+        video.readyState >= 1 &&
+        video.duration &&
+        !isNaN(video.duration) &&
+        video.videoWidth > 0 &&
+        video.videoHeight > 0
+      ) {
+        console.log(`[fast-load] metadata ready via ${source}`);
+        metadataResolvedRef.current = true;
         setLoading(false);
+        setDuration(video.duration);
+        setEndSec(Math.min(30, video.duration));
+        setProbe({
+          width: video.videoWidth,
+          height: video.videoHeight,
+          codec: "h264",
+          size: file.size,
+        });
+        queueMicrotask(() =>
+          videoRef.current && generateFrameThumbnails(videoRef.current)
+        );
+        return true;
+      }
+      return false;
+    };
 
-        // Check one more time if video is actually ready despite events not firing
-        const video = videoRef.current;
-        if (video && video.readyState >= 1) {
-          console.log("Video was actually ready, clearing error");
-        } else {
-          setError(
-            "Video loading timed out. Please try again or check if the file format is supported."
-          );
-        }
-      }, 15000);
+    // Attach minimal listeners
+    const handleLoadedMetadataFast = () => finalizeIfReady("loadedmetadata");
+    const handleLoadedDataFast = () => finalizeIfReady("loadeddata");
+    const handleCanPlay = () => finalizeIfReady("canplay");
 
-      return () => {
-        clearInterval(pollInterval);
-        clearTimeout(timeout);
-      };
-    }
-  }, [loading, objectUrl, file]);
+    video.addEventListener("loadedmetadata", handleLoadedMetadataFast);
+    video.addEventListener("loadeddata", handleLoadedDataFast);
+    video.addEventListener("canplay", handleCanPlay);
+
+    // Kick off an async microtask readiness check
+    queueMicrotask(() => finalizeIfReady("microtask"));
+    // And a short interval for stubborn browsers (Safari quirks)
+    const shortPoll = setInterval(() => {
+      if (finalizeIfReady("short-poll")) clearInterval(shortPoll);
+    }, 120);
+
+    // Short fallback timeout (3s)
+    const timeout = setTimeout(() => {
+      if (!metadataResolvedRef.current) {
+        if (finalizeIfReady("timeout-fallback")) return;
+        console.warn("[fast-load] fallback timeout reached (3s)");
+        setLoading(false);
+        setError(
+          "Unable to read video metadata quickly. File may be unsupported."
+        );
+      }
+    }, 3000);
+
+    return () => {
+      clearInterval(shortPoll);
+      clearTimeout(timeout);
+      video.removeEventListener("loadedmetadata", handleLoadedMetadataFast);
+      video.removeEventListener("loadeddata", handleLoadedDataFast);
+      video.removeEventListener("canplay", handleCanPlay);
+    };
+  }, [objectUrl, loading, file, generateFrameThumbnails]);
 
   // Handle video metadata loaded
   const handleLoadedMetadata = useCallback(() => {
@@ -571,9 +556,11 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   controls={false}
                   onClick={togglePlayPause}
                   onLoadedMetadata={() => {
-                    console.log("onLoadedMetadata fired - stopping loading");
-                    setLoading(false);
-                    handleLoadedMetadata();
+                    // Keep existing handler for debug logs; fast path will already have run.
+                    if (!metadataResolvedRef.current) {
+                      handleLoadedMetadata();
+                      metadataResolvedRef.current = true;
+                    }
                   }}
                   onTimeUpdate={handleTimeUpdate}
                   onError={(e) => {
@@ -608,43 +595,15 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                     // Don't set loading here as it conflicts with other handlers
                   }}
                   onLoadedData={() => {
-                    console.log("Video data loaded - stopping loading");
-                    const video = videoRef.current;
-                    if (video) {
-                      console.log("Video state:", {
-                        duration: video.duration,
-                        readyState: video.readyState,
-                        networkState: video.networkState,
-                        videoWidth: video.videoWidth,
-                        videoHeight: video.videoHeight,
-                      });
-                    }
-                    setLoading(false);
-                    // Sometimes onLoadedMetadata doesn't fire, so we try here too
-                    if (
-                      videoRef.current &&
-                      videoRef.current.duration &&
-                      !isNaN(videoRef.current.duration)
-                    ) {
-                      console.log(
-                        "Triggering metadata handling from onLoadedData"
-                      );
+                    if (!metadataResolvedRef.current) {
                       handleLoadedMetadata();
+                      metadataResolvedRef.current = true;
                     }
                   }}
                   onCanPlayThrough={() => {
-                    console.log("Video can play through - stopping loading");
-                    setLoading(false); // Always stop loading
-                    // Final fallback to ensure metadata is handled
-                    if (
-                      videoRef.current &&
-                      videoRef.current.duration &&
-                      !isNaN(videoRef.current.duration)
-                    ) {
-                      console.log(
-                        "Triggering metadata handling from onCanPlayThrough"
-                      );
+                    if (!metadataResolvedRef.current) {
                       handleLoadedMetadata();
+                      metadataResolvedRef.current = true;
                     }
                   }}
                 />
