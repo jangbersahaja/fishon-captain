@@ -24,6 +24,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Basic deployment/version indicator
+  console.log("[normalize-callback] received raw", {
+    length: rawBody.length,
+    hasVideoIdLiteral: rawBody.includes('"videoId"'),
+  });
+
   // Verify signature if keys present (defensive: skip in dev if not set)
   const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
   const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
@@ -62,9 +68,48 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Optional debug output (non-mutating) if ?debug=1
+  const url = new URL(req.url);
+  if (url.searchParams.get("debug") === "1") {
+    return NextResponse.json({ debug: { parsed, rawBodyLength: rawBody.length } });
+  }
+
   // If parsed is not an object (e.g. number, string), wrap it for downstream logic
   if (parsed && typeof parsed !== "object") {
     parsed = {};
+  }
+
+  // Explicit fast-path: envelope with { status, body: <base64 inner json> }
+  if (
+    !("videoId" in parsed) &&
+    typeof (parsed as Record<string, unknown>).body === "string"
+  ) {
+    const b = (parsed as Record<string, unknown>).body as string;
+    try {
+      const decoded = Buffer.from(b.trim(), "base64").toString("utf8");
+      const innerObj = JSON.parse(decoded);
+      console.log("[normalize-callback] attempted base64 decode", {
+        decodedLength: decoded.length,
+        innerKeys: Object.keys(innerObj || {}),
+      });
+      if (
+        innerObj &&
+        typeof innerObj === "object" &&
+        typeof (innerObj as Record<string, unknown>).videoId === "string"
+      ) {
+        parsed = {
+          ...(parsed as unknown as Record<string, unknown>),
+          ...(innerObj as unknown as Record<string, unknown>),
+        } as NormalizeCallbackPayload;
+        console.log("[normalize-callback] fast-path merged inner payload", {
+          videoId: (innerObj as Record<string, unknown>).videoId,
+        });
+      }
+    } catch (e) {
+      console.warn("[normalize-callback] base64 decode attempt failed", {
+        message: (e as Error).message,
+      });
+    }
   }
 
   // Attempt to unwrap common QStash forward envelopes if videoId missing later.
@@ -84,11 +129,50 @@ export async function POST(req: NextRequest) {
       };
     }
     if (typeof rec.body === "string") {
+      let triedJson = false;
+      // First try plain JSON
       try {
         const inner = JSON.parse(rec.body);
+        triedJson = true;
         const un = attemptUnwrap(inner);
         if (un) return un;
       } catch {}
+      // If not valid JSON, attempt base64 decode then JSON parse
+      if (!triedJson) {
+        // Attempt to derive videoId heuristically from URLs if present
+        if (!videoId && typeof readyUrl === "string") {
+          const m = readyUrl.match(/normalized\/([^/]+?)-720p\.mp4/);
+          if (m) {
+            videoId = m[1];
+            console.log(
+              "[normalize-callback] derived videoId from readyUrl pattern",
+              { videoId }
+            );
+          }
+        }
+        if (!videoId && typeof thumbnailUrl === "string") {
+          const m2 = thumbnailUrl.match(/thumbnails\/([^/]+)\.jpg/);
+          if (m2) {
+            videoId = m2[1];
+            console.log(
+              "[normalize-callback] derived videoId from thumbnailUrl pattern",
+              { videoId }
+            );
+          }
+        }
+      }
+
+      if (!videoId) {
+        try {
+          const decoded = Buffer.from(rec.body, "base64").toString("utf8");
+          const inner = JSON.parse(decoded);
+          const un = attemptUnwrap(inner);
+          if (un) {
+            console.log("[normalize-callback] decoded base64 body envelope");
+            return un;
+          }
+        } catch {}
+      }
     }
     if (typeof rec.bodyBase64 === "string") {
       try {
