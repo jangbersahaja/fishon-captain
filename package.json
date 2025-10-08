@@ -11,7 +11,8 @@
     "test:ci": "vitest run --reporter=dot",
     "check:env": "node scripts/check-env.js",
     "typecheck": "tsc --noEmit",
-    "prebuild": "npm run check:env && npm run typecheck"
+    "prebuild": "npm run check:env && npm run typecheck",
+    "migrate:drift-heal": "bash scripts/migrate-drift-heal.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
