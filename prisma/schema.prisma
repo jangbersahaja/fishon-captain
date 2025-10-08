@@ -8,23 +8,23 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
+  id             String               @id @default(cuid())
+  email          String               @unique
   name           String?
-  firstName      String?         @map("firstName")
-  lastName       String?         @map("lastName")
+  firstName      String?              @map("firstName")
+  lastName       String?              @map("lastName")
   image          String?
   passwordHash   String?
-  role           Role            @default(CAPTAIN)
   emailVerified  DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  role           Role                 @default(CAPTAIN)
+  accounts       Account[]
   captainProfile CaptainProfile?
   verification   CaptainVerification?
-  accounts       Account[]
-  sessions       Session[]
   drafts         CharterDraft[]
-  notesAuthored  DraftNote[]     @relation("UserDraftNotes")
+  notesAuthored  DraftNote[]          @relation("UserDraftNotes")
+  sessions       Session[]
 }
 
 model CaptainProfile {
@@ -57,19 +57,19 @@ model Charter {
   description   String
   pricingPlan   CharterPricingPlan @default(BASIC)
   boatId        String?            @unique
-  isActive      Boolean            @default(true)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
+  isActive      Boolean            @default(true)
+  backupPhone   String?
   boat          Boat?              @relation(fields: [boatId], references: [id])
   captain       CaptainProfile     @relation(fields: [captainId], references: [id])
   amenities     CharterAmenity[]
+  draft         CharterDraft?
   features      CharterFeature[]
   media         CharterMedia[]
   pickup        Pickup?
   policies      Policies?
   trips         Trip[]
-  draft         CharterDraft?
-  backupPhone   String?
 }
 
 model Boat {
@@ -101,16 +101,16 @@ model PickupArea {
 }
 
 model Policies {
-  id               String  @id @default(cuid())
-  charterId        String  @unique
-  licenseProvided  Boolean
-  catchAndKeep     Boolean
-  catchAndRelease  Boolean
-  childFriendly    Boolean
-  liveBaitProvided Boolean
-  alcoholNotAllowed   Boolean
-  smokingNotAllowed   Boolean
-  charter          Charter @relation(fields: [charterId], references: [id])
+  id                String  @id @default(cuid())
+  charterId         String  @unique
+  licenseProvided   Boolean
+  catchAndKeep      Boolean
+  catchAndRelease   Boolean
+  childFriendly     Boolean
+  liveBaitProvided  Boolean
+  alcoholNotAllowed Boolean
+  smokingNotAllowed Boolean
+  charter           Charter @relation(fields: [charterId], references: [id])
 }
 
 model CharterAmenity {
@@ -128,32 +128,25 @@ model CharterFeature {
 }
 
 model CharterMedia {
-  id         String    @id @default(cuid())
-  charterId  String
-  tripId     String?
-  kind       MediaKind
-  url        String
-  storageKey String
-  mimeType   String?
-  sizeBytes  Int?
-  width      Int?
-  height     Int?
-  // Optional persisted thumbnail for videos (or generated image variants)
-  thumbnailUrl String? @map("thumbnail_url")
-  // Basic video metadata (duration in seconds) if available
-  durationSeconds Int? @map("duration_seconds")
-  sortOrder  Int       @default(0)
-  createdAt  DateTime  @default(now())
-  charter    Charter   @relation(fields: [charterId], references: [id])
-  trip       Trip?     @relation(fields: [tripId], references: [id])
-  // Link back to PendingMedia once consumed (optional)
-  pendingMediaId String?   @unique
-  pendingMedia   PendingMedia? @relation("PendingToCharter", fields: [pendingMediaId], references: [id])
+  id              String        @id @default(cuid())
+  charterId       String
+  tripId          String?
+  kind            MediaKind
+  url             String
+  storageKey      String
+  mimeType        String?
+  sizeBytes       Int?
+  width           Int?
+  height          Int?
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  thumbnailUrl    String?       @map("thumbnail_url")
+  durationSeconds Int?          @map("duration_seconds")
+  pendingMediaId  String?       @unique
+  charter         Charter       @relation(fields: [charterId], references: [id])
+  pendingMedia    PendingMedia? @relation("PendingToCharter", fields: [pendingMediaId], references: [id])
+  trip            Trip?         @relation(fields: [tripId], references: [id])
 }
-
-// --------------------------------------
-// Drafts (Phase 1 incremental submission)
-// --------------------------------------
 
 model CharterDraft {
   id            String      @id @default(cuid())
@@ -167,23 +160,12 @@ model CharterDraft {
   lastTouchedAt DateTime    @default(now())
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-
-  user          User        @relation(fields: [userId], references: [id])
   charter       Charter?    @relation(fields: [charterId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
   notes         DraftNote[]
+
   @@index([lastTouchedAt])
 }
-
-enum DraftStatus {
-  DRAFT
-  SUBMITTED
-  ABANDONED
-  DELETED
-}
-
-// --------------------------------------
-// NextAuth adapter models
-// --------------------------------------
 
 model Account {
   id                String  @id @default(cuid())
@@ -191,12 +173,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -229,9 +211,9 @@ model Trip {
   maxAnglers    Int
   style         CharterStyle
   description   String?
-  promoPrice    Decimal? @db.Decimal(10, 2)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+  promoPrice    Decimal?        @db.Decimal(10, 2)
   media         CharterMedia[]
   charter       Charter         @relation(fields: [charterId], references: [id])
   species       TripSpecies[]
@@ -260,6 +242,118 @@ model TripTechnique {
   trip   Trip   @relation(fields: [tripId], references: [id])
 }
 
+model PendingMedia {
+  id              String             @id @default(cuid())
+  userId          String
+  charterId       String?
+  kind            String
+  originalKey     String
+  originalUrl     String
+  finalKey        String?
+  finalUrl        String?
+  thumbnailKey    String?
+  thumbnailUrl    String?
+  status          PendingMediaStatus
+  sizeBytes       Int?
+  mimeType        String?
+  width           Int?
+  height          Int?
+  durationSeconds Int?
+  error           String?
+  correlationId   String?
+  consumedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  charterMediaId  String?            @unique
+  charterMedia    CharterMedia?      @relation("PendingToCharter")
+
+  @@index([userId, status])
+  @@index([charterId])
+  @@index([createdAt])
+}
+
+model CaptainVerification {
+  id               String             @id @default(cuid())
+  userId           String             @unique
+  status           VerificationStatus @default(PENDING)
+  idFront          Json?
+  idBack           Json?
+  captainLicense   Json?
+  boatRegistration Json?
+  fishingLicense   Json?
+  additional       Json               @default("[]")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  user             User               @relation(fields: [userId], references: [id])
+}
+
+model DraftNote {
+  id        String       @id @default(cuid())
+  draftId   String
+  authorId  String
+  body      String
+  createdAt DateTime     @default(now())
+  author    User         @relation("UserDraftNotes", fields: [authorId], references: [id])
+  draft     CharterDraft @relation(fields: [draftId], references: [id])
+
+  @@index([draftId])
+  @@index([authorId])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  actorUserId   String
+  entityType    String
+  entityId      String
+  action        String
+  before        Json?
+  after         Json?
+  changed       Json?
+  correlationId String?
+  ip            String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+/// --------------------------------------------------
+/// Captain short-form video library (30s trimmed clips)
+/// --------------------------------------------------
+model CaptainVideo {
+  id                   String    @id @default(cuid())
+  ownerId              String
+  originalUrl          String
+  thumbnailUrl         String?
+  trimStartSec         Float     @default(0)
+  ready720pUrl         String?
+  processStatus        String    @default("queued")
+  errorMessage         String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  blobKey              String?
+  normalizedBlobKey    String?
+  thumbnailBlobKey     String?
+  didFallback          Boolean   @default(false)
+  fallbackReason       String?
+  originalDurationSec  Float?
+  processedDurationSec Float?
+  appliedTrimStartSec  Float?
+  processedAt          DateTime?
+  originalDeletedAt    DateTime?
+
+  @@index([ownerId, processStatus])
+  @@index([createdAt])
+}
+
+enum DraftStatus {
+  DRAFT
+  SUBMITTED
+  ABANDONED
+  DELETED
+}
+
 enum CharterPricingPlan {
   BASIC
   SILVER
@@ -278,52 +372,12 @@ enum MediaKind {
   TRIP_MEDIA
 }
 
-// --------------------------------------
-// Pending Media (staging before charter association)
-// --------------------------------------
-
 enum PendingMediaStatus {
-  QUEUED       // video queued for transcode OR image queued for optional transform
-  TRANSCODING  // worker actively processing (video)
-  READY        // final asset (image or transcoded video) available
-  FAILED       // processing failed; error field populated
+  QUEUED
+  TRANSCODING
+  READY
+  FAILED
 }
-
-model PendingMedia {
-  id              String             @id @default(cuid())
-  userId          String
-  charterId       String?            // becomes non-null when attached (editing or after finalize)
-  kind            String             // "IMAGE" | "VIDEO" (string for forward compatibility)
-  originalKey     String
-  originalUrl     String
-  finalKey        String?
-  finalUrl        String?
-  thumbnailKey    String?
-  thumbnailUrl    String?
-  status          PendingMediaStatus
-  sizeBytes       Int?
-  mimeType        String?
-  width           Int?
-  height          Int?
-  durationSeconds Int?
-  error           String?
-  correlationId   String?
-  consumedAt      DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-
-  // Optional linkage once consumed
-  charterMediaId  String?            @unique
-  charterMedia    CharterMedia?      @relation("PendingToCharter")
-
-  @@index([userId, status])
-  @@index([charterId])
-  @@index([createdAt])
-}
-
-// --------------------------------------
-// Roles
-// --------------------------------------
 
 enum Role {
   CAPTAIN
@@ -331,93 +385,8 @@ enum Role {
   ADMIN
 }
 
-// --------------------------------------
-// Captain Verification (documents)
-// --------------------------------------
-
-model CaptainVerification {
-  id               String               @id @default(cuid())
-  userId           String               @unique
-  idFront          Json?
-  idBack           Json?
-  captainLicense   Json?
-  boatRegistration Json?
-  fishingLicense   Json?
-  additional       Json                 @default("[]") // JSON array of Uploaded
-  status           VerificationStatus   @default(PENDING)
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  user             User                 @relation(fields: [userId], references: [id])
-}
-
 enum VerificationStatus {
   PENDING
   APPROVED
   REJECTED
-}
-
-// --------------------------------------
-// Staff draft notes
-// --------------------------------------
-
-model DraftNote {
-  id        String      @id @default(cuid())
-  draftId   String
-  authorId  String
-  body      String
-  createdAt DateTime    @default(now())
-  draft     CharterDraft @relation(fields: [draftId], references: [id])
-  author    User         @relation("UserDraftNotes", fields: [authorId], references: [id])
-  @@index([draftId])
-  @@index([authorId])
-}
-
-// --------------------------------------
-// Audit Logging
-// --------------------------------------
-
-model AuditLog {
-  id            String   @id @default(cuid())
-  actorUserId   String
-  entityType    String   // e.g. 'charter','boat','trip','captainProfile'
-  entityId      String
-  action        String   // e.g. 'update','create','delete'
-  before        Json?
-  after         Json?
-  changed       Json?    // list or map of changed field paths
-  correlationId String?
-  ip            String?
-  userAgent     String?
-  createdAt     DateTime @default(now())
-
-  @@index([entityType, entityId, createdAt])
-  @@index([actorUserId, createdAt])
-}
-
-/// --------------------------------------------------
-/// Captain short-form video library (30s trimmed clips)
-/// --------------------------------------------------
-model CaptainVideo {
-  id            String   @id @default(cuid())
-  ownerId       String
-  originalUrl   String   // Uploaded 30s slice (or full if shorter)
-  blobKey       String?  // Underlying blob storage key for deletion / normalization
-  thumbnailUrl  String?
-  thumbnailBlobKey String? // Blob key for persisted thumbnail
-  trimStartSec  Float    @default(0)
-  ready720pUrl  String?  // Optional normalized output
-  normalizedBlobKey String? // Key for normalized 720p variant
-  processStatus String   @default("queued") // queued | processing | ready | failed
-  errorMessage  String?
-  originalDurationSec  Float?   // Full source duration (seconds) if probed
-  processedDurationSec Float?   // Final clipped/transcoded duration (<=30s)
-  appliedTrimStartSec  Float?   // Actual seek used server-side (may differ if clamped)
-  processedAt          DateTime? // When processing finished (success or failure)
-  createdAt     DateTime @default(now())
-  didFallback   Boolean  @default(false) // Whether client-side trim fell back to untrimmed media
-  fallbackReason String? // Reason provided by client for fallback (parser failure, etc.)
-  updatedAt     DateTime @updatedAt
-  // Minimal future relations: could link to Charter if needed
-  @@index([ownerId, processStatus])
-  @@index([createdAt])
 }

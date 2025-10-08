@@ -48,29 +48,98 @@ interface ErrorResult {
 
 type Result = SuccessResult | ErrorResult;
 
-function jsonResponse(status: number, body: Result) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+// Unified response helper that works for both Web Fetch API (returning Response)
+// and Node/Vercel (writing to res object). We detect style at runtime.
+interface NodeResLike {
+  statusCode?: number;
+  setHeader?: (name: string, value: string) => void;
+  end?: (data?: unknown) => void;
+}
+
+interface NodeReqLike {
+  method?: string;
+  headers?: Record<string, string | string | undefined>;
+  on?: (event: string, cb: (...args: any[]) => void) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
+  destroy?: () => void;
+}
+
+function isWebRequest(r: unknown): r is Request {
+  return typeof Request !== "undefined" && r instanceof Request;
+}
+
+function isNodeReq(r: unknown): r is NodeReqLike {
+  return !!r && !isWebRequest(r);
+}
+
+function makeRespond(webStyle: boolean, nodeRes?: NodeResLike) {
+  return (status: number, body: Result) => {
+    if (webStyle) {
+      return new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (nodeRes) {
+      try {
+        nodeRes.statusCode = status;
+        nodeRes.setHeader?.("Content-Type", "application/json");
+        nodeRes.end?.(JSON.stringify(body));
+      } catch (e) {
+        // last‑ditch fallback
+        console.error("respond_error", e);
+      }
+    }
+    return undefined as unknown as Response; // satisfy TS when node style
+  };
 }
 
 export const config = { runtime: "nodejs" };
 
-export default async function handler(req: Request) {
+// We export a function that can accept either (req: Request) or (req,res) from Vercel Node runtime
+// Accept either a standard Fetch Request or Node request/response pair provided by Vercel node runtime
+export default async function handler(
+  req: Request | NodeReqLike,
+  res?: NodeResLike
+) {
+  const webStyle = isWebRequest(req);
+  const respond = makeRespond(webStyle, res);
+  const startedIso = new Date().toISOString();
+  const logBase = { scope: "worker-normalize", startedIso } as Record<
+    string,
+    unknown
+  >;
+
   const started = Date.now();
-  if (req.method !== "POST") {
-    return jsonResponse(405, {
+  const method = webStyle
+    ? (req as Request).method
+    : (req as NodeReqLike)?.method;
+  if (method !== "POST") {
+    return respond(405, {
       success: false,
       videoId: null,
       error: "method_not_allowed",
       message: "Use POST",
     });
   }
-  const auth = req.headers.get("authorization");
+  // Header access abstraction (case-insensitive)
+  let auth: string | undefined;
+  try {
+    if (webStyle) {
+      auth = (req as Request).headers.get("authorization") || undefined;
+    } else if (isNodeReq(req) && req.headers) {
+      const hdrs = req.headers;
+      // normalize keys to lower-case
+      for (const k of Object.keys(hdrs)) {
+        if (k.toLowerCase() === "authorization") {
+          auth = String(hdrs[k]);
+          break;
+        }
+      }
+    }
+  } catch {}
   const secret = process.env.VIDEO_WORKER_SECRET;
   if (secret && auth !== `Bearer ${secret}`) {
-    return jsonResponse(401, {
+    return respond(401, {
       success: false,
       videoId: null,
       error: "unauthorized",
@@ -79,9 +148,39 @@ export default async function handler(req: Request) {
   }
   let payload: Payload = {};
   try {
-    payload = await req.json();
-  } catch {
-    return jsonResponse(400, {
+    if (webStyle) {
+      payload = await (req as Request).json();
+    } else if (isNodeReq(req)) {
+      payload = await new Promise<Record<string, unknown>>(
+        (resolve, reject) => {
+          let data = "";
+          req.on?.("data", (chunk: Buffer) => {
+            data += chunk.toString();
+            if (data.length > 10 * 1024 * 1024) {
+              reject(new Error("payload_too_large"));
+              req.destroy?.();
+            }
+          });
+          req.on?.("end", () => {
+            if (!data) return resolve({});
+            try {
+              resolve(JSON.parse(data));
+            } catch (e) {
+              reject(e);
+            }
+          });
+          req.on?.("error", (err: unknown) => reject(err));
+        }
+      );
+    } else {
+      payload = {};
+    }
+  } catch (e: unknown) {
+    console.error("payload_parse_error", {
+      ...logBase,
+      error: (e as Error)?.message,
+    });
+    return respond(400, {
       success: false,
       videoId: null,
       error: "invalid_json",
@@ -91,7 +190,7 @@ export default async function handler(req: Request) {
   const { videoId, originalUrl } = payload;
   let { trimStartSec } = payload;
   if (!videoId || !originalUrl) {
-    return jsonResponse(400, {
+    return respond(400, {
       success: false,
       videoId: videoId || null,
       error: "missing_fields",
@@ -105,13 +204,13 @@ export default async function handler(req: Request) {
   const tmpBase = path.join(tmpdir(), `fishon-${videoId}-${randomUUID()}`);
   const inFile = `${tmpBase}-in.mp4`;
   const outFile = `${tmpBase}-out.mp4`;
-  const thumbFile = `${tmpBase}-thumb.jpg`;
+  // Thumbnail generation removed (handled upstream before worker invocation)
 
   try {
     // Download original
     const res = await fetch(originalUrl);
     if (!res.ok) {
-      return jsonResponse(502, {
+      return respond(502, {
         success: false,
         videoId,
         error: "download_failed",
@@ -137,45 +236,88 @@ export default async function handler(req: Request) {
       trimStartSec = Math.max(0, originalDurationSec - 0.5);
     }
 
-    // Transcode
-    await new Promise<void>((resolve, reject) => {
-      const cmd = fluent();
-      const seekVal =
-        typeof trimStartSec === "number" && trimStartSec > 0 ? trimStartSec : 0;
-      if (seekVal > 0) cmd.inputOptions(["-ss", seekVal.toString()]);
-      cmd
-        .input(inFile)
-        .outputOptions([
-          "-t",
-          "30",
-          "-vf",
-          "scale=iw*min(1280/iw,720/ih):ih*min(1280/iw,720/ih):force_original_aspect_ratio=decrease",
-          "-c:v",
-          "libx264",
-          "-preset",
-          "veryfast",
-          "-crf",
-          "26",
-          "-c:a",
-          "aac",
-          "-movflags",
-          "+faststart",
-        ])
-        .on("error", (e: unknown) => reject(e))
-        .on("end", () => resolve())
-        .save(outFile);
-    });
+    // Transcode (ensure input added before applying seek to avoid 'No input specified')
+    const inStat = await fs.stat(inFile).catch(() => null);
+    if (!inStat || inStat.size === 0) {
+      throw new Error("input_file_missing_or_empty");
+    }
+    const seekVal =
+      typeof trimStartSec === "number" && trimStartSec > 0 ? trimStartSec : 0;
+    const filterAttempts: (string | null)[] = [
+      // Attempt 1: cap both dims explicitly (may upscale small videos)
+      "scale=1280:720:force_original_aspect_ratio=decrease",
+      // Attempt 2: preserve height<=720 and auto width (multiple of 2)
+      "scale=-2:720:force_original_aspect_ratio=decrease",
+      // Attempt 3: preserve width<=1280 and auto height
+      "scale=1280:-2:force_original_aspect_ratio=decrease",
+      // Attempt 4: no scaling (fallback)
+      null,
+    ];
 
-    // Generate thumbnail at 1s into trimmed region (or 0 if very short)
-    await new Promise<void>((resolve) => {
-      const thumbSeek = 1;
-      fluent(outFile)
-        .outputOptions(["-vf", "thumbnail", "-frames:v", "1"])
-        .seekInput(thumbSeek)
-        .on("end", () => resolve())
-        .on("error", () => resolve()) // ignore thumb errors
-        .save(thumbFile);
-    });
+    let transcodeSucceeded = false;
+    let lastError: unknown = null;
+    for (let i = 0; i < filterAttempts.length && !transcodeSucceeded; i++) {
+      const vf = filterAttempts[i];
+      const attemptLabel = `attempt_${i + 1}`;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const cmd = fluent();
+          cmd.input(inFile);
+          if (seekVal > 0) cmd.seekInput(seekVal);
+          const baseOpts = [
+            "-t",
+            "30",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "26",
+            "-c:a",
+            "aac",
+            "-movflags",
+            "+faststart",
+          ];
+          if (vf) baseOpts.push("-vf", vf);
+          cmd
+            .outputOptions(baseOpts)
+            .on("start", (commandLine: string) => {
+              console.log("ffmpeg_command", {
+                attempt: attemptLabel,
+                vf,
+                commandLine,
+                seekVal,
+              });
+            })
+            .on("stderr", (line: string) => {
+              if (i === filterAttempts.length - 1)
+                console.log("ffmpeg_stderr", { attempt: attemptLabel, line });
+            })
+            .on("error", (e: unknown) => {
+              console.error("ffmpeg_transcode_error", {
+                attempt: attemptLabel,
+                message: (e as Error)?.message,
+              });
+              reject(e);
+            })
+            .on("end", () => resolve())
+            .save(outFile);
+        });
+        transcodeSucceeded = true;
+      } catch (e) {
+        lastError = e;
+        // If file was partially written, remove before retry
+        await fs.unlink(outFile).catch(() => {});
+        console.warn("transcode_attempt_failed", {
+          attempt: attemptLabel,
+          vf,
+          error: (e as Error)?.message,
+        });
+      }
+    }
+    if (!transcodeSucceeded) {
+      throw lastError || new Error("transcode_failed_all_attempts");
+    }
 
     // Probe processed duration
     const processedDurationSec = await new Promise<number | null>((resolve) => {
@@ -188,29 +330,29 @@ export default async function handler(req: Request) {
       });
     });
 
-    // Upload video
+    // Upload video (ensure blob token configured to avoid stream race/ENOENT)
+    const blobToken =
+      process.env.BLOB_READ_WRITE_TOKEN ||
+      process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
+    if (!blobToken) {
+      return respond(500, {
+        success: false,
+        videoId,
+        error: "blob_token_missing",
+        message:
+          "BLOB_READ_WRITE_TOKEN (or VERCEL_BLOB_READ_WRITE_TOKEN) not set in worker env",
+      });
+    }
     const normalizedBlobKey = `captain-videos/normalized/${videoId}-720p.mp4`;
     const uploadedVideo = await put(
       normalizedBlobKey,
       createReadStream(outFile),
-      { access: "public", contentType: "video/mp4" }
+      { access: "public", contentType: "video/mp4", token: blobToken }
     );
 
-    // Upload thumb (optional)
-    let thumbnailUrl: string | null = null;
-    let thumbnailBlobKey: string | null = null;
-    try {
-      const thumbStat = await fs.stat(thumbFile).catch(() => null);
-      if (thumbStat && thumbStat.size > 100) {
-        thumbnailBlobKey = `captain-videos/thumbs/${videoId}.jpg`;
-        const uploadedThumb = await put(
-          thumbnailBlobKey,
-          createReadStream(thumbFile),
-          { access: "public", contentType: "image/jpeg" }
-        );
-        thumbnailUrl = uploadedThumb.url;
-      }
-    } catch {}
+    // Thumbnail skipped; upstream pipeline should supply one already.
+    const thumbnailUrl: string | null = null;
+    const thumbnailBlobKey: string | null = null;
 
     const result: SuccessResult = {
       success: true,
@@ -224,10 +366,15 @@ export default async function handler(req: Request) {
       processedDurationSec,
       appliedTrimStartSec: trimStartSec,
     };
-    return jsonResponse(200, result);
+    return respond(200, result);
   } catch (e: unknown) {
     const message = (e as Error)?.message || "processing_failed";
-    return jsonResponse(500, {
+    console.error("processing_error", {
+      ...logBase,
+      message,
+      stack: (e as Error)?.stack,
+    });
+    return respond(500, {
       success: false,
       videoId,
       error: "ffmpeg_error",
@@ -238,7 +385,7 @@ export default async function handler(req: Request) {
     await Promise.all([
       fs.unlink(inFile).catch(() => {}),
       fs.unlink(outFile).catch(() => {}),
-      fs.unlink(thumbFile).catch(() => {}),
+      // thumbnail file removed (no generation)
     ]);
   }
 }

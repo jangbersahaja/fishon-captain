@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Receiver } from "@upstash/qstash";
+import { del } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 
 interface WorkerResultPayload {
@@ -183,6 +184,23 @@ export async function POST(req: NextRequest) {
 
   try {
     if (success === true) {
+      // Delete original blob if a normalized variant exists and we still have the original blob key
+      let originalDeletedAt: Date | undefined;
+      if (
+        payload.normalizedBlobKey &&
+        video.blobKey &&
+        video.blobKey !== payload.normalizedBlobKey
+      ) {
+        try {
+          await del(video.blobKey);
+          originalDeletedAt = new Date();
+        } catch (e) {
+          console.warn(
+            "[normalize-callback] original_delete_failed",
+            (e as Error).message
+          );
+        }
+      }
       const updated = await prisma.captainVideo.update({
         where: { id: videoId },
         data: {
@@ -190,9 +208,21 @@ export async function POST(req: NextRequest) {
           ready720pUrl: payload.readyUrl || video.originalUrl,
           thumbnailUrl: payload.thumbnailUrl || video.thumbnailUrl,
           errorMessage: null,
+          normalizedBlobKey:
+            payload.normalizedBlobKey || video.normalizedBlobKey,
+          originalDurationSec:
+            payload.originalDurationSec ?? video.originalDurationSec,
+          processedDurationSec:
+            payload.processedDurationSec ?? video.processedDurationSec,
+          appliedTrimStartSec:
+            payload.appliedTrimStartSec ?? video.appliedTrimStartSec,
+          ...(originalDeletedAt ? { originalDeletedAt } : {}),
         },
       });
-      console.log("[normalize-callback] success", { videoId });
+      console.log("[normalize-callback] success", {
+        videoId,
+        originalDeletedAt: !!originalDeletedAt,
+      });
       return NextResponse.json({ ok: true, video: updated });
     }
     if (success === false) {

@@ -1,5 +1,0 @@
--- No-op migration (replaced). Original intent attempted to alter a column that
--- did not yet exist in the historical sequence, causing shadow DB failure.
--- All required columns (including processedAt) are added by migration
--- 20251008090000_add_captain_video_duration_metadata.
--- Leaving this file intentionally blank for forward compatibility.
