@@ -409,6 +409,10 @@ model CaptainVideo {
   normalizedBlobKey String? // Key for normalized 720p variant
   processStatus String   @default("queued") // queued | processing | ready | failed
   errorMessage  String?
+  originalDurationSec  Float?   // Full source duration (seconds) if probed
+  processedDurationSec Float?   // Final clipped/transcoded duration (<=30s)
+  appliedTrimStartSec  Float?   // Actual seek used server-side (may differ if clamped)
+  processedAt          DateTime? // When processing finished (success or failure)
   createdAt     DateTime @default(now())
   didFallback   Boolean  @default(false) // Whether client-side trim fell back to untrimmed media
   fallbackReason String? // Reason provided by client for fallback (parser failure, etc.)

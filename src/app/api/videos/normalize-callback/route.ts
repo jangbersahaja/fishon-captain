@@ -10,6 +10,11 @@ interface WorkerResultPayload {
   thumbnailUrl?: string;
   error?: string;
   processingMs?: number;
+  originalDurationSec?: number;
+  processedDurationSec?: number;
+  appliedTrimStartSec?: number;
+  normalizedBlobKey?: string;
+  thumbnailBlobKey?: string;
 }
 
 const STRICT_SIGNATURE = process.env.STRICT_QSTASH_SIGNATURE === "1";
@@ -146,7 +151,12 @@ export async function POST(req: NextRequest) {
 
   // Idempotency: if already ready and incoming success, merge missing fields
   if (success === true && video.processStatus === "ready") {
-    const needsUpdate = !video.ready720pUrl || !video.thumbnailUrl;
+    const needsUpdate =
+      !video.ready720pUrl ||
+      !video.thumbnailUrl ||
+      (payload.normalizedBlobKey && !video.normalizedBlobKey) ||
+      (payload.originalDurationSec && !video.originalDurationSec) ||
+      (payload.processedDurationSec && !video.processedDurationSec);
     if (needsUpdate) {
       const updated = await prisma.captainVideo.update({
         where: { id: videoId },
@@ -154,6 +164,15 @@ export async function POST(req: NextRequest) {
           ready720pUrl:
             payload.readyUrl || video.ready720pUrl || video.originalUrl,
           thumbnailUrl: payload.thumbnailUrl || video.thumbnailUrl,
+          normalizedBlobKey:
+            payload.normalizedBlobKey || video.normalizedBlobKey,
+          thumbnailBlobKey: payload.thumbnailBlobKey || video.thumbnailBlobKey,
+          originalDurationSec:
+            payload.originalDurationSec ?? video.originalDurationSec,
+          processedDurationSec:
+            payload.processedDurationSec ?? video.processedDurationSec,
+          appliedTrimStartSec:
+            payload.appliedTrimStartSec ?? video.appliedTrimStartSec,
         },
       });
       return NextResponse.json({ ok: true, video: updated, idempotent: true });
@@ -170,6 +189,16 @@ export async function POST(req: NextRequest) {
           ready720pUrl: payload.readyUrl || video.originalUrl,
           thumbnailUrl: payload.thumbnailUrl || video.thumbnailUrl,
           errorMessage: null,
+          normalizedBlobKey:
+            payload.normalizedBlobKey || video.normalizedBlobKey,
+          thumbnailBlobKey: payload.thumbnailBlobKey || video.thumbnailBlobKey,
+          originalDurationSec:
+            payload.originalDurationSec ?? video.originalDurationSec,
+          processedDurationSec:
+            payload.processedDurationSec ?? video.processedDurationSec,
+          appliedTrimStartSec:
+            payload.appliedTrimStartSec ?? video.appliedTrimStartSec,
+          processedAt: new Date(),
         },
       });
       console.log("[normalize-callback] success", { videoId });
@@ -181,6 +210,7 @@ export async function POST(req: NextRequest) {
         data: {
           processStatus: "failed",
           errorMessage: payload.error || "normalize_failed",
+          processedAt: new Date(),
         },
       });
       console.log("[normalize-callback] failure", {

@@ -117,6 +117,68 @@ export async function POST(req: Request) {
 - `src/components/captain/EnhancedVideoUploader.tsx` - Production UI component
 - `src/hooks/useVideoQueue.ts` - React integration
 
+### External Normalization Worker (Out-of-Repo Deployment)
+
+The production trimming & 720p normalization now runs in an **external worker service** (deployed as its own Vercel project). Our app enqueues jobs via **Upstash QStash**, which POSTs the payload to the worker. The worker responds with JSON (`{ success, videoId, readyUrl, thumbnailUrl, ... }`) and QStash forwards that response to our in-app callback: `/api/videos/normalize-callback`.
+
+Key behaviors:
+
+- Worker enforces: maximum 30s output, optional seek via `trimStartSec`, 1280x720 max scaling (letterbox avoided; aspect preserved)
+- Uses `-ss <seconds>` (pre-input placement) for accurate keyframe seek + `-t 30` for hard cap
+- Generates a JPEG thumbnail at 1s into trimmed segment (or first frame if shorter)
+- Uploads normalized video + thumbnail directly to Vercel Blob (`@vercel/blob`)
+- Returns `normalizedBlobKey` and `thumbnailBlobKey` (if available) so callback can persist storage keys
+- Idempotent: If processing already done for a `videoId`, it can short‑circuit with a fast success response
+
+Worker Expected Environment (standalone project):
+
+```env
+VIDEO_WORKER_SECRET=shared-bearer-secret            # Must match app's VIDEO_WORKER_SECRET
+VERCEL_BLOB_READ_WRITE_TOKEN=...                    # For @vercel/blob uploads
+CAPTAIN_API_BASE=https://captain.example.com        # Only used for optional status pings (not required)
+LOG_LEVEL=info
+```
+
+App → Worker Payload (QStash forwarded body):
+
+```jsonc
+{
+  "videoId": "uuid",
+  "originalUrl": "https://.../original.mp4",
+  "trimStartSec": 12.34
+}
+```
+
+Worker Response (success):
+
+```jsonc
+{
+  "success": true,
+  "videoId": "uuid",
+  "readyUrl": "https://.../captain-videos/normalized/uuid-720p.mp4",
+  "normalizedBlobKey": "captain-videos/normalized/uuid-720p.mp4",
+  "thumbnailUrl": "https://.../captain-videos/thumbs/uuid.jpg",
+  "thumbnailBlobKey": "captain-videos/thumbs/uuid.jpg",
+  "processingMs": 4231,
+  "originalDurationSec": 185.42,
+  "processedDurationSec": 30,
+  "appliedTrimStartSec": 12.34
+}
+```
+
+Failure Response (example):
+
+```jsonc
+{
+  "success": false,
+  "videoId": "uuid",
+  "error": "download_failed" | "ffmpeg_error" | "invalid_payload",
+  "message": "Human readable context"
+}
+```
+
+The repo contains a **developer template** under `src/app/dev/_external-worker/` to copy into a dedicated worker repository. See that folder's `README.md` for deployment steps.
+
 **Video API Routes**: See `docs/API_VIDEO_ROUTES.md` for comprehensive documentation of all video endpoints including:
 
 - `/api/videos/list` - List user videos with status
