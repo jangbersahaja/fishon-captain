@@ -157,7 +157,24 @@ export const ToastProvider: React.FC<ProviderProps> = ({
   );
 
   const dismiss: ToastContextValue["dismiss"] = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) => {
+      const dismissedToast = prev.find((t) => t.id === id);
+      // Clear from sessionStorage if it's an error toast being dismissed
+      if (dismissedToast?.type === "error") {
+        try {
+          const raw = sessionStorage.getItem("last_error_toast");
+          if (raw) {
+            const parsed = JSON.parse(raw) as { message?: string };
+            if (parsed.message === dismissedToast.message) {
+              sessionStorage.removeItem("last_error_toast");
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      return prev.filter((t) => t.id !== id);
+    });
   }, []);
   const pushEphemeralError: ToastContextValue["pushEphemeralError"] =
     useCallback(
@@ -189,8 +206,17 @@ export const ToastProvider: React.FC<ProviderProps> = ({
   // auto dismissal effect
   useEffect(() => {
     const timers = toasts.map((t) => {
-      if (t.sticky || !t.autoDismiss) return null;
-      const remaining = t.autoDismiss - (Date.now() - t.createdAt);
+      if (t.sticky) return null; // explicitly sticky toasts stay forever
+
+      // Auto-dismiss logic: use explicit autoDismiss, or default timeout for error toasts
+      let dismissTime = t.autoDismiss;
+      if (!dismissTime && t.type === "error") {
+        dismissTime = 10000; // 10 second default for error toasts without explicit autoDismiss
+      }
+
+      if (!dismissTime) return null; // no auto-dismiss
+
+      const remaining = dismissTime - (Date.now() - t.createdAt);
       if (remaining <= 0) {
         // immediate flush
         setToasts((prev) => prev.filter((p) => p.id !== t.id));
@@ -228,11 +254,20 @@ export const ToastProvider: React.FC<ProviderProps> = ({
           }
           return;
         }
+        // Skip rehydrating save failed toasts since they're meant to be ephemeral
+        if (parsed.message === "Could not save changes.") {
+          try {
+            sessionStorage.removeItem("last_error_toast");
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
         push({
           id: "persisted-error",
           type: "error",
           message: parsed.message,
-          sticky: true,
+          autoDismiss: 8000, // Auto-dismiss after 8 seconds instead of sticky
         });
       }
     } catch {

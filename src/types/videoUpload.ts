@@ -38,6 +38,10 @@ interface BaseVideoUploadItem {
   trim?: {
     startSec: number;
     endSec: number;
+    // Added: metadata captured at trim time for bypass & analytics
+    width?: number; // source width
+    height?: number; // source height
+    originalDurationSec?: number; // full source duration before trimming
     didFallback?: boolean;
     fallbackReason?: string | null;
   };

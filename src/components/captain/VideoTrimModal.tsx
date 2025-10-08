@@ -16,7 +16,11 @@ interface VideoTrimModalProps {
     startSec: number,
     duration: number,
     probe: { width: number; height: number; codec: string; size: number },
-    meta: { didFallback: boolean; fallbackReason?: string | null }
+    meta: {
+      didFallback: boolean;
+      fallbackReason?: string | null;
+      originalDurationSec?: number;
+    }
   ) => void;
   onChangeVideo?: () => void;
 }
@@ -43,6 +47,8 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   const [isDragging, setIsDragging] = useState<
     "start" | "end" | "selection" | null
   >(null);
+  // Touch drag tracking
+  const activeTouchIdRef = useRef<number | null>(null);
   const [probe, setProbe] = useState<{
     width: number;
     height: number;
@@ -61,13 +67,15 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   // Derived readiness
   const isReady = !loading && duration > 0 && !!probe;
 
-  // Check if video already meets requirements (≤30s, ≥720p)
+  // Check if video already meets requirements (≤30s, resolution not exceeding 1280x720)
+  // Rationale: We treat any clip ≤30s and already at or below target dimensions as compliant (no need to upscale or transcode).
+  // (Backend bypass uses width<=1280 && height<=720 with the same duration cap.)
   const isAlreadyCompliant =
     isReady &&
     probe &&
     duration <= 30 &&
-    probe.width >= 1280 &&
-    probe.height >= 720; // 720p minimum
+    probe.width <= 1280 &&
+    probe.height <= 720;
 
   // Check if user made any changes to the default selection
   const hasUserChanges = startSec !== 0 || endSec !== Math.min(30, duration);
@@ -398,6 +406,71 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
     [duration, startSec, endSec, isReady]
   );
 
+  // Unified drag logic for touch events
+  const beginTouchDrag = useCallback(
+    (e: React.TouchEvent, handle: "start" | "end" | "selection") => {
+      if (!isReady || !timelineRef.current) return;
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      activeTouchIdRef.current = touch.identifier;
+      const video = videoRef.current;
+      if (video && !video.paused) {
+        video.pause();
+        setIsPlaying(false);
+      }
+      setIsDragging(handle);
+      const rect = timelineRef.current.getBoundingClientRect();
+      const initialSelectionDuration = endSec - startSec;
+
+      const onMove = (moveEvent: TouchEvent) => {
+        const t = Array.from(moveEvent.changedTouches).find(
+          (tt) => tt.identifier === activeTouchIdRef.current
+        );
+        if (!t) return;
+        const x = t.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, x / rect.width));
+        const time = percentage * duration;
+        const clamp = (v: number, min = 0, max = duration) =>
+          Math.max(min, Math.min(max, v));
+        if (handle === "start") {
+          const newStart = clamp(Math.min(time, endSec - 0.25));
+          setStartSec(newStart);
+          if (endSec - newStart < 0.25) setEndSec(clamp(newStart + 0.25));
+        } else if (handle === "end") {
+          const newEnd = clamp(Math.max(time, startSec + 0.25));
+          const maxEnd = clamp(startSec + 30, 0, duration);
+          setEndSec(Math.min(newEnd, maxEnd));
+        } else if (handle === "selection") {
+          const newStart = clamp(
+            Math.min(time, duration - initialSelectionDuration)
+          );
+          const newEnd = clamp(newStart + initialSelectionDuration);
+          setStartSec(newStart);
+          setEndSec(newEnd);
+        }
+      };
+      const onEnd = (endEvent: TouchEvent) => {
+        const ended = Array.from(endEvent.changedTouches).some(
+          (tt) => tt.identifier === activeTouchIdRef.current
+        );
+        if (!ended) return;
+        activeTouchIdRef.current = null;
+        setIsDragging(null);
+        window.removeEventListener("touchmove", onMove);
+        window.removeEventListener("touchend", onEnd);
+        window.removeEventListener("touchcancel", onEnd);
+      };
+      window.addEventListener("touchmove", onMove, { passive: false });
+      window.addEventListener("touchend", onEnd);
+      window.addEventListener("touchcancel", onEnd);
+      // Light haptic (best-effort)
+      try {
+        if (navigator.vibrate) navigator.vibrate(10);
+      } catch {}
+    },
+    [isReady, duration, startSec, endSec]
+  );
+
   const handleConfirm = useCallback(async () => {
     setExporting(true);
     setError(null);
@@ -425,6 +498,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
         onConfirm(result.blob, startSec, actualDuration, probe, {
           didFallback: result.didFallback,
           fallbackReason: result.fallbackReason || null,
+          originalDurationSec: duration,
         });
       }
     } catch (err) {
@@ -447,6 +521,11 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   if (!open || !file) return null;
 
   const selectedDuration = endSec - startSec;
+  // Enhanced bitrate-based estimation (averages + overhead cushion ~4%)
+  const averageBitrateBytesPerSec = duration > 0 ? file.size / duration : 0;
+  const rawEstimate = averageBitrateBytesPerSec * selectedDuration;
+  const estimatedOutputBytes = rawEstimate * 1.04; // small container overhead cushion
+  const exceedsMax = estimatedOutputBytes > 100 * 1024 * 1024;
   const startPercentage = (startSec / duration) * 100;
   const endPercentage = (endSec / duration) * 100;
 
@@ -728,7 +807,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
               </div>
               <div className="relative" ref={timelineRef}>
                 <div
-                  className={`relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none ${
+                  className={`relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none touch-none ${
                     !isReady ? "opacity-60 pointer-events-none" : ""
                   }`}
                 >
@@ -784,26 +863,29 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                       width: `${endPercentage - startPercentage}%`,
                     }}
                     onMouseDown={(e) => handleTimelineDrag(e, "selection")}
+                    onTouchStart={(e) => beginTouchDrag(e, "selection")}
                   />
                   {/* Start handle */}
                   <div
-                    className="absolute top-0 bottom-0 w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 transition-colors flex items-center justify-center z-30"
+                    className="absolute top-0 bottom-0 w-4 sm:w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 active:scale-[1.08] transition-all flex items-center justify-center z-30"
                     style={{
                       left: `${startPercentage}%`,
                       transform: "translateX(-50%)",
                     }}
                     onMouseDown={(e) => handleTimelineDrag(e, "start")}
+                    onTouchStart={(e) => beginTouchDrag(e, "start")}
                   >
                     <div className="w-1 h-6 bg-white rounded"></div>
                   </div>
                   {/* End handle */}
                   <div
-                    className="absolute top-0 bottom-0 w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 transition-colors flex items-center justify-center z-30"
+                    className="absolute top-0 bottom-0 w-4 sm:w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 active:scale-[1.08] transition-all flex items-center justify-center z-30"
                     style={{
                       left: `${endPercentage}%`,
                       transform: "translateX(-50%)",
                     }}
                     onMouseDown={(e) => handleTimelineDrag(e, "end")}
+                    onTouchStart={(e) => beginTouchDrag(e, "end")}
                   >
                     <div className="w-1 h-6 bg-white rounded"></div>
                   </div>
@@ -827,6 +909,22 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 ⚠️ Max 30s allowed
               </div>
             )}
+            {selectedDuration <= 30 && (
+              <div className="text-[11px] sm:text-xs text-gray-400 flex items-center gap-3 flex-wrap">
+                <span>
+                  Size≈{(estimatedOutputBytes / 1024 / 1024).toFixed(1)}MB
+                </span>
+                <span>
+                  Bitrate≈{((averageBitrateBytesPerSec * 8) / 1000).toFixed(0)}
+                  kbps
+                </span>
+                {exceedsMax && (
+                  <span className="text-red-400 font-semibold">
+                    {">"}100MB (trim more)
+                  </span>
+                )}
+              </div>
+            )}
             {isAlreadyCompliant && (
               <div className="text-green-400 text-xs sm:text-sm flex items-center gap-2">
                 ✅ Video already meets requirements ({probe?.width}×
@@ -841,16 +939,6 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 Tip: Tap video to play/pause; drag handles to adjust timing.
               </div>
               <div className="flex items-center gap-2 sm:gap-3 order-1 sm:order-2 flex-wrap">
-                {isAlreadyCompliant && !hasUserChanges && (
-                  <button
-                    type="button"
-                    className="px-3 sm:px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium"
-                    onClick={handleConfirm}
-                    disabled={!!error || exporting}
-                  >
-                    {exporting ? "Processing..." : "Use Original"}
-                  </button>
-                )}
                 {onChangeVideo && (
                   <button
                     type="button"
@@ -871,17 +959,23 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   type="button"
                   className="px-5 sm:px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
                   onClick={handleConfirm}
-                  disabled={!!error || exporting || selectedDuration > 30}
+                  disabled={
+                    !!error || exporting || selectedDuration > 30 || exceedsMax
+                  }
                 >
                   {exporting ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin"></div>
                       {isAlreadyCompliant && !hasUserChanges
                         ? "Processing..."
+                        : exceedsMax
+                        ? "Too Large"
                         : "Exporting..."}
                     </div>
                   ) : isAlreadyCompliant && !hasUserChanges ? (
                     `Use Original (${duration.toFixed(1)}s)`
+                  ) : exceedsMax ? (
+                    `Too Large (${selectedDuration.toFixed(1)}s)`
                   ) : (
                     `Confirm (${selectedDuration.toFixed(1)}s)`
                   )}

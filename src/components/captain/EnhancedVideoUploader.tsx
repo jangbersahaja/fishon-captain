@@ -14,7 +14,7 @@
 "use client";
 import { useVideoQueue } from "@/hooks/useVideoQueue";
 import { VideoUploadItem } from "@/types/videoUpload";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { VideoTrimModal } from "./VideoTrimModal";
 
 // Phase 8: Utility functions for enhanced progress display
@@ -119,13 +119,58 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
     enqueue,
     cancel,
     retry,
-    pause,
-    resume,
     setMaxConcurrent,
     setAutoStart,
     startUpload,
     updatePendingTrim,
+    // add remove method after queue update
+    remove,
   } = useVideoQueue();
+
+  // New: total video guard (max 10 overall)
+  const MAX_TOTAL = 10;
+  const totalCount = items.length; // later can come from server list as well
+  const blockMore = totalCount >= MAX_TOTAL;
+
+  // File selection handler must be declared before dependent callbacks
+  const handleFileSelect = useCallback(
+    (files: FileList | null) => {
+      if (!files) return;
+      const fileArray = Array.from(files);
+      const availableSlots = maxFiles - items.length;
+      const filesToUpload = fileArray.slice(0, availableSlots);
+      if (filesToUpload.length > 0) {
+        const firstFile = filesToUpload[0];
+        if (!allowMultiple || filesToUpload.length === 1) {
+          const tempId = `temp-${Date.now()}`;
+          setTrimTargetId(tempId);
+          setTrimFile(firstFile);
+          setIsModalOpen(true);
+          if (filesToUpload.length > 1) {
+            filesToUpload.slice(1).forEach((file) => enqueue(file));
+          }
+        } else {
+          filesToUpload.forEach((file) => enqueue(file));
+        }
+      }
+      if (inputRef.current) inputRef.current.value = "";
+    },
+    [allowMultiple, enqueue, items.length, maxFiles]
+  );
+
+  // Drag & drop support
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      if (blockMore) return;
+      const files = e.dataTransfer.files;
+      handleFileSelect(files);
+    },
+    [blockMore, handleFileSelect]
+  );
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const previousCompletedCountRef = useRef(0);
@@ -156,60 +201,9 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
     }
   }, [items, onUploaded]);
 
-  const handleFileSelect = (files: FileList | null) => {
-    if (!files) return;
+  // (handleFileSelect moved earlier)
 
-    const fileArray = Array.from(files);
-    const availableSlots = maxFiles - items.length;
-    const filesToUpload = fileArray.slice(0, availableSlots);
-
-    if (filesToUpload.length > 0) {
-      const firstFile = filesToUpload[0];
-
-      // For single file selection or first file in multiple selection, open trim modal immediately
-      if (!allowMultiple || filesToUpload.length === 1) {
-        // Create a temporary ID for the trim session
-        const tempId = `temp-${Date.now()}`;
-        setTrimTargetId(tempId);
-        setTrimFile(firstFile);
-        setIsModalOpen(true);
-
-        // Store remaining files for after trim completion
-        if (filesToUpload.length > 1) {
-          // Store remaining files to enqueue after trim
-          filesToUpload.slice(1).forEach((file) => {
-            enqueue(file);
-          });
-        }
-      } else {
-        // Multiple files selected - enqueue all and let user manually trim if needed
-        filesToUpload.forEach((file) => {
-          enqueue(file);
-        });
-      }
-    }
-
-    // Clear input for next selection
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-  };
-
-  const openTrimModal = (item: VideoUploadItem) => {
-    // Allow trimming for pending items, or if upload hasn't started processing yet
-    if (
-      item.status === "pending" ||
-      (item.status === "uploading" && item.progress < 0.1)
-    ) {
-      // If uploading, cancel it first to allow trimming
-      if (item.status === "uploading") {
-        cancel(item.id);
-      }
-      setTrimTargetId(item.id);
-      setTrimFile(item.file);
-      setIsModalOpen(true);
-    }
-  };
+  // openTrimModal removed in minimalist mode (trimming triggered only on initial select)
 
   const handleTrimConfirm = (
     slice: Blob,
@@ -232,6 +226,9 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
           trim: {
             startSec,
             endSec: startSec + duration,
+            width: probe.width,
+            height: probe.height,
+            originalDurationSec: duration, // NOTE: currently passing trimmed selection; may replace with source duration if exposed
             didFallback: meta.didFallback,
             fallbackReason: meta.fallbackReason,
           },
@@ -244,6 +241,9 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
           trim: {
             startSec,
             endSec: startSec + duration,
+            width: probe.width,
+            height: probe.height,
+            originalDurationSec: duration,
             didFallback: meta.didFallback,
             fallbackReason: meta.fallbackReason,
           },
@@ -269,73 +269,37 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
     setTrimFile(null);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-gray-500";
-      case "uploading":
-        return "bg-blue-500";
-      case "processing":
-        return "bg-yellow-500";
-      case "done":
-        return "bg-green-500";
-      case "error":
-        return "bg-red-500";
-      case "canceled":
-        return "bg-gray-400";
-      default:
-        return "bg-gray-300";
-    }
-  };
+  // removed getStatusColor (inline logic used)
 
-  const canUploadMore = items.length < maxFiles;
-  const hasActiveUploads = items.some(
-    (item) => item.status === "uploading" || item.status === "processing"
-  );
+  // removed canUploadMore & hasActiveUploads (not used after minimalist redesign)
 
   return (
     <div className="space-y-4">
-      {/* Upload Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={!canUploadMore}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-          >
-            {allowMultiple ? "Select Videos" : "Select Video"}
-          </button>
-
-          {items.length > 0 && (
-            <div className="flex items-center gap-2">
-              {hasActiveUploads && (
-                <>
-                  <button
-                    type="button"
-                    onClick={pause}
-                    className="px-3 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700"
-                  >
-                    Pause
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resume}
-                    className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                  >
-                    Resume
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {items.length > 0 && (
-          <div className="text-sm text-gray-600">
-            {items.length}/{maxFiles} videos
-          </div>
-        )}
+      <div
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        className={`border-2 border-dashed rounded-lg p-4 text-center text-sm transition ${
+          blockMore
+            ? "opacity-50 cursor-not-allowed"
+            : "hover:border-blue-400 border-gray-300"
+        }`}
+      >
+        <p className="mb-2 font-medium">
+          {blockMore
+            ? "Maximum 10 videos reached"
+            : "Drag & drop videos here or"}
+        </p>
+        <button
+          type="button"
+          onClick={() => !blockMore && inputRef.current?.click()}
+          disabled={blockMore}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium disabled:opacity-50"
+        >
+          Select Video{allowMultiple ? "s" : ""}
+        </button>
+        <p className="mt-2 text-xs text-gray-500">
+          Up to 5 concurrent uploads. Total limit 10.
+        </p>
       </div>
 
       {/* Hidden File Input */}
@@ -387,179 +351,137 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
 
       {/* Upload Queue */}
       {showQueue && items.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">Upload Queue</h4>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {items.map((item: VideoUploadItem) => (
-              <div
-                key={item.id}
-                className="border rounded-lg p-3 bg-white shadow-sm"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span
-                    className="font-medium text-sm truncate max-w-xs"
-                    title={item.file.name}
-                  >
-                    {item.file.name}
-                  </span>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-gray-600 tracking-wide uppercase">
+              Uploads
+            </h4>
+            <span className="text-[10px] text-gray-400">
+              {items.length} active
+            </span>
+          </div>
+          <ul className="space-y-2">
+            {items.map((item) => {
+              const pct =
+                item.status === "uploading"
+                  ? Math.round(item.progress * 100)
+                  : item.status === "done"
+                  ? 100
+                  : item.status === "processing"
+                  ? 100
+                  : 0;
+              const statusLabel =
+                item.status === "pending"
+                  ? "Waiting"
+                  : item.status === "uploading"
+                  ? "Uploading"
+                  : item.status === "processing"
+                  ? "Processing"
+                  : item.status === "done"
+                  ? "Done"
+                  : item.status === "error"
+                  ? "Failed"
+                  : "Canceled";
+              const dotColor =
+                item.status === "done"
+                  ? "bg-emerald-500"
+                  : item.status === "error"
+                  ? "bg-red-500"
+                  : item.status === "processing"
+                  ? "bg-indigo-500"
+                  : item.status === "uploading"
+                  ? "bg-blue-500"
+                  : item.status === "pending"
+                  ? "bg-gray-300"
+                  : "bg-gray-400";
+              return (
+                <li
+                  key={item.id}
+                  className="relative rounded-md bg-white ring-1 ring-gray-200/70 shadow-sm px-3 py-2 flex flex-col gap-1"
+                >
                   <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${dotColor}`} />
                     <span
-                      className={`text-xs px-2 py-1 rounded text-white font-medium ${getStatusColor(
-                        item.status
-                      )}`}
+                      className="truncate text-[11px] font-medium text-gray-800 flex-1"
+                      title={item.file.name}
                     >
-                      {item.status.toUpperCase()}
+                      {item.file.name}
                     </span>
-
-                    {(item.status === "pending" ||
-                      (item.status === "uploading" && item.progress < 0.1)) && (
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openTrimModal(item)}
-                          className="text-blue-600 hover:text-blue-700 text-xs px-2 py-1 border border-blue-200 rounded hover:bg-blue-50"
-                          title={
-                            item.status === "uploading"
-                              ? "Cancel and trim video"
-                              : "Trim video"
-                          }
-                        >
-                          Trim
-                        </button>
-                        {item.status === "pending" && (
-                          <button
-                            type="button"
-                            onClick={() => startUpload(item.id)}
-                            className="text-green-600 hover:text-green-700 text-xs px-2 py-1 border border-green-200 rounded hover:bg-green-50"
-                            title="Start upload"
-                          >
-                            Start
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {(item.status === "uploading" ||
-                      item.status === "processing") && (
+                    <span className="text-[10px] text-gray-500 tracking-wide">
+                      {statusLabel}
+                      {item.status === "uploading" && ` • ${pct}%`}
+                    </span>
+                    {item.status === "pending" && (
                       <button
-                        type="button"
-                        onClick={() => cancel(item.id)}
-                        className="text-red-600 hover:text-red-700 text-xs px-2 py-1 border border-red-200 rounded hover:bg-red-50"
-                        title="Cancel upload"
+                        onClick={() => startUpload(item.id)}
+                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium"
                       >
-                        Cancel
+                        Start
                       </button>
                     )}
-
                     {(item.status === "error" ||
                       item.status === "canceled") && (
                       <button
-                        type="button"
                         onClick={() => retry(item.id)}
-                        className="text-blue-600 hover:text-blue-700 text-xs px-2 py-1 border border-blue-200 rounded hover:bg-blue-50"
-                        title="Retry upload"
+                        className="text-[10px] text-blue-600 hover:text-blue-700 font-medium"
                       >
                         Retry
                       </button>
                     )}
-
-                    <button
-                      type="button"
-                      onClick={() => cancel(item.id)}
-                      className="text-gray-400 hover:text-gray-600 ml-2"
-                      title="Remove from queue"
-                    >
-                      ×
-                    </button>
+                    {(item.status === "error" ||
+                      item.status === "canceled") && (
+                      <button
+                        onClick={() => remove(item.id)}
+                        className="text-[10px] text-gray-400 hover:text-gray-600"
+                        aria-label="Remove from queue"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    {(item.status === "pending" ||
+                      item.status === "uploading") && (
+                      <button
+                        onClick={() => cancel(item.id)}
+                        className="text-[12px] text-gray-400 hover:text-gray-600"
+                        aria-label="Remove"
+                      >
+                        ×
+                      </button>
+                    )}
+                    {item.status === "done" && (
+                      <button
+                        onClick={() => remove(item.id)}
+                        className="text-[10px] text-gray-400 hover:text-gray-600"
+                        aria-label="Clear"
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
-                </div>
-
-                {/* Step-based Progress Display */}
-                {(() => {
-                  const stepInfo = getUploadStep(item);
-                  return (
-                    <div className="space-y-3">
-                      {/* Step Indicator */}
-                      <div className="flex items-center space-x-3">
-                        {/* Step Icon/Spinner */}
-                        <div className="flex-shrink-0">
-                          {stepInfo.step === -1 ? (
-                            // Error or Canceled
-                            <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
-                              <span className="text-red-600 text-sm font-bold">
-                                !
-                              </span>
-                            </div>
-                          ) : stepInfo.step === stepInfo.total ? (
-                            // Completed
-                            <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-                              <span className="text-green-600 text-sm">✓</span>
-                            </div>
-                          ) : stepInfo.step > 0 ? (
-                            // In Progress - Spinner
-                            <div className="w-6 h-6 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin"></div>
-                          ) : (
-                            // Pending≈
-                            <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
-                              <span className="text-gray-400 text-sm">
-                                {stepInfo.step + 1}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Step Label and Details */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-sm text-gray-900">
-                              {stepInfo.label}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {Math.round(
-                                (item.sizeBytes / 1024 / 1024) * 100
-                              ) / 100}{" "}
-                              MB
-                            </span>
-                          </div>
-                          {stepInfo.details && (
-                            <div className="text-xs text-gray-500 mt-1 truncate">
-                              {stepInfo.details}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Progress Dots */}
-                      <div className="flex items-center space-x-2 ml-9">
-                        {Array.from({ length: stepInfo.total }, (_, i) => (
-                          <div
-                            key={i}
-                            className={`w-2 h-2 rounded-full ${
-                              stepInfo.step === -1
-                                ? "bg-red-200"
-                                : i < stepInfo.step
-                                ? "bg-blue-600"
-                                : i === stepInfo.step
-                                ? "bg-blue-400"
-                                : "bg-gray-200"
-                            }`}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Additional Info */}
-                      {item.trim && (
-                        <div className="text-xs text-blue-600 ml-9">
-                          Trimmed ({item.trim.startSec.toFixed(2)}s -{" "}
-                          {item.trim.endSec.toFixed(2)}s)
-                        </div>
-                      )}
+                  {(item.status === "uploading" ||
+                    item.status === "processing") && (
+                    <div className="h-1.5 bg-gray-100 rounded overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          item.status === "processing"
+                            ? "bg-indigo-500 animate-pulse"
+                            : "bg-blue-500"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
-                  );
-                })()}
-              </div>
-            ))}
-          </div>
+                  )}
+                  {item.status === "error" && (
+                    <div className="text-[10px] text-red-600 line-clamp-1">
+                      {item.errorDetails?.message ||
+                        item.error ||
+                        "Upload failed"}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 

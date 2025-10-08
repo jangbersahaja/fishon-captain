@@ -3,6 +3,21 @@ import { Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+// Relative time utility (lightweight, no Intl.RelativeTimeFormat reliance for older browsers)
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const diffSec = Math.max(0, Math.floor((now - then) / 1000));
+  if (diffSec < 5) return "just now";
+  if (diffSec < 60) return diffSec + "s ago";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return diffMin + "m ago";
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return diffHr + "h ago";
+  const diffDay = Math.floor(diffHr / 24);
+  return diffDay + "d ago";
+}
+
 interface VideoRecord {
   id: string;
   originalUrl: string;
@@ -193,48 +208,35 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
   }, [videos, localThumbs]);
 
   const statusPill = (v: VideoRecord) => {
+    // Replace status text (Ready/Queued/Processing) with uploaded time; keep "Failed" for clarity.
     const base = "px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide";
-    switch (v.processStatus) {
-      case "ready":
-        return (
-          <span className={`${base} text-white flex items-center gap-1`}>
-            <span className="w-3 h-3 bg-green-400 rounded-full"></span>
-            Ready
-          </span>
-        );
-      case "processing":
-        return (
-          <span
-            className={`${base} text-white animate-pulse flex items-center gap-1`}
-          >
-            <span className="w-3 h-3 bg-yellow-400 rounded-full"></span>
-            Optimizing Video
-          </span>
-        );
-      case "queued":
-        return (
-          <span className={`${base} text-white flex items-center gap-1`}>
-            <span className="w-3 h-3 bg-orange-400 rounded-full"></span>
-            Queued
-          </span>
-        );
-      case "failed":
-        return (
-          <span className={`${base} text-white flex items-center gap-1`}>
-            <span className="w-3 h-3 bg-red-400 rounded-full"></span>
-            Failed
-          </span>
-        );
-      default:
-        return (
-          <span
-            className={`${base} bg-gray-500 text-white flex items-center gap-1`}
-          >
-            <span className="w-3 h-3 bg-gray-400 rounded-full"></span>
-            {v.processStatus}
-          </span>
-        );
+    const Dot = ({ color, pulse }: { color: string; pulse?: boolean }) => (
+      <span
+        className={`w-3 h-3 rounded-full ${color} ${
+          pulse ? "animate-pulse" : ""
+        }`}
+      />
+    );
+    if (v.processStatus === "failed") {
+      return (
+        <span className={`${base} text-white flex items-center gap-1`}>
+          <Dot color="bg-red-400" /> Failed
+        </span>
+      );
     }
+    // queued / processing / ready all show timeAgo with color-coded dot
+    const dotColor =
+      v.processStatus === "ready"
+        ? "bg-green-400"
+        : v.processStatus === "processing" || v.processStatus === "queued"
+        ? "bg-yellow-400"
+        : "bg-slate-400";
+    const pulse = v.processStatus !== "ready";
+    return (
+      <span className={`${base} text-white flex items-center gap-1`}>
+        <Dot color={dotColor} pulse={pulse} /> {timeAgo(v.createdAt)}
+      </span>
+    );
   };
 
   return (
@@ -249,26 +251,93 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
             key={v.id}
             className="border border-neutral-700 rounded-2xl p-2 space-y-1 bg-black backdrop-blur"
           >
-            <div className="aspect-video bg-gray-100 flex items-center justify-center text-xs text-gray-600 relative overflow-hidden rounded-sm group">
-              {v.thumbnailUrl || localThumbs[v.id] ? (
-                <>
-                  <Image
-                    src={localThumbs[v.id] || (v.thumbnailUrl as string)}
-                    alt="thumb"
-                    fill
-                    sizes="(max-width:768px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  {v.processStatus !== "ready" && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[10px] text-white font-semibold">
-                      {v.processStatus}
-                    </div>
-                  )}
-                </>
-              ) : v.processStatus === "ready" ? (
-                <span className="text-gray-500">No thumb</span>
-              ) : (
-                <span className="animate-pulse">{v.processStatus}</span>
+            <div className="aspect-video bg-neutral-800 text-xs text-gray-500 relative overflow-hidden rounded-md group">
+              {(() => {
+                const displayThumb = localThumbs[v.id] || v.thumbnailUrl;
+                const videoHref = v.ready720pUrl || v.originalUrl; // include bypassed originals
+                if (displayThumb) {
+                  return (
+                    <a
+                      href={v.processStatus === "ready" ? videoHref : undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`block w-full h-full ${
+                        v.processStatus === "ready"
+                          ? "cursor-pointer"
+                          : "cursor-default"
+                      }`}
+                    >
+                      <Image
+                        src={displayThumb}
+                        alt="thumb"
+                        fill
+                        sizes="(max-width:768px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      {v.processStatus !== "ready" && (
+                        <div className="absolute inset-0 bg-black/35 backdrop-blur-[1px] flex items-center justify-center">
+                          <span className="w-3 h-3 rounded-full bg-yellow-300 animate-pulse" />
+                        </div>
+                      )}
+                    </a>
+                  );
+                }
+                // Ready but no thumb yet: keep capture option (not link-wrapped to avoid nested interactive elements)
+                if (v.processStatus === "ready") {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const videoEl = document.createElement("video");
+                        videoEl.crossOrigin = "anonymous";
+                        videoEl.src = videoHref;
+                        videoEl.preload = "metadata";
+                        videoEl.addEventListener("loadeddata", () => {
+                          try {
+                            videoEl.currentTime = Math.min(
+                              0.15,
+                              (videoEl.duration || 1) - 0.05
+                            );
+                          } catch {}
+                        });
+                        videoEl.addEventListener("seeked", () => {
+                          try {
+                            const canvas = document.createElement("canvas");
+                            canvas.width = videoEl.videoWidth || 320;
+                            canvas.height = videoEl.videoHeight || 180;
+                            const ctx = canvas.getContext("2d");
+                            if (!ctx) return;
+                            ctx.drawImage(videoEl, 0, 0);
+                            const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                            if (dataUrl.startsWith("data:image")) {
+                              setLocalThumbs((lt) => ({
+                                ...lt,
+                                [v.id]: dataUrl,
+                              }));
+                            }
+                          } catch {}
+                          videoEl.remove();
+                        });
+                      }}
+                      className="flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] text-gray-400 hover:text-white transition-colors"
+                    >
+                      <span className="w-7 h-7 rounded-full bg-neutral-700 flex items-center justify-center">
+                        📷
+                      </span>
+                      Capture thumb
+                    </button>
+                  );
+                }
+                return (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <span className="w-3 h-3 rounded-full bg-yellow-300 animate-pulse" />
+                  </div>
+                );
+              })()}
+              {Date.now() - new Date(v.createdAt).getTime() < 2 * 60 * 1000 && (
+                <span className="absolute top-1 left-1 bg-blue-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full font-semibold tracking-wide shadow">
+                  NEW
+                </span>
               )}
             </div>
             <div className="flex justify-between items-center gap-2 pt-1">
@@ -294,7 +363,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
               </div>
             </div>
             {v.errorMessage && v.processStatus === "failed" && (
-              <div className="text-[10px] text-red-600 line-clamp-2">
+              <div className="text-[10px] text-red-500 line-clamp-2">
                 {v.errorMessage}
               </div>
             )}

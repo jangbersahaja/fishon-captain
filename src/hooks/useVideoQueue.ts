@@ -18,6 +18,9 @@ export function useVideoQueue() {
             trim?: {
               startSec: number;
               endSec: number;
+              width?: number;
+              height?: number;
+              originalDurationSec?: number;
               didFallback?: boolean;
               fallbackReason?: string | null;
             };
@@ -47,11 +50,15 @@ export function useVideoQueue() {
         trim: {
           startSec: number;
           endSec: number;
+          width?: number;
+          height?: number;
+          originalDurationSec?: number;
           didFallback?: boolean;
           fallbackReason?: string | null;
         };
       }
     ) => videoUploadQueue.updatePendingTrim(id, next),
+    remove: (id: string) => videoUploadQueue.remove(id),
 
     // Phase 10: Advanced Queue Management
     pauseAll: () => videoUploadQueue.pauseAll(),

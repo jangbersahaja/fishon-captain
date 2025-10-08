@@ -4,21 +4,26 @@ import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FinishFormSchema, validateThumbFile } from "@/lib/schemas/video";
 import { put } from "@vercel/blob";
+import ffmpegPath from "ffmpeg-static";
+import fluentFfmpeg from "fluent-ffmpeg";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+const fluent = fluentFfmpeg; // alias for existing code style
+if (ffmpegPath)
+  try {
+    fluent.setFfmpegPath(ffmpegPath);
+  } catch {}
 
-// naive normalize detector (placeholder - real impl would probe via ffprobe)
-function needsNormalizePlaceholder(fileName: string): boolean {
-  // If filename suggests 720 or less and mp4, assume ok
-  if (/720p/i.test(fileName) && /\.mp4$/i.test(fileName)) return false;
-  // Default conservative: normalize
-  return true;
-}
+// Removed filename-based heuristic; rely purely on supplied metadata (and future server probing fallback)
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();
   const videoUrl = form.get("videoUrl");
   const startSec = form.get("startSec");
+  const endSec = form.get("endSec");
+  const width = form.get("width");
+  const height = form.get("height");
+  const originalDurationSec = form.get("originalDurationSec");
   const ownerIdField = form.get("ownerId");
   const blobKey = form.get("blobKey");
   const didFallbackRaw = form.get("didFallback");
@@ -37,6 +42,13 @@ export async function POST(req: NextRequest) {
   const parsed = FinishFormSchema.safeParse({
     videoUrl: typeof videoUrl === "string" ? videoUrl : undefined,
     startSec: typeof startSec === "string" ? Number(startSec) : undefined,
+    endSec: typeof endSec === "string" ? Number(endSec) : undefined,
+    width: typeof width === "string" ? Number(width) : undefined,
+    height: typeof height === "string" ? Number(height) : undefined,
+    originalDurationSec:
+      typeof originalDurationSec === "string"
+        ? Number(originalDurationSec)
+        : undefined,
     ownerId: typeof ownerIdField === "string" ? ownerIdField : undefined,
     didFallback:
       typeof didFallbackRaw === "string"
@@ -52,6 +64,54 @@ export async function POST(req: NextRequest) {
       { error: "invalid_finish_payload", issues: parsed.error.flatten() },
       { status: 400 }
     );
+  }
+
+  // Server-side probe fallback if width/height missing AND we have external worker (or want accurate bypass)
+  let probedWidth: number | undefined;
+  let probedHeight: number | undefined;
+  let probedDuration: number | undefined;
+  if (
+    (!parsed.data.width || !parsed.data.height) &&
+    typeof parsed.data.videoUrl === "string"
+  ) {
+    try {
+      // Probe via fluent-ffmpeg (ffprobe); wrap in promise
+      const probeInfo = await new Promise<unknown>((resolve, reject) => {
+        try {
+          fluent(parsed.data.videoUrl).ffprobe(
+            (err: unknown, data: unknown) => {
+              if (err) return reject(err);
+              resolve(data);
+            }
+          );
+        } catch (e) {
+          reject(e);
+        }
+      });
+      const streams =
+        (probeInfo as { streams?: Array<Record<string, unknown>> }).streams ||
+        [];
+      const vStream = streams.find((s) => s.codec_type === "video");
+      const w = Number((vStream as { width?: unknown })?.width);
+      const h = Number((vStream as { height?: unknown })?.height);
+      if (isFinite(w) && w > 0) probedWidth = w;
+      if (isFinite(h) && h > 0) probedHeight = h;
+      const formatDur = Number(
+        (probeInfo as { format?: { duration?: unknown } })?.format?.duration
+      );
+      if (isFinite(formatDur) && formatDur > 0) probedDuration = formatDur;
+      if (probedWidth || probedHeight) {
+        console.log("[blob-finish] ffprobe fallback", {
+          probedWidth,
+          probedHeight,
+          probedDuration,
+        });
+      }
+    } catch (e) {
+      console.warn("[blob-finish] ffprobe_failed", {
+        message: (e as Error).message,
+      });
+    }
   }
 
   let thumbnailUrl: string | undefined;
@@ -74,19 +134,41 @@ export async function POST(req: NextRequest) {
       console.warn("thumbnail.put_failed", e);
     }
   }
-  // If external worker is configured, always normalize to ensure consistent processing
-  // Otherwise, skip mp4 files as they're likely already optimized
+  // Bypass logic:
+  // If clip selection (end-start OR full original when endSec missing & startSec=0) <=30s AND resolution <= 1280x720
+  // then mark ready immediately. Otherwise normalize if external worker available.
   const hasExternalWorker = !!process.env.EXTERNAL_WORKER_URL;
-  const skip = !hasExternalWorker && /\.mp4$/i.test(parsed.data.videoUrl);
-  const normalize =
-    !skip &&
-    (hasExternalWorker || needsNormalizePlaceholder(parsed.data.videoUrl));
+  let selectionDuration = parsed.data.endSec
+    ? Math.max(0, parsed.data.endSec - parsed.data.startSec)
+    : undefined;
+  // Fallback: if no endSec but originalDurationSec provided, startSec is 0, and duration <=30, treat whole video as selected
+  if (
+    selectionDuration === undefined &&
+    parsed.data.originalDurationSec !== undefined &&
+    parsed.data.startSec === 0 &&
+    parsed.data.originalDurationSec <= 30.05
+  ) {
+    selectionDuration = parsed.data.originalDurationSec;
+  }
+  const withinDuration =
+    selectionDuration !== undefined && selectionDuration <= 30.05; // small epsilon
+  // Resolution check: treat any video whose intrinsic dimensions are already <= target (1280x720) as compliant.
+  // This includes smaller resolutions like 640x360 (should bypass) and also portrait (e.g., 720x1280 will NOT bypass because height >720).
+  // If metadata is partially missing we default to 0 which passes, but duration guard still required.
+  const w = parsed.data.width || probedWidth || 0;
+  const h = parsed.data.height || probedHeight || 0;
+  const withinResolution = w <= 1280 && h <= 720;
+  const canBypassViaMetadata = withinDuration && withinResolution;
+  const shouldNormalize = !canBypassViaMetadata && hasExternalWorker;
 
   console.log(`[blob-finish] Processing video:`, {
     videoUrl: parsed.data.videoUrl,
     hasExternalWorker,
-    skip,
-    normalize,
+    selectionDuration,
+    withinDuration,
+    withinResolution,
+    canBypassViaMetadata,
+    shouldNormalize,
   });
 
   // NOTE: CaptainVideo model may not yet be migrated; wrap in try for now.
@@ -104,9 +186,12 @@ export async function POST(req: NextRequest) {
         originalUrl: parsed.data.videoUrl,
         blobKey: typeof blobKey === "string" ? blobKey : null,
         trimStartSec: parsed.data.startSec,
+        originalDurationSec: parsed.data.originalDurationSec || null,
+        appliedTrimStartSec: parsed.data.startSec,
+        processedDurationSec: selectionDuration || null,
         thumbnailBlobKey: thumbnailBlobKey || null,
         thumbnailUrl,
-        processStatus: normalize ? "queued" : "ready",
+        processStatus: shouldNormalize ? "queued" : "ready",
         didFallback: parsed.data.didFallback ?? false,
         fallbackReason: parsed.data.fallbackReason,
       },
@@ -119,7 +204,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Optionally enqueue normalize (placeholder - real call to job queue)
-  if (normalize && video) {
+  if (shouldNormalize && video) {
     console.log(`[blob-finish] Triggering queue for video ${video.id}`);
     const secret = process.env.VIDEO_WORKER_SECRET;
 
@@ -144,7 +229,7 @@ export async function POST(req: NextRequest) {
     }).catch((e) => console.warn("enqueue failed", e));
   } else {
     console.log(`[blob-finish] Skipping queue:`, {
-      normalize,
+      shouldNormalize,
       hasVideo: !!video,
     });
   }

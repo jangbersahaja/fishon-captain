@@ -470,6 +470,23 @@ class VideoUploadQueue {
       form.append("duration", String(duration));
       form.append("ownerId", "self"); // placeholder until actual owner context provided
       form.append("blobKey", processing.blobKey);
+      if (processing.trim) {
+        if (typeof processing.trim.endSec === "number") {
+          form.append("endSec", String(processing.trim.endSec));
+        }
+        if (typeof processing.trim.width === "number") {
+          form.append("width", String(processing.trim.width));
+        }
+        if (typeof processing.trim.height === "number") {
+          form.append("height", String(processing.trim.height));
+        }
+        if (typeof processing.trim.originalDurationSec === "number") {
+          form.append(
+            "originalDurationSec",
+            String(processing.trim.originalDurationSec)
+          );
+        }
+      }
       if (processing.trim?.didFallback !== undefined) {
         form.append("didFallback", String(!!processing.trim.didFallback));
         if (processing.trim.fallbackReason) {
@@ -504,6 +521,16 @@ class VideoUploadQueue {
       this.cleanupProgressTracker(done.id);
       // Remove completed item from persistent storage
       this.cleanupStoredItem(done.id);
+      // Auto-remove done item shortly to free queue UI
+      setTimeout(() => {
+        const still = this.items.find(
+          (i) => i.id === done.id && i.status === "done"
+        );
+        if (still) {
+          this.removeItem(done.id);
+          this.emit();
+        }
+      }, 600);
     } catch (e) {
       dbg("error", {
         id: item.id,
@@ -565,6 +592,12 @@ class VideoUploadQueue {
         progress: next.progress,
       });
     }
+    this.emit();
+  }
+
+  // Public remove method so UI can manually clear items (e.g., after completion)
+  remove(id: string) {
+    this.removeItem(id);
     this.emit();
   }
 
@@ -800,8 +833,8 @@ class VideoUploadQueue {
     if (typeof window === "undefined") return;
     try {
       // Store only non-terminal items
-      const storableItems = this.items.filter((i) =>
-        ["pending", "error", "canceled"].includes(i.status)
+      const storableItems = this.items.filter(
+        (i) => ["pending", "canceled"].includes(i.status) // do not persist failed items per new spec
       );
 
       // Store each item individually
@@ -810,7 +843,7 @@ class VideoUploadQueue {
           queueStorage.storeItem({
             id: item.id,
             file: item.file,
-            status: item.status as "pending" | "error" | "canceled",
+            status: item.status as "pending" | "canceled",
             progress: item.progress,
             sizeBytes: item.sizeBytes,
             createdAt: item.createdAt,
@@ -834,59 +867,57 @@ class VideoUploadQueue {
       if (!stored || stored.length === 0) return;
 
       // Convert stored items back to queue items
-      const restored: VideoUploadItem[] = stored.map(
-        (item: {
-          id: string;
-          file: File;
-          status: "pending" | "error" | "canceled";
-          progress: number;
-          sizeBytes: number;
-          createdAt: number;
-          startedAt?: number;
-          canceledAt?: number;
-          error?: string;
-          trim?: {
-            startSec: number;
-            endSec: number;
-            didFallback?: boolean;
-            fallbackReason?: string | null;
-          };
-        }) => {
-          const base = {
-            id: item.id,
-            file: item.file,
-            sizeBytes: item.sizeBytes,
-            createdAt: item.createdAt,
-            trim: item.trim,
-            priority:
-              (item as { priority?: QueuePriority }).priority || "normal", // Default priority for restored items
-          };
+      const restored: VideoUploadItem[] = stored
+        // filter out legacy 'error' entries gracefully
+        .filter(
+          (s: { status: string }) =>
+            s.status === "pending" || s.status === "canceled"
+        )
+        .map(
+          (item: {
+            id: string;
+            file: File;
+            status: "pending" | "error" | "canceled"; // incoming may contain 'error' but filtered above
+            progress: number;
+            sizeBytes: number;
+            createdAt: number;
+            startedAt?: number;
+            canceledAt?: number;
+            error?: string;
+            trim?: {
+              startSec: number;
+              endSec: number;
+              didFallback?: boolean;
+              fallbackReason?: string | null;
+            };
+          }) => {
+            const base = {
+              id: item.id,
+              file: item.file,
+              sizeBytes: item.sizeBytes,
+              createdAt: item.createdAt,
+              trim: item.trim,
+              priority:
+                (item as { priority?: QueuePriority }).priority || "normal", // Default priority for restored items
+            };
 
-          if (item.status === "pending") {
-            return {
-              ...base,
-              status: "pending" as const,
-              progress: 0, // Reset progress for pending items
-            };
-          } else if (item.status === "error") {
-            return {
-              ...base,
-              status: "error" as const,
-              progress: item.progress,
-              startedAt: item.startedAt,
-              error: item.error || "Unknown error",
-            };
-          } else {
-            return {
-              ...base,
-              status: "canceled" as const,
-              progress: item.progress,
-              startedAt: item.startedAt,
-              canceledAt: item.canceledAt || Date.now(),
-            };
+            if (item.status === "pending") {
+              return {
+                ...base,
+                status: "pending" as const,
+                progress: 0, // Reset progress for pending items
+              };
+            } else {
+              return {
+                ...base,
+                status: "canceled" as const,
+                progress: item.progress,
+                startedAt: item.startedAt,
+                canceledAt: item.canceledAt || Date.now(),
+              };
+            }
           }
-        }
-      );
+        );
 
       if (restored.length > 0) {
         this.items = [...restored, ...this.items];

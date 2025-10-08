@@ -63,14 +63,14 @@ export function VideoPreviewCarousel({
 
   return (
     <div className={cx("mt-6", className)}>
-      <div className="flex gap-3 overflow-x-auto pb-1">
+      <div className="flex gap-3 overflow-x-auto pb-2 h-[240px] items-stretch">
         {items.map((v, i) => (
           <button
             key={v.url + i}
             type="button"
             aria-label={`Play video ${i + 1}`}
             onClick={() => open(i)}
-            className="group relative h-24 w-40 shrink-0 overflow-hidden rounded-lg bg-slate-200"
+            className="group relative h-full w-44 shrink-0 overflow-hidden rounded-lg bg-slate-200"
           >
             {/* Thumbnail */}
             <VideoThumb url={thumbs[v.url] || v.thumbnailUrl || v.url} />
@@ -340,13 +340,13 @@ function VideoLightbox({
         </div>
         {/* Film strip (desktop) */}
         {desktop && items.length > 1 && (
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-3">
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-3 h-[120px] items-stretch">
             {items.map((v, i) => (
               <button
                 key={v.url + i}
                 onClick={() => setCurrent(i)}
                 className={cx(
-                  "relative h-20 w-32 shrink-0 overflow-hidden rounded-md border",
+                  "relative h-full w-32 shrink-0 overflow-hidden rounded-md border",
                   i === current ? "border-white" : "border-white/30"
                 )}
                 aria-label={`Select video ${i + 1}`}

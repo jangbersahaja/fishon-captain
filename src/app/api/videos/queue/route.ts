@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
         videoId: video.id,
         originalUrl: video.originalUrl,
         trimStartSec: video.trimStartSec || 0,
+        // Provide intended processed duration (if a trimmed segment shorter than 30s was selected)
+        processedDurationSec: video.processedDurationSec || null,
       }
     : { videoId: video.id }; // Internal worker only needs videoId
 

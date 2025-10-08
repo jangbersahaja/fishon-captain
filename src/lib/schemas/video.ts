@@ -15,6 +15,12 @@ export const CreateUploadSchema = z.object({
 export const FinishFormSchema = z.object({
   videoUrl: z.string().url(),
   startSec: z.number().min(0).max(86400),
+  // Added optional endSec (exclusive) to allow backend to know trimmed selection length
+  endSec: z.number().min(0).max(86400).optional(),
+  // Added metadata fields to support bypass logic and metrics
+  width: z.number().min(0).max(10000).optional(),
+  height: z.number().min(0).max(10000).optional(),
+  originalDurationSec: z.number().min(0).max(86400).optional(),
   ownerId: z.string().min(1),
   didFallback: z.boolean().optional(),
   fallbackReason: z.string().max(300).optional(),

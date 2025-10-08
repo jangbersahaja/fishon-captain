@@ -24,6 +24,7 @@ interface Payload {
   videoId?: string;
   originalUrl?: string;
   trimStartSec?: number;
+  processedDurationSec?: number | null;
 }
 
 interface SuccessResult {
@@ -188,7 +189,8 @@ export default async function handler(
     });
   }
   const { videoId, originalUrl } = payload;
-  let { trimStartSec } = payload;
+  let { trimStartSec, processedDurationSec: payloadProcessedDuration } =
+    payload;
   if (!videoId || !originalUrl) {
     return respond(400, {
       success: false,
@@ -198,6 +200,12 @@ export default async function handler(
     });
   }
   if (typeof trimStartSec !== "number" || isNaN(trimStartSec)) trimStartSec = 0;
+  if (
+    typeof payloadProcessedDuration !== "number" ||
+    isNaN(payloadProcessedDuration)
+  ) {
+    payloadProcessedDuration = null;
+  }
   if (trimStartSec < 0) trimStartSec = 0;
   if (trimStartSec > 60 * 60 * 3) trimStartSec = 0; // protect from silly values
 
@@ -256,6 +264,10 @@ export default async function handler(
 
     let transcodeSucceeded = false;
     let lastError: unknown = null;
+    // Determine target trim length (cap at 30 even if caller provided larger)
+    const targetLength = payloadProcessedDuration
+      ? Math.min(30, Math.max(0.1, payloadProcessedDuration))
+      : 30;
     for (let i = 0; i < filterAttempts.length && !transcodeSucceeded; i++) {
       const vf = filterAttempts[i];
       const attemptLabel = `attempt_${i + 1}`;
@@ -266,7 +278,7 @@ export default async function handler(
           if (seekVal > 0) cmd.seekInput(seekVal);
           const baseOpts = [
             "-t",
-            "30",
+            String(targetLength),
             "-c:v",
             "libx264",
             "-preset",
@@ -287,6 +299,7 @@ export default async function handler(
                 vf,
                 commandLine,
                 seekVal,
+                targetLength,
               });
             })
             .on("stderr", (line: string) => {
