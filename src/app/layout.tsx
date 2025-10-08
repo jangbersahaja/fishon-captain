@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import OfflineBanner from "@/components/OfflineBanner";
 import { ToastProvider } from "@/components/toast/ToastContext";
 import { enableCharterFormConsoleLogging } from "@features/charter-onboarding/analytics";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -49,6 +50,7 @@ export default function RootLayout({
             <main className="flex-1">{children}</main>
             <Footer />
             <SpeedInsights />
+            <Analytics />
           </ToastProvider>
         </AuthSessionProvider>
       </body>
