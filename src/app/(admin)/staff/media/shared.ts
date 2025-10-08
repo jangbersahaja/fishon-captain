@@ -72,6 +72,10 @@ export type VideoRow = {
   didFallback: boolean;
   fallbackReason: string | null;
   updatedAt: Date;
+  originalDurationSec?: number | null;
+  processedDurationSec?: number | null;
+  appliedTrimStartSec?: number | null;
+  processedAt?: Date | null;
   // Enhanced with user data
   displayName: string;
   email: string;

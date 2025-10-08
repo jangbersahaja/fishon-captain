@@ -156,6 +156,7 @@ export default function VideoSection({
               <th className="px-4 py-3 text-left">Video</th>
               <th className="px-4 py-3 text-left">Owner</th>
               <th className="px-4 py-3 text-left">Processing</th>
+              <th className="px-4 py-3 text-left">Durations</th>
               <th className="px-4 py-3 text-left">Timeline</th>
               <th className="px-4 py-3 text-left">Links &amp; Media</th>
             </tr>
@@ -164,7 +165,7 @@ export default function VideoSection({
             {filteredRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-10 text-center text-sm text-slate-500"
                 >
                   No video records match the current filters.
@@ -280,6 +281,40 @@ export default function VideoSection({
                             ⚠ No 720p output
                           </div>
                         ) : null}
+                        {row.processedAt ? (
+                          <div className="text-[11px] text-slate-500">
+                            Completed: {row.processedAt.toISOString()}
+                          </div>
+                        ) : null}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 align-top text-xs text-slate-600">
+                      <div className="space-y-1">
+                        <div>
+                          <span className="font-medium text-slate-600">
+                            Original:
+                          </span>{" "}
+                          {row.originalDurationSec != null
+                            ? `${Math.round(row.originalDurationSec)}s`
+                            : "-"}
+                        </div>
+                        <div>
+                          <span className="font-medium text-slate-600">
+                            Trim Start:
+                          </span>{" "}
+                          {row.appliedTrimStartSec != null
+                            ? `${row.appliedTrimStartSec}s`
+                            : `${row.trimStartSec}s`}
+                        </div>
+                        <div>
+                          <span className="font-medium text-slate-600">
+                            Processed:
+                          </span>{" "}
+                          {row.processedDurationSec != null
+                            ? `${Math.round(row.processedDurationSec)}s`
+                            : "-"}
+                        </div>
                       </div>
                     </td>
 
