@@ -60,6 +60,12 @@ export async function POST(req: NextRequest) {
           ? target
           : `https://${target}`; // ensure scheme
       const publishUrl = `${env.QSTASH_URL}/v2/publish/${destination}`;
+      const siteUrlRaw = env.NEXT_PUBLIC_SITE_URL || "";
+      const siteUrl = siteUrlRaw.endsWith("/")
+        ? siteUrlRaw.slice(0, -1)
+        : siteUrlRaw;
+      const callbackUrl = `${siteUrl}/api/videos/normalize-callback`;
+      console.log(`[queue] Using callback URL: ${callbackUrl}`);
       console.log(`[queue] Sending to QStash (raw path) → ${destination}`, {
         payload,
         publishUrl,
@@ -70,7 +76,7 @@ export async function POST(req: NextRequest) {
           Authorization: `Bearer ${env.QSTASH_TOKEN}`,
           "Content-Type": "application/json",
           "Upstash-Forward-Authorization": `Bearer ${process.env.VIDEO_WORKER_SECRET}`,
-          "Upstash-Callback": `${env.NEXT_PUBLIC_SITE_URL}/api/videos/normalize-callback`,
+          "Upstash-Callback": callbackUrl,
           "Upstash-Retries": "2",
           // Ensure QStash forwards the worker's response JSON (so callback has videoId/success)
           "Upstash-Forward-Response": "1",
