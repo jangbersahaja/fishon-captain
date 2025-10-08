@@ -239,27 +239,6 @@ export async function loadVideoData(
       where,
       orderBy: { createdAt: "desc" },
       take: fetchLimit,
-      select: {
-        id: true,
-        ownerId: true,
-        originalUrl: true,
-        blobKey: true,
-        thumbnailUrl: true,
-        thumbnailBlobKey: true,
-        trimStartSec: true,
-        ready720pUrl: true,
-        normalizedBlobKey: true,
-        processStatus: true,
-        errorMessage: true,
-        createdAt: true,
-        didFallback: true,
-        fallbackReason: true,
-        updatedAt: true,
-        originalDurationSec: true,
-        processedDurationSec: true,
-        appliedTrimStartSec: true,
-        processedAt: true,
-      },
     }),
   ]);
 
@@ -308,6 +287,12 @@ export async function loadVideoData(
   const staleThresholdMs = STALE_THRESHOLD_MINUTES * 60 * 1000;
 
   const annotated: VideoRow[] = rawItems.map((item) => {
+    // Helper to safely pluck optional post-migration fields without depending on generated types yet
+    const pickField = <T = unknown,>(key: string): T | null => {
+      const record = item as unknown as Record<string, unknown>;
+      const val = record[key];
+      return (val === undefined ? null : (val as T)) as T | null;
+    };
     const user = userMap.get(item.ownerId);
     const profileName = profileMap.get(item.ownerId);
     const displayName =
@@ -339,10 +324,12 @@ export async function loadVideoData(
       didFallback: item.didFallback,
       fallbackReason: item.fallbackReason,
       updatedAt: item.updatedAt,
-      originalDurationSec: item.originalDurationSec,
-      processedDurationSec: item.processedDurationSec,
-      appliedTrimStartSec: item.appliedTrimStartSec,
-      processedAt: item.processedAt,
+  // These optional fields may not exist on older generated Prisma client types.
+  // Cast to any to avoid type errors during deployment when the schema migration lags.
+  originalDurationSec: pickField<number>("originalDurationSec"),
+  processedDurationSec: pickField<number>("processedDurationSec"),
+  appliedTrimStartSec: pickField<number>("appliedTrimStartSec"),
+  processedAt: pickField<Date>("processedAt"),
       displayName,
       email,
       createdAgoLabel: formatRelative(createdAgoMs),

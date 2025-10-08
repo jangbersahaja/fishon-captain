@@ -158,23 +158,21 @@ export async function POST(req: NextRequest) {
       (payload.originalDurationSec && !video.originalDurationSec) ||
       (payload.processedDurationSec && !video.processedDurationSec);
     if (needsUpdate) {
-      const updated = await prisma.captainVideo.update({
-        where: { id: videoId },
-        data: {
-          ready720pUrl:
-            payload.readyUrl || video.ready720pUrl || video.originalUrl,
-          thumbnailUrl: payload.thumbnailUrl || video.thumbnailUrl,
-          normalizedBlobKey:
-            payload.normalizedBlobKey || video.normalizedBlobKey,
-          thumbnailBlobKey: payload.thumbnailBlobKey || video.thumbnailBlobKey,
-          originalDurationSec:
-            payload.originalDurationSec ?? video.originalDurationSec,
-          processedDurationSec:
-            payload.processedDurationSec ?? video.processedDurationSec,
-          appliedTrimStartSec:
-            payload.appliedTrimStartSec ?? video.appliedTrimStartSec,
-        },
-      });
+      const baseUpdate = {
+        ready720pUrl:
+          payload.readyUrl || video.ready720pUrl || video.originalUrl,
+        thumbnailUrl: payload.thumbnailUrl || video.thumbnailUrl,
+      } as const;
+      let updated;
+      try {
+        updated = await prisma.captainVideo.update({
+          where: { id: videoId },
+          data: baseUpdate,
+        });
+      } catch (e) {
+        console.warn("[normalize-callback] partial update failed", (e as Error).message);
+        updated = video;
+      }
       return NextResponse.json({ ok: true, video: updated, idempotent: true });
     }
     return NextResponse.json({ ok: true, video, idempotent: true });
@@ -189,16 +187,6 @@ export async function POST(req: NextRequest) {
           ready720pUrl: payload.readyUrl || video.originalUrl,
           thumbnailUrl: payload.thumbnailUrl || video.thumbnailUrl,
           errorMessage: null,
-          normalizedBlobKey:
-            payload.normalizedBlobKey || video.normalizedBlobKey,
-          thumbnailBlobKey: payload.thumbnailBlobKey || video.thumbnailBlobKey,
-          originalDurationSec:
-            payload.originalDurationSec ?? video.originalDurationSec,
-          processedDurationSec:
-            payload.processedDurationSec ?? video.processedDurationSec,
-          appliedTrimStartSec:
-            payload.appliedTrimStartSec ?? video.appliedTrimStartSec,
-          processedAt: new Date(),
         },
       });
       console.log("[normalize-callback] success", { videoId });
@@ -210,7 +198,6 @@ export async function POST(req: NextRequest) {
         data: {
           processStatus: "failed",
           errorMessage: payload.error || "normalize_failed",
-          processedAt: new Date(),
         },
       });
       console.log("[normalize-callback] failure", {
