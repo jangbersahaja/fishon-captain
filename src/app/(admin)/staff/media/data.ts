@@ -288,7 +288,7 @@ export async function loadVideoData(
 
   const annotated: VideoRow[] = rawItems.map((item) => {
     // Helper to safely pluck optional post-migration fields without depending on generated types yet
-    const pickField = <T = unknown,>(key: string): T | null => {
+    const pickField = <T = unknown>(key: string): T | null => {
       const record = item as unknown as Record<string, unknown>;
       const val = record[key];
       return (val === undefined ? null : (val as T)) as T | null;
@@ -324,12 +324,12 @@ export async function loadVideoData(
       didFallback: item.didFallback,
       fallbackReason: item.fallbackReason,
       updatedAt: item.updatedAt,
-  // These optional fields may not exist on older generated Prisma client types.
-  // Cast to any to avoid type errors during deployment when the schema migration lags.
-  originalDurationSec: pickField<number>("originalDurationSec"),
-  processedDurationSec: pickField<number>("processedDurationSec"),
-  appliedTrimStartSec: pickField<number>("appliedTrimStartSec"),
-  processedAt: pickField<Date>("processedAt"),
+      // These optional fields may not exist on older generated Prisma client types.
+      // Cast to any to avoid type errors during deployment when the schema migration lags.
+      originalDurationSec: pickField<number>("originalDurationSec"),
+      processedDurationSec: pickField<number>("processedDurationSec"),
+      appliedTrimStartSec: pickField<number>("appliedTrimStartSec"),
+      processedAt: pickField<Date>("processedAt"),
       displayName,
       email,
       createdAgoLabel: formatRelative(createdAgoMs),

@@ -170,7 +170,10 @@ export async function POST(req: NextRequest) {
           data: baseUpdate,
         });
       } catch (e) {
-        console.warn("[normalize-callback] partial update failed", (e as Error).message);
+        console.warn(
+          "[normalize-callback] partial update failed",
+          (e as Error).message
+        );
         updated = video;
       }
       return NextResponse.json({ ok: true, video: updated, idempotent: true });
