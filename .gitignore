@@ -10,6 +10,11 @@
 !.yarn/releases
 !.yarn/versions
 
+# external worker
+/src/app/dev/_external-worker/*.ts
+/src/app/dev/_external-worker/.env.example
+/src/app/dev/_external-worker/*.md
+
 # testing
 /coverage
 /__tests__
