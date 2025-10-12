@@ -17,7 +17,7 @@ export default function CaptainLayout({
         >
           <DashboardNav />
         </aside>
-        <main className="flex-1 bg-slate-50/60 min-h-[calc(100vh-0px)]">
+        <main className="flex-1 bg-slate-50/60 min-h-[calc(100vh-0px)] w-full overflow-hidden">
           {children}
         </main>
         <aside

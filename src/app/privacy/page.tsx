@@ -24,7 +24,7 @@ export default function PrivacyPolicyPage() {
       <div className="mx-auto max-w-6xl px-4 py-12 prose prose-slate dark:prose-invert prose-headings:scroll-mt-24">
         <p className="not-prose text-sm text-slate-500 mb-8">
           Fishon.my (&quot;Fishon&quot;, &quot;we&quot;, &quot;our&quot;, or
-          &quot;us&quot;) is operated by Kartel Motion Venture (Business
+          &quot;us&quot;) is operated by Kartel Motion Ventures (Business
           Registration No: 202203267096 (003441013-T)). We respect your privacy
           and are committed to protecting your personal information in
           accordance with the Personal Data Protection Act 2010 (PDPA) of

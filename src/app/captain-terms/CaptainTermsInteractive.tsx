@@ -16,7 +16,7 @@ const sections: SectionDef[] = [
         These Terms and Conditions (&quot;Agreement&quot;) govern the
         registration and participation of Captains and Charter Operators
         (&quot;You&quot; or &quot;Operator&quot;) on the Fishon.my platform,
-        owned and operated by Kartel Motion Venture (Company Registration No:
+        owned and operated by Kartel Motion Ventures (Company Registration No:
         202203267096 (003441013-T)) (&quot;We&quot;, &quot;Us&quot;, or
         &quot;Fishon&quot;). By registering as an Operator, you agree to comply
         with these terms, our platform policies, and all applicable Malaysian

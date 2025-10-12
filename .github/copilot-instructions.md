@@ -1,240 +1,47 @@
-# Copilot Instructions: FishOn Captain Registration
+# Copilot Instructions · FishOn Captain Register
 
-## System Context
+## Platform Snapshot
 
-This is the **captain management backend** for the **Fishon.my e-commerce ecosystem**:
+- Next.js 15 (App Router) + Prisma + NextAuth power an internal dashboard for captains/admins; data eventually feeds Fishon.my’s public marketplace.
+- Domain logic lives in feature modules (e.g. `src/features/charter-onboarding`) that bundle `schema.ts`, `server/`, `components/`, `hooks/`, `__tests__/`, and README guidance. Import via barrels like `@features/charter-onboarding`.
 
-- **Fishon.my** (main site) → Marketplace where charters are published, with booking system and transactions (angler-facing frontend)
-- **Fishon Captain** (this app) → Management dashboard for captains and admin staff (backend operations)
+## Core Workflows
 
-Data flows from Captain → Main site for public charter listings and bookings.
+- Charter onboarding form supports **new registration** and **edit mode**; draft saves hit `/api/charter-drafts` and finalization calls `/api/charter-drafts/:id/finalize`. Always check `isEditing`/initial state before changing flow logic.
+- Media lifecycle: uploads land in `PendingMedia`, finalize moves them to `CharterMedia`. Videos use `CaptainVideo` with a metadata-rich record (trim start, processed duration, blob keys, deletion flags).
+- Local dev commands:
+  ```bash
+  npm run dev --turbopack   # preferred dev server
+  npm run check:env         # ensure required env vars exist
+  npm run typecheck         # strict TS gate
+  npm test                  # Vitest (jsdom)
+  ```
+- Database: `npx prisma migrate dev`, `npx prisma generate`, `npx prisma studio`.
 
-## Architecture Overview
+## Video Pipeline (critical path)
 
-This is a **Next.js 15 + Prisma + NextAuth** captain management platform with a sophisticated **draft-to-finalize workflow**. The core pattern is:
+- Client trim modal (`src/components/captain/VideoTrimModal.tsx`) enforces ≤30 s clips, surfaces bitrate-based size estimates, and feeds trim metadata into the queue.
+- Queue orchestration lives in `src/lib/uploads/videoQueue.ts`; it handles IndexedDB persistence, retry policy, and finishing via `/api/blob/finish`.
+- Finish route (`src/app/api/blob/finish/route.ts`) decides bypass vs normalization. It may probe dimensions with ffprobe, sets `processedDurationSec`, and enqueues `/api/videos/queue` when `EXTERNAL_WORKER_URL` is present.
+- `/api/videos/normalize-callback` ingests worker responses (see `docs/API_VIDEO_ROUTES.md`). External trimming worker template lives in `src/app/dev/_external-worker/` with required env (`VIDEO_WORKER_SECRET`, `VERCEL_BLOB_READ_WRITE_TOKEN`).
+- UI consumers include `EnhancedVideoUploader`, `VideoManager` (status pills + thumbnails), and the review-step preview (`VideoPreviewCarousel`) which expects fixed-height, horizontally scrollable galleries.
 
-1. **Multi-step forms** save drafts automatically (`CharterDraft` model)
-2. **Media uploads** go to staging (`PendingMedia`) then get attached on finalize
-3. **Video uploads** use Enhanced Video Pipeline (`CaptainVideo` for 30s trimmed clips)
-4. **Server validation** layers: Zod schemas → feature validation → DB constraints
-5. **Feature modules** under `src/features/` contain domain logic co-located with UI
+## API & Security Patterns
 
-## Dual-Purpose Captain Form
+- Wrap App Router handlers with: `getServerSession(authOptions)` → role checks → `rateLimit` guard → business logic inside `withTiming` → `applySecurityHeaders(NextResponse.json(...))`.
+- Roles: `/captain/*` requires CAPTAIN+, `/staff/*` requires STAFF+. Admins can impersonate via `?adminUserId=...` query.
+- Logging uses structured entries (`logger.info("event", { meta })`). Audit events go through `writeAuditLog()`.
 
-The **charter onboarding form** serves **two distinct purposes** with different endpoints:
+## Testing & Tooling
 
-1. **New Registration**: `POST /api/charter-drafts` → `POST /api/charter-drafts/:id/finalize`
-2. **Charter Editing**: Uses existing charter data → different validation/submission flow
+- Tests sit next to features in `__tests__/` folders; most use Vitest + jsdom with custom mocks for Prisma, IndexedDB, and upload APIs.
+- CI shortcut: `npm run test:ci`. Keep new tests aligned with existing mocking utilities instead of re-implementing fetch/Prisma stubs.
 
-**Key consideration**: Form behavior changes based on context (new vs edit mode) - always check the form's initialization state.
+## Implementation Conventions
 
-## Critical Workflows
+- Respect path aliases `@/` and `@features/`. Avoid deep relative imports inside feature modules.
+- Whenever adjusting form validation, update both the Zod schema and downstream sanitizers/DTOs in the same feature folder.
+- Video UX assumes toast auto-dismiss behavior (`ToastContext`) and queue status simplifications—rework both client and API layers when changing states.
+- Environment essentials: `DATABASE_URL`, `NEXTAUTH_SECRET`, Google OAuth pair, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; fail early with `npm run check:env`.
 
-### Development Environment
-
-```bash
-npm run dev --turbopack  # Start with Turbopack for faster builds
-npm run check:env        # Validate required environment variables
-npm test                 # Run Vitest test suite
-npm run typecheck        # TypeScript validation (runs in prebuild)
-```
-
-### Database Operations
-
-```bash
-npx prisma migrate dev --name "descriptive_change_name"  # Create + apply migration
-npx prisma generate      # Regenerate client after schema changes
-npx prisma studio        # Visual database browser
-```
-
-### Draft → Charter Flow
-
-- `POST /api/charter-drafts` → Creates draft with default values
-- `PATCH /api/charter-drafts/:id` → Autosave with conflict resolution via `clientVersion`
-- `POST /api/charter-drafts/:id/finalize` → Converts draft to `Charter` record
-
-## Project Structure Patterns
-
-### Feature Modules (`src/features/`)
-
-Self-contained domains with:
-
-- `schema.ts` - Zod validation schemas
-- `server/` - Backend validation, mapping, diffing
-- `components/` - UI components
-- `hooks/` - React state management
-- `__tests__/` - Unit tests
-- `README.md` - Feature documentation
-
-**Import via barrel**: `@features/charter-onboarding` not deep paths.
-
-### Data Layer Conventions
-
-- **Draft persistence**: Local storage + server drafts with version conflicts
-- **Media staging**: `PendingMedia` → `CharterMedia` on finalize (legacy general media)
-- **Video pipeline**: `CaptainVideo` model for 30s trimmed clips (Enhanced Video Pipeline)
-- **Audit logging**: Use `writeAuditLog(actorUserId, entityType, entityId, action, before, after)`
-- **Rate limiting**: `rateLimit({ key, windowMs, max })` with pluggable stores
-
-### API Route Patterns
-
-```typescript
-// Standard structure for protected endpoints
-export async function POST(req: Request) {
-  const requestId = getRequestId(req);
-  const session = await getServerSession(authOptions);
-  const userId = getUserId(session);
-  if (!userId) return applySecurityHeaders(/* 401 response */);
-
-  const rl = await rateLimit({
-    key: `action:${userId}`,
-    windowMs: 60_000,
-    max: 5,
-  });
-  if (!rl.allowed) return applySecurityHeaders(/* 429 response */);
-
-  // Business logic with timing
-  const result = await withTiming("operation_name", () => businessLogic());
-
-  return applySecurityHeaders(NextResponse.json({ result, requestId }));
-}
-```
-
-## Video Upload System
-
-**Enhanced Video Pipeline**: Uses sophisticated queue system with:
-
-- **30-second trim constraints** with client-side keyframe detection (`VideoTrimModal`)
-- **Queue persistence** via IndexedDB (`VideoUploadQueue` class)
-- **Concurrent uploads** with pause/resume capabilities
-- **Direct `CaptainVideo` storage** (bypasses `PendingMedia` staging)
-
-**Migration Status**: Currently migrating from legacy `VideoUploader` to `EnhancedVideoUploader`. The enhanced system is production-ready but not fully deployed across all forms.
-
-**Key files**:
-
-- `src/lib/uploads/videoQueue.ts` - Core queue implementation
-- `src/components/captain/EnhancedVideoUploader.tsx` - Production UI component
-- `src/hooks/useVideoQueue.ts` - React integration
-
-### External Normalization Worker (Out-of-Repo Deployment)
-
-The production trimming & 720p normalization now runs in an **external worker service** (deployed as its own Vercel project). Our app enqueues jobs via **Upstash QStash**, which POSTs the payload to the worker. The worker responds with JSON (`{ success, videoId, readyUrl, thumbnailUrl, ... }`) and QStash forwards that response to our in-app callback: `/api/videos/normalize-callback`.
-
-Key behaviors:
-
-- Worker enforces: maximum 30s output, optional seek via `trimStartSec`, 1280x720 max scaling (letterbox avoided; aspect preserved)
-- Uses `-ss <seconds>` (pre-input placement) for accurate keyframe seek + `-t 30` for hard cap
-- Generates a JPEG thumbnail at 1s into trimmed segment (or first frame if shorter)
-- Uploads normalized video + thumbnail directly to Vercel Blob (`@vercel/blob`)
-- Returns `normalizedBlobKey` and `thumbnailBlobKey` (if available) so callback can persist storage keys
-- Idempotent: If processing already done for a `videoId`, it can short‑circuit with a fast success response
-
-Worker Expected Environment (standalone project):
-
-```env
-VIDEO_WORKER_SECRET=shared-bearer-secret            # Must match app's VIDEO_WORKER_SECRET
-VERCEL_BLOB_READ_WRITE_TOKEN=...                    # For @vercel/blob uploads
-CAPTAIN_API_BASE=https://captain.example.com        # Only used for optional status pings (not required)
-LOG_LEVEL=info
-```
-
-App → Worker Payload (QStash forwarded body):
-
-```jsonc
-{
-  "videoId": "uuid",
-  "originalUrl": "https://.../original.mp4",
-  "trimStartSec": 12.34
-}
-```
-
-Worker Response (success):
-
-```jsonc
-{
-  "success": true,
-  "videoId": "uuid",
-  "readyUrl": "https://.../captain-videos/normalized/uuid-720p.mp4",
-  "normalizedBlobKey": "captain-videos/normalized/uuid-720p.mp4",
-  "thumbnailUrl": "https://.../captain-videos/thumbs/uuid.jpg",
-  "thumbnailBlobKey": "captain-videos/thumbs/uuid.jpg",
-  "processingMs": 4231,
-  "originalDurationSec": 185.42,
-  "processedDurationSec": 30,
-  "appliedTrimStartSec": 12.34
-}
-```
-
-Failure Response (example):
-
-```jsonc
-{
-  "success": false,
-  "videoId": "uuid",
-  "error": "download_failed" | "ffmpeg_error" | "invalid_payload",
-  "message": "Human readable context"
-}
-```
-
-The repo contains a **developer template** under `src/app/dev/_external-worker/` to copy into a dedicated worker repository. See that folder's `README.md` for deployment steps.
-
-**Video API Routes**: See `docs/API_VIDEO_ROUTES.md` for comprehensive documentation of all video endpoints including:
-
-- `/api/videos/list` - List user videos with status
-- `/api/videos/[id]` - Get/Delete specific video with queue cancellation
-- `/api/videos/queue` - Enqueue processing or retry failed videos
-- `/api/videos/worker-normalize` - Internal processing worker
-- Queue cancellation system for safe deletion of processing videos
-
-## Authentication & Authorization
-
-- **NextAuth** with JWT strategy
-- **Middleware protection**: `/captain/*` and `/staff/*` require auth
-- **Admin overrides**: `?adminUserId=xyz` param for admin users to access other users' drafts
-
-## User Roles & Access Control
-
-The app serves **two distinct user types**:
-
-1. **CAPTAIN** → Manage their own charter assets (create/edit charters, upload media, manage bookings)
-2. **ADMIN/STAFF** → Manage all captains and their assets (ultimate control, can access any captain's data via `?adminUserId=xyz`)
-
-**Critical middleware behavior**: `/captain/*` requires CAPTAIN+ role, `/staff/*` requires STAFF+ role with ADMIN having ultimate access.
-
-## Testing Strategy
-
-- **Vitest** with jsdom environment
-- **Pattern**: Tests live in `__tests__/` subdirectories near source code
-- **Mocking**: Comprehensive mocks for IndexedDB, XMLHttpRequest, Prisma
-- **CI command**: `npm run test:ci` for optimized reporter
-
-## Environment Variables
-
-**Required for development**:
-
-```env
-DATABASE_URL=postgres://...
-NEXTAUTH_SECRET=long-random-string
-GOOGLE_CLIENT_ID=oauth-client-id
-GOOGLE_CLIENT_SECRET=oauth-secret
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=browser-key
-```
-
-**Key restrictions**: Separate browser vs server Google API keys for security.
-
-## Code Conventions
-
-- **Path aliases**: `@/` for src root, `@features/` for feature modules
-- **Error handling**: Zod validation → `getFieldError` for form traversal
-- **Logging**: Structured JSON with `logger.info("event_name", { metadata })`
-- **Security**: All API responses use `applySecurityHeaders()`
-- **Timing**: Instrument slow operations with `withTiming("metric_name", fn)`
-
-## Legacy Migration Notes
-
-- **Draft system** replacing one-shot `submitCharter` action (deprecation in progress)
-- **EnhancedVideoUploader** replacing legacy `VideoUploader` components
-- **Feature modules** centralizing scattered server utilities
-
-When modifying forms, always update both the Zod schema and the sanitization logic in the corresponding feature module.
+Need clarification or spot gaps? Ask which sections feel incomplete so we can refine this guide.

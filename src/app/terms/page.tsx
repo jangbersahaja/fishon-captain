@@ -27,7 +27,7 @@ export default function TermsOfServicePage() {
       <div className="mx-auto max-w-6xl px-4 py-12 prose prose-slate dark:prose-invert prose-headings:scroll-mt-24">
         <p className="not-prose text-sm text-slate-500 mb-8">
           Welcome to Fishon.my, Malaysia’s first online fishing charter booking
-          platform. Fishon.my is owned and operated by Kartel Motion Venture
+          platform. Fishon.my is owned and operated by Kartel Motion Ventures
           (Business Registration No: 202203267096 (003441013-T))
           (&quot;Fishon&quot;, &quot;we&quot;, &quot;our&quot;, or
           &quot;us&quot;). By using our website, mobile app, or any related

@@ -61,12 +61,18 @@ async function getCharter(adminUserId?: string) {
     redirect("/auth?next=/captain/form");
   }
   const charter = typed.charters[0];
+  const photoCount = charter.media.filter(
+    (m: { kind: string }) => m.kind === "CHARTER_PHOTO"
+  ).length;
+  const videoCount = await prisma.captainVideo.count({
+    where: { ownerId: effectiveUserId },
+  });
   return {
     profile: typed,
     charter,
     userId: effectiveUserId,
-    isAdminOverride:
-      role === "ADMIN" && adminUserId && adminUserId !== sessionUserId,
+    photoCount,
+    videoCount,
   };
 }
 
@@ -129,7 +135,7 @@ export default async function CaptainDashboardPage({
     redirect("/staff");
   }
 
-  const { profile, charter, userId, isAdminOverride } = await getCharter(
+  const { profile, charter, userId, photoCount, videoCount } = await getCharter(
     adminUserId
   );
   const verification = await getVerification(userId);
@@ -210,12 +216,6 @@ export default async function CaptainDashboardPage({
       href: "/captain/verification",
     },
   ];
-  const photoCount = charter.media.filter(
-    (m: { kind: string }) => m.kind === "CHARTER_PHOTO"
-  ).length;
-  const videoCount = charter.media.filter(
-    (m: { kind: string }) => m.kind === "CHARTER_VIDEO"
-  ).length;
   const { totalHours, avgPrice } = computeTripStats(
     charter.trips.map((t: { durationHours: number; price: unknown }) => ({
       durationHours: t.durationHours,

@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Settings as SettingsIcon,
+  Ship,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -12,6 +13,7 @@ import { useMemo } from "react";
 
 const links = [
   { href: "/captain", label: "Overview", Icon: LayoutDashboard },
+  { href: "/captain/charter", label: "Charter", Icon: Ship },
   { href: "/captain/media", label: "Media", Icon: ImageIcon },
   { href: "/captain/verification", label: "Verification", Icon: IdCard },
   { href: "/captain/settings", label: "Settings", Icon: SettingsIcon },

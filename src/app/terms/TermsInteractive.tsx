@@ -168,7 +168,7 @@ const sections: SectionDef[] = [
       <ul className="list-disc pl-5 space-y-1">
         <li>
           All trademarks, logos, text, graphics, images, and other content on
-          Fishon.my are owned or licensed by Kartel Motion Venture.
+          Fishon.my are owned or licensed by Kartel Motion Ventures.
         </li>
         <li>
           You may not use our brand elements or copy any content without prior
@@ -210,7 +210,7 @@ const sections: SectionDef[] = [
     content: (
       <>
         <p>
-          You agree to indemnify and hold harmless Kartel Motion Venture, its
+          You agree to indemnify and hold harmless Kartel Motion Ventures, its
           directors, employees, and partners from any claim, loss, damage, or
           expense arising from:
         </p>
@@ -293,7 +293,7 @@ const sections: SectionDef[] = [
     title: "Contact",
     content: (
       <>
-        <p>Kartel Motion Venture</p>
+        <p>Kartel Motion Ventures</p>
         <p>
           Email:{" "}
           <a

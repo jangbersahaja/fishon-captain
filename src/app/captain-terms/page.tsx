@@ -17,7 +17,7 @@ export default function CaptainTermsPage() {
             Captain & Operator Terms
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            Between Kartel Motion Venture and Registered Captain / Charter
+            Between Kartel Motion Ventures and Registered Captain / Charter
             Operator
           </p>
         </div>

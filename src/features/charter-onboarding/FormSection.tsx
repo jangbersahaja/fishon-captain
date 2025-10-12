@@ -874,14 +874,32 @@ export default function FormSection() {
           {isReviewStep && (
             <ReviewStep
               charter={previewCharter}
-              videos={normalizedVideoPreviews.map((v) => {
-                const maybeThumb = v as unknown as { thumbnailUrl?: string };
-                return {
-                  url: v.url,
-                  name: v.name,
-                  thumbnailUrl: maybeThumb.thumbnailUrl || null,
-                };
-              })}
+              videos={(() => {
+                // Build review videos from normalized previews but:
+                // - Exclude local blob: placeholders
+                // - Prefer only CaptainVideo-backed URLs (captain-videos path)
+                // - Dedupe by URL to avoid duplicates inflating count
+                const uniq = new Map<
+                  string,
+                  { url: string; name?: string; thumbnailUrl?: string | null }
+                >();
+                for (const v of normalizedVideoPreviews) {
+                  const url = v.url;
+                  if (!url || url.startsWith("blob:")) continue;
+                  // Only include captain short-form videos
+                  if (!/\bcaptain-videos\//.test(url)) continue;
+                  if (uniq.has(url)) continue;
+                  const maybeThumb =
+                    (v as unknown as { thumbnailUrl?: string }).thumbnailUrl ||
+                    null;
+                  uniq.set(url, {
+                    url,
+                    name: v.name,
+                    thumbnailUrl: maybeThumb,
+                  });
+                }
+                return Array.from(uniq.values());
+              })()}
             />
           )}
           {submitState?.type === "error" && (

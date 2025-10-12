@@ -11,12 +11,10 @@ function paginate<T>(items: T[], page: number, pageSize: number) {
   return items.slice(start, start + pageSize);
 }
 
-async function getCharterWithMedia(userId: string) {
+async function getMediaContext(userId: string) {
   const profile = await prisma.captainProfile.findUnique({
     where: { userId },
     select: {
-      id: true,
-      displayName: true,
       charters: {
         take: 1,
         orderBy: { createdAt: "desc" },
@@ -32,7 +30,11 @@ async function getCharterWithMedia(userId: string) {
     },
   });
   if (!profile || !profile.charters.length) return null;
-  return profile.charters[0];
+  const videos = await prisma.captainVideo.findMany({
+    where: { ownerId: userId },
+    orderBy: { createdAt: "desc" },
+  });
+  return { charter: profile.charters[0], videos };
 }
 
 export const dynamic = "force-dynamic";
@@ -45,19 +47,18 @@ export default async function MediaManagementPage({
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) redirect("/auth?mode=signin");
-  const charter = await getCharterWithMedia(userId);
-  if (!charter) redirect("/auth?next=/captain/form");
+  const mediaContext = await getMediaContext(userId);
+  if (!mediaContext) redirect("/auth?next=/captain/form");
+  const { charter, videos: captainVideos } = mediaContext;
   const sp = searchParams ? await searchParams : {};
   const page = Number(sp?.page ?? 1) || 1;
   const pageSize = 24;
   const photosAll = charter.media
     .filter((m) => m.kind === "CHARTER_PHOTO")
     .sort((a, b) => a.sortOrder - b.sortOrder);
-  const videosAll = charter.media
-    .filter((m) => m.kind === "CHARTER_VIDEO")
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const videosAll = captainVideos;
   const photos = paginate(photosAll, page, pageSize);
-  const videos = paginate(videosAll, page, pageSize);
+  const videosPage = paginate(videosAll, page, pageSize);
   const photoPages = Math.max(1, Math.ceil(photosAll.length / pageSize));
   const videoPages = Math.max(1, Math.ceil(videosAll.length / pageSize));
 
@@ -133,25 +134,54 @@ export default async function MediaManagementPage({
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-medium text-slate-700 mb-3">
-            Videos ({videos.length})
+            Videos ({videosAll.length})
           </h2>
-          {videos.length === 0 ? (
+          {videosPage.length === 0 ? (
             <p className="text-xs text-slate-500">No videos yet.</p>
           ) : (
             <ul className="space-y-3">
-              {videos.map((v) => (
-                <li
-                  key={v.id}
-                  className="rounded-lg border border-slate-200 p-2 flex items-center gap-3 bg-white w-full overflow-hidden"
-                >
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-[10px] font-medium text-slate-600">
-                    VID
-                  </span>
-                  <span className="truncate text-xs text-slate-600 break-all">
-                    {v.url.split("/").splice(-1)[0]}
-                  </span>
-                </li>
-              ))}
+              {videosPage.map((v) => {
+                const fileUrl = v.ready720pUrl || v.originalUrl || "";
+                const fileName = fileUrl
+                  ? fileUrl.split("/").splice(-1)[0]
+                  : `Video ${v.id.slice(0, 8)}`;
+                const statusRaw = v.processStatus || "queued";
+                const statusLabel =
+                  statusRaw === "ready"
+                    ? "Ready"
+                    : statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+                return (
+                  <li
+                    key={v.id}
+                    className="rounded-lg border border-slate-200 p-2 flex items-center gap-3 bg-white w-full overflow-hidden"
+                  >
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-[10px] font-medium text-slate-600">
+                      VID
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="truncate text-xs text-slate-600 break-all block">
+                        {fileName}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {statusLabel}
+                        {statusRaw === "failed" && v.errorMessage
+                          ? ` · ${v.errorMessage}`
+                          : ""}
+                      </span>
+                    </div>
+                    {statusRaw === "ready" && fileUrl && (
+                      <Link
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-semibold text-[#ec2227] hover:underline"
+                      >
+                        View
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
           {videoPages > 1 && (

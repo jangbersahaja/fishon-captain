@@ -175,7 +175,7 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
   const mapEmbedSrc = buildMapEmbedSrc(charter);
   const personsMax = charter.boat.capacity || undefined;
   return (
-    <section className="rounded-3xl border border-neutral-200 bg-white shadow-sm">
+    <section className="rounded-3xl border border-neutral-200 bg-white shadow-sm w-full">
       <div className="border-b border-neutral-200 px-6 py-5">
         <h2 className="text-xl font-semibold text-slate-900">
           Preview listing
@@ -195,7 +195,7 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
           <p className="text-sm text-slate-500">{charter.location}</p>
         </header>
       </div>
-      <div className="mt-6 px-5 space-y-8">
+      <div className="mt-6 px-5 space-y-8 w-full overflow-hidden">
         <CharterGallery images={images} title={charter.name} />
         {videos && videos.length > 0 && (
           <VideoPreviewCarousel

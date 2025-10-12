@@ -276,7 +276,7 @@ const sections: SectionDef[] = [
     title: "Contact Us",
     content: (
       <div className="space-y-2">
-        <p>Kartel Motion Venture</p>
+        <p>Kartel Motion Ventures</p>
         <p>
           Email:{" "}
           <a

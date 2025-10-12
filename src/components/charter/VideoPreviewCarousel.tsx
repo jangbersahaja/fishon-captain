@@ -32,7 +32,8 @@ export function VideoPreviewCarousel({
     let cancelled = false;
     (async () => {
       for (const v of items) {
-        if (v.thumbnailUrl || thumbs[v.url]) continue;
+        // Only try server-side derivation for iframe providers (YouTube/Vimeo)
+        if (v.thumbnailUrl || thumbs[v.url] || !isIframe(v.url)) continue;
         try {
           const res = await fetch(
             `/api/video-thumbnail?url=${encodeURIComponent(v.url)}`
@@ -62,18 +63,18 @@ export function VideoPreviewCarousel({
   if (!items.length) return null;
 
   return (
-    <div className={cx("mt-6", className)}>
-      <div className="flex gap-3 overflow-x-auto pb-2 h-[240px] items-stretch">
+    <div className={cx("mt-6 w-full overflow-hidden", className)}>
+      <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-2 h-[200px] sm:h-[240px] items-stretch no-scrollbar overscroll-x-contain overscroll-y-none snap-x snap-mandatory min-w-0 carousel-scroll">
         {items.map((v, i) => (
           <button
             key={v.url + i}
             type="button"
             aria-label={`Play video ${i + 1}`}
             onClick={() => open(i)}
-            className="group relative h-full w-44 shrink-0 overflow-hidden rounded-lg bg-slate-200"
+            className="group relative h-full w-44 shrink-0 overflow-hidden rounded-lg bg-slate-200 snap-start"
           >
             {/* Thumbnail */}
-            <VideoThumb url={thumbs[v.url] || v.thumbnailUrl || v.url} />
+            <VideoThumb src={v.thumbnailUrl || thumbs[v.url]} />
             <div className="absolute inset-0 grid place-items-center">
               <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-xs font-medium text-white shadow">
                 ▶ Play
@@ -82,6 +83,20 @@ export function VideoPreviewCarousel({
           </button>
         ))}
       </div>
+      {/* Scoped styles to hide scrollbars and improve touch scrolling without leaking globally */}
+      <style jsx>{`
+        .no-scrollbar {
+          -ms-overflow-style: none; /* IE and Edge */
+          scrollbar-width: none; /* Firefox */
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none; /* Chrome, Safari */
+        }
+        .carousel-scroll {
+          -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+          overscroll-behavior-x: contain;
+        }
+      `}</style>
       {openIndex !== null && (
         <VideoLightbox
           index={openIndex}
@@ -96,18 +111,27 @@ export function VideoPreviewCarousel({
   );
 }
 
-function VideoThumb({ url }: { url: string }) {
+function VideoThumb({ src }: { src?: string | null }) {
+  // Accept optional src; render a neutral placeholder when none or when image fails.
+  const [errored, setErrored] = useState(false);
+  if (!src || errored) {
+    return (
+      <div className="absolute inset-0 grid place-items-center bg-slate-300 text-slate-700">
+        <span className="inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-1 text-xs font-medium text-white">
+          Video
+        </span>
+      </div>
+    );
+  }
   return (
     <Image
-      src={url}
+      src={src}
       alt="Video thumbnail"
       fill
       sizes="160px"
       className="object-cover"
       unoptimized
-      onError={(e) => {
-        (e.currentTarget as HTMLImageElement).src = "/vercel.svg"; // fallback
-      }}
+      onError={() => setErrored(true)}
     />
   );
 }
@@ -340,23 +364,25 @@ function VideoLightbox({
         </div>
         {/* Film strip (desktop) */}
         {desktop && items.length > 1 && (
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-3 h-[120px] items-stretch">
-            {items.map((v, i) => (
-              <button
-                key={v.url + i}
-                onClick={() => setCurrent(i)}
-                className={cx(
-                  "relative h-full w-32 shrink-0 overflow-hidden rounded-md border",
-                  i === current ? "border-white" : "border-white/30"
-                )}
-                aria-label={`Select video ${i + 1}`}
-              >
-                <VideoThumb url={thumbs[v.url] || v.thumbnailUrl || v.url} />
-                {i === current && (
-                  <div className="absolute inset-0 ring-2 ring-white/70" />
-                )}
-              </button>
-            ))}
+          <div className="mt-3 overflow-hidden">
+            <div className="flex gap-2 h-[120px] items-stretch overflow-x-auto overflow-y-hidden pb-3 no-scrollbar overscroll-x-contain snap-x snap-mandatory carousel-scroll">
+              {items.map((v, i) => (
+                <button
+                  key={v.url + i}
+                  onClick={() => setCurrent(i)}
+                  className={cx(
+                    "relative h-full w-32 shrink-0 overflow-hidden rounded-md border snap-start",
+                    i === current ? "border-white" : "border-white/30"
+                  )}
+                  aria-label={`Select video ${i + 1}`}
+                >
+                  <VideoThumb src={v.thumbnailUrl || thumbs[v.url]} />
+                  {i === current && (
+                    <div className="absolute inset-0 ring-2 ring-white/70" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {/* Progress Bars (stories style, CSS animation driven) */}
