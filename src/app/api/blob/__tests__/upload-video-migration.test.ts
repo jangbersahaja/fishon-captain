@@ -3,12 +3,12 @@
  * Tests for Phase 2C: Blob upload migration to dual pipeline (legacy + CaptainVideo)
  */
 
-import { POST } from "../upload/route";
-import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
 import { counter } from "@/lib/metrics";
+import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { getServerSession } from "next-auth";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { POST } from "../upload/route";
 
 // Mock dependencies
 vi.mock("next-auth");
@@ -285,7 +285,9 @@ describe("POST /api/blob/upload - Phase 2C Video Migration", () => {
     expect(data.ok).toBe(true);
 
     // Verify failure metric was incremented
-    expect(counter).toHaveBeenCalledWith("video_upload_new_pipeline_queue_fail");
+    expect(counter).toHaveBeenCalledWith(
+      "video_upload_new_pipeline_queue_fail"
+    );
 
     // Verify legacy pipeline still called as backup
     expect(fetch).toHaveBeenCalledWith(

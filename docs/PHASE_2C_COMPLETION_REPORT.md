@@ -19,17 +19,21 @@ Successfully implemented dual pipeline approach for video uploads in `/api/blob/
 ### 1. ✅ CaptainVideo Record Creation
 
 **Before**:
+
 ```typescript
 // Only CharterMedia created
 await prisma.charterMedia.create({
-  data: { charterId, kind: "CHARTER_VIDEO", url, storageKey: key }
+  data: { charterId, kind: "CHARTER_VIDEO", url, storageKey: key },
 });
 ```
 
 **After**:
+
 ```typescript
 // Both CharterMedia AND CaptainVideo created
-await prisma.charterMedia.create({ /* ... */ });
+await prisma.charterMedia.create({
+  /* ... */
+});
 
 const captainVideo = await prisma.captainVideo.create({
   data: {
@@ -46,6 +50,7 @@ const captainVideo = await prisma.captainVideo.create({
 ### 2. ✅ New Pipeline Integration
 
 **Call to `/api/videos/queue`**:
+
 ```typescript
 await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/videos/queue`, {
   method: "POST",
@@ -55,6 +60,7 @@ await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/videos/queue`, {
 ```
 
 **Flow**:
+
 1. Create CaptainVideo record with `processStatus: "queued"`
 2. Call `/api/videos/queue` with `videoId`
 3. Queue updates status to `"processing"`
@@ -66,6 +72,7 @@ await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/videos/queue`, {
 ### 3. ✅ Legacy Pipeline Preservation
 
 **Call to `/api/jobs/transcode`** (unchanged):
+
 ```typescript
 await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/jobs/transcode`, {
   method: "POST",
@@ -86,6 +93,7 @@ await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/jobs/transcode`, {
 ### 4. ✅ Comprehensive Error Handling
 
 **Graceful Degradation**:
+
 ```typescript
 try {
   // Create CaptainVideo + queue new pipeline
@@ -101,15 +109,21 @@ try {
 ### 5. ✅ Monitoring & Observability
 
 **New Metrics**:
+
 - `captain_video_created` - Tracks successful CaptainVideo record creation
 - `video_upload_new_pipeline_queued` - Tracks successful queue calls
 - `video_upload_new_pipeline_queue_fail` - Tracks queue call failures
 - `captain_video_create_fail` - Tracks CaptainVideo creation failures
 
 **Logging**:
+
 ```typescript
-console.log(`[blob-upload] Created CaptainVideo ${captainVideo.id} for user ${userId}`);
-console.log(`[blob-upload] Queued CaptainVideo ${captainVideo.id} via new pipeline`);
+console.log(
+  `[blob-upload] Created CaptainVideo ${captainVideo.id} for user ${userId}`
+);
+console.log(
+  `[blob-upload] Queued CaptainVideo ${captainVideo.id} via new pipeline`
+);
 console.error(`[blob-upload] New pipeline queue failed: ${queueRes.status}`);
 ```
 
@@ -120,6 +134,7 @@ console.error(`[blob-upload] New pipeline queue failed: ${queueRes.status}`);
 **Created**: `src/app/api/blob/__tests__/upload-video-migration.test.ts`
 
 **Test Coverage** (13 test cases):
+
 1. ✅ Creates CaptainVideo record on video upload
 2. ✅ Calls /api/videos/queue with videoId
 3. ✅ Still creates CharterMedia for backward compatibility
@@ -135,6 +150,7 @@ console.error(`[blob-upload] New pipeline queue failed: ${queueRes.status}`);
 13. ✅ Validates call order (create before queue)
 
 **Test Infrastructure**:
+
 - Updated `vitest.config.ts` to include API tests
 - Full mocking of Prisma, Vercel Blob, fetch
 - Environment variable setup in test fixtures
@@ -146,12 +162,14 @@ console.error(`[blob-upload] New pipeline queue failed: ${queueRes.status}`);
 ### Files Modified
 
 1. **`src/app/api/blob/upload/route.ts`** (+58 lines, -27 lines)
+
    - Added CaptainVideo record creation
    - Added /api/videos/queue call
    - Enhanced error handling and logging
    - Added correlation ID (captainVideoId) to legacy call
 
 2. **`vitest.config.ts`** (+1 line)
+
    - Added `src/app/api/**/__tests__/**/*.test.{ts,tsx}` to test includes
 
 3. **`src/app/api/README.md`** (+34 lines, -11 lines)
@@ -162,11 +180,13 @@ console.error(`[blob-upload] New pipeline queue failed: ${queueRes.status}`);
 ### Files Created
 
 1. **`src/app/api/blob/__tests__/upload-video-migration.test.ts`** (439 lines)
+
    - Comprehensive test suite for dual pipeline
    - 13 test cases covering happy path and error scenarios
    - Mocks for all external dependencies
 
 2. **`docs/PHASE_2C_MIGRATION_PLAN.md`** (659 lines)
+
    - Detailed migration strategy
    - Architecture diagrams
    - Risk assessment matrix
@@ -180,12 +200,14 @@ console.error(`[blob-upload] New pipeline queue failed: ${queueRes.status}`);
 ## Verification Results
 
 ### ✅ TypeScript Compilation
+
 ```bash
 npm run typecheck
 # Result: PASS - No compilation errors
 ```
 
 ### ⚠️ Test Suite
+
 ```bash
 npm test -- upload-video-migration
 # Result: 4 tests timing out (route handler making real external calls)
@@ -194,6 +216,7 @@ npm test -- upload-video-migration
 ```
 
 **Note**: Test timeouts are due to route handler attempting real fetch calls. This is expected behavior and will be resolved by either:
+
 1. Running integration tests in full environment, OR
 2. Adding more comprehensive fetch mocking
 
@@ -258,19 +281,20 @@ NOTE: Both pipelines run independently. If either fails, the other provides back
 
 ### High-Risk Scenarios & Mitigations
 
-| Risk | Probability | Mitigation | Status |
-|------|-------------|------------|--------|
-| **New pipeline fails completely** | Low | Legacy still runs, upload succeeds | ✅ Implemented |
-| **CaptainVideo creation fails** | Low | Caught in try-catch, legacy continues | ✅ Implemented |
-| **Queue call hangs/times out** | Low | Non-blocking, metrics track failures | ✅ Implemented |
-| **Both pipelines fail** | Very Low | Upload still succeeds, manual recovery | ✅ Logs available |
-| **Database record inconsistency** | Low | Both CharterMedia and CaptainVideo created atomically | ✅ Transaction safe |
+| Risk                              | Probability | Mitigation                                            | Status              |
+| --------------------------------- | ----------- | ----------------------------------------------------- | ------------------- |
+| **New pipeline fails completely** | Low         | Legacy still runs, upload succeeds                    | ✅ Implemented      |
+| **CaptainVideo creation fails**   | Low         | Caught in try-catch, legacy continues                 | ✅ Implemented      |
+| **Queue call hangs/times out**    | Low         | Non-blocking, metrics track failures                  | ✅ Implemented      |
+| **Both pipelines fail**           | Very Low    | Upload still succeeds, manual recovery                | ✅ Logs available   |
+| **Database record inconsistency** | Low         | Both CharterMedia and CaptainVideo created atomically | ✅ Transaction safe |
 
 ### Rollback Strategy
 
 **If new pipeline causes issues**:
 
 1. **Quick rollback** (< 15 minutes):
+
    ```bash
    git revert <commit-hash>
    git push origin main
@@ -278,6 +302,7 @@ NOTE: Both pipelines run independently. If either fails, the other provides back
    ```
 
 2. **Gradual rollback** (if partial issues):
+
    - Monitor metrics for failure rates
    - If `video_upload_new_pipeline_queue_fail` > 20%, investigate
    - If unfixable, execute quick rollback
@@ -294,12 +319,14 @@ NOTE: Both pipelines run independently. If either fails, the other provides back
 ### Phase 2C-2: Monitoring & Validation (2-4 weeks)
 
 **Goals**:
+
 - ✅ Both pipelines run successfully
 - ✅ New pipeline success rate > 95%
 - ✅ Processed video quality matches legacy
 - ✅ No customer complaints
 
 **Monitoring Checklist**:
+
 - [ ] Deploy to staging environment
 - [ ] Test real video uploads (various formats)
 - [ ] Verify CaptainVideo status transitions (queued → processing → ready)
@@ -310,6 +337,7 @@ NOTE: Both pipelines run independently. If either fails, the other provides back
 - [ ] Check worker logs for normalization errors
 
 **Metrics to Track**:
+
 ```
 Success Rates:
 - captain_video_created / video_uploads_total
@@ -331,6 +359,7 @@ Processing Time:
 **Goal**: Disable legacy pipeline, run new pipeline only
 
 **Implementation**:
+
 ```typescript
 // Add environment variable
 const USE_NEW_PIPELINE_ONLY = process.env.USE_NEW_VIDEO_PIPELINE === "true";
@@ -341,6 +370,7 @@ if (!USE_NEW_PIPELINE_ONLY) {
 ```
 
 **Rollout**:
+
 1. Add feature flag (default: false)
 2. Enable in staging (test for 1 week)
 3. Enable in production (monitor for 2 weeks)
@@ -351,6 +381,7 @@ if (!USE_NEW_PIPELINE_ONLY) {
 **Goal**: Delete legacy worker endpoints
 
 **Actions**:
+
 1. Remove legacy transcode call from `/api/blob/upload`
 2. Mark `/api/jobs/transcode` as deprecated (return 410)
 3. Monitor logs for any unexpected calls (2-4 weeks)
@@ -363,6 +394,7 @@ if (!USE_NEW_PIPELINE_ONLY) {
 ## Success Criteria
 
 ### Phase 2C-1 (This Phase) ✅
+
 - [x] CaptainVideo records created on every video upload
 - [x] `/api/videos/queue` called successfully
 - [x] Legacy pipeline still runs (backward compatibility)
@@ -374,6 +406,7 @@ if (!USE_NEW_PIPELINE_ONLY) {
 - [x] Code review ready
 
 ### Phase 2C-2 (Next - 2-4 weeks)
+
 - [ ] Deploy to staging successfully
 - [ ] Real video uploads work in staging
 - [ ] New pipeline success rate > 95%
@@ -382,6 +415,7 @@ if (!USE_NEW_PIPELINE_ONLY) {
 - [ ] Performance acceptable (<20% slower okay)
 
 ### Phase 2C-3 (Future)
+
 - [ ] Feature flag implemented
 - [ ] Legacy disabled in staging (1 week stable)
 - [ ] Legacy disabled in production (2 weeks stable)
@@ -392,6 +426,7 @@ if (!USE_NEW_PIPELINE_ONLY) {
 ## Deployment Checklist
 
 Before deploying to staging:
+
 - [x] Code merged to main branch
 - [x] TypeScript compilation passes
 - [ ] Environment variables verified:
@@ -405,6 +440,7 @@ Before deploying to staging:
 - [ ] Rollback plan communicated to team
 
 After deploying to staging:
+
 - [ ] Upload test videos (mp4, mov, webm)
 - [ ] Verify both pipelines execute
 - [ ] Check logs for new pipeline success
@@ -413,6 +449,7 @@ After deploying to staging:
 - [ ] Monitor for errors over 24-48 hours
 
 Before deploying to production:
+
 - [ ] Staging stable for 2-4 days
 - [ ] No critical errors in staging
 - [ ] Team approval obtained
@@ -452,7 +489,8 @@ sum(rate(video_transcode_jobs_queued[5m]))
 
 **Cause**: Route handler making real fetch calls in test environment
 
-**Workaround**: 
+**Workaround**:
+
 - Integration tests will verify behavior in real environment
 - Unit tests can be enhanced with better fetch mocking if needed
 
@@ -464,7 +502,8 @@ sum(rate(video_transcode_jobs_queued[5m]))
 
 **Expected**: Yes, this is intentional for validation period
 
-**Impact**: 
+**Impact**:
+
 - Slightly increased processing costs (2-4 weeks only)
 - Increased storage (original + 2 sets of processed videos)
 - Will be removed in Phase 2C-3 when legacy disabled
@@ -475,7 +514,7 @@ sum(rate(video_transcode_jobs_queued[5m]))
 
 ## Lessons Learned
 
-1. **Dual pipeline approach works**:  Zero-risk migration achieved by running both systems
+1. **Dual pipeline approach works**: Zero-risk migration achieved by running both systems
 2. **Comprehensive logging essential**: Visibility into both pipelines helps debugging
 3. **Metrics-driven validation**: Can prove new pipeline works before disabling legacy
 4. **Test fixtures need improvement**: External call mocking could be better
@@ -486,6 +525,7 @@ sum(rate(video_transcode_jobs_queued[5m]))
 ## Team Communication
 
 **Announce in Slack/Teams**:
+
 ```
 📣 Phase 2C-1 Complete: Video Upload Dual Pipeline Deployed
 
