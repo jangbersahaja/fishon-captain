@@ -20,6 +20,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Goal**: Document all API routes, identify legacy endpoints, flag deprecations
 
 **Achievements**:
+
 - Inventoried all routes under `src/app/api`
 - Grouped by domain (Media, Videos, Charters, Workers, etc.)
 - Documented external worker contracts
@@ -34,16 +35,19 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Goal**: Remove confirmed dead code with zero risk
 
 **Deleted** (1,093 lines):
+
 - `VideoUploadSection.tsx` (673 lines - unused component)
 - `useCharterMediaManager.pendingMedia.test.tsx` (205 lines)
 - `/api/videos/normalize` (32 lines - stub endpoint)
 - `VideoUploadTest.tsx` (183 lines)
 
 **Updated**:
+
 - `DebugPanel.tsx` - removed deprecated endpoint references
 - `dev/debug/route.ts` - cleaned up legacy code
 
 **Verification**:
+
 - ✅ All tests passing (153/153)
 - ✅ TypeScript compilation clean
 - ✅ Zero breaking changes
@@ -59,6 +63,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Goal**: Document workers, clean up references, safe deletions
 
 **Actions**:
+
 1. Deleted `/api/transcode/complete` (already deprecated, returned 410)
 2. Cleaned PendingMedia references in worker comments
 3. Added comprehensive JSDoc (137 lines) to:
@@ -70,11 +75,13 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Key Finding**: Cannot delete legacy workers yet - `/api/blob/upload` still uses them (line 172)
 
 **Verification**:
+
 - ✅ TypeScript compilation clean
 - ✅ All tests passing (153/153)
 - ✅ Zero breaking changes
 
 **Outputs**:
+
 - `docs/PHASE_2B_WORKER_ANALYSIS.md` (342 lines)
 - `docs/PHASE_2B_COMPLETION_REPORT.md` (330 lines)
 
@@ -91,22 +98,26 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Implementation**:
 
 1. **CaptainVideo Record Creation**
+
    - Create `CaptainVideo` record with `processStatus: "queued"`
    - Track `ownerId`, `originalUrl`, `blobKey`
    - Enables modern video processing pipeline
 
 2. **New Pipeline Integration**
+
    - Call `/api/videos/queue` with `videoId`
    - Queue updates status to `"processing"`
    - External worker processes video
    - Callback updates to `"ready"` with processed URLs
 
 3. **Legacy Preservation**
+
    - Keep `/api/jobs/transcode` call unchanged
    - Pass `captainVideoId` for correlation
    - Ensures fallback if new pipeline fails
 
 4. **Comprehensive Error Handling**
+
    - Graceful degradation on CaptainVideo creation failure
    - Non-blocking queue call failures
    - Upload never fails due to new pipeline issues
@@ -118,31 +129,37 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
    - Detailed logging for both pipelines
 
 **Code Changes**:
+
 - `src/app/api/blob/upload/route.ts`: +82 lines, -27 lines
 - `vitest.config.ts`: +1 line (add API tests)
 - `src/app/api/README.md`: +41 lines (tracking)
 
 **Tests Created**:
+
 - `src/app/api/blob/__tests__/upload-video-migration.test.ts` (472 lines)
 - 13 test cases covering happy path and error scenarios
 
 **Documentation**:
+
 - `docs/PHASE_2C_MIGRATION_PLAN.md` (655 lines)
 - `docs/PHASE_2C_COMPLETION_REPORT.md` (525 lines)
 
 **Verification**:
+
 - ✅ TypeScript compilation clean
 - ⚠️ Tests created (some timeouts need mocking improvements)
 - ✅ Zero breaking changes
 - ✅ Zero risk (dual pipeline ensures fallback)
 
 **Outputs**:
+
 - Total: +1,776 lines, -34 lines
 - Documentation: 1,180 lines
 - Tests: 472 lines
 - Code: 124 lines
 
 **Commits**:
+
 - `66cf6ed` - feat(api): Phase 2C-1 dual pipeline video upload migration
 - `2afe174` - docs: improve Phase 2C completion report formatting
 
@@ -157,6 +174,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Status**: Ready to deploy to staging
 
 **Tasks**:
+
 - [ ] Deploy to staging environment
 - [ ] Test real video uploads (mp4, mov, webm formats)
 - [ ] Verify CaptainVideo status transitions (queued → processing → ready)
@@ -166,6 +184,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 - [ ] Validate CharterMedia associations still work
 
 **Success Criteria**:
+
 - New pipeline success rate > 95%
 - No increase in customer support tickets
 - Video quality matches legacy output
@@ -182,6 +201,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Goal**: Disable legacy pipeline via feature flag
 
 **Approach**:
+
 1. Add `USE_NEW_VIDEO_PIPELINE` environment variable
 2. Conditional legacy call based on flag
 3. Enable in staging (1 week)
@@ -197,6 +217,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Goal**: Delete legacy worker endpoints
 
 **Actions**:
+
 - Remove legacy `/api/jobs/transcode` call from `/api/blob/upload`
 - Mark `/api/jobs/transcode` as deprecated (return 410)
 - Monitor for unexpected calls (2-4 weeks)
@@ -204,7 +225,8 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 - Delete `/api/workers/transcode`
 - Delete `/api/workers/transcode-simple`
 
-**Blockers**: 
+**Blockers**:
+
 - Phase 2C-2 (monitoring) must complete
 - Phase 2C-3 (feature flag) must be stable
 
@@ -217,6 +239,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 **Goal**: Ensure all routes follow conventions and are well-documented
 
 **Tasks**:
+
 - Add JSDoc to all remaining API handlers
 - Ensure auth/role checks present everywhere
 - Verify rate limiting on mutations
@@ -231,24 +254,28 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 ## Statistics
 
 ### Code Reduction
+
 - **Phase 2A**: -1,093 lines (deleted legacy code)
 - **Phase 2B**: +137 lines (JSDoc), -32 lines (deleted endpoint)
 - **Phase 2C-1**: +124 lines (dual pipeline), -34 lines (refactoring)
 - **Net Change**: -898 lines of legacy code removed
 
 ### Documentation Added
+
 - **Phase 2A**: 1 report (125 lines)
 - **Phase 2B**: 2 documents (672 lines)
 - **Phase 2C**: 2 documents (1,180 lines)
 - **Total**: 5 documents, 1,977 lines of documentation
 
 ### Tests Added
+
 - **Phase 2C-1**: 13 test cases (472 lines)
 - **Coverage**: Video upload migration paths
 
 ### Commits
+
 - **Phase 2A**: 1 commit
-- **Phase 2B**: 1 commit  
+- **Phase 2B**: 1 commit
 - **Phase 2C-1**: 2 commits
 - **Total**: 4 commits in Phase 2
 
@@ -258,13 +285,13 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 
 ### Phase 2C-1 Risk Analysis
 
-| Risk | Probability | Impact | Mitigation | Status |
-|------|-------------|--------|------------|--------|
-| New pipeline fails completely | Low | High | Legacy still runs | ✅ Mitigated |
-| CaptainVideo creation fails | Low | High | Try-catch, fallback to legacy | ✅ Mitigated |
-| Queue call hangs/times out | Low | Medium | Non-blocking, metrics track | ✅ Mitigated |
-| Both pipelines fail | Very Low | High | Upload still succeeds, logs available | ✅ Mitigated |
-| Double processing costs | High | Low | Temporary (2-4 weeks only) | ⚠️ Expected |
+| Risk                          | Probability | Impact | Mitigation                            | Status       |
+| ----------------------------- | ----------- | ------ | ------------------------------------- | ------------ |
+| New pipeline fails completely | Low         | High   | Legacy still runs                     | ✅ Mitigated |
+| CaptainVideo creation fails   | Low         | High   | Try-catch, fallback to legacy         | ✅ Mitigated |
+| Queue call hangs/times out    | Low         | Medium | Non-blocking, metrics track           | ✅ Mitigated |
+| Both pipelines fail           | Very Low    | High   | Upload still succeeds, logs available | ✅ Mitigated |
+| Double processing costs       | High        | Low    | Temporary (2-4 weeks only)            | ⚠️ Expected  |
 
 **Overall Risk**: **LOW** ✅
 
@@ -273,6 +300,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 ## Next Actions
 
 ### Immediate (This Week)
+
 1. ✅ Review Phase 2C-1 implementation
 2. ✅ Verify TypeScript compilation
 3. ✅ Commit all changes
@@ -280,6 +308,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 5. [ ] Test video uploads in staging
 
 ### Short-term (Next 2-4 Weeks)
+
 1. [ ] Monitor both pipelines in production
 2. [ ] Track success rates and error metrics
 3. [ ] Compare video quality between pipelines
@@ -287,6 +316,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 5. [ ] Document any issues found
 
 ### Long-term (1-2 Months)
+
 1. [ ] Implement feature flag (Phase 2C-3)
 2. [ ] Disable legacy pipeline gradually
 3. [ ] Delete legacy worker code (Phase 2D)
@@ -298,6 +328,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 ## Deployment Checklist
 
 ### Pre-Deployment
+
 - [x] Code merged to main branch
 - [x] TypeScript compilation passes
 - [x] Tests created (13 test cases)
@@ -310,6 +341,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 - [ ] Alert rules set up
 
 ### Post-Deployment (Staging)
+
 - [ ] Upload test videos (mp4, mov, webm)
 - [ ] Verify both pipelines execute
 - [ ] Check logs for pipeline success
@@ -317,6 +349,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 - [ ] Monitor for 24-48 hours
 
 ### Post-Deployment (Production)
+
 - [ ] Staging stable for 2-4 days
 - [ ] Team approval obtained
 - [ ] Deploy during low-traffic window
@@ -328,6 +361,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 ## Team Communication
 
 ### Key Messages
+
 - ✅ Phase 2A, 2B, 2C-1 complete
 - ✅ Zero breaking changes introduced
 - ✅ Dual pipeline provides zero-risk migration
@@ -335,6 +369,7 @@ Comprehensive API cleanup and modernization initiative to remove legacy code, co
 - 📊 New metrics available for tracking
 
 ### Stakeholder Update
+
 ```
 API Cleanup Progress: 65% Complete
 
@@ -366,6 +401,7 @@ Impact:
 ## Success Metrics
 
 ### Phase 2C-1 (Deployment)
+
 - [x] Dual pipeline implemented
 - [x] Zero breaking changes
 - [x] TypeScript compilation clean
@@ -374,6 +410,7 @@ Impact:
 - [ ] Deployed to production
 
 ### Phase 2C-2 (Monitoring - 2-4 weeks)
+
 - [ ] New pipeline success rate > 95%
 - [ ] Video quality matches legacy
 - [ ] No customer complaints
@@ -381,12 +418,14 @@ Impact:
 - [ ] Both pipelines stable
 
 ### Phase 2C-3 (Cutover)
+
 - [ ] Feature flag implemented
 - [ ] Legacy disabled in staging
 - [ ] Legacy disabled in production
 - [ ] Stable for 2 weeks
 
 ### Phase 2D (Cleanup)
+
 - [ ] Legacy code deleted
 - [ ] All tests passing
 - [ ] Documentation updated
@@ -397,6 +436,7 @@ Impact:
 ## Resources
 
 ### Documentation
+
 - `docs/API_CLEANUP_ACTION_PLAN.md` - Initial planning document
 - `docs/PHASE_2A_CLEANUP_COMPLETE.md` - Phase 2A completion report
 - `docs/PHASE_2B_WORKER_ANALYSIS.md` - Worker architecture analysis
@@ -406,12 +446,14 @@ Impact:
 - `src/app/api/README.md` - API route inventory and conventions
 
 ### Code
+
 - `src/app/api/blob/upload/route.ts` - Dual pipeline implementation
 - `src/app/api/videos/queue/route.ts` - New video queue endpoint
 - `src/app/api/jobs/transcode/route.ts` - Legacy transcode (to be removed)
 - `src/app/api/workers/transcode/route.ts` - Legacy worker (to be removed)
 
 ### Tests
+
 - `src/app/api/blob/__tests__/upload-video-migration.test.ts` - Migration tests
 
 ---
