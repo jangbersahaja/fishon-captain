@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import VideoUploadTest from "./VideoUploadTest";
 
 interface PendingMedia {
   id: string;
@@ -134,15 +133,8 @@ export default function DebugPanel({
     await testEndpoint("/api/workers/transcode-simple", "POST", payload);
   };
 
-  const refreshPendingStatus = async (pendingId: string) => {
-    await testEndpoint(`/api/media/pending?ids=${pendingId}`);
-  };
-
   return (
     <div className="space-y-6">
-      {/* Video Upload Test */}
-      <VideoUploadTest />
-
       {/* Environment Info */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-xl font-semibold text-slate-900 mb-4">
@@ -174,16 +166,6 @@ export default function DebugPanel({
           🧪 Quick Tests
         </h2>
         <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => testEndpoint("/api/media/pending?ids=")}
-            disabled={loading["/api/media/pending?ids="]}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
-          >
-            {loading["/api/media/pending?ids="]
-              ? "Testing..."
-              : "Test Pending API"}
-          </button>
-
           <button
             onClick={() =>
               testEndpoint("/api/jobs/transcode", "POST", {
@@ -329,15 +311,6 @@ export default function DebugPanel({
                           </button>
                         </>
                       )}
-                      <button
-                        onClick={() => refreshPendingStatus(record.id)}
-                        disabled={
-                          loading[`/api/media/pending?ids=${record.id}`]
-                        }
-                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        Refresh
-                      </button>
                     </div>
                   </td>
                 </tr>

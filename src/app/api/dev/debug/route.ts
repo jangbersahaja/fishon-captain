@@ -41,9 +41,10 @@ export async function GET() {
       transcode: "/api/jobs/transcode",
       worker: "/api/workers/transcode",
       simpleWorker: "/api/workers/transcode-simple",
-      pending: "/api/media/pending",
       photo: "/api/media/photo",
-      video: "/api/media/video",
+      videos: "/api/videos/[id] (GET/DELETE)",
+      videoQueue: "/api/videos/queue (POST)",
+      videoList: "/api/videos/list (GET)",
     },
   };
 
