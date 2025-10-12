@@ -1,21 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import type { PendingMediaStatus } from "@prisma/client";
 import { list } from "@vercel/blob";
 
 import {
-  AnnotatedRow,
   BLOB_FETCH_LIMIT,
   BLOB_PAGE_SIZE,
   FETCH_LIMIT_DEFAULT,
   FETCH_LIMIT_STALE,
-  Kind,
-  PipelineViewModel,
   Reference,
   STALE_THRESHOLD_MINUTES,
-  STATUSES,
   STORAGE_SCOPE_LABEL,
   SearchParams,
-  Status,
   StorageRow,
   StorageScope,
   StorageSortKey,
@@ -33,174 +27,7 @@ import {
   normalizeKey,
 } from "./shared";
 
-export async function loadPipelineData(
-  searchParams: SearchParams | undefined
-): Promise<PipelineViewModel> {
-  const statusParam = (getParam(searchParams, "status") || "")
-    .toUpperCase()
-    .trim() as Status | "";
-  const kindParam = (getParam(searchParams, "kind") || "")
-    .toUpperCase()
-    .trim() as Kind | "";
-  const staleOnly = getParam(searchParams, "stale") === "true";
-
-  const statusFilter = STATUSES.includes(statusParam as Status)
-    ? (statusParam as Status)
-    : null;
-  const kindFilter =
-    kindParam === "IMAGE" || kindParam === "VIDEO" ? (kindParam as Kind) : null;
-
-  const where: { status?: PendingMediaStatus; kind?: string } = {
-    ...(statusFilter ? { status: statusFilter as PendingMediaStatus } : {}),
-    ...(kindFilter ? { kind: kindFilter } : {}),
-  };
-
-  const fetchLimit = staleOnly ? FETCH_LIMIT_STALE : FETCH_LIMIT_DEFAULT;
-
-  const [statusGroups, rawItems] = await Promise.all([
-    prisma.pendingMedia
-      .groupBy({
-        by: ["status"],
-        _count: { _all: true },
-      })
-      .then(
-        (rows) =>
-          rows as Array<{
-            status: PendingMediaStatus;
-            _count: { _all: number };
-          }>
-      ),
-    prisma.pendingMedia.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: fetchLimit,
-    }),
-  ]);
-
-  const statusCounts = STATUSES.reduce<Record<Status, number>>(
-    (acc, status) => {
-      const match = statusGroups.find(
-        (g: { status: PendingMediaStatus }) =>
-          g.status === (status as PendingMediaStatus)
-      );
-      acc[status] = match?._count._all ?? 0;
-      return acc;
-    },
-    { QUEUED: 0, TRANSCODING: 0, READY: 0, FAILED: 0 }
-  );
-
-  const userIds = Array.from(new Set(rawItems.map((item) => item.userId)));
-  const charterIds = Array.from(
-    new Set(rawItems.map((item) => item.charterId).filter(Boolean))
-  ) as string[];
-
-  const [users, profiles, charters] = await Promise.all([
-    userIds.length
-      ? prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            firstName: true,
-            lastName: true,
-          },
-        })
-      : Promise.resolve([]),
-    userIds.length
-      ? prisma.captainProfile.findMany({
-          where: { userId: { in: userIds } },
-          select: { userId: true, displayName: true },
-        })
-      : Promise.resolve([]),
-    charterIds.length
-      ? prisma.charter.findMany({
-          where: { id: { in: charterIds } },
-          select: { id: true, name: true, isActive: true },
-        })
-      : Promise.resolve([]),
-  ]);
-
-  const userMap = new Map(users.map((user) => [user.id, user]));
-  const profileMap = new Map(
-    profiles.map((profile) => [profile.userId, profile.displayName])
-  );
-  const charterMap = new Map(charters.map((charter) => [charter.id, charter]));
-
-  const nowMs = Date.now();
-  const staleThresholdMs = STALE_THRESHOLD_MINUTES * 60 * 1000;
-
-  const annotated: AnnotatedRow[] = rawItems.map((item) => {
-    const user = userMap.get(item.userId);
-    const profileName = profileMap.get(item.userId);
-    const charter = item.charterId ? charterMap.get(item.charterId) : undefined;
-    const displayName =
-      profileName ||
-      user?.name ||
-      [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
-      "(unknown)";
-    const email = user?.email ?? "-";
-    const createdAgoMs = nowMs - item.createdAt.getTime();
-    const updatedAgoMs = nowMs - item.updatedAt.getTime();
-    const consumedAgoMs = item.consumedAt
-      ? nowMs - item.consumedAt.getTime()
-      : NaN;
-    const stale =
-      (item.status === "QUEUED" || item.status === "TRANSCODING") &&
-      updatedAgoMs > staleThresholdMs;
-    const awaitingFinalAsset =
-      item.status === "READY" && (!item.finalUrl || !item.finalKey);
-    return {
-      id: item.id,
-      userId: item.userId,
-      charterId: item.charterId,
-      status: item.status as Status,
-      kind: (item.kind === "VIDEO" ? "VIDEO" : "IMAGE") as Kind,
-      originalKey: item.originalKey,
-      originalUrl: item.originalUrl,
-      finalKey: item.finalKey,
-      finalUrl: item.finalUrl,
-      thumbnailUrl: item.thumbnailUrl,
-      sizeBytes: item.sizeBytes,
-      mimeType: item.mimeType,
-      durationSeconds: item.durationSeconds,
-      error: item.error,
-      correlationId: item.correlationId,
-      consumedAt: item.consumedAt,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-      charterMediaId: item.charterMediaId,
-      displayName,
-      email,
-      charterName: charter?.name ?? null,
-      charterActive: charter?.isActive ?? null,
-      stale,
-      createdAgoLabel: formatRelative(createdAgoMs),
-      updatedAgoLabel: formatRelative(updatedAgoMs),
-      consumedAgoLabel: Number.isFinite(consumedAgoMs)
-        ? formatRelative(consumedAgoMs)
-        : "-",
-      awaitingFinalAsset,
-    };
-  });
-
-  const staleCount = annotated.filter((row) => row.stale).length;
-  const filteredRows = staleOnly
-    ? annotated.filter((row) => row.stale)
-    : annotated;
-
-  return {
-    statusFilter,
-    kindFilter,
-    staleOnly,
-    statusCounts,
-    staleCount,
-    filteredRows,
-    fetchLimit,
-    fetchedCount: rawItems.length,
-    displayCount: filteredRows.length,
-  };
-}
+// PendingMedia pipeline removed; loadPipelineData dropped.
 
 export async function loadVideoData(
   searchParams: SearchParams | undefined
@@ -413,45 +240,36 @@ export async function loadStorageData(
     else references.set(normalized, [ref]);
   };
 
-  const [charterMedia, pendingMedia, captainProfiles, verifications] =
-    await Promise.all([
-      prisma.charterMedia.findMany({
-        select: {
-          id: true,
-          charterId: true,
-          kind: true,
-          storageKey: true,
-          charter: { select: { name: true } },
-        },
-      }),
-      prisma.pendingMedia.findMany({
-        select: {
-          id: true,
-          originalKey: true,
-          finalKey: true,
-          thumbnailKey: true,
-        },
-      }),
-      prisma.captainProfile.findMany({
-        select: {
-          userId: true,
-          displayName: true,
-          avatarUrl: true,
-          user: { select: { email: true, name: true } },
-        },
-      }),
-      prisma.captainVerification.findMany({
-        select: {
-          userId: true,
-          idFront: true,
-          idBack: true,
-          captainLicense: true,
-          boatRegistration: true,
-          fishingLicense: true,
-          additional: true,
-        },
-      }),
-    ]);
+  const [charterMedia, captainProfiles, verifications] = await Promise.all([
+    prisma.charterMedia.findMany({
+      select: {
+        id: true,
+        charterId: true,
+        kind: true,
+        storageKey: true,
+        charter: { select: { name: true } },
+      },
+    }),
+    prisma.captainProfile.findMany({
+      select: {
+        userId: true,
+        displayName: true,
+        avatarUrl: true,
+        user: { select: { email: true, name: true } },
+      },
+    }),
+    prisma.captainVerification.findMany({
+      select: {
+        userId: true,
+        idFront: true,
+        idBack: true,
+        captainLicense: true,
+        boatRegistration: true,
+        fishingLicense: true,
+        additional: true,
+      },
+    }),
+  ]);
 
   charterMedia.forEach((media) => {
     addReference(media.storageKey, {
@@ -463,27 +281,7 @@ export async function loadStorageData(
     });
   });
 
-  pendingMedia.forEach(
-    (item: {
-      id: string;
-      originalKey: string | null;
-      finalKey: string | null;
-      thumbnailKey: string | null;
-    }) => {
-      addReference(item.originalKey, {
-        type: "PendingMedia",
-        label: `Pending ${item.id} • original`,
-      });
-      addReference(item.finalKey, {
-        type: "PendingMedia",
-        label: `Pending ${item.id} • final`,
-      });
-      addReference(item.thumbnailKey, {
-        type: "PendingMedia",
-        label: `Pending ${item.id} • thumbnail`,
-      });
-    }
-  );
+  // PendingMedia references removed
 
   captainProfiles.forEach(
     (profile: {

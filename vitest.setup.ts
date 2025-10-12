@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import React from "react";
 import { vi } from "vitest";
 
@@ -40,16 +40,24 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 // accessing its internal mock implementation if needed.
 vi.mock("@/components/toast/ToastContext", () => {
   const push = vi.fn();
+  const pushEphemeralError = vi.fn();
   return {
     useToasts: () => ({
       push,
       dismiss: vi.fn(),
       update: vi.fn(),
       registerBottomAnchor: vi.fn(),
+      pushEphemeralError,
     }),
     ToastProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
+
+// Provide minimal server env for tests that import server modules (env.ts validates these)
+process.env.DATABASE_URL ||= "postgresql://local/test";
+process.env.NEXTAUTH_SECRET ||= "0123456789abcdef0123456789abcdef01234567"; // >=32 chars
+process.env.GOOGLE_CLIENT_ID ||= "test-google-client-id";
+process.env.GOOGLE_CLIENT_SECRET ||= "test-google-client-secret";
 
 // ResizeObserver mock for components using it (e.g., ReviewBar)
 class MockResizeObserver {

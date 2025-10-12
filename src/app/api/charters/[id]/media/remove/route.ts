@@ -11,7 +11,6 @@ export const runtime = "nodejs";
 const BodySchema = z.object({
   mediaId: z.string().optional(), // direct CharterMedia id
   storageKey: z.string().optional(), // fallback if id not known yet
-  pendingId: z.string().optional(), // allow removing queued/transcoding pending media
 });
 
 function getUserId(session: unknown): string | null {
@@ -61,8 +60,8 @@ export async function POST(
       )
     );
   }
-  const { mediaId, storageKey, pendingId } = parsed.data;
-  if (!mediaId && !storageKey && !pendingId) {
+  const { mediaId, storageKey } = parsed.data;
+  if (!mediaId && !storageKey) {
     return applySecurityHeaders(
       NextResponse.json({ error: "missing_identifier" }, { status: 400 })
     );
@@ -97,38 +96,7 @@ export async function POST(
       return applySecurityHeaders(NextResponse.json({ ok: true, removedType }));
     }
   }
-  // Pending removal path
-  if (pendingId) {
-    const pending = await prisma.pendingMedia.findFirst({
-      where: { id: pendingId, charterId },
-    });
-    if (!pending) {
-      return applySecurityHeaders(
-        NextResponse.json({ ok: true, skipped: true })
-      );
-    }
-    // Mark failed & attempt deletion of original or final depending on progress
-    await prisma.pendingMedia.update({
-      where: { id: pending.id },
-      data: { status: "FAILED", error: "removed_by_user" },
-    });
-    const keysToDelete = [pending.originalKey];
-    if (pending.finalKey) keysToDelete.push(pending.finalKey);
-    for (const k of keysToDelete) {
-      try {
-        await del(k, { token: process.env.BLOB_READ_WRITE_TOKEN });
-      } catch (e) {
-        console.warn("[media_remove] blob_delete_failed_pending", {
-          key: k,
-          message: (e as Error).message,
-        });
-      }
-    }
-    removedType = "pendingMedia";
-    return applySecurityHeaders(
-      NextResponse.json({ ok: true, removedType, pendingId })
-    );
-  }
+  // PendingMedia flow removed; no-op for pending ids.
   return applySecurityHeaders(
     NextResponse.json({ ok: true, skipped: true, reason: "not_found" })
   );

@@ -1,5 +1,3 @@
-import type { PendingMediaStatus } from "@prisma/client";
-
 export type SearchParams = Record<string, string | string[] | undefined>;
 
 export type Status = "QUEUED" | "TRANSCODING" | "READY" | "FAILED";
@@ -358,5 +356,4 @@ export const parseTab = (value: string | null): Tab => {
   return "videos"; // Default to videos instead of pipeline
 };
 
-export const toPendingStatus = (status: Status): PendingMediaStatus =>
-  status as PendingMediaStatus;
+// PendingMedia removed; no conversion needed.

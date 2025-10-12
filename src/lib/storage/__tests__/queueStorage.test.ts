@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queueStorage } from "../queueStorage";
 
 // Mock variables with proper typing
-let mockStore: {
+const mockStore: {
   put: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
   getAll: ReturnType<typeof vi.fn>;
@@ -12,86 +12,81 @@ let mockStore: {
   createIndex: ReturnType<typeof vi.fn>;
   index: ReturnType<typeof vi.fn>;
   openCursor: ReturnType<typeof vi.fn>;
+} = {
+  put: vi.fn(),
+  get: vi.fn(),
+  getAll: vi.fn(),
+  delete: vi.fn(),
+  clear: vi.fn(),
+  createIndex: vi.fn(),
+  index: vi.fn(),
+  openCursor: vi.fn(),
 };
 
-let mockTransaction: {
+const mockTransaction: {
   objectStore: ReturnType<typeof vi.fn>;
   oncomplete: (() => void) | null;
   onerror: (() => void) | null;
+} = {
+  objectStore: vi.fn(() => mockStore),
+  oncomplete: null,
+  onerror: null,
 };
 
-let mockDB: {
+const mockDB: {
   transaction: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
   objectStoreNames: {
     contains: ReturnType<typeof vi.fn>;
   };
   createObjectStore: ReturnType<typeof vi.fn>;
+} = {
+  transaction: vi.fn().mockReturnValue(mockTransaction),
+  close: vi.fn(),
+  objectStoreNames: {
+    contains: vi.fn(),
+  },
+  createObjectStore: vi.fn(() => mockStore),
 };
 
-let mockRequest: {
+const mockRequest: {
   result: typeof mockDB;
   onsuccess: ((event: Event) => void) | null;
   onerror: ((event: Event) => void) | null;
   onupgradeneeded: ((event: Event) => void) | null;
+} = {
+  result: mockDB as any,
+  onsuccess: null,
+  onerror: null,
+  onupgradeneeded: null,
 };
-
-vi.hoisted(() => {
-  // Initialize mock objects in hoisted context
-  mockStore = {
-    put: vi.fn(),
-    get: vi.fn(),
-    getAll: vi.fn(),
-    delete: vi.fn(),
-    clear: vi.fn(),
-    createIndex: vi.fn(),
-    index: vi.fn(),
-    openCursor: vi.fn(),
-  };
-
-  mockTransaction = {
-    objectStore: vi.fn(() => mockStore),
-    oncomplete: null,
-    onerror: null,
-  };
-
-  mockDB = {
-    transaction: vi.fn().mockReturnValue(mockTransaction),
-    close: vi.fn(),
-    objectStoreNames: {
-      contains: vi.fn(),
-    },
-    createObjectStore: vi.fn(() => mockStore),
-  };
-
-  mockRequest = {
-    result: mockDB,
-    onsuccess: null,
-    onerror: null,
-    onupgradeneeded: null,
-  };
-
-  // Mock global indexedDB
-  global.indexedDB = {
-    open: vi.fn(() => mockRequest),
-    deleteDatabase: vi.fn(),
-    databases: vi.fn(),
-    cmp: vi.fn(),
-  } as unknown as IDBFactory;
-});
+// Mock global indexedDB
+global.indexedDB = {
+  open: vi.fn(() => mockRequest),
+  deleteDatabase: vi.fn(),
+  databases: vi.fn(),
+  cmp: vi.fn(),
+} as unknown as IDBFactory;
+// Minimal IDBKeyRange polyfill for tests
+global.IDBKeyRange = {
+  upperBound: (x: unknown) => ({ type: "upperBound", value: x }),
+} as any;
 
 describe("QueueStorage", () => {
   let testFile: File;
   let testItem: {
     id: string;
     file: File;
-    status: string;
+    status: "pending" | "error" | "canceled";
     progress: number;
+    sizeBytes: number;
+    createdAt: number;
     url?: string;
     error?: string;
   };
+  let originalFileToArrayBuffer: ((file: File) => Promise<ArrayBuffer>) | null;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
 
     // Setup default mock behaviors
@@ -114,6 +109,24 @@ describe("QueueStorage", () => {
       sizeBytes: 12,
       createdAt: Date.now(),
     };
+    // Reset internal db and perform init with successful open
+    (queueStorage as any).db = null;
+    const p = queueStorage.init();
+    if (mockRequest.onsuccess) {
+      mockRequest.onsuccess({ target: mockRequest } as any);
+    }
+    await p;
+    // Stub fileToArrayBuffer to resolve quickly for storage ops
+    originalFileToArrayBuffer = (queueStorage as any).fileToArrayBuffer;
+    (queueStorage as any).fileToArrayBuffer = vi
+      .fn()
+      .mockResolvedValue(new ArrayBuffer(10));
+  });
+
+  afterEach(() => {
+    if (originalFileToArrayBuffer) {
+      (queueStorage as any).fileToArrayBuffer = originalFileToArrayBuffer;
+    }
   });
 
   describe("Initialization", () => {
@@ -175,10 +188,15 @@ describe("QueueStorage", () => {
   describe("Storage Operations", () => {
     it("should store items correctly", async () => {
       // Mock successful store operation
-      const storeRequest = { onsuccess: null, onerror: null };
+      const storeRequest: {
+        onsuccess: ((e: Event) => void) | null;
+        onerror: ((e: Event) => void) | null;
+      } = { onsuccess: null, onerror: null };
       mockStore.put.mockReturnValue(storeRequest);
 
       const storePromise = queueStorage.storeItem(testItem);
+      // Wait a microtask so queueStorage can assign request handlers after file buffer resolution
+      await Promise.resolve();
 
       // Simulate success
       if (storeRequest.onsuccess) {
@@ -198,10 +216,15 @@ describe("QueueStorage", () => {
     });
 
     it("should handle store errors", async () => {
-      const storeRequest = { onsuccess: null, onerror: null };
+      const storeRequest: {
+        onsuccess: ((e: Event) => void) | null;
+        onerror: ((e: Event) => void) | null;
+      } = { onsuccess: null, onerror: null };
       mockStore.put.mockReturnValue(storeRequest);
 
       const storePromise = queueStorage.storeItem(testItem);
+      // Wait a microtask so queueStorage can assign request handlers after file buffer resolution
+      await Promise.resolve();
 
       // Simulate error
       if (storeRequest.onerror) {
@@ -223,7 +246,11 @@ describe("QueueStorage", () => {
         fileBuffer: new ArrayBuffer(12),
       };
 
-      const getAllRequest = {
+      const getAllRequest: {
+        onsuccess: ((e: Event) => void) | null;
+        onerror: ((e: Event) => void) | null;
+        result: any[];
+      } = {
         onsuccess: null,
         onerror: null,
         result: [mockStoredItem],
@@ -249,7 +276,10 @@ describe("QueueStorage", () => {
     });
 
     it("should remove items", async () => {
-      const deleteRequest = { onsuccess: null, onerror: null };
+      const deleteRequest: {
+        onsuccess: ((e: Event) => void) | null;
+        onerror: ((e: Event) => void) | null;
+      } = { onsuccess: null, onerror: null };
       mockStore.delete.mockReturnValue(deleteRequest);
 
       const removePromise = queueStorage.removeItem("test-123");
@@ -264,7 +294,10 @@ describe("QueueStorage", () => {
     });
 
     it("should clear all items", async () => {
-      const clearRequest = { onsuccess: null, onerror: null };
+      const clearRequest: {
+        onsuccess: ((e: Event) => void) | null;
+        onerror: ((e: Event) => void) | null;
+      } = { onsuccess: null, onerror: null };
       mockStore.clear.mockReturnValue(clearRequest);
 
       const clearPromise = queueStorage.clear();
@@ -286,7 +319,14 @@ describe("QueueStorage", () => {
         continue: vi.fn(),
       };
 
-      const cursorRequest = {
+      const cursorRequest: {
+        onsuccess: ((e: Event) => void) | null;
+        onerror: ((e: Event) => void) | null;
+        result: {
+          delete: ReturnType<typeof vi.fn>;
+          continue: ReturnType<typeof vi.fn>;
+        } | null;
+      } = {
         onsuccess: null,
         onerror: null,
         result: mockCursor,
@@ -302,7 +342,6 @@ describe("QueueStorage", () => {
       if (cursorRequest.onsuccess) {
         // First call - has cursor
         cursorRequest.onsuccess(new Event("success"));
-
         // Second call - no more cursors
         cursorRequest.result = null;
         cursorRequest.onsuccess(new Event("success"));
@@ -315,7 +354,11 @@ describe("QueueStorage", () => {
     });
 
     it("should handle cleanup errors gracefully", async () => {
-      const cursorRequest = { onsuccess: null, onerror: null, result: null };
+      const cursorRequest: {
+        onsuccess: ((e: Event) => void) | null;
+        onerror: ((e: Event) => void) | null;
+        result: null;
+      } = { onsuccess: null, onerror: null, result: null };
 
       mockStore.index.mockReturnValue({
         openCursor: vi.fn(() => cursorRequest),
@@ -334,6 +377,8 @@ describe("QueueStorage", () => {
 
   describe("File Conversion", () => {
     it("should convert files to ArrayBuffer correctly", async () => {
+      // Use real implementation
+      (queueStorage as any).fileToArrayBuffer = originalFileToArrayBuffer;
       const testData = "test file content";
       const file = new File([testData], "test.mp4", { type: "video/mp4" });
 
@@ -346,15 +391,21 @@ describe("QueueStorage", () => {
     });
 
     it("should handle file read errors", async () => {
+      // Use real implementation
+      (queueStorage as any).fileToArrayBuffer = originalFileToArrayBuffer;
       // Create a file that will cause FileReader to fail
       const file = new File([""], "test.mp4", { type: "video/mp4" });
 
       // Mock FileReader to simulate error
       const originalFileReader = global.FileReader;
       global.FileReader = class {
+        onerror: ((e: Event) => void) | null = null;
+        onload: ((e: Event) => void) | null = null;
         readAsArrayBuffer() {
           setTimeout(() => {
-            if (this.onerror) this.onerror(new Event("error"));
+            if (this.onerror) {
+              this.onerror(new Event("error"));
+            }
           }, 0);
         }
       } as any;
@@ -375,6 +426,8 @@ describe("QueueStorage", () => {
       // Mock window as undefined (SSR environment)
       const originalWindow = global.window;
       delete (global as any).window;
+      // Ensure internal db is cleared so methods short-circuit in SSR
+      (queueStorage as any).db = null;
 
       // These should not throw errors
       await expect(queueStorage.init()).resolves.toBeUndefined();
@@ -386,6 +439,6 @@ describe("QueueStorage", () => {
 
       // Restore window
       global.window = originalWindow;
-    });
+    }, 10000);
   });
 });

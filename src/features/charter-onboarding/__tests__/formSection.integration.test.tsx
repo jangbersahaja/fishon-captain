@@ -1,5 +1,9 @@
 import FormSection from "@features/charter-onboarding/FormSection";
-import { render, screen } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Next.js navigation used inside FormSection
@@ -47,8 +51,12 @@ describe("FormSection integration", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
   });
-  it("renders basics step in create mode without editing banner", () => {
+  it("renders basics step in create mode without editing banner", async () => {
     render(<FormSection />);
+    // wait for loading state to disappear
+    await waitForElementToBeRemoved(() =>
+      screen.queryByText(/Loading your draft/i)
+    );
     const basics = screen.getAllByText(/Captain & Charter|Basics/i);
     expect(basics.length).toBeGreaterThan(0);
     expect(screen.queryByText(/Editing live charter/i)).toBeNull();

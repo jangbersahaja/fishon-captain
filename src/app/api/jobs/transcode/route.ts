@@ -7,7 +7,51 @@ export const runtime = "edge"; // tiny and fast; just queues the job
 const qstashToken = process.env.QSTASH_TOKEN;
 const qstash = qstashToken ? new Client({ token: qstashToken }) : null;
 
+/**
+ * POST /api/jobs/transcode
+ *
+ * ⚠️ LEGACY ENDPOINT - Used by /api/blob/upload for old video upload flow
+ * New code should use /api/videos/queue instead (CaptainVideo pipeline)
+ *
+ * Queues a video transcoding job via QStash (production) or direct call (dev).
+ *
+ * @auth None required (called internally by other endpoints)
+ *
+ * @body {object} TranscodePayload
+ * @body.originalKey {string} Blob storage key for original video
+ * @body.originalUrl {string} Public URL to download original video
+ * @body.filename {string} Original filename for naming outputs
+ * @body.userId {string} User ID for captain-scoped storage paths
+ * @body.charterId {string} [Optional] Charter ID for association
+ *
+ * @returns {object} Success response
+ * @returns.ok {boolean} Always true if successful
+ * @returns.queued {boolean} True if enqueued via QStash
+ * @returns.direct {boolean} True if executed directly (dev/fallback)
+ *
+ * @throws {400} Missing required fields
+ * @throws {500} Queue or worker execution failed
+ *
+ * Flow:
+ * 1. Validates payload (supports legacy key/url field names)
+ * 2. Determines worker URL from environment
+ * 3. Production: Publishes to QStash → /api/workers/transcode
+ * 4. Dev/Fallback: Direct call to /api/workers/transcode-simple
+ *
+ * @see /api/workers/transcode - QStash callback handler
+ * @see /api/workers/transcode-simple - Actual processing worker
+ * @see /api/videos/queue - Recommended replacement endpoint
+ *
+ * @deprecated This endpoint supports the legacy blob upload flow.
+ *             Migrate to /api/videos/queue for new video uploads.
+ */
 export async function POST(req: Request) {
+  // Log deprecation warning
+  if (process.env.NODE_ENV === "development") {
+    console.warn(
+      "⚠️  /api/jobs/transcode is legacy. Migrate to /api/videos/queue pipeline."
+    );
+  }
   const body = (await req.json().catch(() => null)) as {
     originalKey?: string;
     originalUrl?: string;

@@ -19,4 +19,4 @@ export * from "./useDraftSnapshot";
 export * from "./useAutofillCity";
 export * from "./usePreviewCharter";
 // Pending media polling
-export * from "./usePendingMediaPoll";
+// export * from "./usePendingMediaPoll"; // deprecated with PendingMedia removal

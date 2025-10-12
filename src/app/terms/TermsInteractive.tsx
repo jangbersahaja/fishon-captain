@@ -80,10 +80,6 @@ const sections: SectionDef[] = [
           Cancellation and refund policies vary by Operator and are displayed
           during booking.
         </li>
-        <li>
-          In cases of trip cancellation due to weather, safety, or force
-          majeure, Fishon will assist in coordinating refunds or rescheduling.
-        </li>
         <li>Processing fees may apply depending on payment method.</li>
         <li>
           Fishon reserves the right to cancel any booking that violates our
@@ -301,17 +297,6 @@ const sections: SectionDef[] = [
             className="text-slate-900 underline decoration-slate-300 hover:decoration-slate-500"
           >
             support@fishon.my
-          </a>
-        </p>
-        <p>
-          Website:{" "}
-          <a
-            href="https://www.fishon.my"
-            target="_blank"
-            rel="noreferrer"
-            className="text-slate-900 underline decoration-slate-300 hover:decoration-slate-500"
-          >
-            https://www.fishon.my
           </a>
         </p>
       </>

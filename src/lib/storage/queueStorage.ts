@@ -72,7 +72,7 @@ class QueueStorageManager {
     };
   }): Promise<void> {
     if (!this.db) await this.init();
-    if (!this.db) throw new Error("IndexedDB not available");
+    if (!this.db) return; // SSR/no IndexedDB: no-op
 
     const fileBuffer = await this.fileToArrayBuffer(item.file);
 
@@ -154,7 +154,7 @@ class QueueStorageManager {
 
   async removeItem(id: string): Promise<void> {
     if (!this.db) await this.init();
-    if (!this.db) return;
+    if (!this.db) return; // SSR: no-op
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([this.storeName], "readwrite");
@@ -170,7 +170,7 @@ class QueueStorageManager {
     olderThanMs: number = 7 * 24 * 60 * 60 * 1000
   ): Promise<void> {
     if (!this.db) await this.init();
-    if (!this.db) return;
+    if (!this.db) return; // SSR: no-op
 
     const cutoff = Date.now() - olderThanMs;
 
@@ -196,7 +196,7 @@ class QueueStorageManager {
 
   async clear(): Promise<void> {
     if (!this.db) await this.init();
-    if (!this.db) return;
+    if (!this.db) return; // SSR: no-op
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([this.storeName], "readwrite");
@@ -209,6 +209,17 @@ class QueueStorageManager {
   }
 
   private async fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
+    // Prefer modern Blob.arrayBuffer when available (simpler and test-friendly)
+    const anyFile = file as unknown as {
+      arrayBuffer?: () => Promise<ArrayBuffer>;
+    };
+    if (typeof anyFile.arrayBuffer === "function") {
+      try {
+        return await anyFile.arrayBuffer();
+      } catch {
+        // fall back to FileReader below
+      }
+    }
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as ArrayBuffer);

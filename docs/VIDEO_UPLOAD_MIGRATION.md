@@ -156,6 +156,16 @@ The new system doesn't require `ownerId` prop as it handles uploads through the 
 - Legacy: Complex state objects with multiple status fields
 - Enhanced: Unified `VideoUploadItem` with discriminated union status
 
+### 4. CaptainVideo is the single source of truth
+
+- All video reads now come from the `CaptainVideo` model. Legacy `PendingMedia` is not used for video state in the UI.
+- The finish route moves uploads into `CaptainVideo` and (optionally) queues normalization.
+
+### 5. Hook changes (useCharterMediaManager)
+
+- The hook no longer uploads videos nor tracks `pendingId`/transcoding state.
+- Video uploads must flow through `EnhancedVideoUploader` and `VideoManager`. The hook only persists ordered lists and supports removal via `/api/charters/:id/media/remove`.
+
 ## Testing
 
 All enhanced components have comprehensive test coverage:
@@ -180,7 +190,14 @@ npm test
 1. **Phase 13.1**: ✅ Create enhanced components
 2. **Phase 13.2**: 🔄 Update MediaPricingStep usage
 3. **Phase 13.3**: 📋 Deprecate legacy components
-4. **Phase 13.4**: 🗑️ Remove legacy code (future)
+4. **Phase 13.4**: 🗑️ Remove legacy code (complete)
+
+## Cleanup Status
+
+- Deprecated endpoints: `/api/media/video` responds 410 (use finish/queue flow)
+- Legacy components not used: `VideoUploadSection`, `VideoUploader`, `NewVideoUploader` (kept for reference or dev only)
+- Tests updated to CaptainVideo-only flow; legacy PendingMedia video tests removed
+- `usePendingMediaPoll` returns a documented no-op for compatibility but is no longer consumed
 
 ## Support
 

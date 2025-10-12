@@ -81,11 +81,20 @@ describe("PATCH Draft API", () => {
   });
 
   it("returns 409 on version conflict", async () => {
-    (
-      prisma.charterDraft.findUnique as unknown as {
-        mockResolvedValueOnce: (v: unknown) => void;
-      }
-    ).mockResolvedValueOnce({
+    const fn = prisma.charterDraft.findUnique as unknown as {
+      mockResolvedValueOnce: (v: unknown) => void;
+    };
+    // First call (ownership check)
+    fn.mockResolvedValueOnce({
+      id: "draft-1",
+      userId: "user-1",
+      status: "DRAFT",
+      version: 5,
+      currentStep: 1,
+      data: {},
+    });
+    // Second call (inside patchDraft)
+    fn.mockResolvedValueOnce({
       id: "draft-1",
       userId: "user-1",
       status: "DRAFT",

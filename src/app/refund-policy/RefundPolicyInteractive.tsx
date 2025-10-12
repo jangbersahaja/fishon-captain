@@ -58,24 +58,11 @@ const sections: SectionDef[] = [
             voucher at our discretion.
           </span>
         </div>
+
         <div>
           <h3 className="text-sm font-semibold tracking-wide text-slate-700 flex items-center gap-2">
             <span className="rounded bg-slate-900/5 px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ring-slate-200">
               2.2
-            </span>
-            <span>Last-Minute Emergencies</span>
-          </h3>
-          <p className="mt-2 text-sm leading-relaxed text-slate-700">
-            If cancellation is due to serious illness, accident, or other
-            emergency, customers may submit proof (medical certificate, police
-            report, etc.). Fishon will review such cases individually and may
-            issue a partial refund or credit voucher at our discretion.
-          </p>
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold tracking-wide text-slate-700 flex items-center gap-2">
-            <span className="rounded bg-slate-900/5 px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ring-slate-200">
-              2.3
             </span>
             <span>No-Show Policy</span>
           </h3>
@@ -121,20 +108,11 @@ const sections: SectionDef[] = [
             <span>Weather & Safety Cancellations</span>
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-slate-700">
-            Trips cancelled due to bad weather, unsafe sea conditions, or force
-            majeure (e.g., storms, government restrictions, natural disasters)
-            will be treated as follows:
+            No refund will be given if any of the trips are cancelled due to bad
+            weather, unsafe sea conditions, except force majeure (e.g., storms,
+            government restrictions, natural disasters).
           </p>
-          <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
-            <li>
-              Customers may choose to reschedule the trip (subject to
-              availability), or
-            </li>
-            <li>
-              Request a full refund of the trip amount (excluding optional
-              add-ons already used or consumed).
-            </li>
-          </ul>
+
           <p className="mt-2 text-sm text-slate-600">
             Operators are responsible for informing customers and Fishon as
             early as possible if such cancellations are necessary.
@@ -151,7 +129,7 @@ const sections: SectionDef[] = [
         <ul className="list-disc pl-5 space-y-1 text-sm">
           <li>Refunds will be processed using the original payment method.</li>
           <li>
-            Please allow 5–10 working days for the refund to appear in your
+            Please allow within 14 working days for the refund to appear in your
             account (depending on your bank or payment provider).
           </li>
           <li>
@@ -174,11 +152,11 @@ const sections: SectionDef[] = [
         </p>
         <ul className="list-disc pl-5 space-y-1 text-sm">
           <li>
-            Requests made at least 72 hours before the trip are typically
-            allowed without penalty.
+            Requests made at least 7 days before the trip are typically allowed
+            without penalty.
           </li>
           <li>
-            Changes made less than 72 hours before the trip depend on the
+            Changes made less than 7 days before the trip depend on the
             operator’s availability and discretion.
           </li>
           <li>
@@ -284,17 +262,6 @@ const sections: SectionDef[] = [
             className="underline decoration-slate-300 hover:decoration-slate-500"
           >
             support@fishon.my
-          </a>
-        </p>
-        <p>
-          Website:{" "}
-          <a
-            href="https://www.fishon.my"
-            target="_blank"
-            rel="noreferrer"
-            className="underline decoration-slate-300 hover:decoration-slate-500"
-          >
-            https://www.fishon.my
           </a>
         </p>
       </div>

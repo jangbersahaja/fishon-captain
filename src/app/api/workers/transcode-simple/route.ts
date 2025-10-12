@@ -9,9 +9,8 @@ type TranscodePayload = {
   originalKey: string;
   originalUrl: string;
   filename: string;
-  pendingMediaId?: string;
-  charterId?: string; // optional now
-  userId?: string; // may be derived from pending record or charter
+  charterId?: string;
+  userId?: string;
   metadata?: { durationSeconds?: number; width?: number; height?: number };
 };
 
@@ -23,6 +22,58 @@ const PLACEHOLDER_THUMB_PNG_BASE64 =
 async function generatePlaceholderThumbnailBuffer(): Promise<ArrayBuffer> {
   return Buffer.from(PLACEHOLDER_THUMB_PNG_BASE64, "base64").buffer;
 }
+
+/**
+ * POST /api/workers/transcode-simple
+ *
+ * Internal video processing worker - performs actual transcoding work.
+ * Used as fallback when EXTERNAL_WORKER_URL is not configured (dev/local).
+ *
+ * ⚠️ Currently implements pass-through processing (no actual compression)
+ * TODO: Add FFmpeg integration for real video transcoding
+ *
+ * @auth None required (called internally by /api/workers/transcode)
+ * @timeout 300 seconds (5 minutes)
+ *
+ * @body {object} TranscodePayload
+ * @body.originalKey {string} Blob storage key for original video
+ * @body.originalUrl {string} Public URL to download original video
+ * @body.filename {string} Original filename for naming outputs
+ * @body.userId {string} [Optional] User ID for captain-scoped paths
+ * @body.charterId {string} [Optional] Charter ID (used to derive userId if missing)
+ * @body.metadata {object} [Optional] Video metadata (duration, dimensions)
+ *
+ * @returns {object} Processing result
+ * @returns.ok {boolean} Always true if successful
+ * @returns.finalUrl {string} Public URL of processed video
+ * @returns.finalKey {string} Blob storage key of processed video
+ * @returns.thumbnailUrl {string|null} Thumbnail URL (placeholder PNG)
+ *
+ * @throws {400} Missing required fields (originalKey, originalUrl, filename)
+ * @throws {500} Download, processing, or upload failed
+ *
+ * Processing steps:
+ * 1. Download original video from originalUrl
+ * 2. Process video (currently pass-through, generates placeholder thumbnail)
+ * 3. Upload processed video to captain-scoped path: captains/{userId}/media/{filename}
+ * 4. Upload thumbnail to: captains/{userId}/thumbnails/{filename}.png
+ * 5. Delete original blob from temp location
+ * 6. Return URLs for processed assets
+ *
+ * Storage paths:
+ * - Processed video: `captains/{userId}/media/{basename}-{uniqueSuffix}{ext}`
+ * - Thumbnail: `captains/{userId}/thumbnails/{basename}.png`
+ * - Fallback (no userId): `captains/unknown/media/{basename}-{uniqueSuffix}{ext}`
+ *
+ * Note: This worker does NOT update database records. The calling pipeline
+ * (blob upload or CaptainVideo) is responsible for CharterMedia/CaptainVideo updates.
+ *
+ * @see /api/workers/transcode - QStash callback that calls this worker
+ * @see /api/jobs/transcode - Queue entry point
+ *
+ * Environment:
+ * - BLOB_READ_WRITE_TOKEN: Required for blob operations
+ */
 
 // Simple video "processing": currently pass-through + guaranteed placeholder thumbnail
 async function processVideo(videoBuffer: ArrayBuffer): Promise<{
@@ -52,7 +103,6 @@ export async function POST(req: Request) {
     timestamp: new Date().toISOString(),
   });
   // Keep outer references so we can mark FAILED on any thrown error
-  let pendingMediaIdRef: string | undefined;
   let originalKeyRef: string | undefined;
   const fail = async (reason: string, extra?: Record<string, unknown>) => {
     const detail = extra?.error
@@ -63,23 +113,7 @@ export async function POST(req: Request) {
       detail,
       ...extra,
     });
-    if (pendingMediaIdRef) {
-      try {
-        await prisma.pendingMedia.update({
-          where: { id: pendingMediaIdRef },
-          data: { status: "FAILED", error: detail },
-        });
-        console.log("❌ TRANSCODE-SIMPLE: Marked pending media FAILED", {
-          pendingMediaId: pendingMediaIdRef,
-          error: detail,
-        });
-      } catch (e) {
-        console.error(
-          "⚠️  TRANSCODE-SIMPLE: Could not mark pending media FAILED",
-          e
-        );
-      }
-    }
+    // Error logging only - no database updates in this worker
   };
 
   try {
@@ -93,69 +127,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const { originalKey, originalUrl, filename, pendingMediaId, metadata } =
-      body;
-    let { userId, charterId } = body;
-    pendingMediaIdRef = pendingMediaId;
+    const { originalKey, originalUrl, filename, charterId } = body;
+    let userId = body.userId;
     originalKeyRef = originalKey;
 
     console.log("📋 TRANSCODE-SIMPLE: Processing request", {
       originalKey,
       filename,
-      pendingMediaId,
       userId,
       charterId,
     });
-
-    // Load pending media if id provided and transition status
-    let pending: {
-      id: string;
-      userId: string;
-      charterId: string | null;
-      status: string;
-    } | null = null;
-    if (pendingMediaId) {
-      pending = await prisma.pendingMedia.findUnique({
-        where: { id: pendingMediaId },
-      });
-      console.log("📄 TRANSCODE-SIMPLE: Found pending record", {
-        pending: pending ? { id: pending.id, status: pending.status } : null,
-      });
-
-      if (!pending) {
-        console.log("❌ TRANSCODE-SIMPLE: Pending record not found", {
-          pendingMediaId,
-        });
-        return NextResponse.json(
-          { error: "pending_not_found" },
-          { status: 404 }
-        );
-      }
-      if (pending.status === "READY") {
-        console.log("⏭️  TRANSCODE-SIMPLE: Already processed, skipping", {
-          pendingMediaId,
-        });
-        return NextResponse.json({ ok: true, skipped: true });
-      }
-      // Derive userId / charterId if missing
-      if (!userId) userId = pending.userId;
-      if (!charterId && pending.charterId) charterId = pending.charterId;
-      try {
-        await prisma.pendingMedia.update({
-          where: { id: pendingMediaId },
-          data: { status: "TRANSCODING" },
-        });
-        console.log("🔄 TRANSCODE-SIMPLE: Updated status to TRANSCODING", {
-          pendingMediaId,
-        });
-      } catch (e) {
-        console.log(
-          "⚠️  TRANSCODE-SIMPLE: Failed to update status to TRANSCODING",
-          { pendingMediaId, error: e }
-        );
-        /* ignore race */
-      }
-    }
 
     console.log("⬇️  TRANSCODE-SIMPLE: Downloading video from:", originalUrl);
 
@@ -225,11 +206,7 @@ export async function POST(req: Request) {
     const ext = filename.includes(".")
       ? filename.slice(filename.lastIndexOf("."))
       : ".mp4";
-    const uniqueSuffix = (
-      pendingMediaIdRef ||
-      originalKeyRef ||
-      Date.now().toString(36)
-    )
+    const uniqueSuffix = (originalKeyRef || Date.now().toString(36))
       .toString()
       .slice(-10);
     let finalKey = userId
@@ -333,112 +310,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Update pending media first
-    if (pendingMediaId) {
-      try {
-        console.log("🔄 TRANSCODE-SIMPLE: Updating pending media record", {
-          pendingMediaId,
-          finalKey,
-          finalUrl,
-          thumbnailKey,
-          thumbnailUrl,
-        });
-        await prisma.pendingMedia.update({
-          where: { id: pendingMediaId },
-          data: {
-            finalKey,
-            finalUrl,
-            thumbnailKey: thumbnailKey || undefined,
-            thumbnailUrl: thumbnailUrl || undefined,
-            durationSeconds: metadata?.durationSeconds,
-            width: metadata?.width,
-            height: metadata?.height,
-            status: "READY",
-            error: null,
-          },
-        });
-        console.log("✅ TRANSCODE-SIMPLE: Updated pending media to READY");
-      } catch (e) {
-        await fail("pending_update_failed", {
-          error: e instanceof Error ? e.message : String(e),
-        });
-        return NextResponse.json(
-          { error: "pending_update_failed" },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Attach to charter if we have charterId and not yet consumed
-    if (charterId && pendingMediaId) {
-      try {
-        console.log(
-          "🔗 TRANSCODE-SIMPLE: Checking if should attach to charter",
-          {
-            charterId,
-            pendingMediaId,
-          }
-        );
-        const updatedPending = await prisma.pendingMedia.findUnique({
-          where: { id: pendingMediaId },
-          select: { charterMediaId: true },
-        });
-        console.log("📄 TRANSCODE-SIMPLE: Pending record check", {
-          updatedPending,
-        });
-        if (updatedPending && !updatedPending.charterMediaId) {
-          console.log("✅ TRANSCODE-SIMPLE: Creating charter media record");
-          let nextOrder = 0;
-          try {
-            const max = await prisma.charterMedia.aggregate({
-              where: { charterId },
-              _max: { sortOrder: true },
-            });
-            nextOrder = (max._max.sortOrder ?? -1) + 1;
-          } catch (e) {
-            console.warn(
-              "transcode-simple: failed computing next sortOrder, defaulting 0",
-              e
-            );
-          }
-          const cm = await prisma.charterMedia.create({
-            data: {
-              charterId,
-              kind: "CHARTER_VIDEO",
-              url: finalUrl,
-              storageKey: finalKey,
-              sortOrder: nextOrder,
-              thumbnailUrl: thumbnailUrl || undefined,
-              durationSeconds: metadata?.durationSeconds,
-              width: metadata?.width,
-              height: metadata?.height,
-              pendingMediaId: pendingMediaId,
-            },
-            select: { id: true },
-          });
-          console.log("🔗 TRANSCODE-SIMPLE: Created charter media", {
-            charterMediaId: cm.id,
-          });
-          await prisma.pendingMedia.update({
-            where: { id: pendingMediaId },
-            data: { consumedAt: new Date(), charterMediaId: cm.id },
-          });
-          console.log("✅ TRANSCODE-SIMPLE: Linked pending media to charter");
-        } else {
-          console.log("⚠️  TRANSCODE-SIMPLE: Skipping charter attachment", {
-            hasUpdatedPending: !!updatedPending,
-            alreadyHasCharterMedia: updatedPending?.charterMediaId,
-          });
-        }
-      } catch (e) {
-        console.error("❌ TRANSCODE-SIMPLE: Failed to attach charter media", e);
-      }
-    } else {
-      console.log("⏭️  TRANSCODE-SIMPLE: Skipping charter attachment", {
-        hasCharterId: !!charterId,
-        hasPendingMediaId: !!pendingMediaId,
-      });
-    }
+    // Charter media creation and attachment should be handled by CaptainVideo pipeline; no pendingMedia logic remains
 
     // Clean up original file
     try {
@@ -455,6 +327,9 @@ export async function POST(req: Request) {
         error
       );
     }
+
+    // Note: Blob URL association with CharterMedia/CaptainVideo is handled by the calling pipeline
+    // This worker only processes and uploads; the caller is responsible for database updates
 
     const duration = Date.now() - startTime;
     console.log("🎉 TRANSCODE-SIMPLE: Completed successfully", {

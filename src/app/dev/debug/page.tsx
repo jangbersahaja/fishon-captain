@@ -1,8 +1,8 @@
 import authOptions from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+// import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import DebugPanel from "./DebugPanel";
+// import DebugPanel from "./DebugPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -29,41 +29,8 @@ export default async function DevDebugPage() {
     );
   }
 
-  // Get recent pending media for debugging - fetch with separate queries since no direct relations
-  const recentPending = await prisma.pendingMedia.findMany({
-    take: 20,
-    orderBy: { createdAt: "desc" },
-    include: {
-      charterMedia: true, // This is the actual relation
-    },
-  });
-
-  // Get user and charter info for each record
-  const enrichedPending = await Promise.all(
-    recentPending.map(async (record) => {
-      const [user, charter] = await Promise.all([
-        prisma.user.findUnique({
-          where: { id: record.userId },
-          select: { firstName: true, lastName: true, email: true },
-        }),
-        record.charterId
-          ? prisma.charter.findUnique({
-              where: { id: record.charterId },
-              select: { name: true },
-            })
-          : null,
-      ]);
-
-      return {
-        ...record,
-        createdAt: record.createdAt.toISOString(),
-        user: user || { firstName: null, lastName: null, email: "unknown" },
-        updatedAt: record.updatedAt.toISOString(),
-        consumedAt: record.consumedAt ? record.consumedAt.toISOString() : null,
-        charter: charter,
-      };
-    })
-  );
+  // Deprecated: PendingMedia debug removed
+  // const enrichedPending: unknown[] = [];
 
   // Get environment info
   const envInfo = {
@@ -90,7 +57,9 @@ export default async function DevDebugPage() {
         </p>
       </div>
 
-      <DebugPanel recentPending={enrichedPending} envInfo={envInfo} />
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+        PendingMedia debug has been removed. Use the CaptainVideo tools instead.
+      </div>
     </div>
   );
 }

@@ -142,9 +142,7 @@ model CharterMedia {
   createdAt       DateTime      @default(now())
   thumbnailUrl    String?       @map("thumbnail_url")
   durationSeconds Int?          @map("duration_seconds")
-  pendingMediaId  String?       @unique
   charter         Charter       @relation(fields: [charterId], references: [id])
-  pendingMedia    PendingMedia? @relation("PendingToCharter", fields: [pendingMediaId], references: [id])
   trip            Trip?         @relation(fields: [tripId], references: [id])
 }
 
@@ -242,35 +240,6 @@ model TripTechnique {
   trip   Trip   @relation(fields: [tripId], references: [id])
 }
 
-model PendingMedia {
-  id              String             @id @default(cuid())
-  userId          String
-  charterId       String?
-  kind            String
-  originalKey     String
-  originalUrl     String
-  finalKey        String?
-  finalUrl        String?
-  thumbnailKey    String?
-  thumbnailUrl    String?
-  status          PendingMediaStatus
-  sizeBytes       Int?
-  mimeType        String?
-  width           Int?
-  height          Int?
-  durationSeconds Int?
-  error           String?
-  correlationId   String?
-  consumedAt      DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  charterMediaId  String?            @unique
-  charterMedia    CharterMedia?      @relation("PendingToCharter")
-
-  @@index([userId, status])
-  @@index([charterId])
-  @@index([createdAt])
-}
 
 model CaptainVerification {
   id               String             @id @default(cuid())
@@ -372,12 +341,6 @@ enum MediaKind {
   TRIP_MEDIA
 }
 
-enum PendingMediaStatus {
-  QUEUED
-  TRANSCODING
-  READY
-  FAILED
-}
 
 enum Role {
   CAPTAIN

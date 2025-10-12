@@ -1,7 +1,7 @@
 "use client";
 /**
- * Simplified Charter media manager using PendingMedia staging.
- * Legacy progress/reorder/remove logic replaced with no-op stubs to keep API surface stable.
+ * Charter media manager (photos + videos) aligned to CaptainVideo-only pipeline.
+ * Legacy PendingMedia staging and video-upload logic removed; videos are handled by EnhancedVideoUploader.
  */
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import { isFormDebug } from "@features/charter-onboarding/debug";
@@ -15,7 +15,6 @@ import {
 } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useMediaPreviews } from "./useMediaPreviews";
-import { usePendingMediaPoll } from "./usePendingMediaPoll";
 import { useVideoThumbnails } from "./useVideoThumbnails";
 
 export interface UseCharterMediaManagerArgs {
@@ -36,15 +35,8 @@ export interface UseCharterMediaManagerResult {
     url: string;
     thumbnailUrl?: string;
     durationSeconds?: number;
-    /**
-     * queued: upload done, waiting for worker to start
-     * transcoding: worker actively processing
-     * processing: legacy alias retained (maps to queued or transcoding visually)
-     * ready: final asset prepared
-     * failed: terminal error (worker failed)
-     */
-    status?: "queued" | "transcoding" | "processing" | "ready" | "failed";
-    pendingId?: string;
+    // Status fields from legacy PendingMedia removed; Enhanced flow updates
+    // via VideoManager. Keep only thumbnail/duration for display.
   }>;
   setExistingImages: React.Dispatch<
     React.SetStateAction<Array<{ name: string; url: string }>>
@@ -56,8 +48,7 @@ export interface UseCharterMediaManagerResult {
         url: string;
         thumbnailUrl?: string;
         durationSeconds?: number;
-        status?: "queued" | "transcoding" | "processing" | "ready" | "failed";
-        pendingId?: string;
+        // No legacy status/pendingId in new flow
       }>
     >
   >;
@@ -114,8 +105,7 @@ export function useCharterMediaManager({
       pendingId?: string;
     }>
   >([]);
-  const [pendingImageIds, setPendingImageIds] = useState<string[]>([]);
-  const [pendingVideoIds, setPendingVideoIds] = useState<string[]>([]);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [deleteKeys, setDeleteKeys] = useState<Set<string>>(new Set());
   const processedDeleteKeysRef = useRef<Set<string>>(new Set());
 
@@ -157,15 +147,7 @@ export function useCharterMediaManager({
         );
     });
   }, [currentCharterId, deleteKeys, dlog]);
-  const pendingAllIds = useMemo(
-    () => [...pendingImageIds, ...pendingVideoIds],
-    [pendingImageIds, pendingVideoIds]
-  );
-
-  const { items: pendingItems } = usePendingMediaPoll({
-    ids: pendingAllIds,
-    enabled: pendingAllIds.length > 0,
-  });
+  // PendingMedia removed: no polling
 
   // Previews
   const photoPreviews = useMediaPreviews(existingImages);
@@ -180,7 +162,6 @@ export function useCharterMediaManager({
           thumbnailUrl:
             match?.thumbnailUrl || getThumbnailUrl(v.url) || undefined,
           durationSeconds: match?.durationSeconds,
-          processing: match?.status === "processing",
         };
       }),
     [videoPreviewBase, existingVideos, getThumbnailUrl]
@@ -274,21 +255,14 @@ export function useCharterMediaManager({
   }, [existingVideos, setValue]);
 
   const combinedPhotoCount = existingImages.length; // photos only
-  // Videos that are still transcoding (have pendingId but status !== "ready")
-  const transcodingVideoCount = existingVideos.filter(
-    (v) =>
-      (v.status === "processing" ||
-        v.status === "queued" ||
-        v.status === "transcoding") &&
-      v.pendingId
-  ).length;
+  // Videos handled by EnhancedVideoUploader; this hook no longer tracks transcoding
 
   // Block submission if:
   // 1. Images are still uploading (fast process)
   // 2. Videos are still transcoding AND we want to enforce waiting
-  const isMediaUploading = pendingImageIds.length > 0;
-  const isVideoTranscoding = transcodingVideoCount > 0;
-  const hasBlockingMedia = transcodingVideoCount > 0; // simple gate: any non-ready video blocks
+  const isMediaUploading = isUploadingPhotos;
+  const isVideoTranscoding = false;
+  const hasBlockingMedia = false; // Enhanced flow handles queue status separately
 
   // Debounced server-side persistence of ordering (fires on any structural change)
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -356,7 +330,7 @@ export function useCharterMediaManager({
   // Video will be attached once transcoding completes
   const canSubmitMedia = isEditing ? true : combinedPhotoCount >= 3;
 
-  // New split endpoints: /api/media/photo and /api/media/video
+  // New split endpoints: /api/media/photo
   const uploadPhoto = useCallback(
     async (file: File, charterId: string | null) => {
       dlog("photo_upload_start", {
@@ -383,32 +357,7 @@ export function useCharterMediaManager({
     [dlog]
   );
 
-  const uploadVideo = useCallback(
-    async (file: File, charterId: string | null) => {
-      dlog("video_upload_start", {
-        name: file.name,
-        size: file.size,
-        charterId,
-      });
-      const fd = new FormData();
-      fd.set("file", file);
-      if (charterId) fd.set("charterId", charterId);
-      const res = await fetch("/api/media/video", { method: "POST", body: fd });
-      if (!res.ok) throw new Error("video_upload_failed");
-      const json = (await res.json()) as {
-        pendingMediaId: string;
-        status: string;
-        previewUrl: string;
-      };
-      dlog("video_upload_enqueued", {
-        pendingMediaId: json.pendingMediaId,
-        status: json.status,
-        previewUrl: json.previewUrl,
-      });
-      return json;
-    },
-    [dlog]
-  );
+  // Video uploads are handled by EnhancedVideoUploader; this hook does not upload videos directly anymore.
 
   const addPhotoFiles = useCallback(
     async (files: File[]) => {
@@ -426,6 +375,7 @@ export function useCharterMediaManager({
         return;
       }
       try {
+        setIsUploadingPhotos(true);
         const { resizeImageFile } = await import("@/utils/resizeImage");
         dlog("photo_batch_start", { count: files.length });
         const processed = await Promise.all(
@@ -460,310 +410,23 @@ export function useCharterMediaManager({
       } catch (e) {
         console.error("photo resize failed", e);
         dlog("photo_batch_resize_failed", { message: (e as Error).message });
+      } finally {
+        setIsUploadingPhotos(false);
       }
     },
     [uploadPhoto, currentCharterId, isEditing, dlog]
   );
 
   const addVideoFiles = useCallback(
-    async (files: File[]) => {
-      if (!files.length) return;
-      if (isEditing && !currentCharterId) {
-        console.warn(
-          "[mediaManager] Blocking video upload until charterId loads",
-          {
-            isEditing,
-            currentCharterId,
-            fileCount: files.length,
-          }
-        );
-        return;
-      }
-      const allowed = files.filter((f) => f.type.startsWith("video/"));
-      const remainingSlots = 3 - existingVideos.length - pendingVideoIds.length;
-      const picked = allowed.slice(0, Math.max(0, remainingSlots));
-
-      // Helper to capture first frame (at ~1s or earliest) into data URL
-      const captureFirstFrame = (file: File): Promise<string | null> => {
-        return new Promise((resolve) => {
-          try {
-            const videoEl = document.createElement("video");
-            videoEl.preload = "metadata";
-            videoEl.muted = true;
-            videoEl.playsInline = true;
-            const revoke = () => {
-              try {
-                URL.revokeObjectURL(videoEl.src);
-              } catch {}
-            };
-            videoEl.onloadeddata = async () => {
-              try {
-                const targetTime =
-                  videoEl.duration && videoEl.duration > 1 ? 1 : 0.1;
-                const seekHandler = () => {
-                  try {
-                    const canvas = document.createElement("canvas");
-                    canvas.width = videoEl.videoWidth || 320;
-                    canvas.height = videoEl.videoHeight || 180;
-                    const ctx = canvas.getContext("2d");
-                    if (!ctx) {
-                      revoke();
-                      resolve(null);
-                      return;
-                    }
-                    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-                    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-                    revoke();
-                    resolve(dataUrl);
-                  } catch {
-                    revoke();
-                    resolve(null);
-                  }
-                };
-                if (Math.abs(videoEl.currentTime - targetTime) < 0.05) {
-                  seekHandler();
-                } else {
-                  videoEl.onseeked = seekHandler;
-                  try {
-                    videoEl.currentTime = targetTime;
-                  } catch {
-                    seekHandler();
-                  }
-                }
-              } catch {
-                revoke();
-                resolve(null);
-              }
-            };
-            videoEl.onerror = () => {
-              revoke();
-              resolve(null);
-            };
-            videoEl.src = URL.createObjectURL(file);
-          } catch {
-            resolve(null);
-          }
-        });
-      };
-
-      for (const f of picked) {
-        let tempId: string | null = null;
-        let objectUrl: string | null = null;
-        try {
-          tempId = `temp-video-${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2, 9)}`;
-          objectUrl = URL.createObjectURL(f);
-          // Start client-side frame capture without blocking upload
-          const framePromise = captureFirstFrame(f);
-          if (tempId && objectUrl) {
-            const placeholderName = tempId;
-            const placeholderUrl = objectUrl;
-            setExistingVideos((prev) => [
-              ...prev,
-              {
-                name: placeholderName,
-                url: placeholderUrl,
-                status: "queued", // initial local placeholder state
-                pendingId: undefined,
-              },
-            ]);
-            dlog("video_placeholder_added", { tempId, size: f.size });
-          }
-
-          const resp = await uploadVideo(f, currentCharterId);
-          // Apply captured frame (if succeeded) to placeholder before promoting
-          framePromise
-            .then((thumb) => {
-              if (!thumb) return;
-              setExistingVideos((prev) => {
-                const idx = prev.findIndex((v) => v.name === tempId);
-                if (idx === -1) return prev;
-                const next = [...prev];
-                next[idx] = { ...next[idx], thumbnailUrl: thumb };
-                return next;
-              });
-            })
-            .catch(() => {});
-          setExistingVideos((prev) => {
-            if (!tempId) return prev;
-            const idx = prev.findIndex((v) => v.name === tempId);
-            if (idx === -1) return prev;
-            const next = [...prev];
-            const before = next[idx];
-            next[idx] = {
-              name: resp.pendingMediaId,
-              url: resp.previewUrl,
-              status: resp.status === "READY" ? "ready" : "queued",
-              pendingId: resp.pendingMediaId,
-              // carry over any captured client-side frame thumbnail
-              thumbnailUrl:
-                before && typeof before === "object"
-                  ? before.thumbnailUrl
-                  : undefined,
-            };
-            try {
-              if (objectUrl) URL.revokeObjectURL(objectUrl);
-            } catch {}
-            if (before.pendingId !== resp.pendingMediaId) {
-              dlog("video_pending_created", {
-                tempId,
-                pendingMediaId: resp.pendingMediaId,
-                status: resp.status,
-              });
-            }
-            return next;
-          });
-          setPendingVideoIds((prev) => [...prev, resp.pendingMediaId]);
-        } catch (e) {
-          console.error("video pending upload failed", e);
-          dlog("video_upload_error", { tempId, message: (e as Error).message });
-          if (tempId) {
-            setExistingVideos((prev) => prev.filter((v) => v.name !== tempId));
-          }
-          try {
-            if (objectUrl) URL.revokeObjectURL(objectUrl);
-          } catch {}
-        }
-      }
+    async (_files: File[]) => {
+      // Deprecated in favor of EnhancedVideoUploader; no-op here
+      void _files?.length; // mark used to satisfy no-unused-vars
+      dlog("video_add_ignored_use_enhanced_uploader");
     },
-    [
-      uploadVideo,
-      currentCharterId,
-      existingVideos.length,
-      pendingVideoIds.length,
-      isEditing,
-      dlog,
-    ]
+    [dlog]
   );
 
-  // Promote READY items
-  useEffect(() => {
-    if (!pendingItems.length) return;
-    const readyImages = pendingItems.filter(
-      (p) => p.kind === "IMAGE" && p.status === "READY"
-    );
-    if (readyImages.length) {
-      setExistingImages((prev) => {
-        let next = [...prev];
-        for (const r of readyImages) {
-          if (!r.finalKey || !r.finalUrl) continue;
-          if (!next.some((e) => e.name === r.finalKey)) {
-            next = [...next, { name: r.finalKey, url: r.finalUrl }];
-          }
-        }
-        return next;
-      });
-      setPendingImageIds((ids) =>
-        ids.filter((id) => !readyImages.some((r) => r.id === id))
-      );
-    }
-
-    const readyVideos = pendingItems.filter(
-      (p) => p.kind === "VIDEO" && p.status === "READY"
-    );
-    const readyVideosWithFinal = readyVideos.filter(
-      (r): r is typeof r & { finalKey: string; finalUrl: string } =>
-        Boolean(r.finalKey && r.finalUrl)
-    );
-    if (readyVideosWithFinal.length) {
-      dlog("video_ready_promote", { count: readyVideosWithFinal.length });
-      setExistingVideos((prev) => {
-        const map = new Map(prev.map((v) => [v.name, v] as const));
-        let changed = false;
-        for (const r of readyVideosWithFinal) {
-          const key = r.finalKey;
-          if (!key) continue;
-          const current = map.get(key);
-          const replacement = {
-            name: key,
-            url: r.finalUrl,
-            thumbnailUrl: r.thumbnailUrl || current?.thumbnailUrl,
-            durationSeconds: r.durationSeconds || current?.durationSeconds,
-            status: "ready" as const,
-            pendingId: undefined,
-          };
-          if (!current) {
-            map.set(key, replacement);
-            changed = true;
-          } else {
-            // Replace only if URL differs (avoid duplicate entry)
-            if (current.url !== replacement.url || current.status !== "ready") {
-              map.set(key, replacement);
-              changed = true;
-            }
-          }
-        }
-        return changed ? Array.from(map.values()) : prev;
-      });
-      setPendingVideoIds((ids) =>
-        ids.filter((id) => !readyVideosWithFinal.some((r) => r.id === id))
-      );
-    }
-  }, [pendingItems, dlog]);
-
-  // Update intermediate video statuses (QUEUED / TRANSCODING) for better UX.
-  useEffect(() => {
-    if (!pendingItems.length) return;
-    setExistingVideos((prev) => {
-      let changed = false;
-      const map = new Map(prev.map((v) => [v.pendingId, v] as const));
-      for (const p of pendingItems) {
-        if (p.kind !== "VIDEO") continue;
-        const existing = Array.from(map.values()).find(
-          (v) =>
-            v.pendingId === p.id || v.name === p.id || v.name === p.finalKey
-        );
-        if (!existing) continue;
-        const desiredStatus =
-          p.status === "FAILED"
-            ? "failed"
-            : p.status === "TRANSCODING"
-            ? "transcoding"
-            : p.status === "QUEUED"
-            ? "queued"
-            : existing.status;
-        if (desiredStatus && existing.status !== desiredStatus) {
-          dlog("video_status_update", {
-            pendingId: p.id,
-            from: existing.status,
-            to: desiredStatus,
-          });
-          existing.status = desiredStatus;
-          changed = true;
-        }
-        // Opportunistically update thumbnail if worker has produced one early
-        if (p.thumbnailUrl && !existing.thumbnailUrl) {
-          existing.thumbnailUrl = p.thumbnailUrl;
-          changed = true;
-        }
-      }
-      return changed ? [...map.values()] : prev;
-    });
-  }, [pendingItems, dlog]);
-
-  // Cleanup: ensure we don't retain processing/queued placeholders once their pending ID is cleared.
-  useEffect(() => {
-    if (pendingVideoIds.length === 0) {
-      setExistingVideos((prev) =>
-        prev.filter(
-          (item) =>
-            item.status !== "processing" &&
-            item.status !== "queued" &&
-            item.status !== "transcoding"
-        )
-      );
-      return;
-    }
-    const pendingSet = new Set(pendingVideoIds);
-    setExistingVideos((prev) =>
-      prev.filter((item) => {
-        if (item.status === "ready") return true;
-        if (!item.pendingId) return true;
-        return pendingSet.has(item.pendingId);
-      })
-    );
-  }, [pendingVideoIds]);
+  // Cleanup no longer needed in new flow
 
   const handleAvatarChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -859,7 +522,7 @@ export function useCharterMediaManager({
           | ((typeof prev)[number] & { storageKey?: string })
           | undefined;
         const key = target?.storageKey || target?.name;
-        if (key && currentCharterId && target?.status === "ready") {
+        if (key && currentCharterId) {
           setDeleteKeys((s) => new Set(s).add(key));
           fetch(`/api/charters/${currentCharterId}/media/remove`, {
             method: "POST",
@@ -867,21 +530,6 @@ export function useCharterMediaManager({
             body: JSON.stringify({ storageKey: key }),
           }).catch((e) =>
             console.warn("[mediaManager] video_remove_api_failed", e)
-          );
-        }
-        // If still pending (queued/transcoding) attempt pending removal via pendingId
-        if (
-          target &&
-          currentCharterId &&
-          target.pendingId &&
-          target.status !== "ready"
-        ) {
-          fetch(`/api/charters/${currentCharterId}/media/remove`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pendingId: target.pendingId }),
-          }).catch((e) =>
-            console.warn("[mediaManager] video_pending_remove_api_failed", e)
           );
         }
         return prev.filter((_, i) => i !== index);

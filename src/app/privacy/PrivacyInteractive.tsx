@@ -275,17 +275,6 @@ const sections: SectionDef[] = [
             support@fishon.my
           </a>
         </p>
-        <p>
-          Website:{" "}
-          <a
-            href="https://www.fishon.my"
-            target="_blank"
-            rel="noreferrer"
-            className="underline decoration-slate-300 hover:decoration-slate-500"
-          >
-            https://www.fishon.my
-          </a>
-        </p>
       </div>
     ),
   },

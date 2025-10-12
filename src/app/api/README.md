@@ -93,12 +93,35 @@ Phase 2A — Safe deletions ✅ COMPLETE (Oct 12, 2025)
 
 See: `docs/PHASE_2A_CLEANUP_COMPLETE.md` for detailed report
 
-Phase 2B — Worker consolidation (IN PROGRESS)
+Phase 2B — Worker consolidation ✅ COMPLETE (Oct 12, 2025)
 
-- [ ] Review `/api/workers/transcode` and `/api/workers/transcode-simple` usage
-- [ ] Review `/api/jobs/transcode` and `/api/transcode/complete` purpose
-- [ ] Normalize workers/jobs endpoints naming; ensure they're internal-only or behind auth
-- [ ] Consolidate or remove redundant endpoints
+- [x] Review `/api/workers/transcode` and `/api/workers/transcode-simple` usage
+- [x] Review `/api/jobs/transcode` and `/api/transcode/complete` purpose
+- [x] Delete `/api/transcode/complete` (already deprecated, returned 410)
+- [x] Clean up PendingMedia references in worker comments
+- [x] Add comprehensive JSDoc documentation to all worker endpoints
+- [x] Add deprecation warning to `/api/jobs/transcode`
+- [ ] Normalize workers/jobs endpoints naming (blocked - see Phase 2C)
+- [ ] Consolidate or remove redundant endpoints (blocked - see Phase 2C)
+
+**Status**: Legacy workers documented and safe to keep until blob upload migration
+**Blocker**: `/api/blob/upload` still uses `/api/jobs/transcode` (line 172)
+**Next**: Migrate blob upload to use `/api/videos/queue` pipeline
+
+See: `docs/PHASE_2B_WORKER_ANALYSIS.md` for detailed analysis
+
+Phase 2C — Blob upload migration (PLANNED)
+
+- [ ] Update `/api/blob/upload` to use `/api/videos/queue` instead of `/api/jobs/transcode`
+- [ ] Test migration thoroughly with various video formats
+- [ ] Mark `/api/jobs/transcode` as deprecated (return 410)
+- [ ] Monitor for any remaining usage in production logs
+
+Phase 2D — Final cleanup (BLOCKED by 2C)
+
+- [ ] Delete `/api/jobs/transcode` (after blob upload migrated)
+- [ ] Delete `/api/workers/transcode` (replaced by `/api/videos/worker-normalize`)
+- [ ] Delete `/api/workers/transcode-simple` (replaced by external worker)
 
 Phase 3 — Structure & docs
 
