@@ -136,38 +136,99 @@ export async function POST(req: Request) {
     }
 
     if (isVideo && charterId && docType === "charter_media") {
-      // Create or upsert a temporary DB record referencing the original temp key so UI can reflect pending state
+      // Phase 2C: Dual pipeline approach (both legacy + new CaptainVideo pipeline)
+      let nextOrder = 0;
+      let captainVideoId: string | null = null;
+
+      // Calculate next sort order
       try {
+        const max = await prisma.charterMedia.aggregate({
+          where: { charterId },
+          _max: { sortOrder: true },
+        });
+        nextOrder = (max._max.sortOrder ?? -1) + 1;
+      } catch (e) {
+        console.warn(
+          "blob upload temp video: failed computing next sortOrder",
+          e
+        );
+      }
+
+      // 1. Create CharterMedia record (backward compatibility with legacy pipeline)
+      try {
+        await prisma.charterMedia.create({
+          data: {
+            charterId,
+            kind: "CHARTER_VIDEO",
+            url, // original temp URL (will be replaced after transcode)
+            storageKey: key,
+            sortOrder: nextOrder,
+          },
+        });
+      } catch (err) {
+        console.warn(
+          "Temp video record create failed (possible duplicate after sortOrder logic)",
+          err
+        );
+      }
+
+      // 2. Create CaptainVideo record (NEW - Phase 2C)
+      try {
+        const captainVideo = await prisma.captainVideo.create({
+          data: {
+            ownerId: userId,
+            originalUrl: url,
+            blobKey: key,
+            processStatus: "queued",
+          },
+        });
+        captainVideoId = captainVideo.id;
+
+        console.log(
+          `[blob-upload] Created CaptainVideo ${captainVideo.id} for user ${userId}`
+        );
+        counter("captain_video_created").inc();
+
+        // 3. Queue via NEW pipeline (/api/videos/queue)
         try {
-          let nextOrder = 0;
-          try {
-            const max = await prisma.charterMedia.aggregate({
-              where: { charterId },
-              _max: { sortOrder: true },
-            });
-            nextOrder = (max._max.sortOrder ?? -1) + 1;
-          } catch (e) {
-            console.warn(
-              "blob upload temp video: failed computing next sortOrder",
-              e
-            );
-          }
-          await prisma.charterMedia.create({
-            data: {
-              charterId,
-              kind: "CHARTER_VIDEO",
-              url, // original temp URL (will be replaced after transcode)
-              storageKey: key,
-              sortOrder: nextOrder,
-            },
-          });
-        } catch (err) {
-          console.warn(
-            "Temp video record create failed (possible duplicate after sortOrder logic)",
-            err
+          const queueRes = await fetch(
+            `${process.env.NEXT_PUBLIC_SITE_URL}/api/videos/queue`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ videoId: captainVideo.id }),
+            }
           );
+
+          if (queueRes.ok) {
+            console.log(
+              `[blob-upload] Queued CaptainVideo ${captainVideo.id} via new pipeline`
+            );
+            counter("video_upload_new_pipeline_queued").inc();
+          } else {
+            const errorText = await queueRes.text();
+            console.error(
+              `[blob-upload] New pipeline queue failed: ${queueRes.status} ${errorText}`
+            );
+            counter("video_upload_new_pipeline_queue_fail").inc();
+          }
+        } catch (queueErr) {
+          console.error(
+            "[blob-upload] Failed to call /api/videos/queue:",
+            queueErr
+          );
+          counter("video_upload_new_pipeline_queue_fail").inc();
         }
-      } catch {}
+      } catch (captainVideoErr) {
+        console.error(
+          "[blob-upload] Failed to create CaptainVideo record:",
+          captainVideoErr
+        );
+        counter("captain_video_create_fail").inc();
+        // Don't fail the upload - fallback to legacy pipeline only
+      }
+
+      // 4. Queue via LEGACY pipeline (keep for now - Phase 2D will remove)
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/jobs/transcode`, {
           method: "POST",
@@ -178,11 +239,12 @@ export async function POST(req: Request) {
             charterId,
             filename: sanitized,
             userId,
+            captainVideoId, // Pass for correlation/debugging
           }),
         });
         counter("video_transcode_jobs_queued").inc();
       } catch (error) {
-        console.error("Failed to queue transcode job:", error);
+        console.error("Failed to queue legacy transcode job:", error);
         counter("video_transcode_jobs_queue_fail").inc();
         // Don't fail the upload if transcoding queue fails
       }

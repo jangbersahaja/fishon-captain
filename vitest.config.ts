@@ -9,6 +9,7 @@ export default defineConfig({
       "src/features/charter-onboarding/__tests__/**/*.test.{ts,tsx}",
       "src/lib/**/__tests__/**/*.test.{ts,tsx}",
       "src/hooks/**/__tests__/**/*.test.{ts,tsx}",
+      "src/app/api/**/__tests__/**/*.test.{ts,tsx}",
     ],
     environment: "jsdom", // Default to jsdom for most tests
     setupFiles: ["vitest.setup.ts"],

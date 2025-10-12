@@ -110,16 +110,43 @@ Phase 2B — Worker consolidation ✅ COMPLETE (Oct 12, 2025)
 
 See: `docs/PHASE_2B_WORKER_ANALYSIS.md` for detailed analysis
 
-Phase 2C — Blob upload migration (PLANNED)
+Phase 2C-1 — Blob upload migration: Dual pipeline ✅ COMPLETE (Oct 12, 2025)
 
-- [ ] Update `/api/blob/upload` to use `/api/videos/queue` instead of `/api/jobs/transcode`
-- [ ] Test migration thoroughly with various video formats
+- [x] Update `/api/blob/upload` to create CaptainVideo records
+- [x] Call `/api/videos/queue` with videoId (new pipeline)
+- [x] Keep legacy `/api/jobs/transcode` call (backward compatibility)
+- [x] Add comprehensive logging and metrics for monitoring
+- [x] Create migration tests (13 test cases)
+- [ ] Deploy to staging and monitor
+- [ ] Validate both pipelines work correctly in production
+
+**Status**: Dual pipeline implemented - both legacy and new pipelines run
+**Strategy**: Run both pipelines for 2-4 weeks to validate new pipeline reliability
+**Metrics**: Track `captain_video_created`, `video_upload_new_pipeline_queued`, `video_upload_new_pipeline_queue_fail`
+**Rollback**: Simply remove CaptainVideo creation code if issues arise
+
+See: `docs/PHASE_2C_MIGRATION_PLAN.md` for detailed strategy and analysis
+
+Phase 2C-2 — Monitor & validate (IN PROGRESS - 2-4 weeks)
+
+- [ ] Monitor CaptainVideo processStatus transitions (queued → processing → ready)
+- [ ] Compare success rates between legacy and new pipelines
+- [ ] Verify processed video quality matches legacy output
+- [ ] Check for any errors or failures in new pipeline
+- [ ] Validate CharterMedia associations still work
+
+Phase 2C-3 — Feature flag cutover (PLANNED - Future Phase 2D)
+
+- [ ] Add `USE_NEW_VIDEO_PIPELINE` environment variable
+- [ ] Disable legacy pipeline via feature flag
+- [ ] Monitor for 1-2 weeks with new pipeline only
+- [ ] If stable: proceed to Phase 2D cleanup
+
+Phase 2D — Final cleanup (BLOCKED by 2C-2/2C-3)
+
+- [ ] Remove legacy `/api/jobs/transcode` call from `/api/blob/upload`
 - [ ] Mark `/api/jobs/transcode` as deprecated (return 410)
-- [ ] Monitor for any remaining usage in production logs
-
-Phase 2D — Final cleanup (BLOCKED by 2C)
-
-- [ ] Delete `/api/jobs/transcode` (after blob upload migrated)
+- [ ] After 2-4 weeks: Delete `/api/jobs/transcode`
 - [ ] Delete `/api/workers/transcode` (replaced by `/api/videos/worker-normalize`)
 - [ ] Delete `/api/workers/transcode-simple` (replaced by external worker)
 
