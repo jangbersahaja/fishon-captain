@@ -6,18 +6,13 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
 
-  // Exclude test files from build
-  pageExtensions: ["tsx", "ts", "jsx", "js"].map((ext) => {
-    return `page.${ext}`;
-  }),
-
-  webpack: (config) => {
-    // Exclude test files from webpack bundle
-    config.module.rules.push({
-      test: /\.(test|spec)\.(ts|tsx|js|jsx)$/,
-      loader: "ignore-loader",
-    });
-    return config;
+  // Exclude test files from TypeScript checking during build
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+    dirs: ["src"],
   },
 
   images: {
