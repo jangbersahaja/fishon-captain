@@ -5,6 +5,7 @@ import {
   IdCard,
   Image as ImageIcon,
   LayoutDashboard,
+  Shield,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -17,6 +18,7 @@ const links = [
   { href: "/staff/verification", label: "Verification", Icon: IdCard },
   { href: "/staff/charters", label: "Charters", Icon: Anchor },
   { href: "/staff/media", label: "Media", Icon: ImageIcon },
+  { href: "/staff/security", label: "Security", Icon: Shield },
 ];
 
 export default function StaffNav() {

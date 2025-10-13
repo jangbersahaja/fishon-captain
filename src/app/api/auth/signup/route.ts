@@ -1,4 +1,8 @@
+import { createOTP } from "@/lib/auth/otp";
+import { sendVerificationOTP } from "@/lib/email";
+import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimiter";
 import type { Prisma } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -16,33 +20,112 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as SignupBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-  const { email, password, firstName, lastName } = body;
-  if (!email || !password || !firstName || !lastName) {
-    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-  }
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return NextResponse.json(
-      { error: "Email already in use" },
-      { status: 409 }
+    return applySecurityHeaders(
+      NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
     );
   }
-  const passwordHash = await hash(password, 10);
-  const compositeName = `${firstName} ${lastName}`.trim();
+  const { email, password, firstName, lastName } = body;
+
+  // Trim and validate fields
+  const trimmedEmail = email?.trim();
+  const trimmedPassword = password?.trim();
+  const trimmedFirstName = firstName?.trim();
+  const trimmedLastName = lastName?.trim();
+
+  if (
+    !trimmedEmail ||
+    !trimmedPassword ||
+    !trimmedFirstName ||
+    !trimmedLastName
+  ) {
+    return applySecurityHeaders(
+      NextResponse.json(
+        {
+          error:
+            "Missing required fields: email, password, firstName, lastName",
+        },
+        { status: 400 }
+      )
+    );
+  }
+
+  const normalizedEmail = trimmedEmail.toLowerCase();
+
+  // Rate limiting: 3 signup attempts per hour per IP
+  const rateLimitResult = await rateLimit({
+    key: `signup:${normalizedEmail}`,
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+  });
+
+  if (!rateLimitResult.allowed) {
+    return applySecurityHeaders(
+      NextResponse.json(
+        { error: "Too many signup attempts. Please try again later." },
+        { status: 429 }
+      )
+    );
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+  if (existing) {
+    return applySecurityHeaders(
+      NextResponse.json({ error: "Email already in use" }, { status: 409 })
+    );
+  }
+  const passwordHash = await hash(trimmedPassword, 12);
+  const compositeName = `${trimmedFirstName} ${trimmedLastName}`.trim();
   const createData: Prisma.UserCreateInput = {
-    email,
+    email: normalizedEmail,
     passwordHash,
     name: compositeName,
-    firstName: firstName || null,
-    lastName: lastName || null,
+    firstName: trimmedFirstName,
+    lastName: trimmedLastName,
     role: "CAPTAIN", // default
+    // emailVerified is null by default (unverified), set to DateTime after OTP verification
   };
+
+  // Create user with unverified email
   const user = await prisma.user.create({
     data: createData,
-    select: { id: true },
+    select: { id: true, email: true, firstName: true },
   });
-  // Optionally store displayName later once CaptainProfile created; for now displayName captured in draft form.
-  return NextResponse.json({ ok: true, id: user.id });
+
+  // Generate and send OTP
+  const otpResult = await createOTP(user.email, "email_verification");
+  if (!otpResult.success || !otpResult.code) {
+    // Failed to create OTP, but user created - still return success
+    // User can request resend from verification page
+    console.error("[signup] Failed to generate OTP:", otpResult.error);
+    return applySecurityHeaders(
+      NextResponse.json({
+        ok: true,
+        id: user.id,
+        requiresVerification: true,
+        email: user.email,
+      })
+    );
+  }
+
+  // Send verification email
+  const emailSent = await sendVerificationOTP(
+    user.email,
+    user.firstName || "there",
+    otpResult.code
+  );
+
+  if (!emailSent) {
+    console.error("[signup] Failed to send verification email");
+  }
+
+  return applySecurityHeaders(
+    NextResponse.json({
+      ok: true,
+      id: user.id,
+      requiresVerification: true,
+      email: user.email,
+    })
+  );
 }

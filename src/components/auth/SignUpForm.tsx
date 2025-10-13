@@ -1,8 +1,9 @@
 "use client";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { feedbackTokens } from "@/config/designTokens";
+import { validatePassword } from "@/lib/password";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type OAuthProviderInfo = {
   id: string;
@@ -129,7 +130,13 @@ export default function SignUpForm({
   )} for faster verification and secure access.`;
 
   // Validation helpers
-  const isPasswordValid = password.length >= 8;
+  const passwordValidation = useMemo(() => {
+    if (!password)
+      return { valid: true, errors: [], strength: "weak" as const };
+    return validatePassword(password);
+  }, [password]);
+
+  const isPasswordValid = passwordValidation.valid;
   const doPasswordsMatch = password === confirmPassword;
   const canSubmit =
     firstName && lastName && email && isPasswordValid && doPasswordsMatch;
@@ -144,8 +151,9 @@ export default function SignUpForm({
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long");
+    // Validate password strength
+    if (!passwordValidation.valid) {
+      setError(passwordValidation.errors[0]); // Show first error
       return;
     }
 
@@ -162,46 +170,62 @@ export default function SignUpForm({
           displayName: displayName || `${firstName} ${lastName}`.trim(),
         }),
       });
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
         let errorMessage = "Signup failed";
 
         // Provide specific error messages based on status and error content
-        if (res.status === 409 || j.error === "Email already in use") {
+        if (res.status === 409 || data.error === "Email already in use") {
           errorMessage =
             "An account with this email already exists. Please sign in instead.";
+        } else if (res.status === 429) {
+          errorMessage = "Too many signup attempts. Please try again later.";
         } else if (res.status === 400) {
-          if (j.error === "Missing fields") {
+          if (data.error === "Missing fields") {
             errorMessage = "Please fill in all required fields.";
-          } else if (j.error === "Invalid JSON") {
+          } else if (data.error === "Invalid JSON") {
             errorMessage = "Invalid request format. Please try again.";
           } else {
             errorMessage =
-              j.error || "Please check your information and try again.";
+              data.error || "Please check your information and try again.";
           }
         } else if (res.status >= 500) {
           errorMessage = "Server error. Please try again later.";
         } else {
-          errorMessage = j.error || errorMessage;
+          errorMessage = data.error || errorMessage;
         }
 
         throw new Error(errorMessage);
       }
-      // auto-login
-      const csrf = await fetch("/api/auth/csrf").then((r) => r.json());
-      const loginRes = await fetch("/api/auth/callback/credentials?json=true", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          email,
-          password,
-          csrfToken: csrf.csrfToken,
-          callbackUrl: next,
-        }),
-      });
-      const loginJson = await loginRes.json().catch(() => null);
-      setAccountCreated(true);
-      window.location.href = loginJson?.url || next;
+
+      // If email verification is required, redirect to verify-otp page
+      if (data.requiresVerification) {
+        setAccountCreated(true);
+        const verifyUrl = `/verify-otp?email=${encodeURIComponent(
+          data.email || email
+        )}&purpose=email_verification&callbackUrl=${encodeURIComponent(next)}`;
+        window.location.href = verifyUrl;
+      } else {
+        // Fallback: auto-login for legacy flow (shouldn't happen anymore)
+        const csrf = await fetch("/api/auth/csrf").then((r) => r.json());
+        const loginRes = await fetch(
+          "/api/auth/callback/credentials?json=true",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              email,
+              password,
+              csrfToken: csrf.csrfToken,
+              callbackUrl: next,
+            }),
+          }
+        );
+        const loginJson = await loginRes.json().catch(() => null);
+        setAccountCreated(true);
+        window.location.href = loginJson?.url || next;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
@@ -330,17 +354,30 @@ export default function SignUpForm({
           />
           <div className="space-y-1">
             <p className="text-[10px] text-slate-500">
-              Must be at least 8 characters long
+              Must be at least 12 characters long with uppercase, lowercase,
+              number, and special character
             </p>
-            {password && password.length > 0 && password.length < 8 && (
-              <p className="text-[10px] text-red-500">
-                Password is too short ({password.length}/8 characters)
-              </p>
+            {password && !passwordValidation.valid && (
+              <div className="space-y-1">
+                {passwordValidation.errors.map((error, index) => (
+                  <p key={index} className="text-[10px] text-red-500">
+                    {error}
+                  </p>
+                ))}
+              </div>
             )}
-            {password && password.length >= 8 && (
-              <p className="text-[10px] text-green-600">
-                ✓ Password length requirement met
-              </p>
+            {password && passwordValidation.valid && (
+              <div className="space-y-1">
+                <p className="text-[10px] text-green-600">
+                  ✓ Password requirements met
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  Strength:{" "}
+                  <span className="capitalize">
+                    {passwordValidation.strength}
+                  </span>
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -358,7 +395,7 @@ export default function SignUpForm({
           )}
           {confirmPassword &&
             password === confirmPassword &&
-            password.length >= 8 && (
+            passwordValidation.valid && (
               <p className="text-[10px] text-green-600">✓ Passwords match</p>
             )}
         </div>

@@ -286,16 +286,12 @@ export default function SignInForm({
                 <label className="text-xs font-medium text-slate-600">
                   Password
                 </label>
-                <button
-                  type="button"
+                <a
+                  href="/forgot-password"
                   className="text-[10px] text-slate-500 hover:text-[#ec2227] transition-colors"
-                  onClick={() => {
-                    // TODO: Implement forgot password functionality
-                    alert("Forgot password functionality coming soon!");
-                  }}
                 >
                   Forgot password?
-                </button>
+                </a>
               </div>
               <PasswordInput
                 value={password}

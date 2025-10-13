@@ -14,7 +14,9 @@ export type OAuthProviderInfo = {
   configured: boolean;
 };
 
-const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+const googleConfigured = Boolean(
+  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+);
 const facebookConfigured = Boolean(
   env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
 );
@@ -45,7 +47,7 @@ if (googleConfigured) {
     GoogleProvider({
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     })
   );
 }
@@ -55,7 +57,7 @@ if (facebookConfigured) {
     FacebookProvider({
       clientId: env.FACEBOOK_CLIENT_ID!,
       clientSecret: env.FACEBOOK_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     })
   );
 }
@@ -65,7 +67,7 @@ if (appleConfigured) {
     AppleProvider({
       clientId: env.APPLE_CLIENT_ID!,
       clientSecret: env.APPLE_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     })
   );
 }
@@ -81,8 +83,23 @@ providers.push(
       if (!credentials?.email || !credentials.password) return null;
       const user = await prisma.user.findUnique({
         where: { email: credentials.email },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          passwordHash: true,
+          emailVerified: true,
+        },
       });
       if (!user?.passwordHash) return null; // user exists but only via OAuth
+
+      // Check if email is verified
+      if (!user.emailVerified) {
+        throw new Error(
+          "Email not verified. Please check your email for the verification code."
+        );
+      }
+
       const valid = await bcrypt.compare(
         credentials.password,
         user.passwordHash
@@ -177,9 +194,7 @@ export const authOptions: NextAuthOptions = {
             getString(profileRecord?.["last_name"]) ||
             getString(profileRecord?.["lastName"]) ||
             nameObjectLast ||
-            (nameParts.length > 1
-              ? nameParts.slice(1).join(" ")
-              : "User");
+            (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "User");
 
           try {
             await prisma.user.update({
@@ -201,8 +216,7 @@ export const authOptions: NextAuthOptions = {
                 userId: user.id,
                 firstName: givenName,
                 lastName: familyName,
-                displayName:
-                  fullName || `${givenName} ${familyName}`.trim(),
+                displayName: fullName || `${givenName} ${familyName}`.trim(),
                 phone: "",
                 bio: "",
                 experienceYrs: 0,
