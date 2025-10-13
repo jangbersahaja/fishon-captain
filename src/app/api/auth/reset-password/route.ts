@@ -1,9 +1,10 @@
 /**
  * POST /api/auth/reset-password
- * Reset password after OTP verification
- * OTP must be validated on /api/auth/verify-otp before calling this endpoint
+ * Reset password with OTP verification
+ * Validates OTP, then updates password
  */
 
+import { validateOTP } from "@/lib/auth/otp";
 import { sendPasswordChangedNotification } from "@/lib/email";
 import { applySecurityHeaders } from "@/lib/headers";
 import { validatePassword, validatePasswordWithHistory } from "@/lib/password";
@@ -16,25 +17,28 @@ export async function POST(request: Request) {
   try {
     // Parse request body
     const body = await request.json();
-    const { email, password, confirmPassword } = body;
+    const { email, code, password, confirmPassword } = body;
 
     console.log("[reset-password] Request received:", {
       email,
+      hasCode: !!code,
       hasPassword: !!password,
       hasConfirmPassword: !!confirmPassword,
       passwordLength: password?.length,
     });
 
-    if (!email || !password || !confirmPassword) {
+    if (!email || !code || !password || !confirmPassword) {
       console.error("[reset-password] Missing fields:", {
         email: !!email,
+        code: !!code,
         password: !!password,
         confirmPassword: !!confirmPassword,
       });
       return applySecurityHeaders(
         NextResponse.json(
           {
-            error: "Missing required fields: email, password, confirmPassword",
+            error:
+              "Missing required fields: email, code, password, confirmPassword",
           },
           { status: 400 }
         )
@@ -66,6 +70,34 @@ export async function POST(request: Request) {
         )
       );
     }
+
+    // SECURITY: Validate OTP before allowing password reset
+    // This prevents bypassing the OTP verification step
+    const otpValidation = await validateOTP(
+      normalizedEmail,
+      code,
+      "password_reset",
+      true // Consume the OTP on successful validation
+    );
+
+    if (!otpValidation.success) {
+      console.error("[reset-password] OTP validation failed:", {
+        email: normalizedEmail,
+        error: otpValidation.error,
+      });
+      return applySecurityHeaders(
+        NextResponse.json(
+          {
+            error: otpValidation.error || "Invalid verification code",
+            attemptsRemaining: otpValidation.attemptsRemaining,
+            lockedUntilMinutes: otpValidation.lockedUntilMinutes,
+          },
+          { status: 400 }
+        )
+      );
+    }
+
+    console.log("[reset-password] OTP validated successfully");
 
     // Find user and password history
     const user = await prisma.user.findUnique({

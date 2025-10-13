@@ -17,6 +17,7 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,11 +25,15 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Get email from URL params
+  // Get email and code from URL params
   useEffect(() => {
     const emailParam = searchParams.get("email");
+    const codeParam = searchParams.get("code");
     if (emailParam) {
       setEmail(emailParam);
+    }
+    if (codeParam) {
+      setCode(codeParam);
     }
   }, [searchParams]);
 
@@ -58,6 +63,7 @@ export default function ResetPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
+          code,
           password: newPassword,
           confirmPassword,
         }),

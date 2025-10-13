@@ -124,16 +124,16 @@ export default function AuthErrorPage() {
         router.push("/");
         break;
       case "sign-in":
-        router.push("/auth/captains/login");
+        router.push("/auth?mode=signin");
         break;
       case "try-again":
-        router.push("/auth/captains/login");
+        router.push("/auth?mode=signin");
         break;
       case "try-different-method":
-        router.push("/auth/captains/login");
+        router.push("/auth?mode=signin");
         break;
       case "resend-verification":
-        router.push("/auth/captains/login");
+        router.push("/auth?mode=signin");
         break;
       case "contact-support":
         window.location.href = "mailto:support@fishon.my";
@@ -163,72 +163,84 @@ export default function AuthErrorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8 space-y-6">
-        {/* Error Icon */}
-        <div className="flex justify-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-red-600" />
-          </div>
-        </div>
-
-        {/* Error Content */}
-        <div className="text-center space-y-3">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {errorInfo.title}
-          </h1>
-          <p className="text-gray-600">{errorInfo.message}</p>
-        </div>
-
-        {/* Error Details (for debugging) */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <p className="text-xs text-gray-500 font-mono">
-              Error Type: {errorType}
+    <main className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="w-full max-w-xl px-4 py-16 sm:px-6">
+        <div className="overflow-hidden rounded-3xl border border-[#ec2227]/20 bg-white shadow-xl">
+          <div className="border-b border-[#ec2227]/15 bg-[#ec2227]/5 px-6 py-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#ec2227]">
+              Fishon captain portal
             </p>
           </div>
-        )}
+          <div className="px-6 py-8 sm:px-8 space-y-6">
+            {/* Error Icon */}
+            <div className="flex justify-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-red-600" />
+              </div>
+            </div>
 
-        {/* Actions */}
-        <div className="space-y-3">
-          <Button onClick={handleAction} className="w-full">
-            {getActionLabel()}
-          </Button>
+            {/* Error Content */}
+            <div className="text-center space-y-3">
+              <h1 className="text-2xl font-bold text-slate-900">
+                {errorInfo.title}
+              </h1>
+              <p className="text-slate-600">{errorInfo.message}</p>
+            </div>
 
-          {errorInfo.action !== "return-home" && (
-            <Button
-              onClick={() => router.push("/")}
-              variant="outline"
-              className="w-full"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Return to Home
-            </Button>
-          )}
-        </div>
+            {/* Error Details (for debugging) */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <p className="text-xs text-slate-500 font-mono">
+                  Error Type: {errorType}
+                </p>
+              </div>
+            )}
 
-        {/* Back Button */}
-        <div className="pt-4 border-t border-gray-200">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors w-full justify-center"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Go Back
-          </button>
-        </div>
+            {/* Actions */}
+            <div className="space-y-3">
+              <Button
+                onClick={handleAction}
+                className="w-full bg-[#ec2227] hover:bg-[#c81e23] text-white"
+              >
+                {getActionLabel()}
+              </Button>
 
-        {/* Support Link */}
-        <div className="text-center text-sm text-gray-500">
-          Need help?{" "}
-          <a
-            href="mailto:support@fishon.my"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Contact Support
-          </a>
+              {errorInfo.action !== "return-home" && (
+                <Button
+                  onClick={() => router.push("/")}
+                  variant="outline"
+                  className="w-full border-slate-300 text-slate-700 hover:bg-slate-50"
+                >
+                  <Home className="w-4 h-4 mr-2" />
+                  Return to Home
+                </Button>
+              )}
+            </div>
+
+            {/* Back Button */}
+            <div className="pt-4 border-t border-slate-200">
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors w-full justify-center"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Go Back
+              </button>
+            </div>
+
+            {/* Support Link */}
+            <div className="text-center text-sm text-slate-500">
+              Need help?{" "}
+              <a
+                href="mailto:support@fishon.my"
+                className="text-[#ec2227] hover:text-[#c81e23] font-medium"
+              >
+                Contact Support
+              </a>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
