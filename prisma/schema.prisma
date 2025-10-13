@@ -8,23 +8,41 @@ datasource db {
 }
 
 model User {
-  id             String               @id @default(cuid())
-  email          String               @unique
-  name           String?
-  firstName      String?              @map("firstName")
-  lastName       String?              @map("lastName")
-  image          String?
-  passwordHash   String?
-  emailVerified  DateTime?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  role           Role                 @default(CAPTAIN)
-  accounts       Account[]
-  captainProfile CaptainProfile?
-  verification   CaptainVerification?
-  drafts         CharterDraft[]
-  notesAuthored  DraftNote[]          @relation("UserDraftNotes")
-  sessions       Session[]
+  id                       String               @id @default(cuid())
+  email                    String               @unique
+  name                     String?
+  firstName                String?              @map("firstName")
+  lastName                 String?              @map("lastName")
+  image                    String?
+  passwordHash             String?
+  emailVerified            DateTime?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  role                     Role                 @default(CAPTAIN)
+  emailVerificationExpires DateTime?
+  emailVerificationToken   String?              @unique
+  lockedUntil              DateTime?
+  loginAttempts            Int                  @default(0)
+  resetPasswordExpires     DateTime?
+  resetPasswordToken       String?              @unique
+  lastOtpSentAt            DateTime?
+  otpAttempts              Int                  @default(0)
+  otpCode                  String?
+  otpExpires               DateTime?
+  otpPurpose               String?
+  forcePasswordReset       Boolean              @default(false)
+  passwordMfaBackupCodes   String[]             @default([])
+  passwordMfaEnabled       Boolean              @default(false)
+  passwordMfaMethod        MfaMethod?
+  passwordMfaSecret        String?
+  passwordMfaVerifiedAt    DateTime?
+  accounts                 Account[]
+  captainProfile           CaptainProfile?
+  verification             CaptainVerification?
+  drafts                   CharterDraft[]
+  notesAuthored            DraftNote[]          @relation("UserDraftNotes")
+  PasswordHistory          PasswordHistory[]
+  sessions                 Session[]
 }
 
 model CaptainProfile {
@@ -128,7 +146,7 @@ model CharterFeature {
 }
 
 model CharterMedia {
-  id              String        @id @default(cuid())
+  id              String    @id @default(cuid())
   charterId       String
   tripId          String?
   kind            MediaKind
@@ -138,12 +156,12 @@ model CharterMedia {
   sizeBytes       Int?
   width           Int?
   height          Int?
-  sortOrder       Int           @default(0)
-  createdAt       DateTime      @default(now())
-  thumbnailUrl    String?       @map("thumbnail_url")
-  durationSeconds Int?          @map("duration_seconds")
-  charter         Charter       @relation(fields: [charterId], references: [id])
-  trip            Trip?         @relation(fields: [tripId], references: [id])
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  thumbnailUrl    String?   @map("thumbnail_url")
+  durationSeconds Int?      @map("duration_seconds")
+  charter         Charter   @relation(fields: [charterId], references: [id])
+  trip            Trip?     @relation(fields: [tripId], references: [id])
 }
 
 model CharterDraft {
@@ -240,7 +258,6 @@ model TripTechnique {
   trip   Trip   @relation(fields: [tripId], references: [id])
 }
 
-
 model CaptainVerification {
   id               String             @id @default(cuid())
   userId           String             @unique
@@ -316,6 +333,16 @@ model CaptainVideo {
   @@index([createdAt])
 }
 
+model PasswordHistory {
+  id           String   @id
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
 enum DraftStatus {
   DRAFT
   SUBMITTED
@@ -341,7 +368,6 @@ enum MediaKind {
   TRIP_MEDIA
 }
 
-
 enum Role {
   CAPTAIN
   STAFF
@@ -352,4 +378,10 @@ enum VerificationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum MfaMethod {
+  TOTP
+  WHATSAPP
+  SMS
 }
