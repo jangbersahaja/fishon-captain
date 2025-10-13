@@ -70,12 +70,12 @@ export default function VerifyOTPPage() {
       // Success
       setSuccess(true);
       setTimeout(() => {
-        // For password reset, pass email parameter to reset password page
+        // For password reset, pass email and OTP code to reset password page
         if (
           purpose === "password_reset" &&
           callbackUrl.includes("reset-password")
         ) {
-          const resetUrl = `${callbackUrl}?email=${encodeURIComponent(email)}`;
+          const resetUrl = `${callbackUrl}?email=${encodeURIComponent(email)}&code=${encodeURIComponent(otp)}`;
           router.push(resetUrl);
         } else {
           router.push(callbackUrl);
