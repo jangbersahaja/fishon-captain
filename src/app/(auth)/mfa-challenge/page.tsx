@@ -21,7 +21,7 @@ export default function MFAChallengePage() {
 
   useEffect(() => {
     if (!userId) {
-      router.push("/auth/captains/login?error=InvalidMFASession");
+      router.push("/auth?mode=signin&error=InvalidMFASession");
     }
   }, [userId, router]);
 
@@ -73,7 +73,7 @@ export default function MFAChallengePage() {
   };
 
   const handleCancel = () => {
-    router.push("/auth/captains/login");
+    router.push("/auth?mode=signin");
   };
 
   if (!userId) {
@@ -81,26 +81,41 @@ export default function MFAChallengePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <MFAChallengeForm
-          userId={userId}
-          onSubmit={handleMFAVerify}
-          onCancel={handleCancel}
-          error={error}
-          isLoading={isLoading}
-        />
+    <main className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="w-full max-w-xl px-4 py-16 sm:px-6">
+        <div className="overflow-hidden rounded-3xl border border-[#ec2227]/20 bg-white shadow-xl">
+          <div className="border-b border-[#ec2227]/15 bg-[#ec2227]/5 px-6 py-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#ec2227]">
+              Fishon captain portal
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+              Two-Factor Authentication
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Enter your verification code to continue
+            </p>
+          </div>
+          <div className="px-6 py-8 sm:px-8">
+            <MFAChallengeForm
+              userId={userId}
+              onSubmit={handleMFAVerify}
+              onCancel={handleCancel}
+              error={error}
+              isLoading={isLoading}
+            />
 
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Having trouble?{" "}
-          <a
-            href="/auth/captains/login"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Return to login
-          </a>
-        </p>
+            <div className="mt-6 pt-4 border-t border-slate-200 text-center text-sm text-slate-500">
+              Having trouble?{" "}
+              <a
+                href="/auth?mode=signin"
+                className="text-[#ec2227] hover:text-[#c81e23] font-medium"
+              >
+                Return to login
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
