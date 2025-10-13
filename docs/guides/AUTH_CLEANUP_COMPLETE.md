@@ -359,8 +359,8 @@ All identified issues from the cleanup plan have been addressed.
 
 ## 👥 Contributors
 
-- Copilot Agent: Implementation and documentation
-- Repository Owner: Review and testing
+- Implementation and documentation: jangbersahaja/fishon-captain team
+- Review and testing: Repository maintainers
 
 ---
 
