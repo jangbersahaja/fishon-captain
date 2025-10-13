@@ -1,359 +1,707 @@
-# AUTH Cleanup Action Plan
+# Auth System Cleanup Action Plan
 
 **Date**: October 13, 2025  
-**Status**: 🔄 In Progress  
-**Context**: Addressing remaining issues with AUTH implementation after rebuild
+**Issue**: Major auth rebuild caused breaking changes, deployment failures, and lost MFA work  
+**Status**: 🚨 CRITICAL - Production deployment blocked
 
 ---
 
-## 🚨 Issues to Address
+## 🔍 Problem Summary
 
-Based on recent complaints and observations, the following issues need to be resolved:
+After commit `563d7e9` ("adding major auth improvement"), the application has multiple critical issues:
 
-### 1. ❌ Verify OTP Method - NOT WORKING
-**Problem**: OTP verification may not be working correctly in all scenarios
-- Need to verify OTP validation logic
-- Check if OTP consumption works properly for both email verification and password reset
-- Ensure proper error messages are displayed
-
-### 2. ❌ Forgot Password Process - ISSUES
-**Problem**: Password reset flow has inconsistencies
-- OTP validation before password reset may not be working as expected
-- User needs to verify OTP first, then reset password
-- Flow should be: forgot-password → verify-otp → reset-password
-
-### 3. ❌ Unsynchronized Password Hash
-**Problem**: Password hash might not be properly synchronized
-- Bcrypt rounds inconsistency
-- Hash storage issues
-- Login validation problems
-
-### 4. ❌ Poor Styling
-**Problem**: Some auth pages have inconsistent styling
-- Need to ensure all pages use Fishon brand colors (#ec2227)
-- Consistent layout and typography
-- Professional UI/UX
-
-### 5. ❌ Incorrect Wording
-**Problem**: Error messages and UI text need improvement
-- Generic error messages
-- Confusing instructions
-- Need clearer user guidance
-
-### 6. ❌ Wrong Redirect Links
-**Problem**: Some redirects go to wrong pages
-- 404 errors on some paths
-- Incorrect callback URLs
-- Wrong login redirect paths
-
-### 7. ❌ Incorrect Paths
-**Problem**: Path references don't match actual route structure
-- Using `/auth/forgot-password` instead of `/forgot-password`
-- Using `/auth/verify-otp` instead of `/verify-otp`
-- Wrong path references in components
+1. **❌ Non-working verify OTP method** - Parameter order mismatch in email functions
+2. **❌ Non-working forgot password process** - Same parameter issue + flow breaks
+3. **❌ Non-sync password hash** - Needs verification
+4. **❌ Rebuilt components don't use current app style** - Inconsistent UI
+5. **❌ Poor wording in rebuilt components** - UX issues
+6. **❌ Wrong redirect links** - Broken user flows
+7. **❌ Wrong paths on most new links** - Navigation failures
+8. **❌ Type errors blocking Vercel deployment** - Build fails
 
 ---
 
-## ✅ Action Items
+## 🎯 Critical Issues Found
 
-### Phase 1: Verify Current State (Investigation) ✅ COMPLETE
-- [x] Review AUTH_REBUILD_FIXES_COMPLETE.md
-- [x] Check current OTP implementation
-- [x] Review password reset flow
-- [x] Test path routing
-- [x] Run investigation - Identified critical security vulnerability in password reset
+### 1. Email Function Parameter Order Mismatch 🔥
 
-### Phase 2: Fix Critical Issues ✅ COMPLETE
-- [x] **CRITICAL FIX**: Added OTP validation to password reset endpoint
-- [x] Fix forgot password process - now validates OTP properly
-- [x] Ensure password hash synchronization - bcrypt 12 rounds consistent
-- [x] Update incorrect paths - fixed `/auth/captains/login` references
-- [x] Fix redirect links - all now use `/auth?mode=signin`
+**Problem**: Email functions have signature mismatch across codebase
 
-### Phase 3: UI/UX Improvements ✅ COMPLETE
-- [x] Applied Fishon branding to MFA challenge page
-- [x] Applied Fishon branding to error page
-- [x] Consistent red theme (#ec2227, #c81e23) across all auth pages
-- [x] Error messages are clear and helpful (from password.ts validation)
-- [x] Better user guidance with proper headers and descriptions
+**Expected Signature** (from `src/lib/email.ts`):
 
-### Phase 4: Testing & Validation 🔄 READY FOR TESTING
-- [ ] Test complete signup flow with OTP verification
-- [ ] Test complete forgot password flow (CRITICAL - new OTP validation)
-- [ ] Test login with new password after reset
-- [ ] Verify all paths and redirects work correctly
-- [ ] Cross-browser testing
-- [ ] Mobile responsive testing
-
-### Phase 5: Documentation 🔄 IN PROGRESS
-- [ ] Update AUTH_CLEANUP_COMPLETE.md with changes
-- [x] Document breaking changes (see below)
-- [ ] Update testing checklist
-
----
-
-## 🔧 Technical Details
-
-### OTP Verification Flow (Current)
-```
-1. User requests OTP (signup or forgot-password)
-   └─> POST /api/auth/signup or /api/auth/forgot-password
-   └─> createOTP() generates 6-digit code
-   └─> Email sent with code
-
-2. User verifies OTP
-   └─> POST /api/auth/verify-otp { email, code, purpose }
-   └─> validateOTP() checks code
-   └─> For email_verification: consumes OTP
-   └─> For password_reset: doesn't consume (needed for reset)
-   └─> Sets emailVerified = true
-
-3. For password reset:
-   └─> POST /api/auth/reset-password { email, password, confirmPassword }
-   └─> Validates password strength
-   └─> Checks password history
-   └─> Hashes password with bcrypt.hash(password, 12)
-   └─> Updates user.passwordHash
-```
-
-### Path Structure (Next.js Route Groups)
-```
-Files:                           Routes:
-src/app/(auth)/auth/page.tsx     → /auth
-src/app/(auth)/forgot-password/  → /forgot-password
-src/app/(auth)/verify-otp/       → /verify-otp
-src/app/(auth)/reset-password/   → /reset-password
-```
-
-### Bcrypt Configuration (Should be consistent)
 ```typescript
-// All password hashing should use 12 rounds
-await bcrypt.hash(password, 12);
+sendVerificationOTP(email: string, firstName: string, code: string)
+sendPasswordResetOTP(email: string, firstName: string, code: string)
+```
 
-// Locations to check:
-- src/app/api/auth/signup/route.ts
-- src/app/api/auth/reset-password/route.ts
-- src/app/api/auth/change-password/route.ts
-- src/app/api/dev/create-test-user/route.ts
+**Wrong Usage Found**:
+
+❌ **`src/app/api/auth/resend-otp/route.ts:93`**
+
+```typescript
+await sendVerificationOTP(
+  user.email!,
+  otpResult.code, // ❌ WRONG - code in position 2
+  user.name || "User" // ❌ WRONG - name in position 3
+);
+```
+
+❌ **`src/app/api/auth/resend-otp/route.ts:99`**
+
+```typescript
+await sendPasswordResetOTP(
+  user.email!,
+  otpResult.code, // ❌ WRONG - code in position 2
+  user.name || "User" // ❌ WRONG - name in position 3
+);
+```
+
+❌ **`src/app/api/auth/forgot-password/route.ts:104`**
+
+```typescript
+await sendPasswordResetOTP(
+  user.email!,
+  user.name || "User", // ✅ Correct position
+  otpResult.code // ✅ Correct position
+);
+```
+
+✅ **`src/app/api/auth/signup/route.ts:113`** (CORRECT)
+
+```typescript
+const emailSent = await sendVerificationOTP(
+  user.email,
+  user.firstName || "there",
+  otpResult.code
+);
+```
+
+**Impact**:
+
+- OTP codes being sent as names
+- Names being sent as OTP codes
+- Users cannot verify email
+- Password reset completely broken
+
+**Fix Priority**: 🔥 CRITICAL - Must fix immediately
+
+---
+
+### 2. Missing MFA Complete Route 🔥
+
+**Problem**: Documented in `MFA_NEXTAUTH_INTEGRATION.md` but NOT implemented
+
+**Expected File**: `src/app/api/auth/mfa/complete/route.ts`  
+**Status**: ❌ DOES NOT EXIST
+
+**Documentation Reference**: `docs/api/MFA_NEXTAUTH_INTEGRATION.md:122`
+
+```typescript
+// Created `/api/auth/mfa/complete`
+// File: `src/app/api/auth/mfa/complete/route.ts`
+// Features:
+// - Accepts `mfaToken` in POST body
+// - Verifies token via `verifyMFAPendingSession()`
+// - Checks user still exists and has MFA enabled
+// - Returns user email for sign-in completion
+```
+
+**Impact**:
+
+- MFA login flow completely broken
+- Users with MFA enabled cannot sign in
+- `/auth/mfa-complete` page references non-existent API
+
+**Fix Priority**: 🔥 CRITICAL - MFA feature non-functional
+
+---
+
+### 3. Incomplete NextAuth MFA Integration
+
+**Problem**: `src/lib/auth.ts` missing MFA checks documented in rebuild
+
+**Expected Changes** (from `MFA_NEXTAUTH_INTEGRATION.md`):
+
+❌ **Missing: MFA Detection in Credentials Provider**
+
+```typescript
+// Should throw "MFA_REQUIRED:{token}" when mfaEnabled
+// Should create temporary MFA session token
+// Should accept pre-verified MFA sessions
+```
+
+❌ **Missing: JWT Callback Updates**
+
+```typescript
+// Should add `mfaEnabled`, `mfaMethod` to JWT token
+```
+
+❌ **Missing: Session Callback Updates**
+
+```typescript
+// Should expose `mfaEnabled`, `mfaMethod` in session object
+```
+
+**Current State**: `src/lib/auth.ts` has NO MFA logic whatsoever
+
+**Impact**:
+
+- MFA never triggers during login
+- Users with MFA can bypass it with regular password
+- Security vulnerability
+
+**Fix Priority**: 🔥 CRITICAL - Security issue
+
+---
+
+### 4. Verify OTP Flow Issues
+
+**Problem**: Component expects `/api/auth/resend-otp` but implementation has bugs
+
+**File**: `src/app/(auth)/verify-otp/page.tsx`
+
+**Issues**:
+
+1. ✅ Calls `/api/auth/verify-otp` correctly
+2. ✅ Calls `/api/auth/resend-otp` correctly
+3. ❌ Resend API has wrong parameter order (Issue #1)
+4. ⚠️ Redirect logic may have wrong paths
+
+**Redirect Analysis**:
+
+```typescript
+// Line 76: Password reset redirect
+if (purpose === "password_reset" && callbackUrl.includes("reset-password")) {
+  const resetUrl = `${callbackUrl}?email=${encodeURIComponent(email)}`;
+  router.push(resetUrl);
+} else {
+  router.push(callbackUrl);
+}
+```
+
+**Expected Flow**:
+
+```
+/forgot-password
+  → /verify-otp?email=X&purpose=password_reset&callbackUrl=/reset-password
+  → /reset-password?email=X
+```
+
+**Status**: ⚠️ Redirect logic looks OK, but test after fixing email params
+
+---
+
+### 5. Forgot Password Link Path Issues
+
+**Problem**: Components may have wrong paths to forgot password page
+
+**Expected Path**: `/forgot-password` (from `src/app/(auth)/forgot-password/page.tsx`)
+
+**Need to Check**:
+
+- `src/components/auth/SignInForm.tsx` - forgot password link
+- Any other forms referencing password reset
+
+**File Review Required**: `src/components/auth/SignInForm.tsx`
+
+---
+
+### 6. UI/UX Inconsistencies
+
+**Problem**: Rebuilt auth pages may not match app style
+
+**Need to Review**:
+
+1. `src/app/(auth)/forgot-password/page.tsx`
+2. `src/app/(auth)/reset-password/page.tsx`
+3. `src/app/(auth)/verify-otp/page.tsx`
+4. `src/app/(auth)/mfa-challenge/page.tsx`
+5. `src/app/(auth)/mfa-complete/page.tsx`
+
+**Expected Style Patterns** (from copilot instructions):
+
+- Brand color: `#ec2227` (red)
+- Consistent card design with rounded borders
+- "Fishon captain portal" header styling
+- Proper error/success states
+- Mobile responsive
+
+**Quick Check**:
+
+```bash
+grep -n "fishon" -i src/app/\(auth\)/**/*.tsx
+grep -n "#ec2227" src/app/\(auth\)/**/*.tsx
+```
+
+**Status**: ⚠️ Manual review needed
+
+---
+
+### 7. Type Errors (If Any)
+
+**Current Status**: TypeScript check PASSES ✅
+
+```bash
+$ npm run typecheck
+# No errors reported
+```
+
+**Note**: User reported type errors blocking Vercel deployment, but local check passes. This suggests:
+
+- Environment-specific issues
+- Strict mode differences
+- Missing dependencies in production build
+
+**Action Required**: Get specific error messages from Vercel deployment logs
+
+---
+
+## 📋 Cleanup Task List
+
+### Phase 1: Critical Fixes (MUST DO NOW)
+
+- [ ] **Fix email parameter order in resend-otp route**
+
+  - File: `src/app/api/auth/resend-otp/route.ts`
+  - Lines: 93, 99
+  - Change: Swap `code` and `firstName` parameters
+
+- [ ] **Create missing MFA complete API route**
+
+  - File: `src/app/api/auth/mfa/complete/route.ts`
+  - Reference: `docs/api/MFA_NEXTAUTH_INTEGRATION.md:122-157`
+  - Implement token verification and user lookup
+
+- [ ] **Add MFA integration to NextAuth**
+  - File: `src/lib/auth.ts`
+  - Add MFA detection in credentials provider
+  - Add MFA fields to JWT callback
+  - Add MFA fields to session callback
+  - Reference: `docs/api/MFA_NEXTAUTH_INTEGRATION.md:15-91`
+
+### Phase 2: Verification & Testing
+
+- [ ] **Test OTP verification flow**
+
+  - Signup → Verify email → Success
+  - Resend OTP → Verify → Success
+
+- [ ] **Test password reset flow**
+
+  - Forgot password → Verify OTP → Reset → Success
+  - Test with wrong code
+  - Test with expired code
+
+- [ ] **Test MFA flow** (if enabled for user)
+  - Login with password → MFA challenge → Complete → Success
+  - Test backup codes
+  - Test wrong code
+
+### Phase 3: UI/UX Improvements
+
+- [ ] **Review auth page styling**
+
+  - Check brand colors (`#ec2227`)
+  - Check responsive design
+  - Check error states
+  - Check success states
+
+- [ ] **Review wording/copy**
+
+  - Error messages
+  - Success messages
+  - Help text
+  - Button labels
+
+- [ ] **Fix any redirect issues**
+  - Test all navigation paths
+  - Check callback URLs
+  - Verify query parameters
+
+### Phase 4: Deployment Preparation
+
+- [ ] **Get Vercel deployment logs**
+
+  - Identify specific type errors
+  - Check for environment variable issues
+
+- [ ] **Run production build locally**
+
+  ```bash
+  npm run build
+  ```
+
+- [ ] **Test production mode locally**
+
+  ```bash
+  npm run start
+  ```
+
+---
+
+## 🔧 Detailed Fix Instructions
+
+### Fix 1: Email Parameter Order
+
+**File**: `src/app/api/auth/resend-otp/route.ts`
+
+**Change 1** (Lines 93-96):
+
+```typescript
+// BEFORE (WRONG)
+await sendVerificationOTP(user.email!, otpResult.code, user.name || "User");
+
+// AFTER (CORRECT)
+await sendVerificationOTP(user.email!, user.name || "User", otpResult.code);
+```
+
+**Change 2** (Lines 99-102):
+
+```typescript
+// BEFORE (WRONG)
+await sendPasswordResetOTP(user.email!, otpResult.code, user.name || "User");
+
+// AFTER (CORRECT)
+await sendPasswordResetOTP(user.email!, user.name || "User", otpResult.code);
 ```
 
 ---
 
-## 📋 Files to Review/Fix
+### Fix 2: Create MFA Complete Route
 
-### API Routes
-- [ ] `/api/auth/verify-otp/route.ts` - OTP validation logic
-- [ ] `/api/auth/forgot-password/route.ts` - Password reset OTP generation
-- [ ] `/api/auth/reset-password/route.ts` - Password reset with validation
-- [ ] `/api/auth/resend-otp/route.ts` - Resend OTP logic
+**Create File**: `src/app/api/auth/mfa/complete/route.ts`
 
-### Frontend Pages
-- [ ] `src/app/(auth)/forgot-password/page.tsx` - Forgot password UI
-- [ ] `src/app/(auth)/verify-otp/page.tsx` - OTP verification UI
-- [ ] `src/app/(auth)/reset-password/page.tsx` - Password reset UI
+**Reference**: See full implementation in `docs/api/MFA_NEXTAUTH_INTEGRATION.md` lines 122-157
 
-### Auth Components
-- [ ] `src/components/auth/SignInForm.tsx` - Login form paths
-- [ ] `src/components/auth/SignUpForm.tsx` - Signup form paths
-- [ ] `src/components/auth/VerificationCodeInput.tsx` - OTP input
+**Key Features Needed**:
 
-### Lib Files
-- [ ] `src/lib/auth/otp.ts` - OTP generation and validation
-- [ ] `src/lib/auth.ts` - NextAuth configuration
-- [ ] `src/lib/password.ts` - Password validation
-- [ ] `src/lib/email.ts` - Email templates
+1. Accept `mfaToken` in POST body
+2. Verify token with `verifyMFAPendingSession(mfaToken)`
+3. Check user exists and has MFA enabled
+4. Return user email for sign-in
+5. Apply rate limiting (5 requests/5 minutes)
+6. Security headers on all responses
+7. Comprehensive error handling
+
+**Dependencies**:
+
+```typescript
+import { verifyMFAPendingSession } from "@/lib/auth/mfa-session";
+import { applySecurityHeaders } from "@/lib/headers";
+import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimiter";
+import { NextResponse } from "next/server";
+```
+
+---
+
+### Fix 3: Add MFA to NextAuth
+
+**File**: `src/lib/auth.ts`
+
+**Change 1: Update credentials provider authorize function**
+
+Add after password verification:
+
+```typescript
+// Check if MFA is enabled
+const dbUser = await prisma.user.findUnique({
+  where: { email: credentials.email },
+  select: { mfaEnabled: true },
+});
+
+if (dbUser?.mfaEnabled) {
+  // Create MFA pending session
+  const { createMFAPendingSession } = await import("@/lib/auth/mfa-session");
+  const token = await createMFAPendingSession(user.id, user.email);
+
+  // Throw error to trigger client redirect
+  throw new Error(`MFA_REQUIRED:${token}`);
+}
+```
+
+**Change 2: Update JWT callback**
+
+Add after role assignment:
+
+```typescript
+// Add MFA status to token
+if (user) {
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { mfaEnabled: true, mfaMethod: true },
+  });
+  if (dbUser) {
+    token.mfaEnabled = dbUser.mfaEnabled || false;
+    token.mfaMethod = dbUser.mfaMethod;
+  }
+}
+```
+
+**Change 3: Update session callback**
+
+Add after role assignment:
+
+```typescript
+// Add MFA status to session
+if (token.mfaEnabled !== undefined) {
+  session.user.mfaEnabled = token.mfaEnabled;
+}
+if (token.mfaMethod) {
+  session.user.mfaMethod = token.mfaMethod;
+}
+```
+
+**Change 4: Update type definitions**
+
+**File**: `src/types/next-auth.d.ts`
+
+Ensure this exists:
+
+```typescript
+declare module "next-auth" {
+  interface User {
+    id: string;
+    mfaEnabled?: boolean;
+    mfaMethod?: string;
+  }
+
+  interface Session {
+    user: {
+      id: string;
+      role?: string;
+      mfaEnabled?: boolean;
+      mfaMethod?: string;
+    } & DefaultSession["user"];
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id?: string;
+    role?: string;
+    mfaEnabled?: boolean;
+    mfaMethod?: string;
+  }
+}
+```
 
 ---
 
 ## 🧪 Testing Checklist
 
-### Manual Tests to Run
-- [ ] **Signup Flow**
-  - Create new account
-  - Receive OTP email
-  - Verify OTP
-  - Successfully log in
-  
-- [ ] **Forgot Password Flow**
-  - Request password reset
-  - Receive OTP email
-  - Verify OTP
-  - Reset password
-  - Log in with new password
+### Manual Testing
 
-- [ ] **Path Routing**
-  - All links work without 404 errors
-  - Redirects go to correct pages
-  - Callback URLs work properly
+**1. Email Verification Flow**
 
-- [ ] **Error Handling**
-  - Invalid OTP shows proper error
-  - Expired OTP shows proper error
-  - Rate limiting works
-  - Clear error messages
-
-### Automated Tests
-- [ ] Create unit tests for OTP validation
-- [ ] Create integration tests for password reset flow
-- [ ] Create tests for path routing
-
----
-
-## 🎯 Success Criteria
-
-✅ **Cleanup Complete When:**
-- [ ] All OTP verification works correctly (email verification + password reset)
-- [ ] Complete forgot password flow works end-to-end
-- [ ] Password hashing is consistent (12 rounds everywhere)
-- [ ] All auth pages have consistent Fishon branding
-- [ ] All error messages are clear and helpful
-- [ ] All redirect links work without 404 errors
-- [ ] All paths are correct (no /auth/ prefix issues)
-- [ ] Manual testing passes all test cases
-- [ ] No TypeScript errors
-- [ ] Documentation is updated
-
----
-
-## 📊 Priority Ranking
-
-**Priority 1 (Critical - Must Fix)**
-1. Verify OTP method working
-2. Forgot password process
-3. Password hash synchronization
-4. Incorrect paths
-
-**Priority 2 (Important - Should Fix)**
-5. Wrong redirect links
-6. Error message improvements
-
-**Priority 3 (Nice to Have - Can Fix Later)**
-7. Styling consistency polish
-8. Additional UX improvements
-
----
-
-## 🚀 Implementation Plan
-
-### Week 1: Investigation & Critical Fixes
-- **Day 1**: Investigate and document current issues
-- **Day 2**: Fix OTP verification logic
-- **Day 3**: Fix forgot password process
-- **Day 4**: Fix path and redirect issues
-- **Day 5**: Testing and validation
-
-### Week 2: Polish & Documentation
-- **Day 1-2**: UI/UX improvements
-- **Day 3**: Error message improvements
-- **Day 4**: Comprehensive testing
-- **Day 5**: Documentation and deployment
-
----
-
-## 🚨 Breaking Changes & Important Updates
-
-### 1. Password Reset API Change (CRITICAL)
-
-**Previous Behavior** (SECURITY VULNERABILITY):
-```typescript
-POST /api/auth/reset-password
-{
-  "email": "user@example.com",
-  "password": "newPassword123!",
-  "confirmPassword": "newPassword123!"
-}
 ```
-- ❌ No OTP validation
-- ❌ Anyone with email could reset password
-
-**New Behavior** (SECURE):
-```typescript
-POST /api/auth/reset-password
-{
-  "email": "user@example.com",
-  "code": "123456",  // <-- NEW REQUIRED FIELD
-  "password": "newPassword123!",
-  "confirmPassword": "newPassword123!"
-}
+1. Go to /auth?mode=signup
+2. Fill form with new email
+3. Submit
+4. Check email for 6-digit code
+5. Enter code in /verify-otp page
+6. Should redirect to /captain
+7. Check database: emailVerified should be set
 ```
-- ✅ OTP must be validated
-- ✅ OTP is consumed on successful reset
-- ✅ Prevents unauthorized password resets
 
-**Frontend Updates**:
-- `verify-otp/page.tsx` now passes OTP code to reset-password page via URL
-- `reset-password/page.tsx` captures code from URL and sends it with API request
+**2. Resend OTP Flow**
 
-### 2. Path Changes
+```
+1. On /verify-otp page, wait 60 seconds
+2. Click "Resend Code"
+3. Check email for new 6-digit code
+4. Enter new code
+5. Should succeed
+```
 
-All incorrect `/auth/captains/login` references changed to `/auth?mode=signin`:
-- `src/app/(auth)/mfa-challenge/page.tsx` (3 instances)
-- `src/app/(auth)/error/page.tsx` (4 instances)
+**3. Password Reset Flow**
 
-**Impact**: No 404 errors on auth redirects
+```
+1. Go to /auth?mode=signin
+2. Click "Forgot password?"
+3. Enter email
+4. Check email for reset code
+5. Enter code in /verify-otp
+6. Should redirect to /reset-password?email=X
+7. Enter new password
+8. Should redirect to /auth with success message
+9. Login with new password
+```
 
-### 3. UI/UX Changes
+**4. MFA Flow** (if user has MFA enabled)
 
-MFA Challenge and Error pages now use Fishon branding:
-- Changed from generic gray/blue to Fishon red (#ec2227, #c81e23)
-- Consistent layout with other auth pages
-- Professional Fishon captain portal header
+```
+1. Enable MFA for test user (via database or API)
+2. Go to /auth?mode=signin
+3. Enter email + password
+4. Should redirect to /auth/mfa-challenge
+5. Enter 6-digit TOTP code
+6. Should redirect to /auth/mfa-complete
+7. Should complete sign-in
+8. Check session has mfaEnabled flag
+```
 
-**Impact**: Improved brand consistency and user experience
+**5. Change Password Flow**
 
----
-
-## 📋 Files Changed in This Cleanup
-
-### API Routes (1 file)
-1. `src/app/api/auth/reset-password/route.ts`
-   - Added OTP validation before password reset
-   - Added `code` as required parameter
-   - Consumes OTP on successful reset
-
-### Frontend Pages (4 files)
-1. `src/app/(auth)/verify-otp/page.tsx`
-   - Passes OTP code to reset-password page for password_reset purpose
-   
-2. `src/app/(auth)/reset-password/page.tsx`
-   - Captures code from URL parameters
-   - Sends code with password reset API request
-   
-3. `src/app/(auth)/mfa-challenge/page.tsx`
-   - Fixed incorrect path redirects
-   - Applied Fishon branding
-   
-4. `src/app/(auth)/error/page.tsx`
-   - Fixed incorrect path redirects
-   - Applied Fishon branding
+```
+1. Sign in
+2. Go to security settings
+3. Enter current password + new password
+4. Submit
+5. Check email for notification
+6. Sign out and sign in with new password
+```
 
 ---
 
-## 🧪 Testing Priority
+## 📊 Files Changed Summary
 
-**CRITICAL** - Must test before deploying:
-1. ✅ Forgot password flow end-to-end
-   - Request reset → Receive OTP → Verify OTP → Reset password → Login with new password
-2. ✅ OTP security validation
-   - Cannot reset password without valid OTP
-   - OTP is consumed after successful reset
-   - Cannot reuse OTP
+### Must Create (1 file)
 
-**HIGH** - Should test before deploying:
-1. All auth page redirects work correctly
-2. MFA challenge flow works properly
-3. Error page displays correctly with proper branding
+```
+src/app/api/auth/mfa/complete/route.ts
+```
 
-**MEDIUM** - Test after deploying to staging:
-1. Cross-browser compatibility
-2. Mobile responsive design
-3. Email verification flow
+### Must Fix (2 files)
+
+```
+src/app/api/auth/resend-otp/route.ts
+src/lib/auth.ts
+```
+
+### Should Review (5+ files)
+
+```
+src/app/(auth)/forgot-password/page.tsx
+src/app/(auth)/reset-password/page.tsx
+src/app/(auth)/verify-otp/page.tsx
+src/app/(auth)/mfa-challenge/page.tsx
+src/app/(auth)/mfa-complete/page.tsx
+src/components/auth/SignInForm.tsx
+src/types/next-auth.d.ts
+```
 
 ---
 
-**Status**: ✅ Phase 1-3 Complete | 🔄 Phase 4 Ready for Testing | Phase 5 In Progress
+## 🚀 Deployment Strategy
 
-**Next Steps**: 
-1. Run comprehensive manual tests on forgot password flow (CRITICAL)
-2. Verify all auth redirects work without 404 errors
-3. Create AUTH_CLEANUP_COMPLETE.md documentation
+### Pre-Deployment Checklist
+
+- [ ] All Phase 1 fixes complete
+- [ ] All Phase 2 tests pass
+- [ ] `npm run typecheck` passes
+- [ ] `npm run build` succeeds
+- [ ] `npm test` passes (if tests exist)
+- [ ] Manual testing complete
+- [ ] No console errors in browser
+- [ ] Database migrations applied
+
+### Deployment Steps
+
+1. **Commit fixes to a branch**
+
+   ```bash
+   git checkout -b fix/auth-cleanup
+   git add .
+   git commit -m "fix: critical auth issues - parameter order, MFA integration"
+   ```
+
+2. **Push and create preview deployment**
+
+   ```bash
+   git push origin fix/auth-cleanup
+   ```
+
+3. **Test preview deployment thoroughly**
+
+   - Test all auth flows
+   - Check Vercel logs for errors
+   - Verify environment variables
+
+4. **Merge to main only after preview tests pass**
+
+---
+
+## 📝 Documentation Updates Needed
+
+After fixes are complete:
+
+- [ ] Update `docs/api/MFA_QUICKSTART.md` with correct testing steps
+- [ ] Update `.github/copilot-instructions.md` with lessons learned
+- [ ] Create `docs/guides/AUTH_REBUILD_POSTMORTEM.md` for future reference
+- [ ] Document proper email function signatures in code comments
+
+---
+
+## 🎓 Lessons Learned
+
+### For Future Copilot Sessions
+
+1. **Always verify function signatures** before changing call sites
+2. **Test email sending** immediately after changing email functions
+3. **Don't skip documented implementations** - MFA complete route was documented but not created
+4. **Maintain type safety** - ensure NextAuth type definitions match implementation
+5. **Test before committing** - manual testing should catch parameter mismatches
+6. **Keep git history clean** - major rewrites should be in feature branches with testing
+7. **Document breaking changes** - commit message should warn about breaking changes
+
+---
+
+## ⚠️ Risk Assessment
+
+**Current Risk Level**: 🔴 HIGH
+
+**Blocked Features**:
+
+- ❌ User registration (email verification broken)
+- ❌ Password reset (email sending broken)
+- ❌ MFA login (missing API route + auth integration)
+- ⚠️ Existing users can login (if no MFA)
+
+**Production Impact**:
+
+- Cannot deploy to Vercel (if type errors exist)
+- New users cannot register
+- Users cannot reset passwords
+- MFA users locked out
+
+**Estimated Fix Time**:
+
+- Phase 1 (Critical): 2-3 hours
+- Phase 2 (Testing): 1-2 hours
+- Phase 3 (UI/UX): 2-4 hours (optional, can defer)
+- **Total**: 5-9 hours for full fix
+
+---
+
+## 🆘 Emergency Rollback Plan
+
+If fixes don't work, rollback to last known good state:
+
+```bash
+# Find last working commit before 563d7e9
+git log --oneline | head -20
+
+# Rollback (example)
+git revert 563d7e9
+git push origin main
+```
+
+**Note**: User mentioned "need to reload old git version" - identify which commit was stable.
+
+---
+
+**Next Step**: Start with Phase 1 Critical Fixes immediately.
+
+**Priority Order**:
+
+1. Fix email parameters (15 min)
+2. Create MFA complete route (45 min)
+3. Add MFA to NextAuth (60 min)
+4. Test everything (60 min)
+
+---
+
+**Status**: 🚧 READY TO EXECUTE  
+**Owner**: Development Team  
+**Review Required**: After Phase 1 & 2 complete
