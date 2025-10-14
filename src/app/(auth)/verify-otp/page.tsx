@@ -5,13 +5,14 @@
 
 "use client";
 
+import { AuthPageLoading } from "@/components/auth/AuthPageLoading";
 import { VerificationCodeInput } from "@/components/auth/VerificationCodeInput";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
-export default function VerifyOTPPage() {
+function VerifyOTPContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [otp, setOtp] = useState("");
@@ -232,5 +233,13 @@ export default function VerifyOTPPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function VerifyOTPPage() {
+  return (
+    <Suspense fallback={<AuthPageLoading />}>
+      <VerifyOTPContent />
+    </Suspense>
   );
 }

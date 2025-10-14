@@ -5,9 +5,11 @@
 
 "use client";
 
+import { AuthPageLoading } from "@/components/auth/AuthPageLoading";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, Home } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const ERROR_MESSAGES: Record<
   string,
@@ -111,7 +113,7 @@ const ERROR_MESSAGES: Record<
   },
 };
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const errorType = searchParams.get("error") || "Default";
@@ -242,5 +244,13 @@ export default function AuthErrorPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<AuthPageLoading />}>
+      <AuthErrorContent />
+    </Suspense>
   );
 }

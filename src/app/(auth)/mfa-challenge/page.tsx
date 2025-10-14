@@ -5,12 +5,13 @@
 
 "use client";
 
+import { AuthPageLoading } from "@/components/auth/AuthPageLoading";
 import { MFAChallengeForm } from "@/components/auth/MFAChallengeForm";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
-export default function MFAChallengePage() {
+function MFAChallengeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string>("");
@@ -117,5 +118,13 @@ export default function MFAChallengePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function MFAChallengePage() {
+  return (
+    <Suspense fallback={<AuthPageLoading />}>
+      <MFAChallengeContent />
+    </Suspense>
   );
 }
