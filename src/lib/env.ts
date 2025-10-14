@@ -71,6 +71,38 @@ export function loadEnv(): ServerEnvShape {
   const errors: string[] = [];
   const w: NodeJS.ProcessEnv = process.env;
 
+  // Skip validation during build time (Next.js data collection phase)
+  // Environment variables will be validated at runtime when the app actually runs
+  // Use Next.js specific build phase indicator to avoid false positives
+  const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                      process.env.NEXT_PHASE === 'phase-production-server' && !w.DATABASE_URL;
+  
+  if (isBuildTime) {
+    console.log('[env] Build-time detected, skipping environment validation');
+    // Return a partial shape with empty values for build-time only
+    return {
+      DATABASE_URL: w.DATABASE_URL || '',
+      NEXTAUTH_SECRET: w.NEXTAUTH_SECRET || '',
+      GOOGLE_CLIENT_ID: w.GOOGLE_CLIENT_ID || '',
+      GOOGLE_CLIENT_SECRET: w.GOOGLE_CLIENT_SECRET || '',
+      FACEBOOK_CLIENT_ID: w.FACEBOOK_CLIENT_ID,
+      FACEBOOK_CLIENT_SECRET: w.FACEBOOK_CLIENT_SECRET,
+      APPLE_CLIENT_ID: w.APPLE_CLIENT_ID,
+      APPLE_CLIENT_SECRET: w.APPLE_CLIENT_SECRET,
+      GOOGLE_PLACES_API_KEY: w.GOOGLE_PLACES_API_KEY,
+      BLOB_READ_WRITE_TOKEN: w.BLOB_READ_WRITE_TOKEN,
+      QSTASH_TOKEN: w.QSTASH_TOKEN,
+      QSTASH_CURRENT_SIGNING_KEY: w.QSTASH_CURRENT_SIGNING_KEY,
+      QSTASH_NEXT_SIGNING_KEY: w.QSTASH_NEXT_SIGNING_KEY,
+      EXTERNAL_WORKER_URL: w.EXTERNAL_WORKER_URL,
+      QSTASH_URL: w.QSTASH_URL,
+      BLOB_HOSTNAME: w.BLOB_HOSTNAME,
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: w.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+      NEXT_PUBLIC_SITE_URL: w.NEXT_PUBLIC_SITE_URL,
+      NODE_ENV: w.NODE_ENV || 'production',
+    };
+  }
+
   // Required server vars
   for (const k of REQUIRED_SERVER) assertPresent(k, w[k], errors);
 
