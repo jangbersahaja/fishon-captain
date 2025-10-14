@@ -8,9 +8,9 @@
 import { Button } from "@/components/ui/button";
 import { Check, CheckCircle, Copy, Download, Shield } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
-export default function MFACompletePage() {
+function MFACompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
@@ -191,5 +191,13 @@ export default function MFACompletePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MFACompletePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-50"><div>Loading...</div></div>}>
+      <MFACompleteContent />
+    </Suspense>
   );
 }
