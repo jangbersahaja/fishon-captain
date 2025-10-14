@@ -8,6 +8,7 @@
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, Home } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const ERROR_MESSAGES: Record<
   string,
@@ -111,7 +112,7 @@ const ERROR_MESSAGES: Record<
   },
 };
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const errorType = searchParams.get("error") || "Default";
@@ -242,5 +243,37 @@ export default function AuthErrorPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-slate-50">
+          <div className="w-full max-w-xl px-4 py-16 sm:px-6">
+            <div className="overflow-hidden rounded-3xl border border-[#ec2227]/20 bg-white shadow-xl">
+              <div className="border-b border-[#ec2227]/15 bg-[#ec2227]/5 px-6 py-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#ec2227]">
+                  Fishon captain portal
+                </p>
+              </div>
+              <div className="px-6 py-8 sm:px-8 space-y-6">
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-8 h-8 text-red-600" />
+                  </div>
+                </div>
+                <div className="text-center space-y-3">
+                  <h1 className="text-2xl font-bold text-slate-900">Loading...</h1>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <AuthErrorContent />
+    </Suspense>
   );
 }
