@@ -73,9 +73,9 @@ export function loadEnv(): ServerEnvShape {
 
   // Skip validation during build time (Next.js data collection phase)
   // Environment variables will be validated at runtime when the app actually runs
+  // Use Next.js specific build phase indicator to avoid false positives
   const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
-                      process.env.NODE_ENV === undefined ||
-                      !w.DATABASE_URL; // Simple heuristic: if no DB URL, likely build time
+                      process.env.NEXT_PHASE === 'phase-production-server' && !w.DATABASE_URL;
   
   if (isBuildTime) {
     console.log('[env] Build-time detected, skipping environment validation');

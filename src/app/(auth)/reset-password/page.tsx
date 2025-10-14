@@ -5,6 +5,7 @@
 
 "use client";
 
+import { AuthPageLoading } from "@/components/auth/AuthPageLoading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -245,7 +246,7 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-50"><div>Loading...</div></div>}>
+    <Suspense fallback={<AuthPageLoading />}>
       <ResetPasswordContent />
     </Suspense>
   );
