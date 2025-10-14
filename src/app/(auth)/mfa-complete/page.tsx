@@ -5,6 +5,7 @@
 
 "use client";
 
+import { AuthPageLoading } from "@/components/auth/AuthPageLoading";
 import { Button } from "@/components/ui/button";
 import { Check, CheckCircle, Copy, Download, Shield } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -196,7 +197,7 @@ function MFACompleteContent() {
 
 export default function MFACompletePage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-50"><div>Loading...</div></div>}>
+    <Suspense fallback={<AuthPageLoading />}>
       <MFACompleteContent />
     </Suspense>
   );

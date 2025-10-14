@@ -5,6 +5,7 @@
 
 "use client";
 
+import { AuthPageLoading } from "@/components/auth/AuthPageLoading";
 import { VerificationCodeInput } from "@/components/auth/VerificationCodeInput";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle } from "lucide-react";
@@ -237,7 +238,7 @@ function VerifyOTPContent() {
 
 export default function VerifyOTPPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-50"><div>Loading...</div></div>}>
+    <Suspense fallback={<AuthPageLoading />}>
       <VerifyOTPContent />
     </Suspense>
   );
