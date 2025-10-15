@@ -1,11 +1,11 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
+import { VideoThumbnailSchema } from "@/schemas";
 import { put } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
-import { z } from "zod";
 
 export const runtime = "nodejs";
 
@@ -14,20 +14,6 @@ function getUserId(session: unknown): string | null {
   const user = (session as { user?: { id?: string } }).user;
   return user && typeof user.id === "string" ? user.id : null;
 }
-
-const BodySchema = z.object({
-  storageKey: z.string().min(1),
-  dataUrl: z
-    .string()
-    .min(50)
-    .refine((v) => v.startsWith("data:image/"), "must be data:image/* base64"),
-  durationSeconds: z
-    .number()
-    .int()
-    .positive()
-    .max(60 * 60 * 6)
-    .optional(),
-});
 
 export async function PATCH(
   req: Request,
@@ -49,7 +35,7 @@ export async function PATCH(
       NextResponse.json({ error: "invalid_json" }, { status: 400 })
     );
   }
-  const parsed = BodySchema.safeParse(bodyJson);
+  const parsed = VideoThumbnailSchema.safeParse(bodyJson);
   if (!parsed.success) {
     return applySecurityHeaders(
       NextResponse.json(

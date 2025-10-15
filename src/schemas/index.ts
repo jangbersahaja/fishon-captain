@@ -52,6 +52,7 @@ export {
   FinalizeMediaSchema,
   IncomingMediaSchema,
   MediaRemovalSchema,
+  VideoThumbnailSchema,
   normalizeFinalizeMedia,
   type NormalizedFinalizeMedia,
 } from "./media";

@@ -3,8 +3,8 @@
   "extractedAt": "2025-10-15T20:31:40.133Z",
   "summary": {
     "totalFiles": 6,
-    "totalExports": 40,
-    "filesModified": 9,
+    "totalExports": 41,
+    "filesModified": 10,
     "newFiles": 7
   },
   "extractions": [
@@ -50,9 +50,10 @@
         "NormalizedFinalizeMedia (interface)",
         "normalizeFinalizeMedia",
         "IncomingMediaSchema",
-        "MediaRemovalSchema"
+        "MediaRemovalSchema",
+        "VideoThumbnailSchema"
       ],
-      "notes": "Original file now re-exports from @/schemas/media. IncomingMediaSchema and MediaRemovalSchema extracted from API routes."
+      "notes": "Original file now re-exports from @/schemas/media. IncomingMediaSchema, MediaRemovalSchema, and VideoThumbnailSchema extracted from API routes."
     },
     {
       "originalFile": "src/server/drafts.ts",
@@ -131,6 +132,10 @@
     {
       "file": "src/app/api/charters/[id]/media/remove/route.ts",
       "change": "Imports MediaRemovalSchema from @/schemas instead of inline definition"
+    },
+    {
+      "file": "src/app/api/charters/[id]/media/video/thumbnail/route.ts",
+      "change": "Imports VideoThumbnailSchema from @/schemas instead of inline definition"
     },
     {
       "file": "vitest.config.ts",
