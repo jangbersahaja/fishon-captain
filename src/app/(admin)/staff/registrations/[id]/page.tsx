@@ -184,7 +184,7 @@ export default async function StaffRegistrationDetailPage({
         <h2 className="mb-3 text-sm font-semibold text-slate-800">
           Raw Draft Data
         </h2>
-        <pre className="max-h-[480px] overflow-auto rounded-lg bg-slate-900 p-4 text-[11px] leading-relaxed text-slate-100 shadow-inner">
+        <pre className="max-h-[480px] overflow-auto rounded-lg bg-slate-900 p-4 text-[11px] leading-relaxed text-slate-100 shadow-inner whitespace-pre-wrap break-all">
           {safePretty(draft.data)}
         </pre>
       </section>
