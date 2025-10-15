@@ -349,7 +349,7 @@ function Lightbox({
     >
       {/* Top bar */}
       <div
-        className="pointer-events-none absolute left-0 right-0 top-0 z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-3 text-white"
+        className="pointer-events-none absolute left-0 right-0 top-0 z-10 mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm">
@@ -376,7 +376,7 @@ function Lightbox({
       {/* Media viewer */}
       <div
         ref={fsRef}
-        className="absolute inset-0 mx-auto flex max-w-6xl items-center justify-center px-4"
+        className="absolute inset-0 mx-auto flex max-w-7xl items-center justify-center px-4"
         onClick={(e) => e.stopPropagation()}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
@@ -435,7 +435,7 @@ function Lightbox({
           className="absolute bottom-0 left-0 right-0 hidden max-h-28 overflow-x-auto bg-black/40 py-3 sm:block"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="mx-auto flex max-w-6xl gap-2 px-4">
+          <div className="mx-auto flex max-w-7xl gap-2 px-4">
             {media.map((mm, i) => (
               <button
                 key={mm.src + i}

@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
     <div className="relative isolate">
       {/* Hero / Header */}
       <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:py-24">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
             Terms of Service
           </h1>
@@ -24,7 +24,7 @@ export default function TermsOfServicePage() {
       </section>
 
       {/* Content */}
-      <div className="mx-auto max-w-6xl px-4 py-12 prose prose-slate dark:prose-invert prose-headings:scroll-mt-24">
+      <div className="mx-auto max-w-7xl px-4 py-12 prose prose-slate dark:prose-invert prose-headings:scroll-mt-24">
         <p className="not-prose text-sm text-slate-500 mb-8">
           Welcome to Fishon.my, Malaysia’s first online fishing charter booking
           platform. Fishon.my is owned and operated by Kartel Motion Ventures
