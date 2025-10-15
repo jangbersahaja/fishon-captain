@@ -51,7 +51,7 @@ export default function HeroWallpaper({
       />
       {children ? (
         <div className="absolute inset-0">
-          <div className="mx-auto flex h-full max-w-6xl items-center px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex h-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
             {children}
           </div>
         </div>
