@@ -150,3 +150,21 @@ export const MediaRemovalSchema = z.object({
   mediaId: z.string().optional(), // direct CharterMedia id
   storageKey: z.string().optional(), // fallback if id not known yet
 });
+
+/**
+ * Schema for video thumbnail upload
+ * Used when uploading a custom thumbnail for a video
+ */
+export const VideoThumbnailSchema = z.object({
+  storageKey: z.string().min(1),
+  dataUrl: z
+    .string()
+    .min(50)
+    .refine((v) => v.startsWith("data:image/"), "must be data:image/* base64"),
+  durationSeconds: z
+    .number()
+    .int()
+    .positive()
+    .max(60 * 60 * 6)
+    .optional(),
+});
