@@ -65,10 +65,6 @@ const faq = [
     q: "How do you protect my data?",
     a: "We take data security seriously. All personal information is protected under Malaysia's Personal Data Protection Act (PDPA). See our Privacy Policy for complete details on how we collect, use, and safeguard your data.",
   },
-  {
-    q: "What's included in each pricing tier?",
-    a: "Basic (10%): Google & Facebook ads, listing management, 24/7 support, reviews, performance tools. Silver (20%, coming soon): Everything in Basic plus premium placement and additional marketing tools.",
-  },
 ];
 
 const jsonLd = {
