@@ -101,8 +101,9 @@ const sections: SectionDef[] = [
           <li>Permanent delisting from the platform.</li>
         </ul>
         <p>
-          Refunds to customers are processed according to Fishon’s cancellation
-          policy and may vary by situation (weather, safety, or force majeure).
+          Customer refunds will be handled in accordance with Fishon’s
+          cancellation policy and may differ depending on the circumstances,
+          including force majeure events.
         </p>
       </div>
     ),
