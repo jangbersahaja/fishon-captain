@@ -24,6 +24,10 @@
 *.spec.ts
 *.spec.tsx
 
+# But allow schema tests (consolidated schemas need version control)
+!src/schemas/__tests__/
+!src/schemas/__tests__/*.test.ts
+
 # next.js
 /.next/
 /out/
