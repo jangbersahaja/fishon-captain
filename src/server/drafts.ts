@@ -6,14 +6,10 @@ import {
 } from "@features/charter-onboarding/charterForm.draft";
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import type { Prisma } from "@prisma/client";
-import { z } from "zod";
 
-// Schema for draft patch payload (server-side validation)
-export const DraftPatchSchema = z.object({
-  dataPartial: z.any(), // already sanitized at merge stage; could be narrowed further per form version
-  clientVersion: z.number().int().nonnegative(),
-  currentStep: z.number().int().min(0).max(10).optional(),
-});
+// DEPRECATED: DraftPatchSchema moved to src/schemas/draft.ts
+// Import from @/schemas instead for consistency
+export { DraftPatchSchema } from "@/schemas/draft";
 
 // Merge helper: shallow object merge, arrays replace
 function deepMerge<T>(base: T, partial: unknown): T {

@@ -1,17 +1,12 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
+import { MediaRemovalSchema } from "@/schemas";
 import { del } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 export const runtime = "nodejs";
-
-const BodySchema = z.object({
-  mediaId: z.string().optional(), // direct CharterMedia id
-  storageKey: z.string().optional(), // fallback if id not known yet
-});
 
 function getUserId(session: unknown): string | null {
   if (!session || typeof session !== "object") return null;
@@ -51,7 +46,7 @@ export async function POST(
       NextResponse.json({ error: "invalid_json" }, { status: 400 })
     );
   }
-  const parsed = BodySchema.safeParse(body);
+  const parsed = MediaRemovalSchema.safeParse(body);
   if (!parsed.success) {
     return applySecurityHeaders(
       NextResponse.json(
