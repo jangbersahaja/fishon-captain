@@ -23,7 +23,16 @@ export function VideoPreviewCarousel({
   videos,
   className,
 }: VideoPreviewCarouselProps) {
-  const items = useMemo(() => videos.filter((v) => !!v.url), [videos]);
+  const items = useMemo(() => {
+    const filtered = videos.filter((v) => !!v.url);
+    console.log("[VideoPreviewCarousel] items:", {
+      totalVideos: videos.length,
+      filteredItems: filtered.length,
+      sample: filtered[0],
+    });
+    return filtered;
+  }, [videos]);
+
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640; // tailwind sm breakpoint
   // Lazy fetch thumbnails server-side for items without provided thumbnail
@@ -114,24 +123,42 @@ export function VideoPreviewCarousel({
 function VideoThumb({ src }: { src?: string | null }) {
   // Accept optional src; render a neutral placeholder when none or when image fails.
   const [errored, setErrored] = useState(false);
+
   if (!src || errored) {
     return (
-      <div className="absolute inset-0 grid place-items-center bg-slate-300 text-slate-700">
-        <span className="inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-1 text-xs font-medium text-white">
-          Video
-        </span>
+      <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-slate-400 to-slate-500 text-slate-700">
+        <div className="flex flex-col items-center gap-1">
+          <svg
+            className="w-12 h-12 text-white/80"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+            />
+          </svg>
+          <span className="text-xs font-medium text-white/90">Video</span>
+        </div>
       </div>
     );
   }
+
   return (
     <Image
       src={src}
       alt="Video thumbnail"
       fill
-      sizes="160px"
+      sizes="176px"
       className="object-cover"
       unoptimized
-      onError={() => setErrored(true)}
+      onError={() => {
+        console.warn("[VideoThumb] Failed to load:", src);
+        setErrored(true);
+      }}
     />
   );
 }
@@ -289,6 +316,7 @@ function VideoLightbox({
         {/* Header */}
         <div className="flex items-center justify-between px-2 py-3 text-white">
           <button
+            type="button"
             onClick={onClose}
             className="rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20"
             aria-label="Close"
@@ -331,11 +359,13 @@ function VideoLightbox({
           {!desktop && items.length > 1 && (
             <div className="absolute inset-0 z-10 flex touch-none select-none">
               <button
+                type="button"
                 aria-label="Previous"
                 onClick={prev}
                 className="h-full w-1/2 cursor-pointer bg-transparent"
               />
               <button
+                type="button"
                 aria-label="Next"
                 onClick={next}
                 className="h-full w-1/2 cursor-pointer bg-transparent"
@@ -346,6 +376,7 @@ function VideoLightbox({
           {desktop && items.length > 1 && (
             <>
               <button
+                type="button"
                 onClick={prev}
                 className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
                 aria-label="Previous"
@@ -353,6 +384,7 @@ function VideoLightbox({
                 ←
               </button>
               <button
+                type="button"
                 onClick={next}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
                 aria-label="Next"
@@ -368,6 +400,7 @@ function VideoLightbox({
             <div className="flex gap-2 h-[120px] items-stretch overflow-x-auto overflow-y-hidden pb-3 no-scrollbar overscroll-x-contain snap-x snap-mandatory carousel-scroll">
               {items.map((v, i) => (
                 <button
+                  type="button"
                   key={v.url + i}
                   onClick={() => setCurrent(i)}
                   className={cx(

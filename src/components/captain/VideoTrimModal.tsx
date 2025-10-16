@@ -527,12 +527,13 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   const selectedDuration = endSec - startSec;
 
   // Improved size estimation: Calculate post-transcode 720p size
-  // Target bitrate for 720p video is approximately 2000 kbps (2 Mbps)
-  // This is a reasonable estimate for H.264 720p content at good quality
-  const target720pBitrateKbps = 2000; // 2 Mbps for 720p
+  // Based on real-world results with -crf 26 -preset veryfast:
+  // - Portrait/landscape 720p: ~500-600 kbps average
+  // - This matches actual outputs: 30s clips = 1.9-2.2 MB
+  const target720pBitrateKbps = 600; // Realistic for CRF 26 veryfast
   const target720pBitrateBytesPerSec = (target720pBitrateKbps * 1000) / 8; // Convert to bytes/sec
 
-  // If video is already at or below 720p, use original bitrate capped at target
+  // If video is already at or below 720p and low bitrate, use original bitrate capped at target
   const originalBitrateBytesPerSec = duration > 0 ? file.size / duration : 0;
   const effectiveBitrateBytesPerSec = Math.min(
     originalBitrateBytesPerSec,
@@ -540,7 +541,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   );
 
   const rawEstimate = effectiveBitrateBytesPerSec * selectedDuration;
-  const estimatedOutputBytes = rawEstimate * 1.04; // small container overhead cushion
+  const estimatedOutputBytes = rawEstimate * 1.15; // 15% overhead for container + audio
   const exceedsMax = estimatedOutputBytes > MAX_SHORT_VIDEO_BYTES;
   const startPercentage = (startSec / duration) * 100;
   const endPercentage = (endSec / duration) * 100;

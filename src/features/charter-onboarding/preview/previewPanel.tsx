@@ -162,7 +162,9 @@ const VideoPreviewCarousel = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="text-[10px] text-slate-400">Loading videos…</div>
+      <div className="h-[200px] sm:h-[240px] flex items-center justify-center bg-slate-50 rounded-lg border border-slate-200">
+        <div className="text-sm text-slate-400">Loading videos…</div>
+      </div>
     ),
   }
 );
@@ -174,6 +176,16 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
       : PREVIEW_PLACEHOLDER_IMAGES;
   const mapEmbedSrc = buildMapEmbedSrc(charter);
   const personsMax = charter.boat.capacity || undefined;
+
+  // Debug: log videos prop to diagnose loading issue
+  if (typeof window !== "undefined") {
+    console.log("[PreviewPanel] videos prop:", {
+      hasVideos: !!videos,
+      length: videos?.length ?? 0,
+      sample: videos?.[0],
+    });
+  }
+
   return (
     <section className="rounded-3xl border border-neutral-200 bg-white shadow-sm w-full">
       <div className="border-b border-neutral-200 px-6 py-5">
@@ -197,12 +209,12 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
       </div>
       <div className="mt-6 px-5 space-y-8 w-full overflow-hidden">
         <CharterGallery images={images} title={charter.name} />
-        {videos && videos.length > 0 && (
+        {videos && videos.length > 0 ? (
           <VideoPreviewCarousel
             videos={videos}
             className="border-t border-neutral-200 pt-6"
           />
-        )}
+        ) : null}
       </div>
       <section className="mt-6 grid grid-cols-1 gap-6 px-6 pb-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-stretch">
         <div className="lg:col-span-1">

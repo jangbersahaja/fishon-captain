@@ -328,14 +328,23 @@ export default async function handler(
     }
     const seekVal =
       typeof trimStartSec === "number" && trimStartSec > 0 ? trimStartSec : 0;
+
+    // Smart scaling: never upscale, always downscale to fit within 1280×720
+    // Strategy: scale to fit the bounding box, maintaining aspect ratio
     const filterAttempts: (string | null)[] = [
-      // Attempt 1: cap both dims explicitly (may upscale small videos)
-      "scale=1280:720:force_original_aspect_ratio=decrease",
-      // Attempt 2: preserve height<=720 and auto width (multiple of 2)
+      // Attempt 1: Scale to fit 1280×720 box, maintaining aspect ratio
+      // This ensures both dimensions fit within limits while preserving proportions
+      "scale='if(gt(iw/ih,1280/720),1280,-2)':'if(gt(iw/ih,1280/720),-2,720)'",
+      // Attempt 2: Simple constraint using 'min' with aspect ratio preservation
+      // Forces output to be at most 1280×720, scaling proportionally
+      "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+      // Attempt 3: Portrait-friendly height cap with width auto-calculated
+      "scale=-2:'min(720,ih)':force_divisible_by=2",
+      // Attempt 4: Landscape-friendly width cap with height auto-calculated
+      "scale='min(1280,iw)':-2:force_divisible_by=2",
+      // Attempt 5: Simple height-based (original logic)
       "scale=-2:720:force_original_aspect_ratio=decrease",
-      // Attempt 3: preserve width<=1280 and auto height
-      "scale=1280:-2:force_original_aspect_ratio=decrease",
-      // Attempt 4: no scaling (fallback)
+      // Attempt 6: no scaling (fallback)
       null,
     ];
 
@@ -394,6 +403,11 @@ export default async function handler(
             .save(outFile);
         });
         transcodeSucceeded = true;
+        console.log("[worker] transcode_succeeded", {
+          videoId,
+          attempt: attemptLabel,
+          filter: vf || "no_scaling",
+        });
       } catch (e) {
         lastError = e;
         // If file was partially written, remove before retry

@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -29,6 +30,19 @@ type StorageRow = {
   scopeLabel: string;
   linked: boolean;
   references: Reference[];
+  // Video-specific metadata
+  linkedVideoId?: string;
+  videoStatus?: string;
+  originalVideoKey?: string | null;
+  thumbnailKey?: string | null;
+  normalizedKey?: string | null;
+  isOriginalVideo?: boolean;
+  isThumbnail?: boolean;
+  isNormalizedVideo?: boolean;
+  // Owner info for captain-videos
+  ownerName?: string;
+  ownerAvatar?: string | null;
+  ownerId?: string;
 };
 
 type StorageManagerProps = {
@@ -232,6 +246,29 @@ export default function StorageManager({
                       <span className="break-all font-mono text-[11px] text-slate-700">
                         {row.key}
                       </span>
+
+                      {/* Owner info for videos */}
+                      {row.ownerName && (
+                        <div className="flex items-center gap-2 rounded border border-blue-100 bg-blue-50 px-2 py-1">
+                          {row.ownerAvatar ? (
+                            <Image
+                              src={row.ownerAvatar}
+                              alt={row.ownerName}
+                              width={20}
+                              height={20}
+                              className="h-5 w-5 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-200 text-[9px] font-bold text-blue-800">
+                              {row.ownerName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-[10px] font-medium text-blue-900">
+                            {row.ownerName}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap items-center gap-2 text-[11px]">
                         <span
                           className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 font-medium uppercase tracking-wide text-slate-600"
@@ -249,6 +286,30 @@ export default function StorageManager({
                         >
                           {row.linked ? "Linked" : "Orphan"}
                         </span>
+                        {row.isOriginalVideo && (
+                          <span
+                            className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 font-medium uppercase tracking-wide text-blue-700"
+                            title="Original video file"
+                          >
+                            Original
+                          </span>
+                        )}
+                        {row.isThumbnail && (
+                          <span
+                            className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 font-medium uppercase tracking-wide text-purple-700"
+                            title="Video thumbnail"
+                          >
+                            Thumb
+                          </span>
+                        )}
+                        {row.isNormalizedVideo && (
+                          <span
+                            className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 font-medium uppercase tracking-wide text-emerald-700"
+                            title="Normalized 720p video"
+                          >
+                            720p
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -266,6 +327,72 @@ export default function StorageManager({
                         Uploaded:{" "}
                         <span title={row.uploadedAtIso}>{row.uploadedAgo}</span>
                       </div>
+
+                      {/* Video pipeline relationships */}
+                      {row.linkedVideoId && (
+                        <div className="mt-2 space-y-1 rounded border border-blue-200 bg-blue-50 p-2">
+                          <div className="text-[11px] font-medium text-blue-900">
+                            Video Pipeline
+                          </div>
+                          <div className="text-[10px] text-blue-700">
+                            ID: {row.linkedVideoId}
+                          </div>
+                          {row.videoStatus && (
+                            <div className="text-[10px] text-blue-700">
+                              Status:{" "}
+                              <span className="font-medium uppercase">
+                                {row.videoStatus}
+                              </span>
+                            </div>
+                          )}
+                          <div className="mt-1 space-y-0.5 text-[10px]">
+                            {row.isOriginalVideo && (
+                              <div className="flex items-center gap-1">
+                                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[8px] font-bold text-white">
+                                  O
+                                </span>
+                                <span className="text-blue-800">
+                                  Original video
+                                </span>
+                              </div>
+                            )}
+                            {row.isThumbnail && (
+                              <div className="flex items-center gap-1">
+                                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-purple-600 text-[8px] font-bold text-white">
+                                  T
+                                </span>
+                                <span className="text-blue-800">Thumbnail</span>
+                                {row.originalVideoKey && (
+                                  <span className="text-slate-500">
+                                    → {row.originalVideoKey.slice(-20)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {row.isNormalizedVideo && (
+                              <div className="flex items-center gap-1">
+                                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold text-white">
+                                  N
+                                </span>
+                                <span className="text-blue-800">
+                                  Normalized 720p
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          {row.originalVideoKey &&
+                            !row.isOriginalVideo &&
+                            (row.isThumbnail || row.isNormalizedVideo) && (
+                              <div className="mt-1 text-[10px] text-slate-600">
+                                Original:{" "}
+                                <span className="break-all font-mono">
+                                  {row.originalVideoKey}
+                                </span>
+                              </div>
+                            )}
+                        </div>
+                      )}
+
                       <div className="text-[11px] text-slate-500">
                         References:
                       </div>

@@ -174,14 +174,27 @@ export function useCharterMediaManager({
       | undefined;
     if (photos?.length) setExistingImages(photos);
     const vids = form.getValues("uploadedVideos") as
-      | Array<{ name: string; url: string }>
+      | Array<{
+          name: string;
+          url: string;
+          thumbnailUrl?: string | null;
+          durationSeconds?: number;
+        }>
       | undefined;
-    if (vids?.length) setExistingVideos(vids);
+    if (vids?.length) {
+      // Normalize null to undefined for thumbnailUrl
+      const normalized = vids.map((v) => ({
+        ...v,
+        thumbnailUrl: v.thumbnailUrl ?? undefined,
+      }));
+      setExistingVideos(normalized);
+    }
     const avatarUrl = form.getValues("operator.avatarUrl");
     if (avatarUrl) setCaptainAvatarPreview(avatarUrl);
     dlog("hydrate_from_form", {
       photos: photos?.length || 0,
       videos: vids?.length || 0,
+      videosWithThumbs: vids?.filter((v) => v.thumbnailUrl).length || 0,
       hasAvatar: !!avatarUrl,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,11 +215,23 @@ export function useCharterMediaManager({
       }
       if (existingVideos.length === 0) {
         const vids = form.getValues("uploadedVideos") as
-          | Array<{ name: string; url: string }>
+          | Array<{
+              name: string;
+              url: string;
+              thumbnailUrl?: string | null;
+              durationSeconds?: number;
+            }>
           | undefined;
         if (Array.isArray(vids) && vids.length) {
-          setExistingVideos(vids);
-          dlog("late_videos_hydration", { count: vids.length });
+          const normalized = vids.map((v) => ({
+            ...v,
+            thumbnailUrl: v.thumbnailUrl ?? undefined,
+          }));
+          setExistingVideos(normalized);
+          dlog("late_videos_hydration", {
+            count: vids.length,
+            withThumbs: vids.filter((v) => v.thumbnailUrl).length,
+          });
         }
       }
     });
@@ -246,6 +271,8 @@ export function useCharterMediaManager({
     const sanitized = existingVideos.map((video) => ({
       name: video.name,
       url: video.url,
+      thumbnailUrl: video.thumbnailUrl,
+      durationSeconds: video.durationSeconds,
     }));
     setValue(
       "uploadedVideos",
