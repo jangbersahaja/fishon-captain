@@ -637,15 +637,31 @@ class VideoUploadQueue {
     }
 
     // Client errors (4xx)
-    if (
-      message.includes("400") ||
-      message.includes("413") ||
-      message.includes("415")
-    ) {
+    if (message.includes("413")) {
+      return {
+        code: "FILE_TOO_LARGE",
+        message:
+          "Video file is too large. Please select a smaller video file.",
+        category: "validation",
+        recoverable: false,
+      };
+    }
+    
+    if (message.includes("415")) {
+      return {
+        code: "UNSUPPORTED_TYPE",
+        message:
+          "Video format not supported. Please use MP4, MOV, or WebM format.",
+        category: "validation",
+        recoverable: false,
+      };
+    }
+    
+    if (message.includes("400")) {
       return {
         code: "CLIENT_ERROR",
         message:
-          "Invalid file or request. Please check your file and try again.",
+          "Invalid file or request. Please try a different video file.",
         category: "client",
         recoverable: false,
       };

@@ -16,10 +16,26 @@ export type ProcessStatus = z.infer<typeof ProcessStatusEnum>;
 /**
  * Schema for creating a new video upload
  * Used when initiating a video upload flow
+ * 
+ * Note: Mobile devices may not set proper MIME types, so we accept:
+ * - video/* MIME types
+ * - Empty strings (will validate by file extension)
+ * - application/octet-stream (generic fallback used by some mobile browsers)
  */
 export const CreateUploadSchema = z.object({
   fileName: z.string().min(1).max(256),
-  fileType: z.string().regex(/^video\//, "Must be a video MIME type"),
+  fileType: z.string().refine(
+    (type) => {
+      // Accept empty string (fallback to extension check)
+      if (type === "") return true;
+      // Accept video/* MIME types
+      if (type.startsWith("video/")) return true;
+      // Accept generic MIME type used by mobile browsers
+      if (type === "application/octet-stream") return true;
+      return false;
+    },
+    { message: "Must be a video file" }
+  ),
 });
 
 /**
@@ -66,4 +82,35 @@ export function validateThumbFile(file: File) {
   if (!allowed.includes(file.type)) return false;
   if (file.size > 2 * 1024 * 1024) return false; // 2MB
   return true;
+}
+
+/**
+ * Validate video file type
+ * Mobile-friendly validation that checks both MIME type and file extension
+ * 
+ * @param file - File to validate
+ * @returns true if valid video file, false otherwise
+ * 
+ * @remarks
+ * Mobile devices (especially iOS) may not set proper MIME types or may use:
+ * - Empty string
+ * - "application/octet-stream"
+ * - Unexpected video MIME types like "video/quicktime" for .mov files
+ * 
+ * This function validates by both MIME type and file extension to handle all cases.
+ */
+export function isValidVideoFile(file: File): boolean {
+  // Check MIME type if available and not generic
+  if (file.type && file.type !== "application/octet-stream") {
+    if (file.type.startsWith("video/")) {
+      return true;
+    }
+    // If MIME type is set but doesn't start with video/, it's invalid
+    // unless we fall through to extension check
+  }
+  
+  // Fallback: Check file extension for common video formats
+  // Including mobile-specific formats (.3gp, .m4v, etc.)
+  const videoExtensions = /\.(mp4|mov|webm|ogg|avi|mkv|3gp|3gpp|m4v|flv|wmv|m2v|m4p|mpg|mpeg|mpe|mpv|m2ts|mts)$/i;
+  return videoExtensions.test(file.name);
 }

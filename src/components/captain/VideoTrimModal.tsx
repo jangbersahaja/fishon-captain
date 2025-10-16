@@ -147,9 +147,11 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       );
 
       // Validate file type and size
-      if (!file.type.startsWith("video/")) {
+      // Import the validation function at the top
+      const { isValidVideoFile } = require("@/schemas/video");
+      if (!isValidVideoFile(file)) {
         setError(
-          `Invalid file type: ${file.type}. Please select a video file.`
+          `Invalid file type: ${file.type || "unknown"} (${file.name}). Please select a video file.`
         );
         setLoading(false);
         return;
