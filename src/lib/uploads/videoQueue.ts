@@ -423,9 +423,24 @@ class VideoUploadQueue {
               }
             } else {
               // Phase 7: Enhanced error handling for HTTP errors
-              const error = new Error(
-                `Upload failed with status ${xhr.status}: ${xhr.statusText}`
-              );
+              // Try to parse error response body for detailed message
+              let errorMessage = `Upload failed with status ${xhr.status}: ${xhr.statusText}`;
+              try {
+                const errorJson = JSON.parse(xhr.responseText) as {
+                  message?: string;
+                  error?: string;
+                };
+                if (errorJson.message) {
+                  errorMessage = errorJson.message;
+                } else if (errorJson.error) {
+                  errorMessage = errorJson.error;
+                }
+              } catch {
+                // If response isn't JSON, use default message
+              }
+              const error = new Error(errorMessage);
+              // Attach status code for better error categorization
+              (error as { status?: number }).status = xhr.status;
               reject(error);
             }
           }
@@ -605,11 +620,13 @@ class VideoUploadQueue {
 
   private categorizeError(error: unknown, context: string): ErrorDetails {
     const message = error instanceof Error ? error.message : String(error);
+    const status = (error as { status?: number }).status;
 
     // Network errors
     if (
       message.includes("NetworkError") ||
-      message.includes("Failed to fetch")
+      message.includes("Failed to fetch") ||
+      message.includes("Network error")
     ) {
       return {
         code: "NETWORK_ERROR",
@@ -623,6 +640,7 @@ class VideoUploadQueue {
 
     // Server errors (5xx)
     if (
+      status && status >= 500 ||
       message.includes("500") ||
       message.includes("502") ||
       message.includes("503")
@@ -636,18 +654,25 @@ class VideoUploadQueue {
       };
     }
 
-    // Client errors (4xx)
-    if (message.includes("413")) {
+    // Client errors (4xx) - use server message if available, otherwise use defaults
+    if (status === 413 || message.includes("413")) {
+      // Check if we have a detailed message from the server
+      const hasDetailedMessage = 
+        message.includes("exceeds limit") || 
+        message.includes("too large") ||
+        message.includes("MB");
+      
       return {
         code: "FILE_TOO_LARGE",
-        message:
-          "Video file is too large. Please select a smaller video file.",
+        message: hasDetailedMessage 
+          ? message 
+          : "Video file is too large. Please select a smaller video file.",
         category: "validation",
         recoverable: false,
       };
     }
     
-    if (message.includes("415")) {
+    if (status === 415 || message.includes("415")) {
       return {
         code: "UNSUPPORTED_TYPE",
         message:
@@ -657,7 +682,7 @@ class VideoUploadQueue {
       };
     }
     
-    if (message.includes("400")) {
+    if (status === 400 || message.includes("400")) {
       return {
         code: "CLIENT_ERROR",
         message:
