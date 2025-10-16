@@ -25,6 +25,19 @@ export async function POST(req: Request) {
     const docTypeRaw = form.get("docType");
     const charterIdRaw = form.get("charterId");
     const shortVideo = form.get("shortVideo") === "true"; // new flag for captain short-form videos
+    // Log file size and user agent for diagnostics
+    const userAgent = req.headers.get("user-agent") || "unknown";
+    if (form.has("file")) {
+      const fileEntry = form.get("file");
+      if (fileEntry instanceof File) {
+        console.log(
+          "[upload_attempt] fileSize:",
+          fileEntry.size,
+          "userAgent:",
+          userAgent
+        );
+      }
+    }
     const session = await getServerSession(authOptions);
     const userId = getUserId(session);
     if (!userId) {
@@ -64,6 +77,15 @@ export async function POST(req: Request) {
       );
     if (shortVideo && isVideo) {
       if (file.size > MAX_SHORT_VIDEO_BYTES) {
+        // Log rejection for oversized file
+        console.error(
+          "[upload_rejected_413] fileSize:",
+          file.size,
+          "maxBytes:",
+          MAX_SHORT_VIDEO_BYTES,
+          "userAgent:",
+          userAgent
+        );
         return NextResponse.json(
           {
             ok: false,
