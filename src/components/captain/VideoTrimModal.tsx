@@ -154,11 +154,11 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
         setLoading(false);
         return;
       }
-      if (file.size > 100 * 1024 * 1024) {
+      if (file.size > 500 * 1024 * 1024) {
         setError(
           `File too large (${(file.size / 1024 / 1024).toFixed(
             1
-          )}MB). Max allowed is 100MB.`
+          )}MB). Max allowed is 500MB.`
         );
         setLoading(false);
         return;
@@ -525,7 +525,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   const averageBitrateBytesPerSec = duration > 0 ? file.size / duration : 0;
   const rawEstimate = averageBitrateBytesPerSec * selectedDuration;
   const estimatedOutputBytes = rawEstimate * 1.04; // small container overhead cushion
-  const exceedsMax = estimatedOutputBytes > 100 * 1024 * 1024;
+  const exceedsMax = estimatedOutputBytes > 150 * 1024 * 1024;
   const startPercentage = (startSec / duration) * 100;
   const endPercentage = (endSec / duration) * 100;
 
@@ -920,7 +920,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 </span>
                 {exceedsMax && (
                   <span className="text-red-400 font-semibold">
-                    {">"}100MB (trim more)
+                    {">"}150MB (trim more)
                   </span>
                 )}
               </div>
