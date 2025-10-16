@@ -8,4 +8,4 @@ export const MAX_USER_PENDING_MEDIA = 200; // safety limit
 // Max short-form captain video size (bytes). Adjusted to 150MB to match client-side validation.
 // This allows high bitrate 30s clips while preventing huge uploads.
 // Client-side VideoTrimModal enforces this limit before upload.
-export const MAX_SHORT_VIDEO_BYTES = 150 * 1024 * 1024;
+export const MAX_SHORT_VIDEO_BYTES = 500 * 1024 * 1024;
