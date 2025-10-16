@@ -9,6 +9,7 @@ import {
   StorageSortKey,
   StorageViewModel,
   buildHref,
+  formatBytes,
 } from "./shared";
 
 type StorageSectionProps = {
@@ -25,11 +26,12 @@ export default function StorageSection({
   const {
     rows,
     total,
+    totalSize,
     linkedCount,
     orphanCount,
     filteredCount,
-    fetchLimit,
-    hasMore,
+    currentPage,
+    totalPages,
     scopeFilter,
     linkFilter,
     searchQuery,
@@ -43,31 +45,36 @@ export default function StorageSection({
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="text-xs text-slate-500">Total blobs sampled</div>
+          <div className="text-xs text-slate-500">Total blobs</div>
           <div className="mt-1 text-2xl font-semibold text-slate-900">
             {total.toLocaleString()}
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Fetched up to {fetchLimit}. {hasMore ? "More blobs available." : ""}
-          </p>
+          <p className="mt-1 text-xs text-slate-500">All blobs in storage</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="text-xs text-slate-500">Total storage</div>
+          <div className="mt-1 text-2xl font-semibold text-blue-700">
+            {formatBytes(totalSize)}
+          </div>
+          <p className="mt-1 text-xs text-slate-500">All blobs combined</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="text-xs text-slate-500">Linked to DB</div>
           <div className="mt-1 text-2xl font-semibold text-emerald-700">
             {linkedCount.toLocaleString()}
           </div>
+          <p className="mt-1 text-xs text-slate-500">
+            {((linkedCount / total) * 100).toFixed(1)}% of total
+          </p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="text-xs text-slate-500">Orphan blobs</div>
           <div className="mt-1 text-2xl font-semibold text-amber-600">
             {orphanCount.toLocaleString()}
           </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="text-xs text-slate-500">Visible after filters</div>
-          <div className="mt-1 text-2xl font-semibold text-slate-900">
-            {filteredCount.toLocaleString()}
-          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            {((orphanCount / total) * 100).toFixed(1)}% of total
+          </p>
         </div>
       </div>
 
@@ -207,9 +214,51 @@ export default function StorageSection({
           </Link>
         ) : null}
         <span className="ml-auto text-xs text-slate-500">
-          Showing {rows.length} of {total} sampled
+          Showing {rows.length} on this page
         </span>
       </form>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <div className="text-sm text-slate-600">
+            {filteredCount.toLocaleString()} results • Page {currentPage} of{" "}
+            {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            {currentPage > 1 ? (
+              <Link
+                href={buildHref("/staff/media", searchParams, {
+                  tab: "storage",
+                  cursor: (currentPage - 1).toString(),
+                })}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                ← Previous
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-400">
+                ← Previous
+              </span>
+            )}
+            {currentPage < totalPages ? (
+              <Link
+                href={buildHref("/staff/media", searchParams, {
+                  tab: "storage",
+                  cursor: (currentPage + 1).toString(),
+                })}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                Next →
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-400">
+                Next →
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {error ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">

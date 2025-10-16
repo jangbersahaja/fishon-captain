@@ -122,20 +122,26 @@ export function hydrateDraftValues(
   merged.videos = [];
 
   // Restore uploaded media metadata arrays if present (keep existing default empty arrays otherwise)
-  type UploadedMeta = { name: string; url: string };
-  const dPhotos = (draft as unknown as { uploadedPhotos?: UploadedMeta[] })
+  type UploadedPhotoMeta = { name: string; url: string };
+  type UploadedVideoMeta = {
+    name: string;
+    url: string;
+    thumbnailUrl?: string | null;
+    durationSeconds?: number;
+  };
+  const dPhotos = (draft as unknown as { uploadedPhotos?: UploadedPhotoMeta[] })
     .uploadedPhotos;
-  const dVideos = (draft as unknown as { uploadedVideos?: UploadedMeta[] })
+  const dVideos = (draft as unknown as { uploadedVideos?: UploadedVideoMeta[] })
     .uploadedVideos;
   if (Array.isArray(dPhotos)) {
-    (merged as unknown as { uploadedPhotos: UploadedMeta[] }).uploadedPhotos = [
-      ...dPhotos,
-    ];
+    (
+      merged as unknown as { uploadedPhotos: UploadedPhotoMeta[] }
+    ).uploadedPhotos = [...dPhotos];
   }
   if (Array.isArray(dVideos)) {
-    (merged as unknown as { uploadedVideos: UploadedMeta[] }).uploadedVideos = [
-      ...dVideos,
-    ];
+    (
+      merged as unknown as { uploadedVideos: UploadedVideoMeta[] }
+    ).uploadedVideos = [...dVideos];
   }
 
   return merged;

@@ -106,7 +106,7 @@ export type StorageScope =
   | "charter-media"
   | "avatar"
   | "verification"
-  | "pending-temp"
+  | "captain-videos"
   | "legacy"
   | "other";
 
@@ -124,16 +124,31 @@ export type StorageRow = {
   scopeLabel: string;
   linked: boolean;
   references: Reference[];
+  // Video-specific metadata
+  linkedVideoId?: string;
+  videoStatus?: string;
+  originalVideoKey?: string | null;
+  thumbnailKey?: string | null;
+  normalizedKey?: string | null;
+  isOriginalVideo?: boolean;
+  isThumbnail?: boolean;
+  isNormalizedVideo?: boolean;
+  // Owner info for captain-videos
+  ownerName?: string;
+  ownerAvatar?: string | null;
+  ownerId?: string;
 };
 
 export type StorageViewModel = {
   rows: StorageRow[];
-  total: number;
+  total: number; // Total blobs across all pages
   linkedCount: number;
   orphanCount: number;
-  filteredCount: number;
+  filteredCount: number; // Total after filtering, before pagination
+  totalSize: number; // Sum of all blob sizes in bytes (all pages)
   fetchLimit: number;
-  hasMore: boolean;
+  currentPage: number;
+  totalPages: number;
   scopeFilter: StorageScope | null;
   linkFilter: "linked" | "orphan" | null;
   searchQuery: string;
@@ -165,10 +180,10 @@ export const KIND_LABEL: Record<Kind, string> = {
 };
 
 export const STORAGE_SCOPE_LABEL: Record<StorageScope, string> = {
-  "charter-media": "Charter media",
+  "charter-media": "Photos",
   avatar: "Avatar",
   verification: "Verification",
-  "pending-temp": "Pending temp",
+  "captain-videos": "Videos",
   legacy: "Legacy",
   other: "Other",
 };
@@ -178,10 +193,10 @@ export const STORAGE_SCOPE_OPTIONS: Array<{
   label: string;
 }> = [
   { value: null, label: "All scopes" },
-  { value: "charter-media", label: "Charter media" },
+  { value: "charter-media", label: "Photos" },
   { value: "avatar", label: "Avatars" },
   { value: "verification", label: "Verification" },
-  { value: "pending-temp", label: "Pending temp" },
+  { value: "captain-videos", label: "Videos" },
   { value: "legacy", label: "Legacy" },
   { value: "other", label: "Other" },
 ];
@@ -195,14 +210,14 @@ export const STORAGE_SORT_LABEL: Record<StorageSortKey, string> = {
 export const STALE_THRESHOLD_MINUTES = 15;
 export const FETCH_LIMIT_DEFAULT = 100;
 export const FETCH_LIMIT_STALE = 200;
-export const BLOB_FETCH_LIMIT = 500;
-export const BLOB_PAGE_SIZE = 200;
+export const BLOB_FETCH_LIMIT = 100; // Per page for pagination
+export const BLOB_PAGE_SIZE = 100; // Items per API call
 
 const STORAGE_SCOPES: StorageScope[] = [
   "charter-media",
   "avatar",
   "verification",
-  "pending-temp",
+  "captain-videos",
   "legacy",
   "other",
 ];
@@ -346,8 +361,10 @@ export const classifyScope = (key: string): StorageScope => {
   if (key.startsWith("captains/") && key.includes("/avatar/")) return "avatar";
   if (key.startsWith("captains/") && key.includes("/media/"))
     return "charter-media";
+  if (key.startsWith("captain-videos/")) return "captain-videos";
+  if (key.startsWith("captains/") && key.includes("/videos/"))
+    return "captain-videos";
   if (key.startsWith("verification/")) return "verification";
-  if (key.startsWith("temp/")) return "pending-temp";
   if (key.startsWith("charters/")) return "legacy";
   return "other";
 };
