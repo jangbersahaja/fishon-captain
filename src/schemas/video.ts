@@ -95,21 +95,24 @@ export function validateThumbFile(file: File) {
  * Mobile devices (especially iOS) may not set proper MIME types or may use:
  * - Empty string
  * - "application/octet-stream"
+ * - Incorrect MIME types (e.g., "audio/mpeg" for .mp4 files)
  * - Unexpected video MIME types like "video/quicktime" for .mov files
  * 
- * This function validates by both MIME type and file extension to handle all cases.
+ * Strategy:
+ * 1. If MIME type is video/*, accept immediately (most reliable case)
+ * 2. Always check file extension as fallback (handles empty/wrong/generic MIME types)
+ * 
+ * This intentionally allows files with wrong MIME types if they have valid video extensions,
+ * as mobile browsers frequently misreport MIME types.
  */
 export function isValidVideoFile(file: File): boolean {
-  // Check MIME type if available and not generic
-  if (file.type && file.type !== "application/octet-stream") {
-    if (file.type.startsWith("video/")) {
-      return true;
-    }
-    // If MIME type is set but doesn't start with video/, it's invalid
-    // unless we fall through to extension check
+  // Fast path: If MIME type is valid video type, accept immediately
+  if (file.type && file.type.startsWith("video/")) {
+    return true;
   }
   
   // Fallback: Check file extension for common video formats
+  // This handles: empty MIME, application/octet-stream, wrong MIME types
   // Including mobile-specific formats (.3gp, .m4v, etc.)
   const videoExtensions = /\.(mp4|mov|webm|ogg|avi|mkv|3gp|3gpp|m4v|flv|wmv|m2v|m4p|mpg|mpeg|mpe|mpv|m2ts|mts)$/i;
   return videoExtensions.test(file.name);
