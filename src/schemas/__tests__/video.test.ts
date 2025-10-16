@@ -6,6 +6,7 @@ import {
   ProcessStatusEnum,
   TranscodePayloadSchema,
   validateThumbFile,
+  isValidVideoFile,
 } from "../video";
 
 describe("Video Schemas", () => {
@@ -31,6 +32,35 @@ describe("Video Schemas", () => {
       };
       const result = CreateUploadSchema.safeParse(validData);
       expect(result.success).toBe(true);
+    });
+
+    it("should accept empty file type (mobile fallback)", () => {
+      const validData = {
+        fileName: "test-video.mp4",
+        fileType: "",
+      };
+      const result = CreateUploadSchema.safeParse(validData);
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept application/octet-stream (mobile fallback)", () => {
+      const validData = {
+        fileName: "test-video.mp4",
+        fileType: "application/octet-stream",
+      };
+      const result = CreateUploadSchema.safeParse(validData);
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept various video MIME types", () => {
+      const mimeTypes = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp"];
+      mimeTypes.forEach(fileType => {
+        const result = CreateUploadSchema.safeParse({
+          fileName: "test-video.mp4",
+          fileType,
+        });
+        expect(result.success).toBe(true);
+      });
     });
 
     it("should reject invalid file type", () => {
@@ -163,6 +193,61 @@ describe("Video Schemas", () => {
       const file = new File(["content"], "thumb.png", { type: "image/png" });
       Object.defineProperty(file, "size", { value: 1024 * 1024 });
       expect(validateThumbFile(file)).toBe(false);
+    });
+  });
+
+  describe("isValidVideoFile", () => {
+    it("should accept video with proper MIME type", () => {
+      const file = new File(["content"], "video.mp4", { type: "video/mp4" });
+      expect(isValidVideoFile(file)).toBe(true);
+    });
+
+    it("should accept video with quicktime MIME type", () => {
+      const file = new File(["content"], "video.mov", { type: "video/quicktime" });
+      expect(isValidVideoFile(file)).toBe(true);
+    });
+
+    it("should accept video with 3gpp MIME type (Android)", () => {
+      const file = new File(["content"], "video.3gp", { type: "video/3gpp" });
+      expect(isValidVideoFile(file)).toBe(true);
+    });
+
+    it("should accept video with empty MIME type (fallback to extension)", () => {
+      const file = new File(["content"], "video.mp4", { type: "" });
+      expect(isValidVideoFile(file)).toBe(true);
+    });
+
+    it("should accept video with application/octet-stream (mobile fallback)", () => {
+      const file = new File(["content"], "video.mp4", { type: "application/octet-stream" });
+      expect(isValidVideoFile(file)).toBe(true);
+    });
+
+    it("should accept various video extensions", () => {
+      const extensions = ["mp4", "mov", "webm", "3gp", "m4v", "avi", "mkv"];
+      extensions.forEach(ext => {
+        const file = new File(["content"], `video.${ext}`, { type: "" });
+        expect(isValidVideoFile(file)).toBe(true);
+      });
+    });
+
+    it("should reject non-video MIME type with non-video extension", () => {
+      const file = new File(["content"], "image.jpg", { type: "image/jpeg" });
+      expect(isValidVideoFile(file)).toBe(false);
+    });
+
+    it("should reject file with no extension and no video MIME type", () => {
+      const file = new File(["content"], "videofile", { type: "" });
+      expect(isValidVideoFile(file)).toBe(false);
+    });
+
+    it("should accept mobile-specific formats", () => {
+      // iOS m4v format
+      const m4vFile = new File(["content"], "video.m4v", { type: "" });
+      expect(isValidVideoFile(m4vFile)).toBe(true);
+
+      // Android 3gpp format
+      const threegpFile = new File(["content"], "video.3gpp", { type: "video/3gpp" });
+      expect(isValidVideoFile(threegpFile)).toBe(true);
     });
   });
 });
