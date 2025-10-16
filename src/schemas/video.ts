@@ -113,7 +113,23 @@ export function isValidVideoFile(file: File): boolean {
   
   // Fallback: Check file extension for common video formats
   // This handles: empty MIME, application/octet-stream, wrong MIME types
-  // Including mobile-specific formats (.3gp, .m4v, etc.)
-  const videoExtensions = /\.(mp4|mov|webm|ogg|avi|mkv|3gp|3gpp|m4v|flv|wmv|m2v|m4p|mpg|mpeg|mpe|mpv|m2ts|mts)$/i;
+  
+  // Define supported video extensions by category for maintainability
+  const extensions = [
+    // Modern web formats
+    "mp4", "webm", "ogg",
+    // Apple formats
+    "mov", "m4v", "m4p",
+    // Mobile formats (Android)
+    "3gp", "3gpp",
+    // Legacy/Desktop formats
+    "avi", "mkv", "flv", "wmv",
+    // MPEG variants
+    "mpg", "mpeg", "mpe", "mpv", "m2v",
+    // Transport streams
+    "m2ts", "mts"
+  ];
+  
+  const videoExtensions = new RegExp(`\\.(${extensions.join("|")})$`, "i");
   return videoExtensions.test(file.name);
 }
