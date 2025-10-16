@@ -57,7 +57,8 @@ export async function POST(req: Request) {
     const charterId = typeof charterIdRaw === "string" ? charterIdRaw : null;
 
     // Detect video files for transcoding
-    const isVideo = /\.(mp4|mov|webm|ogg|avi|mkv)$/i.test(originalName);
+    // Support mobile formats: 3gp (Android), m4v (iOS), and other common formats
+    const isVideo = /\.(mp4|mov|webm|ogg|avi|mkv|3gp|3gpp|m4v|flv|wmv|m2v|m4p|mpg|mpeg|mpe|mpv|m2ts|mts)$/i.test(originalName);
     if (shortVideo && isVideo) {
       if (file.size > MAX_SHORT_VIDEO_BYTES) {
         return NextResponse.json(
