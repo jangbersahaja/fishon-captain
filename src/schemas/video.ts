@@ -85,6 +85,34 @@ export function validateThumbFile(file: File) {
 }
 
 /**
+ * Supported video file extensions by category
+ * Used for fallback validation when MIME type is unavailable or incorrect
+ */
+const SUPPORTED_VIDEO_EXTENSIONS = [
+  // Modern web formats
+  "mp4", "webm", "ogg",
+  // Apple formats
+  "mov", "m4v", "m4p",
+  // Mobile formats (Android)
+  "3gp", "3gpp",
+  // Legacy/Desktop formats
+  "avi", "mkv", "flv", "wmv",
+  // MPEG variants
+  "mpg", "mpeg", "mpe", "mpv", "m2v",
+  // Transport streams
+  "m2ts", "mts"
+];
+
+/**
+ * Pre-compiled regex for video file extension validation
+ * Cached for performance to avoid recompilation on every call
+ */
+const VIDEO_EXTENSION_REGEX = new RegExp(
+  `\\.(${SUPPORTED_VIDEO_EXTENSIONS.join("|")})$`,
+  "i"
+);
+
+/**
  * Validate video file type
  * Mobile-friendly validation that checks both MIME type and file extension
  * 
@@ -113,23 +141,5 @@ export function isValidVideoFile(file: File): boolean {
   
   // Fallback: Check file extension for common video formats
   // This handles: empty MIME, application/octet-stream, wrong MIME types
-  
-  // Define supported video extensions by category for maintainability
-  const extensions = [
-    // Modern web formats
-    "mp4", "webm", "ogg",
-    // Apple formats
-    "mov", "m4v", "m4p",
-    // Mobile formats (Android)
-    "3gp", "3gpp",
-    // Legacy/Desktop formats
-    "avi", "mkv", "flv", "wmv",
-    // MPEG variants
-    "mpg", "mpeg", "mpe", "mpv", "m2v",
-    // Transport streams
-    "m2ts", "mts"
-  ];
-  
-  const videoExtensions = new RegExp(`\\.(${extensions.join("|")})$`, "i");
-  return videoExtensions.test(file.name);
+  return VIDEO_EXTENSION_REGEX.test(file.name);
 }
