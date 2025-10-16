@@ -61,9 +61,10 @@ export interface ProcessingUploadItem extends BaseVideoUploadItem {
   status: "processing";
   startedAt: number;
   uploadedAt: number;
-  progress: 1; // upload finished
+  progress: number; // 0.85..1 during processing stages
   blobKey: string;
   videoUrl: string; // temporary blob URL
+  progressDetails?: ProgressDetails;
 }
 
 export interface DoneUploadItem extends BaseVideoUploadItem {

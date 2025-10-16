@@ -82,6 +82,11 @@ export type VideoRow = {
   sizeBytes: number | null;
   durationSeconds: number | null;
   stale: boolean;
+  // Video metadata
+  originalSize: number | null;
+  originalResolution: string | null;
+  normalizedSize: number | null;
+  normalizedResolution: string | null;
 };
 
 export type VideoViewModel = {

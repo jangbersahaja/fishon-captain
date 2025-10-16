@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { list } from "@vercel/blob";
+import { head, list } from "@vercel/blob";
 
 import {
   BLOB_FETCH_LIMIT,
@@ -26,6 +26,37 @@ import {
   isStorageScope,
   normalizeKey,
 } from "./shared";
+
+// Helper to fetch blob metadata (size, content-type)
+async function getBlobMetadata(url: string | null): Promise<{
+  size: number | null;
+  contentType: string | null;
+}> {
+  if (!url) return { size: null, contentType: null };
+
+  try {
+    const blob = await head(url);
+    return {
+      size: blob.size,
+      contentType: blob.contentType || null,
+    };
+  } catch (error) {
+    console.error(
+      `[getBlobMetadata] Failed to fetch metadata for ${url}:`,
+      error
+    );
+    return { size: null, contentType: null };
+  }
+}
+
+// Helper to format resolution dimensions as "widthxheight" string
+function formatResolution(
+  width: number | null | undefined,
+  height: number | null | undefined
+): string | null {
+  if (!width || !height) return null;
+  return `${width}×${height}`;
+}
 
 // PendingMedia pipeline removed; loadPipelineData dropped.
 
@@ -113,6 +144,47 @@ export async function loadVideoData(
   const nowMs = Date.now();
   const staleThresholdMs = STALE_THRESHOLD_MINUTES * 60 * 1000;
 
+  // Fetch blob metadata for original and normalized videos in parallel
+  const blobMetadataPromises = rawItems.flatMap((item) => [
+    getBlobMetadata(item.originalUrl).then((meta) => ({
+      id: item.id,
+      type: "original" as const,
+      ...meta,
+    })),
+    getBlobMetadata(item.ready720pUrl).then((meta) => ({
+      id: item.id,
+      type: "normalized" as const,
+      ...meta,
+    })),
+  ]);
+
+  const blobMetadataResults = await Promise.allSettled(blobMetadataPromises);
+
+  // Map metadata by video ID
+  const metadataMap = new Map<
+    string,
+    {
+      originalSize: number | null;
+      normalizedSize: number | null;
+    }
+  >();
+
+  blobMetadataResults.forEach((result) => {
+    if (result.status === "fulfilled") {
+      const { id, type, size } = result.value;
+      const existing = metadataMap.get(id) || {
+        originalSize: null,
+        normalizedSize: null,
+      };
+      if (type === "original") {
+        existing.originalSize = size;
+      } else {
+        existing.normalizedSize = size;
+      }
+      metadataMap.set(id, existing);
+    }
+  });
+
   const annotated: VideoRow[] = rawItems.map((item) => {
     // Helper to safely pluck optional post-migration fields without depending on generated types yet
     const pickField = <T = unknown>(key: string): T | null => {
@@ -134,6 +206,11 @@ export async function loadVideoData(
       (item.processStatus === "queued" ||
         item.processStatus === "processing") &&
       updatedAgoMs > staleThresholdMs;
+
+    const metadata = metadataMap.get(item.id) || {
+      originalSize: null,
+      normalizedSize: null,
+    };
 
     return {
       id: item.id,
@@ -161,9 +238,20 @@ export async function loadVideoData(
       email,
       createdAgoLabel: formatRelative(createdAgoMs),
       updatedAgoLabel: formatRelative(updatedAgoMs),
-      sizeBytes: null, // Could be fetched from blob metadata if needed
-      durationSeconds: null, // Could be extracted from video metadata if needed
+      sizeBytes: null, // Legacy field
+      durationSeconds: null, // Legacy field
       stale,
+      // Video metadata from blob and database
+      originalSize: metadata.originalSize,
+      originalResolution: formatResolution(
+        pickField<number>("originalWidth"),
+        pickField<number>("originalHeight")
+      ),
+      normalizedSize: metadata.normalizedSize,
+      normalizedResolution: formatResolution(
+        pickField<number>("processedWidth"),
+        pickField<number>("processedHeight")
+      ),
     };
   });
 

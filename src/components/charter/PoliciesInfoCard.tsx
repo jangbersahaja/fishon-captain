@@ -30,14 +30,7 @@ export default function PoliciesInfoCard({ charter }: { charter: Charter }) {
                 {charter.policies.wheelchairAccessible ? "Yes" : "No"}
               </li>
             )}
-            {"liveBaitProvided" in charter.policies && (
-              <li>
-                <strong>Live bait:</strong>{" "}
-                {charter.policies.liveBaitProvided
-                  ? "Provided"
-                  : "Not provided"}
-              </li>
-            )}
+
             {"alcoholAllowed" in charter.policies && (
               <li>
                 <strong>Alcohol:</strong>{" "}
