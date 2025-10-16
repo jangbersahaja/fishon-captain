@@ -369,6 +369,14 @@ class VideoUploadQueue {
       formData.append("file", started.file);
       formData.append("shortVideo", "true");
 
+      // Log file size and user agent before upload (diagnostics for 413)
+      const userAgent = navigator.userAgent || "unknown";
+      console.log("[videoQueue] upload_attempt", {
+        fileName: started.file.name,
+        fileSize: started.file.size,
+        fileType: started.file.type,
+        userAgent,
+      });
       const xhr = new XMLHttpRequest();
       this.xhrMap.set(started.id, xhr);
       xhr.upload.onprogress = (ev) => {
@@ -640,7 +648,7 @@ class VideoUploadQueue {
 
     // Server errors (5xx)
     if (
-      status && status >= 500 ||
+      (status && status >= 500) ||
       message.includes("500") ||
       message.includes("502") ||
       message.includes("503")
@@ -657,21 +665,21 @@ class VideoUploadQueue {
     // Client errors (4xx) - use server message if available, otherwise use defaults
     if (status === 413 || message.includes("413")) {
       // Check if we have a detailed message from the server
-      const hasDetailedMessage = 
-        message.includes("exceeds limit") || 
+      const hasDetailedMessage =
+        message.includes("exceeds limit") ||
         message.includes("too large") ||
         message.includes("MB");
-      
+
       return {
         code: "FILE_TOO_LARGE",
-        message: hasDetailedMessage 
-          ? message 
+        message: hasDetailedMessage
+          ? message
           : "Video file is too large. Please select a smaller video file.",
         category: "validation",
         recoverable: false,
       };
     }
-    
+
     if (status === 415 || message.includes("415")) {
       return {
         code: "UNSUPPORTED_TYPE",
@@ -681,12 +689,11 @@ class VideoUploadQueue {
         recoverable: false,
       };
     }
-    
+
     if (status === 400 || message.includes("400")) {
       return {
         code: "CLIENT_ERROR",
-        message:
-          "Invalid file or request. Please try a different video file.",
+        message: "Invalid file or request. Please try a different video file.",
         category: "client",
         recoverable: false,
       };
