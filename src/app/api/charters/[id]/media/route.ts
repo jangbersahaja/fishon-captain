@@ -1,10 +1,10 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
+import { IncomingMediaSchema } from "@/schemas";
 import { del } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 // Reuse path pattern logic similar to server/media.ts but localized for images/videos
 const mediaKeyPattern = (key: string) => {
@@ -13,39 +13,6 @@ const mediaKeyPattern = (key: string) => {
   if (key.startsWith("charters/") && key.includes("/media/")) return true; // legacy existing
   return false;
 };
-
-const IncomingMediaSchema = z.object({
-  media: z.object({
-    images: z
-      .array(
-        z.object({
-          name: z.string().min(1),
-          url: z.string().url(),
-          thumbnailUrl: z.string().url().optional(),
-          durationSeconds: z.number().int().positive().optional(),
-        })
-      )
-      .max(20),
-    videos: z
-      .array(
-        z.object({
-          name: z.string().min(1),
-          url: z.string().url(),
-          thumbnailUrl: z.string().url().optional(),
-          durationSeconds: z.number().int().positive().optional(),
-        })
-      )
-      .max(5),
-    deleteKeys: z.array(z.string()).optional(),
-  }),
-  deleteKeys: z.array(z.string()).optional(),
-  order: z
-    .object({
-      images: z.array(z.number().int().nonnegative()).optional(),
-      videos: z.array(z.number().int().nonnegative()).optional(),
-    })
-    .optional(),
-});
 
 function getUserId(session: unknown): string | null {
   if (!session || typeof session !== "object") return null;
