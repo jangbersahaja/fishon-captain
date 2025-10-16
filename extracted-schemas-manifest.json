@@ -1,0 +1,212 @@
+{
+  "version": "1.0.0",
+  "extractedAt": "2025-10-15T20:31:40.133Z",
+  "summary": {
+    "totalFiles": 6,
+    "totalExports": 41,
+    "filesModified": 10,
+    "newFiles": 7
+  },
+  "extractions": [
+    {
+      "originalFile": "src/lib/schemas/video.ts",
+      "newFile": "src/schemas/video.ts",
+      "status": "migrated",
+      "exports": [
+        "ProcessStatusEnum",
+        "ProcessStatus (type)",
+        "CreateUploadSchema",
+        "FinishFormSchema",
+        "TranscodePayloadSchema",
+        "ListQuerySchema",
+        "validateThumbFile"
+      ],
+      "notes": "Original file now re-exports from @/schemas/video"
+    },
+    {
+      "originalFile": "src/features/charter-onboarding/charterForm.schema.ts",
+      "newFile": "src/schemas/charter.ts",
+      "status": "migrated",
+      "exports": [
+        "charterFormSchema",
+        "CharterFormValues (type)",
+        "tripSchema",
+        "policiesSchema",
+        "basicsStepSchema",
+        "experienceStepSchema",
+        "tripsStepSchema",
+        "mediaPricingStepSchema",
+        "descriptionStepSchema"
+      ],
+      "notes": "Original file now re-exports from @/schemas/charter"
+    },
+    {
+      "originalFile": "src/server/media.ts",
+      "newFile": "src/schemas/media.ts",
+      "status": "migrated",
+      "exports": [
+        "MediaFileSchema",
+        "FinalizeMediaSchema",
+        "NormalizedFinalizeMedia (interface)",
+        "normalizeFinalizeMedia",
+        "IncomingMediaSchema",
+        "MediaRemovalSchema",
+        "VideoThumbnailSchema"
+      ],
+      "notes": "Original file now re-exports from @/schemas/media. IncomingMediaSchema, MediaRemovalSchema, and VideoThumbnailSchema extracted from API routes."
+    },
+    {
+      "originalFile": "src/server/drafts.ts",
+      "newFile": "src/schemas/draft.ts",
+      "status": "migrated",
+      "exports": [
+        "DraftPatchSchema"
+      ],
+      "notes": "Original file now re-exports from @/schemas/draft"
+    },
+    {
+      "originalFile": "src/types/videoUpload.ts",
+      "newFile": "src/schemas/video-upload-types.ts",
+      "status": "migrated",
+      "exports": [
+        "VideoUploadStatus (type)",
+        "QueuePriority (type)",
+        "QueueAnalytics (interface)",
+        "PendingUploadItem (interface)",
+        "UploadingUploadItem (interface)",
+        "ProcessingUploadItem (interface)",
+        "DoneUploadItem (interface)",
+        "ErrorDetails (interface)",
+        "RetryPolicy (interface)",
+        "ProgressDetails (interface)",
+        "ErrorUploadItem (interface)",
+        "CanceledUploadItem (interface)",
+        "VideoUploadItem (type)",
+        "VideoQueueConfig (interface)",
+        "defaultRetryPolicy",
+        "defaultVideoQueueConfig",
+        "isActiveUpload",
+        "isTerminalUpload"
+      ],
+      "notes": "Original file now re-exports from @/schemas/video-upload-types"
+    },
+    {
+      "originalFile": "src/app/api/charters/[id]/route.ts (inline)",
+      "newFile": "src/schemas/charter-update.ts",
+      "status": "extracted",
+      "exports": [
+        "CharterUpdateSchema"
+      ],
+      "notes": "Extracted inline schema from API route. Route now imports from @/schemas"
+    }
+  ],
+  "filesModified": [
+    {
+      "file": "src/lib/schemas/video.ts",
+      "change": "Now re-exports from @/schemas/video with deprecation notice"
+    },
+    {
+      "file": "src/features/charter-onboarding/charterForm.schema.ts",
+      "change": "Now re-exports from @/schemas/charter with deprecation notice"
+    },
+    {
+      "file": "src/server/media.ts",
+      "change": "Now re-exports from @/schemas/media with deprecation notice"
+    },
+    {
+      "file": "src/server/drafts.ts",
+      "change": "Now re-exports DraftPatchSchema from @/schemas/draft with deprecation notice"
+    },
+    {
+      "file": "src/types/videoUpload.ts",
+      "change": "Now re-exports from @/schemas/video-upload-types with deprecation notice"
+    },
+    {
+      "file": "src/app/api/charters/[id]/route.ts",
+      "change": "Imports CharterUpdateSchema from @/schemas instead of inline definition"
+    },
+    {
+      "file": "src/app/api/charters/[id]/media/route.ts",
+      "change": "Imports IncomingMediaSchema from @/schemas instead of inline definition"
+    },
+    {
+      "file": "src/app/api/charters/[id]/media/remove/route.ts",
+      "change": "Imports MediaRemovalSchema from @/schemas instead of inline definition"
+    },
+    {
+      "file": "src/app/api/charters/[id]/media/video/thumbnail/route.ts",
+      "change": "Imports VideoThumbnailSchema from @/schemas instead of inline definition"
+    },
+    {
+      "file": "vitest.config.ts",
+      "change": "Added src/schemas/__tests__/**/*.test.{ts,tsx} to test includes"
+    }
+  ],
+  "newFiles": [
+    {
+      "file": "src/schemas/index.ts",
+      "purpose": "Barrel export for all schemas",
+      "linesOfCode": 90
+    },
+    {
+      "file": "src/schemas/video.ts",
+      "purpose": "Video processing and upload schemas",
+      "linesOfCode": 69
+    },
+    {
+      "file": "src/schemas/charter.ts",
+      "purpose": "Charter form and onboarding schemas",
+      "linesOfCode": 207
+    },
+    {
+      "file": "src/schemas/media.ts",
+      "purpose": "Media file and upload schemas",
+      "linesOfCode": 149
+    },
+    {
+      "file": "src/schemas/draft.ts",
+      "purpose": "Draft management schemas",
+      "linesOfCode": 10
+    },
+    {
+      "file": "src/schemas/charter-update.ts",
+      "purpose": "Charter update (edit mode) schemas",
+      "linesOfCode": 83
+    },
+    {
+      "file": "src/schemas/video-upload-types.ts",
+      "purpose": "Video upload lifecycle types and configurations",
+      "linesOfCode": 222
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/schemas/__tests__/video.test.ts",
+      "testCount": 16,
+      "coverage": "All video schemas"
+    },
+    {
+      "file": "src/schemas/__tests__/media.test.ts",
+      "testCount": 17,
+      "coverage": "All media schemas"
+    },
+    {
+      "file": "src/schemas/__tests__/charter.test.ts",
+      "testCount": 16,
+      "coverage": "Charter, trip, and policies schemas"
+    }
+  ],
+  "recommendations": {
+    "nextSteps": [
+      "Review deprecation notices in original files",
+      "Consider removing original files after confirming all imports work",
+      "Extract to @fishon/schemas package when ready",
+      "Update imports to use @/schemas barrel export for consistency"
+    ],
+    "manualReview": [
+      "Verify all API routes use new schema imports",
+      "Check for any missed inline schemas in other API routes",
+      "Validate that all type exports are properly accessible"
+    ]
+  }
+}
