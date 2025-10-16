@@ -525,7 +525,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   const averageBitrateBytesPerSec = duration > 0 ? file.size / duration : 0;
   const rawEstimate = averageBitrateBytesPerSec * selectedDuration;
   const estimatedOutputBytes = rawEstimate * 1.04; // small container overhead cushion
-  const exceedsMax = estimatedOutputBytes > 100 * 1024 * 1024;
+  const exceedsMax = estimatedOutputBytes > 150 * 1024 * 1024;
   const startPercentage = (startSec / duration) * 100;
   const endPercentage = (endSec / duration) * 100;
 
@@ -920,7 +920,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                 </span>
                 {exceedsMax && (
                   <span className="text-red-400 font-semibold">
-                    {">"}100MB (trim more)
+                    {">"}150MB (trim more)
                   </span>
                 )}
               </div>
