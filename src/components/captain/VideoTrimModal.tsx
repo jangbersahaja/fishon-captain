@@ -154,11 +154,11 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
         setLoading(false);
         return;
       }
-      if (file.size > 100 * 1024 * 1024) {
+      if (file.size > 500 * 1024 * 1024) {
         setError(
           `File too large (${(file.size / 1024 / 1024).toFixed(
             1
-          )}MB). Max allowed is 100MB.`
+          )}MB). Max allowed is 500MB.`
         );
         setLoading(false);
         return;
