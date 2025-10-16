@@ -101,6 +101,7 @@ const getUploadStep = (
 
 interface EnhancedVideoUploaderProps {
   onUploaded?: () => void;
+  onQueueBlockingChange?: (blocking: boolean) => void; // Track client-side queue upload state
   maxFiles?: number;
   allowMultiple?: boolean;
   autoStart?: boolean;
@@ -109,6 +110,7 @@ interface EnhancedVideoUploaderProps {
 
 export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
   onUploaded,
+  onQueueBlockingChange,
   maxFiles = 5,
   allowMultiple = true,
   autoStart = true,
@@ -200,6 +202,14 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
       previousCompletedCountRef.current = 0;
     }
   }, [items, onUploaded]);
+
+  // Notify parent about client-side queue blocking state (uploading/processing)
+  useEffect(() => {
+    const hasActiveUploads = items.some(
+      (item) => item.status === "uploading" || item.status === "processing"
+    );
+    onQueueBlockingChange?.(hasActiveUploads);
+  }, [items, onQueueBlockingChange]);
 
   // (handleFileSelect moved earlier)
 

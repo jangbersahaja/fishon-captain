@@ -155,12 +155,29 @@ export function MediaPricingStep({
     [setValue, onReadyVideosChangeAction]
   );
 
+  // Debounce refreshToken updates to batch multiple uploads within 2s
+  const refreshDebounceRef = React.useRef<NodeJS.Timeout | null>(null);
   const handleVideoUploaded = useCallback(() => {
-    // Trigger a one-off refresh via VideoManager props pattern (using key bump)
-    setRefreshToken((t) => t + 1);
-    // Also notify parent about blocking state change
-    onVideoBlockingChangeAction?.(false);
-  }, [onVideoBlockingChangeAction]);
+    // Clear any pending refresh
+    if (refreshDebounceRef.current) {
+      clearTimeout(refreshDebounceRef.current);
+    }
+    // Schedule new refresh after 2s of inactivity
+    refreshDebounceRef.current = setTimeout(() => {
+      setRefreshToken((t) => t + 1);
+      refreshDebounceRef.current = null;
+    }, 2000);
+  }, []);
+
+  // Track client-side queue blocking separately from server-side processing
+  const handleQueueBlockingChange = useCallback(
+    (blocking: boolean) => {
+      // Only block submit/save during client-side upload to queue (uploading/processing in queue)
+      // Server-side transcoding (queued/processing in DB) is async and should NOT block
+      onVideoBlockingChangeAction?.(blocking);
+    },
+    [onVideoBlockingChangeAction]
+  );
 
   return (
     <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
@@ -241,6 +258,7 @@ export function MediaPricingStep({
             {ownerId && (
               <EnhancedVideoUploader
                 onUploaded={handleVideoUploaded}
+                onQueueBlockingChange={handleQueueBlockingChange}
                 maxFiles={5}
                 allowMultiple={true}
                 autoStart={true}
@@ -253,7 +271,7 @@ export function MediaPricingStep({
               ownerId={ownerId}
               refreshToken={refreshToken}
               onVideosChange={handleVideoSet}
-              onPendingChange={onVideoBlockingChangeAction}
+              // Do NOT pass onPendingChange here - server-side transcoding should not block
             />
           )}
         </div>

@@ -54,6 +54,11 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
   const prevPendingRef = useRef<boolean | null>(null);
   const prevVideosRef = useRef<VideoRecord[]>([]);
 
+  // Activity tracking for smart polling
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [isVisible, setIsVisible] = useState(true);
+  const uploadTimestampsRef = useRef<Record<string, number>>({});
+
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/videos/list?ownerId=${ownerId}`);
@@ -78,6 +83,15 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
           }
           if (same) return prev; // skip unnecessary state update to avoid parent effect loops
         }
+        // Track upload timestamps for new non-ready videos
+        incoming.forEach((v) => {
+          if (
+            v.processStatus !== "ready" &&
+            !uploadTimestampsRef.current[v.id]
+          ) {
+            uploadTimestampsRef.current[v.id] = Date.now();
+          }
+        });
         return incoming;
       });
     }
@@ -88,7 +102,26 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
     load();
   }, [load, refreshToken]);
 
-  // Poll while any non-ready and notify parent of changes
+  // Page Visibility API: track when user switches tabs
+  useEffect(() => {
+    const handleVisibility = () => {
+      const visible = !document.hidden;
+      setIsVisible(visible);
+      if (visible) {
+        // User returned - track activity and refresh immediately if videos are pending
+        setLastActivity(Date.now());
+        const hasPending = videos.some((v) => v.processStatus !== "ready");
+        if (hasPending) {
+          load();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [load, videos]);
+
+  // Smart polling with dynamic intervals and inactivity detection
   useEffect(() => {
     const hasPending = videos.some((v) => v.processStatus !== "ready");
 
@@ -113,14 +146,50 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
       onVideosChange?.(videos);
     }
 
-    // Set up polling only if there are pending videos
+    // Stop polling if no pending videos
     if (!hasPending) return;
-    const t = setInterval(load, 5000);
+
+    // Check inactivity timeout (2 minutes)
+    const inactiveMs = Date.now() - lastActivity;
+    const inactivityTimeout = 2 * 60 * 1000; // 2 minutes
+
+    // Stop polling if inactive AND tab is hidden
+    if (inactiveMs > inactivityTimeout && !isVisible) {
+      console.log(
+        "[VideoManager] Stopping poll: inactive for 2min + tab hidden"
+      );
+      return;
+    }
+
+    // Determine polling interval based on video upload age
+    // Recent uploads (< 30s): poll every 3s for faster feedback
+    // Older uploads: poll every 10s (waiting for worker callback)
+    const now = Date.now();
+    const hasRecentUpload = videos.some((v) => {
+      if (v.processStatus === "ready") return false;
+      const uploadTime = uploadTimestampsRef.current[v.id];
+      if (!uploadTime) return false;
+      return now - uploadTime < 30000; // 30 seconds
+    });
+
+    const pollInterval = hasRecentUpload ? 3000 : 10000; // 3s or 10s
+
+    const t = setInterval(() => {
+      // Recheck visibility and activity before each poll
+      const stillVisible = !document.hidden;
+      const stillActive = Date.now() - lastActivity < inactivityTimeout;
+
+      if (stillVisible || stillActive) {
+        load();
+      }
+    }, pollInterval);
+
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videos, load]);
+  }, [videos, load, lastActivity, isVisible]);
 
   const remove = async (id: string) => {
+    setLastActivity(Date.now()); // Track activity
     await fetch(`/api/videos/${id}`, { method: "DELETE" });
     setDeleteConfirm(null);
     load();
@@ -141,6 +210,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
   };
 
   const retry = async (id: string) => {
+    setLastActivity(Date.now()); // Track activity
     setRetrying((r) => ({ ...r, [id]: true }));
     try {
       await fetch(`/api/videos/queue`, {
@@ -243,7 +313,31 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
     <div className="space-y-2">
       <div className="flex gap-2 items-center justify-between">
         <h3 className="font-semibold">Your Short Videos</h3>
-        {loading && <div className="text-sm text-gray-500">Loading...</div>}
+        {loading && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <svg
+              className="animate-spin h-4 w-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            <span>Loading...</span>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {videos.map((v) => (
@@ -261,7 +355,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
                       href={v.processStatus === "ready" ? videoHref : undefined}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`block w-full h-full ${
+                      className={`block w-full h-full relative ${
                         v.processStatus === "ready"
                           ? "cursor-pointer"
                           : "cursor-default"
@@ -288,6 +382,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
                     <button
                       type="button"
                       onClick={() => {
+                        setLastActivity(Date.now()); // Track activity
                         const videoEl = document.createElement("video");
                         videoEl.crossOrigin = "anonymous";
                         videoEl.src = videoHref;

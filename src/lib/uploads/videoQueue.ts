@@ -16,6 +16,7 @@ import {
   VideoUploadItem,
 } from "@/types/videoUpload";
 import { captureThumbnailFromSrc } from "@/utils/captureThumbnail";
+import { upload as blobUpload } from "@vercel/blob/client";
 
 export type VideoQueueListener = (items: VideoUploadItem[]) => void;
 
@@ -364,10 +365,7 @@ class VideoUploadQueue {
         }),
       });
       if (!createRes.ok) throw new Error("init failed");
-      const { uploadUrl, blobKey } = await createRes.json();
-      const formData = new FormData();
-      formData.append("file", started.file);
-      formData.append("shortVideo", "true");
+      const { blobKey } = await createRes.json();
 
       // Log file size and user agent before upload (diagnostics for 413)
       const userAgent = navigator.userAgent || "unknown";
@@ -377,101 +375,81 @@ class VideoUploadQueue {
         fileType: started.file.type,
         userAgent,
       });
-      const xhr = new XMLHttpRequest();
-      this.xhrMap.set(started.id, xhr);
-      xhr.upload.onprogress = (ev) => {
-        if (ev.lengthComputable) {
-          const progress = ev.loaded / ev.total;
-          // Phase 8: Enhanced progress tracking with detailed information
+
+      // Progressive upload simulation for better UX
+      // Stage 1: Start (0% → 10%)
+      const updateProgress = (progress: number) => {
+        const current = this.items.find((i) => i.id === started.id);
+        if (current && current.status === "uploading") {
           const progressDetails = this.updateProgressDetails(
             started.id,
-            ev.loaded,
-            ev.total,
+            Math.floor(started.file.size * progress),
+            started.file.size,
             "uploading"
           );
-          if (VIDEO_QUEUE_DEBUG()) {
-            const pct = (progress * 100).toFixed(1);
-            dbg("progress", {
-              id: started.id,
-              pct,
-              bytes: ev.loaded,
-              total: ev.total,
-            });
-          }
-
-          // mutate through replace to keep immutable pattern
-          const current = this.items.find((i) => i.id === started.id);
-          if (current && current.status === "uploading") {
-            const updating: UploadingUploadItem = {
-              ...current,
-              progress,
-              progressDetails,
-            };
-            this.replaceItem(updating);
-          }
+          const updating: UploadingUploadItem = {
+            ...current,
+            progress,
+            progressDetails,
+          };
+          this.replaceItem(updating);
         }
       };
 
-      const uploadPromise = new Promise<string>((resolve, reject) => {
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const json = JSON.parse(xhr.responseText) as { url: string };
-                // Phase 8: Update progress for successful upload completion
-                this.updateProgressDetails(
-                  started.id,
-                  started.file.size,
-                  started.file.size,
-                  "finalizing"
-                );
-                resolve(json.url);
-              } catch (e) {
-                reject(e);
-              }
-            } else {
-              // Phase 7: Enhanced error handling for HTTP errors
-              // Try to parse error response body for detailed message
-              let errorMessage = `Upload failed with status ${xhr.status}: ${xhr.statusText}`;
-              try {
-                const errorJson = JSON.parse(xhr.responseText) as {
-                  message?: string;
-                  error?: string;
-                };
-                if (errorJson.message) {
-                  errorMessage = errorJson.message;
-                } else if (errorJson.error) {
-                  errorMessage = errorJson.error;
-                }
-              } catch {
-                // If response isn't JSON, use default message
-              }
-              const error = new Error(errorMessage);
-              // Attach status code for better error categorization
-              (error as { status?: number }).status = xhr.status;
-              reject(error);
-            }
+      // Initial progress bump
+      updateProgress(0.1);
+
+      // Use Vercel Blob client-side upload to bypass Next.js Function body limits
+      let videoUrl: string;
+      try {
+        // Stage 2: Simulate upload progress (10% → 80%)
+        // Since @vercel/blob/client doesn't expose progress events, simulate smooth increments
+        const uploadPromise = blobUpload(blobKey, started.file, {
+          access: "public",
+          handleUploadUrl: "/api/blob/handle-upload",
+          contentType: started.file.type || "video/mp4",
+        });
+
+        // Simulate progressive upload based on estimated time (larger files = longer)
+        const estimatedUploadMs = Math.min(
+          Math.max(started.file.size / 1024 / 100, 2000),
+          15000
+        ); // 2s-15s range
+        const progressSteps = [0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.8];
+        const stepInterval = estimatedUploadMs / progressSteps.length;
+
+        const progressInterval = setInterval(() => {
+          const step = progressSteps.shift();
+          if (step) {
+            updateProgress(step);
+          } else {
+            clearInterval(progressInterval);
           }
-        };
-        xhr.onerror = () => {
-          // Phase 7: Enhanced error handling for network errors
-          const error = new Error("Network error during upload");
-          reject(error);
-        };
-      });
-      xhr.open("POST", uploadUrl);
-      xhr.send(formData);
-      const videoUrl = await uploadPromise;
+        }, stepInterval);
+
+        const result = await uploadPromise;
+        clearInterval(progressInterval);
+
+        // Stage 3: Upload complete (80%)
+        updateProgress(0.8);
+        videoUrl = result.url;
+      } catch (err) {
+        throw err;
+      }
       // If canceled mid-flight, skip transitioning further
       const postUploadCurrent = this.items.find((i) => i.id === started.id);
       if (!postUploadCurrent || postUploadCurrent.status === "canceled") {
         this.xhrMap.delete(started.id);
         return;
       }
+
+      // Stage 4: Processing started (85%)
+      updateProgress(0.85);
+
       const processing: ProcessingUploadItem = {
         ...started,
         status: "processing",
-        progress: 1,
+        progress: 0.85,
         uploadedAt: Date.now(),
         blobKey,
         videoUrl,
@@ -482,6 +460,27 @@ class VideoUploadQueue {
       counter("video_queue_uploaded").inc();
 
       // Immediately finalize (could batch later)
+      // Stage 5: Thumbnail & metadata preparation (90%)
+      const updateProcessingProgress = (progress: number) => {
+        const current = this.items.find((i) => i.id === started.id);
+        if (current && current.status === "processing") {
+          const progressDetails = this.updateProgressDetails(
+            started.id,
+            started.file.size,
+            started.file.size,
+            "finalizing"
+          );
+          const updating: ProcessingUploadItem = {
+            ...current,
+            progress,
+            progressDetails,
+          };
+          this.replaceItem(updating);
+        }
+      };
+
+      updateProcessingProgress(0.9);
+
       const form = new FormData();
       form.append("videoUrl", processing.videoUrl);
       const startSec = processing.trim ? processing.trim.startSec : 0;
@@ -519,6 +518,10 @@ class VideoUploadQueue {
           );
         }
       }
+
+      // Stage 6: Capturing thumbnail (92%)
+      updateProcessingProgress(0.92);
+
       if (this.config.captureThumbnail) {
         try {
           const thumb = await captureThumbnailFromSrc(processing.videoUrl);
@@ -527,14 +530,26 @@ class VideoUploadQueue {
           console.warn("queue.thumbnail.capture_failed", e);
         }
       }
+
+      // Stage 7: Finalizing (95%)
+      updateProcessingProgress(0.95);
+
       const finishRes = await fetch("/api/blob/finish", {
         method: "POST",
         body: form,
       });
       if (!finishRes.ok) throw new Error("finish failed");
+
+      // Stage 8: Final cleanup (98%)
+      updateProcessingProgress(0.98);
+
+      // Brief pause for smooth transition to 100%
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
       const done: DoneUploadItem = {
         ...processing,
         status: "done",
+        progress: 1.0,
         completedAt: Date.now(),
       };
       this.replaceItem(done);

@@ -16,6 +16,10 @@ interface WorkerResultPayload {
   appliedTrimStartSec?: number;
   normalizedBlobKey?: string;
   thumbnailBlobKey?: string;
+  originalWidth?: number;
+  originalHeight?: number;
+  processedWidth?: number;
+  processedHeight?: number;
 }
 
 const STRICT_SIGNATURE = process.env.STRICT_QSTASH_SIGNATURE === "1";
@@ -216,12 +220,32 @@ export async function POST(req: NextRequest) {
             payload.processedDurationSec ?? video.processedDurationSec,
           appliedTrimStartSec:
             payload.appliedTrimStartSec ?? video.appliedTrimStartSec,
+          originalWidth: payload.originalWidth ?? video.originalWidth,
+          originalHeight: payload.originalHeight ?? video.originalHeight,
+          processedWidth: payload.processedWidth ?? video.processedWidth,
+          processedHeight: payload.processedHeight ?? video.processedHeight,
           ...(originalDeletedAt ? { originalDeletedAt } : {}),
         },
       });
       console.log("[normalize-callback] success", {
         videoId,
         originalDeletedAt: !!originalDeletedAt,
+        dimensions: {
+          original: {
+            width: payload.originalWidth ?? null,
+            height: payload.originalHeight ?? null,
+          },
+          processed: {
+            width: payload.processedWidth ?? null,
+            height: payload.processedHeight ?? null,
+          },
+          stored: {
+            originalWidth: updated.originalWidth,
+            originalHeight: updated.originalHeight,
+            processedWidth: updated.processedWidth,
+            processedHeight: updated.processedHeight,
+          },
+        },
       });
       return NextResponse.json({ ok: true, video: updated });
     }

@@ -328,6 +328,10 @@ model CaptainVideo {
   appliedTrimStartSec  Float?
   processedAt          DateTime?
   originalDeletedAt    DateTime?
+  originalWidth        Int?
+  originalHeight       Int?
+  processedWidth       Int?
+  processedHeight      Int?
 
   @@index([ownerId, processStatus])
   @@index([createdAt])

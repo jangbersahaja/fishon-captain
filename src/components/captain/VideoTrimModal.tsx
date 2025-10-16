@@ -151,7 +151,9 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       // Validate file type and size
       if (!isValidVideoFile(file)) {
         setError(
-          `Invalid file type: ${file.type || "unknown"} (${file.name}). Please select a video file.`
+          `Invalid file type: ${file.type || "unknown"} (${
+            file.name
+          }). Please select a video file.`
         );
         setLoading(false);
         return;
@@ -523,9 +525,21 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   if (!open || !file) return null;
 
   const selectedDuration = endSec - startSec;
-  // Enhanced bitrate-based estimation (averages + overhead cushion ~4%)
-  const averageBitrateBytesPerSec = duration > 0 ? file.size / duration : 0;
-  const rawEstimate = averageBitrateBytesPerSec * selectedDuration;
+
+  // Improved size estimation: Calculate post-transcode 720p size
+  // Target bitrate for 720p video is approximately 2000 kbps (2 Mbps)
+  // This is a reasonable estimate for H.264 720p content at good quality
+  const target720pBitrateKbps = 2000; // 2 Mbps for 720p
+  const target720pBitrateBytesPerSec = (target720pBitrateKbps * 1000) / 8; // Convert to bytes/sec
+
+  // If video is already at or below 720p, use original bitrate capped at target
+  const originalBitrateBytesPerSec = duration > 0 ? file.size / duration : 0;
+  const effectiveBitrateBytesPerSec = Math.min(
+    originalBitrateBytesPerSec,
+    target720pBitrateBytesPerSec
+  );
+
+  const rawEstimate = effectiveBitrateBytesPerSec * selectedDuration;
   const estimatedOutputBytes = rawEstimate * 1.04; // small container overhead cushion
   const exceedsMax = estimatedOutputBytes > MAX_SHORT_VIDEO_BYTES;
   const startPercentage = (startSec / duration) * 100;
@@ -807,104 +821,108 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
               <div className="text-white text-sm sm:text-base font-medium">
                 Select clip duration (max 30s)
               </div>
-              <div className="relative" ref={timelineRef}>
-                <div
-                  className={`relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none touch-none ${
-                    !isReady ? "opacity-60 pointer-events-none" : ""
-                  }`}
-                >
-                  {/* Thumbnails Row */}
-                  <div className="absolute inset-0 flex">
-                    {thumbnails.length > 0 && !thumbsLoading ? (
-                      thumbnails.map((src, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 h-full bg-neutral-700 bg-center bg-cover"
-                          style={{ backgroundImage: `url(${src})` }}
-                        />
-                      ))
-                    ) : thumbsLoading || loading ? (
-                      Array.from({ length: 20 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 h-full bg-neutral-700/40 animate-pulse"
-                        />
-                      ))
-                    ) : thumbsError ? (
-                      <div className="flex-1 flex items-center justify-center text-xs text-red-400">
-                        {thumbsError}
-                      </div>
-                    ) : (
-                      Array.from({ length: 20 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 h-full bg-neutral-700/20"
-                        />
-                      ))
-                    )}
-                  </div>
-                  {/* Unselected masks */}
+              {/* Add padding for better mobile drag UX */}
+              <div className="px-4 sm:px-6">
+                <div className="relative" ref={timelineRef}>
                   <div
-                    className="absolute top-0 bottom-0 bg-black/60 pointer-events-none"
-                    style={{ left: 0, width: `${startPercentage}%` }}
-                  />
-                  <div
-                    className="absolute top-0 bottom-0 bg-black/60 pointer-events-none"
-                    style={{ left: `${endPercentage}%`, right: 0 }}
-                  />
-                  {/* Current playhead */}
-                  <div
-                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none"
-                    style={{ left: `${(currentTime / duration) * 100}%` }}
-                  />
-                  {/* Selection overlay */}
-                  <div
-                    className="absolute top-0 bottom-0 border-2 border-blue-400 cursor-move hover:bg-blue-400/10 transition-colors z-20"
-                    style={{
-                      left: `${startPercentage}%`,
-                      width: `${endPercentage - startPercentage}%`,
-                    }}
-                    onMouseDown={(e) => handleTimelineDrag(e, "selection")}
-                    onTouchStart={(e) => beginTouchDrag(e, "selection")}
-                  />
-                  {/* Start handle */}
-                  <div
-                    className="absolute top-0 bottom-0 w-4 sm:w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 active:scale-[1.08] transition-all flex items-center justify-center z-30"
-                    style={{
-                      left: `${startPercentage}%`,
-                      transform: "translateX(-50%)",
-                    }}
-                    onMouseDown={(e) => handleTimelineDrag(e, "start")}
-                    onTouchStart={(e) => beginTouchDrag(e, "start")}
+                    className={`relative h-20 bg-neutral-800 rounded overflow-hidden cursor-pointer select-none touch-none ${
+                      !isReady ? "opacity-60 pointer-events-none" : ""
+                    }`}
                   >
-                    <div className="w-1 h-6 bg-white rounded"></div>
-                  </div>
-                  {/* End handle */}
-                  <div
-                    className="absolute top-0 bottom-0 w-4 sm:w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 active:scale-[1.08] transition-all flex items-center justify-center z-30"
-                    style={{
-                      left: `${endPercentage}%`,
-                      transform: "translateX(-50%)",
-                    }}
-                    onMouseDown={(e) => handleTimelineDrag(e, "end")}
-                    onTouchStart={(e) => beginTouchDrag(e, "end")}
-                  >
-                    <div className="w-1 h-6 bg-white rounded"></div>
+                    {/* Thumbnails Row */}
+                    <div className="absolute inset-0 flex">
+                      {thumbnails.length > 0 && !thumbsLoading ? (
+                        thumbnails.map((src, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 h-full bg-neutral-700 bg-center bg-cover"
+                            style={{ backgroundImage: `url(${src})` }}
+                          />
+                        ))
+                      ) : thumbsLoading || loading ? (
+                        Array.from({ length: 20 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 h-full bg-neutral-700/40 animate-pulse"
+                          />
+                        ))
+                      ) : thumbsError ? (
+                        <div className="flex-1 flex items-center justify-center text-xs text-red-400">
+                          {thumbsError}
+                        </div>
+                      ) : (
+                        Array.from({ length: 20 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 h-full bg-neutral-700/20"
+                          />
+                        ))
+                      )}
+                    </div>
+                    {/* Unselected masks */}
+                    <div
+                      className="absolute top-0 bottom-0 bg-black/60 pointer-events-none"
+                      style={{ left: 0, width: `${startPercentage}%` }}
+                    />
+                    <div
+                      className="absolute top-0 bottom-0 bg-black/60 pointer-events-none"
+                      style={{ left: `${endPercentage}%`, right: 0 }}
+                    />
+                    {/* Current playhead */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none"
+                      style={{ left: `${(currentTime / duration) * 100}%` }}
+                    />
+                    {/* Selection overlay */}
+                    <div
+                      className="absolute top-0 bottom-0 border-2 border-blue-400 cursor-move hover:bg-blue-400/10 transition-colors z-20"
+                      style={{
+                        left: `${startPercentage}%`,
+                        width: `${endPercentage - startPercentage}%`,
+                      }}
+                      onMouseDown={(e) => handleTimelineDrag(e, "selection")}
+                      onTouchStart={(e) => beginTouchDrag(e, "selection")}
+                    />
+                    {/* Start handle */}
+                    <div
+                      className="absolute top-0 bottom-0 w-4 sm:w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 active:scale-[1.08] transition-all flex items-center justify-center z-30"
+                      style={{
+                        left: `${startPercentage}%`,
+                        transform: "translateX(-50%)",
+                      }}
+                      onMouseDown={(e) => handleTimelineDrag(e, "start")}
+                      onTouchStart={(e) => beginTouchDrag(e, "start")}
+                    >
+                      <div className="w-1 h-6 bg-white rounded"></div>
+                    </div>
+                    {/* End handle */}
+                    <div
+                      className="absolute top-0 bottom-0 w-4 sm:w-3 bg-blue-500 cursor-ew-resize hover:bg-blue-400 active:scale-[1.08] transition-all flex items-center justify-center z-30"
+                      style={{
+                        left: `${endPercentage}%`,
+                        transform: "translateX(-50%)",
+                      }}
+                      onMouseDown={(e) => handleTimelineDrag(e, "end")}
+                      onTouchStart={(e) => beginTouchDrag(e, "end")}
+                    >
+                      <div className="w-1 h-6 bg-white rounded"></div>
+                    </div>
                   </div>
                 </div>
+                <div className="flex justify-between text-[11px] sm:text-xs text-gray-400">
+                  <span>0:00</span>
+                  <span className="text-white font-medium">
+                    {Math.floor(selectedDuration / 60)}:
+                    {(selectedDuration % 60).toFixed(0).padStart(2, "0")}s
+                    selected
+                  </span>
+                  <span>
+                    {Math.floor(duration / 60)}:
+                    {(duration % 60).toFixed(0).padStart(2, "0")}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between text-[11px] sm:text-xs text-gray-400">
-                <span>0:00</span>
-                <span className="text-white font-medium">
-                  {Math.floor(selectedDuration / 60)}:
-                  {(selectedDuration % 60).toFixed(0).padStart(2, "0")}s
-                  selected
-                </span>
-                <span>
-                  {Math.floor(duration / 60)}:
-                  {(duration % 60).toFixed(0).padStart(2, "0")}
-                </span>
-              </div>
+              {/* Close padding wrapper */}
             </div>
             {selectedDuration > 30 && (
               <div className="text-amber-400 text-xs sm:text-sm">
@@ -917,12 +935,14 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   Size≈{(estimatedOutputBytes / 1024 / 1024).toFixed(1)}MB
                 </span>
                 <span>
-                  Bitrate≈{((averageBitrateBytesPerSec * 8) / 1000).toFixed(0)}
-                  kbps
+                  Target≈{((effectiveBitrateBytesPerSec * 8) / 1000).toFixed(0)}
+                  kbps (720p)
                 </span>
                 {exceedsMax && (
                   <span className="text-red-400 font-semibold">
-                    {">"}{Math.round(MAX_SHORT_VIDEO_BYTES / 1024 / 1024)}MB (trim more)
+                    {">"}
+                    {Math.round(MAX_SHORT_VIDEO_BYTES / 1024 / 1024)}MB (trim
+                    more)
                   </span>
                 )}
               </div>

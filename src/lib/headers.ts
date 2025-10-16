@@ -37,10 +37,17 @@ export function applySecurityHeaders(res: Response): Response {
   ]
     .filter(Boolean)
     .join(" ");
-  // Allow XHR/web fetches to our origin + Google Maps (tile vector endpoints use maps.googleapis.com / *.googleapis.com)
-  const connectSrc = ["connect-src 'self'", GOOGLE_SCRIPT, GOOGLE_STATIC].join(
-    " "
-  );
+  // Allow XHR/web fetches to our origin + Google Maps + Vercel Blob upload endpoints
+  const connectSrc = [
+    "connect-src 'self'",
+    GOOGLE_SCRIPT,
+    GOOGLE_STATIC,
+    "https://vercel.com",
+    "https://*.vercel.com",
+    vercelBlobWildcard,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const styleSrc = `style-src 'self' 'unsafe-inline' ${GOOGLE_FONTS}`; // Google Maps injects inline styles and loads external fonts
   const fontSrc = `font-src 'self' data:`; // allow embedded fonts (extend if using fonts.gstatic.com)

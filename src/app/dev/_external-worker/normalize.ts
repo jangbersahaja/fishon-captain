@@ -11,14 +11,33 @@ import { randomUUID } from "node:crypto";
 import { createReadStream, promises as fs } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-// ffprobe-static is optional; wrap in try/catch so template works even if dependency not added yet
-// (Optional) ffprobe-static may be added in the standalone worker project; here we skip dynamic import to keep template self-contained.
-const ffprobeBinary: string | undefined = undefined;
+
+// Try to load ffprobe-static if available, otherwise fluent-ffmpeg will try to use system ffprobe
+let ffprobeBinary: string | undefined;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  ffprobeBinary = require("ffprobe-static").path;
+  console.log("[worker] ffprobe-static loaded:", ffprobeBinary);
+} catch {
+  console.log("[worker] ffprobe-static not found, will use system ffprobe");
+  ffprobeBinary = undefined;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const fluent = require("fluent-ffmpeg");
 
-if (ffmpegPath) fluent.setFfmpegPath(ffmpegPath);
-if (ffprobeBinary) fluent.setFfprobePath(ffprobeBinary);
+if (ffmpegPath) {
+  fluent.setFfmpegPath(ffmpegPath);
+  console.log("[worker] ffmpeg path set:", ffmpegPath);
+}
+if (ffprobeBinary) {
+  fluent.setFfprobePath(ffprobeBinary);
+  console.log("[worker] ffprobe path set:", ffprobeBinary);
+} else {
+  console.log(
+    "[worker] ffprobe path not set, fluent-ffmpeg will use system PATH"
+  );
+}
 
 interface Payload {
   videoId?: string;
@@ -38,6 +57,10 @@ interface SuccessResult {
   originalDurationSec: number | null;
   processedDurationSec: number | null;
   appliedTrimStartSec: number;
+  originalWidth: number | null;
+  originalHeight: number | null;
+  processedWidth: number | null;
+  processedHeight: number | null;
 }
 
 interface ErrorResult {
@@ -228,15 +251,69 @@ export default async function handler(
     const buf = Buffer.from(await res.arrayBuffer());
     await fs.writeFile(inFile, buf);
 
-    // Probe original duration (best-effort)
-    const originalDurationSec = await new Promise<number | null>((resolve) => {
-      fluent(inFile).ffprobe((err: unknown, data: unknown) => {
-        if (err) return resolve(null);
-        const durRaw = (data as { format?: { duration?: unknown } })?.format
-          ?.duration;
-        const dur = Number(durRaw);
-        resolve(isFinite(dur) ? dur : null);
-      });
+    // Probe original duration and dimensions (best-effort)
+    const originalMetadata = await new Promise<{
+      duration: number | null;
+      width: number | null;
+      height: number | null;
+    }>((resolve) => {
+      fluent(inFile).ffprobe(
+        (
+          err: unknown,
+          data: {
+            format?: { duration?: unknown };
+            streams?: Array<{
+              codec_type?: string;
+              width?: number;
+              height?: number;
+            }>;
+          }
+        ) => {
+          if (err) {
+            console.error("[worker] ffprobe_original_failed", {
+              videoId,
+              error: (err as Error)?.message || String(err),
+              stack: (err as Error)?.stack,
+            });
+            return resolve({ duration: null, width: null, height: null });
+          }
+          const durRaw = data?.format?.duration;
+          const dur = Number(durRaw);
+          const videoStream = data?.streams?.find(
+            (s) => s.codec_type === "video"
+          );
+
+          console.log("[worker] ffprobe_original_raw_data", {
+            videoId,
+            hasDuration: !!durRaw,
+            hasStreams: !!data?.streams?.length,
+            streamCount: data?.streams?.length || 0,
+            videoStream: videoStream
+              ? {
+                  codec_type: videoStream.codec_type,
+                  width: videoStream.width,
+                  height: videoStream.height,
+                }
+              : null,
+          });
+
+          resolve({
+            duration: isFinite(dur) ? dur : null,
+            width: videoStream?.width ?? null,
+            height: videoStream?.height ?? null,
+          });
+        }
+      );
+    });
+    const originalDurationSec = originalMetadata.duration;
+    const originalWidth = originalMetadata.width;
+    const originalHeight = originalMetadata.height;
+
+    console.log("[worker] original_metadata_probed", {
+      videoId,
+      duration: originalDurationSec,
+      width: originalWidth,
+      height: originalHeight,
     });
 
     // Adjust trimStartSec if beyond duration - 0.5s
@@ -332,15 +409,69 @@ export default async function handler(
       throw lastError || new Error("transcode_failed_all_attempts");
     }
 
-    // Probe processed duration
-    const processedDurationSec = await new Promise<number | null>((resolve) => {
-      fluent(outFile).ffprobe((err: unknown, data: unknown) => {
-        if (err) return resolve(null);
-        const durRaw = (data as { format?: { duration?: unknown } })?.format
-          ?.duration;
-        const dur = Number(durRaw);
-        resolve(isFinite(dur) ? dur : null);
-      });
+    // Probe processed duration and dimensions
+    const processedMetadata = await new Promise<{
+      duration: number | null;
+      width: number | null;
+      height: number | null;
+    }>((resolve) => {
+      fluent(outFile).ffprobe(
+        (
+          err: unknown,
+          data: {
+            format?: { duration?: unknown };
+            streams?: Array<{
+              codec_type?: string;
+              width?: number;
+              height?: number;
+            }>;
+          }
+        ) => {
+          if (err) {
+            console.error("[worker] ffprobe_processed_failed", {
+              videoId,
+              error: (err as Error)?.message || String(err),
+              stack: (err as Error)?.stack,
+            });
+            return resolve({ duration: null, width: null, height: null });
+          }
+          const durRaw = data?.format?.duration;
+          const dur = Number(durRaw);
+          const videoStream = data?.streams?.find(
+            (s) => s.codec_type === "video"
+          );
+
+          console.log("[worker] ffprobe_processed_raw_data", {
+            videoId,
+            hasDuration: !!durRaw,
+            hasStreams: !!data?.streams?.length,
+            streamCount: data?.streams?.length || 0,
+            videoStream: videoStream
+              ? {
+                  codec_type: videoStream.codec_type,
+                  width: videoStream.width,
+                  height: videoStream.height,
+                }
+              : null,
+          });
+
+          resolve({
+            duration: isFinite(dur) ? dur : null,
+            width: videoStream?.width ?? null,
+            height: videoStream?.height ?? null,
+          });
+        }
+      );
+    });
+    const processedDurationSec = processedMetadata.duration;
+    const processedWidth = processedMetadata.width;
+    const processedHeight = processedMetadata.height;
+
+    console.log("[worker] processed_metadata_probed", {
+      videoId,
+      duration: processedDurationSec,
+      width: processedWidth,
+      height: processedHeight,
     });
 
     // Upload video (ensure blob token configured to avoid stream race/ENOENT)
@@ -378,7 +509,22 @@ export default async function handler(
       originalDurationSec,
       processedDurationSec,
       appliedTrimStartSec: trimStartSec,
+      originalWidth,
+      originalHeight,
+      processedWidth,
+      processedHeight,
     };
+
+    console.log("[worker] sending_result", {
+      videoId,
+      dimensions: {
+        originalWidth,
+        originalHeight,
+        processedWidth,
+        processedHeight,
+      },
+    });
+
     return respond(200, result);
   } catch (e: unknown) {
     const message = (e as Error)?.message || "processing_failed";

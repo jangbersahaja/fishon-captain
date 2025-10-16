@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import {
   buildHref,
+  formatBytes,
   SearchParams,
   STALE_THRESHOLD_MINUTES,
   VideoStatus,
@@ -156,7 +157,7 @@ export default function VideoSection({
               <th className="px-4 py-3 text-left">Video</th>
               <th className="px-4 py-3 text-left">Owner</th>
               <th className="px-4 py-3 text-left">Processing</th>
-              <th className="px-4 py-3 text-left">Durations</th>
+              <th className="px-4 py-3 text-left">Details</th>
               <th className="px-4 py-3 text-left">Timeline</th>
               <th className="px-4 py-3 text-left">Links &amp; Media</th>
             </tr>
@@ -290,31 +291,66 @@ export default function VideoSection({
                     </td>
 
                     <td className="px-4 py-3 align-top text-xs text-slate-600">
-                      <div className="space-y-1">
-                        <div>
-                          <span className="font-medium text-slate-600">
-                            Original:
-                          </span>{" "}
-                          {row.originalDurationSec != null
-                            ? `${Math.round(row.originalDurationSec)}s`
-                            : "-"}
+                      <div className="space-y-2">
+                        {/* Original Video Details */}
+                        <div className="space-y-1">
+                          <div className="font-medium text-slate-700 text-[11px] uppercase tracking-wide">
+                            Original
+                          </div>
+                          <div className="text-[11px] text-slate-600 space-y-0.5">
+                            <div>
+                              <span className="text-slate-500">Size:</span>{" "}
+                              {row.originalSize
+                                ? formatBytes(row.originalSize)
+                                : "-"}
+                            </div>
+                            <div>
+                              <span className="text-slate-500">Duration:</span>{" "}
+                              {row.originalDurationSec != null
+                                ? `${Math.round(row.originalDurationSec)}s`
+                                : "-"}
+                            </div>
+                            <div>
+                              <span className="text-slate-500">
+                                Resolution:
+                              </span>{" "}
+                              {row.originalResolution || "N/A"}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-medium text-slate-600">
-                            Trim Start:
-                          </span>{" "}
-                          {row.appliedTrimStartSec != null
-                            ? `${row.appliedTrimStartSec}s`
-                            : `${row.trimStartSec}s`}
-                        </div>
-                        <div>
-                          <span className="font-medium text-slate-600">
-                            Processed:
-                          </span>{" "}
-                          {row.processedDurationSec != null
-                            ? `${Math.round(row.processedDurationSec)}s`
-                            : "-"}
-                        </div>
+
+                        {/* Normalized Video Details */}
+                        {(row.ready720pUrl ||
+                          row.normalizedSize ||
+                          row.processedDurationSec) && (
+                          <div className="space-y-1 pt-2 border-t border-slate-200">
+                            <div className="font-medium text-emerald-700 text-[11px] uppercase tracking-wide">
+                              Normalized (720p)
+                            </div>
+                            <div className="text-[11px] text-slate-600 space-y-0.5">
+                              <div>
+                                <span className="text-slate-500">Size:</span>{" "}
+                                {row.normalizedSize
+                                  ? formatBytes(row.normalizedSize)
+                                  : "-"}
+                              </div>
+                              <div>
+                                <span className="text-slate-500">
+                                  Duration:
+                                </span>{" "}
+                                {row.processedDurationSec != null
+                                  ? `${Math.round(row.processedDurationSec)}s`
+                                  : "-"}
+                              </div>
+                              <div>
+                                <span className="text-slate-500">
+                                  Resolution:
+                                </span>{" "}
+                                {row.normalizedResolution || "N/A"}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
 
