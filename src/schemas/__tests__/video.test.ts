@@ -249,5 +249,11 @@ describe("Video Schemas", () => {
       const threegpFile = new File(["content"], "video.3gpp", { type: "video/3gpp" });
       expect(isValidVideoFile(threegpFile)).toBe(true);
     });
+
+    it("should accept video extension even with wrong MIME type (mobile edge case)", () => {
+      // Some mobile browsers may misreport MIME types
+      const file = new File(["content"], "video.mp4", { type: "audio/mpeg" });
+      expect(isValidVideoFile(file)).toBe(true);
+    });
   });
 });
