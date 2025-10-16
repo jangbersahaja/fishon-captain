@@ -817,9 +817,16 @@ export default async function CharterStepsPage({
       return {
         name: deriveFileName(fileUrl, `video-${index + 1}`),
         url: fileUrl,
+        thumbnailUrl: video.thumbnailUrl,
+        durationSeconds: video.processedDurationSec ?? undefined,
       };
     })
-    .filter(Boolean) as { name: string; url: string }[];
+    .filter(Boolean) as {
+    name: string;
+    url: string;
+    thumbnailUrl?: string | null;
+    durationSeconds?: number;
+  }[];
 
   const mappingPayload: MappingInput = {
     charter: charter as MappingInput["charter"],

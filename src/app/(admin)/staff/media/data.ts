@@ -284,6 +284,7 @@ export async function loadStorageData(
     getParam(searchParams, "sort") || "uploadedAt"
   ).toLowerCase();
   const dirParam = getParam(searchParams, "dir") === "asc" ? "asc" : "desc";
+  const cursorParam = getParam(searchParams, "cursor"); // Pagination cursor
 
   const scopeFilter = isStorageScope(scopeParam)
     ? (scopeParam as StorageScope)
@@ -306,8 +307,10 @@ export async function loadStorageData(
       linkedCount: 0,
       orphanCount: 0,
       filteredCount: 0,
+      totalSize: 0,
       fetchLimit: BLOB_FETCH_LIMIT,
-      hasMore: false,
+      currentPage: 1,
+      totalPages: 0,
       scopeFilter,
       linkFilter,
       searchQuery,
@@ -328,36 +331,53 @@ export async function loadStorageData(
     else references.set(normalized, [ref]);
   };
 
-  const [charterMedia, captainProfiles, verifications] = await Promise.all([
-    prisma.charterMedia.findMany({
-      select: {
-        id: true,
-        charterId: true,
-        kind: true,
-        storageKey: true,
-        charter: { select: { name: true } },
-      },
-    }),
-    prisma.captainProfile.findMany({
-      select: {
-        userId: true,
-        displayName: true,
-        avatarUrl: true,
-        user: { select: { email: true, name: true } },
-      },
-    }),
-    prisma.captainVerification.findMany({
-      select: {
-        userId: true,
-        idFront: true,
-        idBack: true,
-        captainLicense: true,
-        boatRegistration: true,
-        fishingLicense: true,
-        additional: true,
-      },
-    }),
-  ]);
+  const [charterMedia, captainProfiles, verifications, captainVideos] =
+    await Promise.all([
+      prisma.charterMedia.findMany({
+        select: {
+          id: true,
+          charterId: true,
+          kind: true,
+          storageKey: true,
+          charter: { select: { name: true } },
+        },
+      }),
+      prisma.captainProfile.findMany({
+        select: {
+          userId: true,
+          displayName: true,
+          avatarUrl: true,
+          user: { select: { email: true, name: true } },
+        },
+      }),
+      prisma.captainVerification.findMany({
+        select: {
+          userId: true,
+          idFront: true,
+          idBack: true,
+          captainLicense: true,
+          boatRegistration: true,
+          fishingLicense: true,
+          additional: true,
+        },
+      }),
+      prisma.captainVideo.findMany({
+        select: {
+          id: true,
+          ownerId: true,
+          originalUrl: true,
+          blobKey: true,
+          thumbnailUrl: true,
+          thumbnailBlobKey: true,
+          ready720pUrl: true,
+          normalizedBlobKey: true,
+          processStatus: true,
+          didFallback: true,
+          originalDeletedAt: true,
+          createdAt: true,
+        },
+      }),
+    ]);
 
   charterMedia.forEach((media) => {
     addReference(media.storageKey, {
@@ -447,6 +467,115 @@ export async function loadStorageData(
     }
   );
 
+  // Add CaptainVideo references with relationship tracking
+  const videoKeyMap = new Map<
+    string,
+    {
+      id: string;
+      ownerId: string;
+      ownerName: string;
+      ownerAvatar: string | null;
+      status: string;
+      originalKey: string | null;
+      thumbnailKey: string | null;
+      normalizedKey: string | null;
+      didFallback: boolean;
+      originalDeleted: boolean;
+    }
+  >();
+
+  // Fetch owner profiles for videos
+  const videoOwnerIds = Array.from(
+    new Set(captainVideos.map((v) => v.ownerId))
+  );
+  const videoOwnerProfiles = await prisma.captainProfile.findMany({
+    where: { userId: { in: videoOwnerIds } },
+    select: {
+      userId: true,
+      displayName: true,
+      avatarUrl: true,
+      user: { select: { email: true, name: true } },
+    },
+  });
+  const videoOwnerMap = new Map(
+    videoOwnerProfiles.map((p) => [
+      p.userId,
+      {
+        name:
+          p.displayName ||
+          p.user?.name ||
+          p.user?.email?.split("@")[0] ||
+          "Unknown",
+        avatar: p.avatarUrl,
+      },
+    ])
+  );
+
+  captainVideos.forEach((video) => {
+    const originalKey = extractKeyFromUrl(video.originalUrl);
+    const thumbnailKey = extractKeyFromUrl(video.thumbnailUrl);
+    const normalizedKey = extractKeyFromUrl(video.ready720pUrl);
+    const owner = videoOwnerMap.get(video.ownerId) || {
+      name: "Unknown",
+      avatar: null,
+    };
+    const ownerLabel = owner.name;
+    const videoLabel = `Video ${video.id.slice(0, 8)} • ${ownerLabel} • ${
+      video.processStatus
+    }`;
+    const originalDeleted = video.originalDeletedAt !== null;
+
+    const videoMeta = {
+      id: video.id,
+      ownerId: video.ownerId,
+      ownerName: owner.name,
+      ownerAvatar: owner.avatar,
+      status: video.processStatus,
+      originalKey,
+      thumbnailKey,
+      normalizedKey,
+      didFallback: video.didFallback,
+      originalDeleted,
+    };
+
+    // Store video metadata for cross-referencing
+    if (originalKey) {
+      videoKeyMap.set(normalizeKey(originalKey) || originalKey, videoMeta);
+    }
+    if (thumbnailKey) {
+      videoKeyMap.set(normalizeKey(thumbnailKey) || thumbnailKey, videoMeta);
+    }
+    if (normalizedKey) {
+      videoKeyMap.set(normalizeKey(normalizedKey) || normalizedKey, videoMeta);
+    }
+
+    // Add references
+    if (originalKey && !originalDeleted) {
+      addReference(originalKey, {
+        type: "CaptainVideo",
+        label: `${videoLabel} (original)${
+          video.didFallback ? " [fallback]" : ""
+        }`,
+        href: `/staff/media?tab=videos&videoId=${video.id}`,
+      });
+    }
+    if (thumbnailKey) {
+      addReference(thumbnailKey, {
+        type: "CaptainVideo",
+        label: `${videoLabel} (thumbnail)`,
+        href: `/staff/media?tab=videos&videoId=${video.id}`,
+      });
+    }
+    if (normalizedKey) {
+      addReference(normalizedKey, {
+        type: "CaptainVideo",
+        label: `${videoLabel} (720p)`,
+        href: `/staff/media?tab=videos&videoId=${video.id}`,
+      });
+    }
+  });
+
+  // Fetch ALL blobs from storage (not paginated yet)
   const blobs: Array<{
     pathname: string;
     size: number;
@@ -455,12 +584,16 @@ export async function loadStorageData(
     contentType: string | null;
   }> = [];
   let cursor: string | undefined;
+  let fetchCount = 0;
+  const maxFetch = 1000; // Safety limit to prevent infinite loop
+
   do {
-    const remaining = BLOB_FETCH_LIMIT - blobs.length;
-    if (remaining <= 0) break;
+    fetchCount++;
+    if (fetchCount > maxFetch / BLOB_PAGE_SIZE) break; // Prevent infinite loop
+
     const { blobs: page, cursor: nextCursor } = await list({
       token,
-      limit: Math.min(BLOB_PAGE_SIZE, remaining),
+      limit: BLOB_PAGE_SIZE,
       cursor,
     });
     blobs.push(
@@ -478,7 +611,6 @@ export async function loadStorageData(
     cursor = nextCursor || undefined;
   } while (cursor);
 
-  const hasMore = Boolean(cursor);
   const now = Date.now();
 
   const rowsRaw: StorageRow[] = blobs.map(
@@ -493,6 +625,19 @@ export async function loadStorageData(
       const refs = references.get(key) ?? [];
       const scope = classifyScope(key);
       const uploaded = new Date(blob.uploadedAt);
+
+      // Check if this blob is part of a video pipeline
+      const videoMeta = videoKeyMap.get(key);
+      const isOriginal = videoMeta?.originalKey
+        ? normalizeKey(videoMeta.originalKey) === key
+        : false;
+      const isThumbnail = videoMeta?.thumbnailKey
+        ? normalizeKey(videoMeta.thumbnailKey) === key
+        : false;
+      const isNormalized = videoMeta?.normalizedKey
+        ? normalizeKey(videoMeta.normalizedKey) === key
+        : false;
+
       return {
         key,
         url: blob.url,
@@ -505,14 +650,29 @@ export async function loadStorageData(
         scopeLabel: STORAGE_SCOPE_LABEL[scope],
         linked: refs.length > 0,
         references: refs,
+        // Video metadata
+        linkedVideoId: videoMeta?.id,
+        videoStatus: videoMeta?.status,
+        originalVideoKey: videoMeta?.originalKey,
+        thumbnailKey: videoMeta?.thumbnailKey,
+        normalizedKey: videoMeta?.normalizedKey,
+        isOriginalVideo: isOriginal,
+        isThumbnail,
+        isNormalizedVideo: isNormalized,
+        // Owner info
+        ownerName: videoMeta?.ownerName,
+        ownerAvatar: videoMeta?.ownerAvatar,
+        ownerId: videoMeta?.ownerId,
       };
     }
   );
 
   const total = rowsRaw.length;
+  const totalSize = rowsRaw.reduce((sum, row) => sum + row.size, 0);
   const linkedCount = rowsRaw.filter((row) => row.linked).length;
   const orphanCount = total - linkedCount;
 
+  // Apply filters to full dataset
   let filtered = rowsRaw;
   if (scopeFilter) {
     filtered = filtered.filter((row) => row.scope === scopeFilter);
@@ -531,7 +691,8 @@ export async function loadStorageData(
     );
   }
 
-  const rows = [...filtered].sort((a, b) => {
+  // Sort filtered results
+  const sorted = [...filtered].sort((a, b) => {
     let compare = 0;
     switch (sortKey) {
       case "size":
@@ -554,6 +715,14 @@ export async function loadStorageData(
     return sortDir === "desc" ? -compare : compare;
   });
 
+  // Paginate the filtered+sorted results
+  const page = parseInt(cursorParam || "1", 10);
+  const pageSize = BLOB_FETCH_LIMIT; // 100 per page
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const rows = sorted.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(sorted.length / pageSize);
+
   const rawKeys = new Set(rowsRaw.map((row) => row.key));
   const missingReferenced = Array.from(references.entries())
     .filter(([key]) => !rawKeys.has(key))
@@ -562,11 +731,13 @@ export async function loadStorageData(
   return {
     rows,
     total,
+    totalSize,
     linkedCount,
     orphanCount,
-    filteredCount: rows.length,
+    filteredCount: sorted.length, // Total after filtering
     fetchLimit: BLOB_FETCH_LIMIT,
-    hasMore,
+    currentPage: page,
+    totalPages,
     scopeFilter,
     linkFilter,
     searchQuery,

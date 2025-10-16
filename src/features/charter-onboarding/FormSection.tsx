@@ -39,6 +39,7 @@ import { ErrorSummary } from "@features/charter-onboarding/components/ErrorSumma
 import { ReviewBar } from "@features/charter-onboarding/components/ReviewBar";
 import { StepSwitch } from "@features/charter-onboarding/components/StepSwitch";
 import { mergeReadyVideos } from "@features/charter-onboarding/utils/videoDedupe";
+import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -55,6 +56,7 @@ const ReviewStep = dynamic(
 
 export default function FormSection() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { editCharterId, adminUserId } = useCharterFormMode();
   // Revised draft system:
   // - New user: server draft created immediately (status DRAFT)
@@ -874,32 +876,10 @@ export default function FormSection() {
           {isReviewStep && (
             <ReviewStep
               charter={previewCharter}
-              videos={(() => {
-                // Build review videos from normalized previews but:
-                // - Exclude local blob: placeholders
-                // - Prefer only CaptainVideo-backed URLs (captain-videos path)
-                // - Dedupe by URL to avoid duplicates inflating count
-                const uniq = new Map<
-                  string,
-                  { url: string; name?: string; thumbnailUrl?: string | null }
-                >();
-                for (const v of normalizedVideoPreviews) {
-                  const url = v.url;
-                  if (!url || url.startsWith("blob:")) continue;
-                  // Only include captain short-form videos
-                  if (!/\bcaptain-videos\//.test(url)) continue;
-                  if (uniq.has(url)) continue;
-                  const maybeThumb =
-                    (v as unknown as { thumbnailUrl?: string }).thumbnailUrl ||
-                    null;
-                  uniq.set(url, {
-                    url,
-                    name: v.name,
-                    thumbnailUrl: maybeThumb,
-                  });
-                }
-                return Array.from(uniq.values());
-              })()}
+              ownerId={
+                (session?.user as { id?: string; role?: string } | undefined)
+                  ?.id || ""
+              }
             />
           )}
           {submitState?.type === "error" && (
