@@ -3,6 +3,7 @@ import {
   trimMp4BoxKeyframeSlice,
   TrimResult,
 } from "@/lib/video/trimMp4BoxKeyframeSlice";
+import { isValidVideoFile } from "@/schemas/video";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { generateFrameThumbnails } from "./utils/generateFrameThumbnails";
 // TODO(worker): Integrate AbortController + web worker pipeline for thumbnail & probe extraction.
@@ -147,8 +148,6 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       );
 
       // Validate file type and size
-      // Import the validation function at the top
-      const { isValidVideoFile } = require("@/schemas/video");
       if (!isValidVideoFile(file)) {
         setError(
           `Invalid file type: ${file.type || "unknown"} (${file.name}). Please select a video file.`
