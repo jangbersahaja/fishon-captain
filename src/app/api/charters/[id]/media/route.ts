@@ -1,7 +1,7 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
-import { IncomingMediaSchema } from "@/schemas";
+import { IncomingMediaSchema } from "@fishon/schemas";
 import { del } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";

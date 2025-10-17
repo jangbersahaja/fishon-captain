@@ -7,9 +7,9 @@ import {
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import type { Prisma } from "@prisma/client";
 
-// DEPRECATED: DraftPatchSchema moved to src/schemas/draft.ts
-// Import from @/schemas instead for consistency
-export { DraftPatchSchema } from "@/schemas/draft";
+// DEPRECATED: DraftPatchSchema moved to @fishon/schemas package
+// Import from @fishon/schemas instead for consistency
+export { DraftPatchSchema } from "@fishon/schemas";
 
 // Merge helper: shallow object merge, arrays replace
 function deepMerge<T>(base: T, partial: unknown): T {
