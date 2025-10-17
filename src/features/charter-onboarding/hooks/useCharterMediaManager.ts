@@ -196,6 +196,36 @@ export function useCharterMediaManager({
       ignore = true;
     };
   }, [session, dlog]);
+    const photos = form.getValues("uploadedPhotos") as
+      | Array<{ name: string; url: string }>
+      | undefined;
+    if (photos?.length) setExistingImages(photos);
+    const vids = form.getValues("uploadedVideos") as
+      | Array<{
+          name: string;
+          url: string;
+          thumbnailUrl?: string | null;
+          durationSeconds?: number;
+        }>
+      | undefined;
+    if (vids?.length) {
+      // Normalize null to undefined for thumbnailUrl
+      const normalized = vids.map((v) => ({
+        ...v,
+        thumbnailUrl: v.thumbnailUrl ?? undefined,
+      }));
+      setExistingVideos(normalized);
+    }
+    const avatarUrl = form.getValues("operator.avatarUrl");
+    if (avatarUrl) setCaptainAvatarPreview(avatarUrl);
+    dlog("hydrate_from_form", {
+      photos: photos?.length || 0,
+      videos: vids?.length || 0,
+      videosWithThumbs: vids?.filter((v) => v.thumbnailUrl).length || 0,
+      hasAvatar: !!avatarUrl,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Late hydration watcher: handles case where draft reset happens AFTER initial mount (common on reload)
   useEffect(() => {

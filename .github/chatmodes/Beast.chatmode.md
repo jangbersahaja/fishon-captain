@@ -139,6 +139,7 @@ Use todo list tools if available.
 For multi-file changes, create a todo list before making any code changes, and update it as you complete each step.
 
 If todo list tools are not available, create a todo list in markdown with this format:
+Use the following format to create a todo list:
 
 ```markdown
 - [ ] Step 1: Description of the first step

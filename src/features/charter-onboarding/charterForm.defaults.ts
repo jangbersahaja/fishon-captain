@@ -68,7 +68,7 @@ export function createDefaultCharterFormValues(): CharterFormValues {
     },
     pickup: {
       available: false,
-      fee: null,
+      fee: undefined,
       areas: [],
       notes: "",
     },

@@ -87,6 +87,7 @@ export function hydrateDraftValues(
       Number.isFinite(draft.pickup.fee)
         ? draft.pickup.fee
         : null,
+        : undefined,
     areas: draft.pickup?.areas ?? defaults.pickup?.areas ?? [],
   };
 
@@ -125,6 +126,7 @@ export function hydrateDraftValues(
     url: string;
     charterMediaId?: string;
   };
+  type UploadedPhotoMeta = { name: string; url: string };
   type UploadedVideoMeta = {
     name: string;
     url: string;
@@ -140,6 +142,9 @@ export function hydrateDraftValues(
     (
       merged as unknown as { uploadedPhotos: UploadedPhotoMeta[] }
     ).uploadedPhotos = dPhotos.map((p) => ({ ...p }));
+    (
+      merged as unknown as { uploadedPhotos: UploadedPhotoMeta[] }
+    ).uploadedPhotos = [...dPhotos];
   }
   if (Array.isArray(dVideos)) {
     (
