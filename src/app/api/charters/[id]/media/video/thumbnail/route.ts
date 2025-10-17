@@ -1,7 +1,7 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
-import { VideoThumbnailSchema } from "@/schemas";
+import { VideoThumbnailSchema } from "@fishon/schemas";
 import { put } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
