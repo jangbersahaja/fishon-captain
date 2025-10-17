@@ -15,6 +15,7 @@ import { buildMapEmbedSrc } from "./previewUtils";
 // Register group once (idempotent)
 registerLazyGroup("review_preview", [
   "PhotoGallery",
+  "VideoGallery",
   "GuestFeedbackPanel",
   "LocationMap",
   "PoliciesInfoCard",
