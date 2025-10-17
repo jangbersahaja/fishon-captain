@@ -342,10 +342,6 @@ model CaptainVideo {
   charterId            String?
   charterMediaId       String?
   charterMedia         CharterMedia? @relation(fields: [charterMediaId], references: [id])
-  originalWidth        Int?
-  originalHeight       Int?
-  processedWidth       Int?
-  processedHeight      Int?
 
   @@index([ownerId, processStatus])
   @@index([createdAt])
