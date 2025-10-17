@@ -16,7 +16,7 @@
     "migrate:drift-heal": "bash scripts/migrate-drift-heal.sh"
   },
   "dependencies": {
-    "@fishon/schemas": "github:jangbersahaja/fishon-schemas",
+    "@fishon/schemas": "git+https://github.com/jangbersahaja/fishon-schemas.git#main",
     "@hookform/resolvers": "^5.2.2",
     "@neondatabase/serverless": "github:neondatabase/serverless",
     "@next-auth/prisma-adapter": "^1.0.7",

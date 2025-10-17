@@ -140,4 +140,12 @@
 - **QStash** (`@upstash/qstash`): async video normalization queue in production (dev uses direct HTTP).
 - **NextAuth**: Google OAuth provider, Prisma adapter, JWT strategy with role claims in token.
 
+## Documentation
+
+You must always follow the documentation instructions in `.github/documentation.instructions.md` when generating, reviewing, or updating documentation in this repository.
+
+## Terminal
+
+You have access to a terminal where you can run commands. Follow instructions in `.github/terminal.instructions.md` when using the terminal.
+
 Need clarification or spot gaps? Ask which sections feel incomplete so we can refine this guide.

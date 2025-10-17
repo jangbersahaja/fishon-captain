@@ -1,6 +1,11 @@
 import type { Charter } from "@/dummy/charter";
 
-export type MediaPreview = { url: string; name: string };
+// Updated for CharterMedia migration: support charterMediaId for direct upload
+export type MediaPreview = {
+  url: string;
+  name: string;
+  charterMediaId?: string; // NEW: present if uploaded via direct CharterMedia
+};
 
 export type StepKey =
   | "basics"

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ForceSubmitButton } from "./_components/ForceSubmitButton";
 
 function safePretty(obj: unknown) {
   try {
@@ -26,6 +27,98 @@ async function addNote(formData: FormData) {
     data: { draftId, body, authorId: user.id },
   });
   revalidatePath(`/staff/registrations/${draftId}`);
+}
+
+async function forceSubmit(formData: FormData) {
+  "use server";
+  const draftId = formData.get("draftId") as string;
+  const targetUserId = formData.get("targetUserId") as string;
+
+  if (!draftId || !targetUserId)
+    return { success: false, error: "Missing parameters" };
+
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { success: false, error: "Unauthorized" };
+
+  const user = session.user as { id: string; role?: string };
+  if (user.role !== "STAFF" && user.role !== "ADMIN") {
+    return { success: false, error: "Insufficient permissions" };
+  }
+
+  try {
+    // Fetch the draft
+    const draft = await prisma.charterDraft.findUnique({
+      where: { id: draftId },
+      include: {
+        user: { select: { id: true } },
+      },
+    });
+
+    if (!draft) return { success: false, error: "Draft not found" };
+    if (draft.status !== "DRAFT") {
+      return { success: false, error: "Draft is not in DRAFT status" };
+    }
+
+    // No longer send media payload - finalize route uses canonical CharterMedia and CaptainVideo tables
+    // Media is already stored in CharterMedia (photos) and CaptainVideo (videos) tables
+    // The finalize route will query these tables directly based on captainId/userId
+
+    // Call finalize endpoint with adminUserId parameter
+    const h = await import("next/headers").then((m) => m.headers());
+    const host = (await h).get("host");
+    const proto = (await h).get("x-forwarded-proto") || "http";
+    const base = host?.startsWith("http") ? host : `${proto}://${host}`;
+    const url = `${base}/api/charter-drafts/${draftId}/finalize?adminUserId=${targetUserId}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-draft-version": String(draft.version),
+        cookie: (await h).get("cookie") || "",
+      },
+      body: JSON.stringify({}),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("[forceSubmit] Error response:", errorData);
+
+      // Format validation errors if present
+      let errorMessage = errorData.error || `HTTP ${response.status}`;
+      if (errorData.issues && Array.isArray(errorData.issues)) {
+        const issueDetails = errorData.issues
+          .map(
+            (issue: { path: unknown[]; message: string }) =>
+              `${issue.path.join(".")}: ${issue.message}`
+          )
+          .join("; ");
+        errorMessage = `Validation failed: ${issueDetails}`;
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    const result = await response.json();
+    revalidatePath(`/staff/registrations/${draftId}`);
+    revalidatePath("/staff/registrations");
+
+    return {
+      success: true,
+      charterId: result.charterId,
+      message: "Draft successfully submitted",
+    };
+  } catch (error) {
+    console.error("Force submit error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }
 
 export default async function StaffRegistrationDetailPage({
@@ -81,6 +174,24 @@ export default async function StaffRegistrationDetailPage({
     draft.status === "SUBMITTED" ? TOTAL_STEPS : draft.currentStep + 1;
   const progress = Math.round((effectiveStepCount / TOTAL_STEPS) * 100);
 
+  // Count media in draft data for display (check both field naming conventions)
+  const mediaCount = { photos: 0, videos: 0 };
+  try {
+    const draftData = draft.data as Record<string, unknown>;
+    const photosArray = (draftData?.uploadedPhotos ||
+      draftData?.photos) as unknown;
+    if (photosArray && Array.isArray(photosArray)) {
+      mediaCount.photos = photosArray.length;
+    }
+    const videosArray = (draftData?.uploadedVideos ||
+      draftData?.videos) as unknown;
+    if (videosArray && Array.isArray(videosArray)) {
+      mediaCount.videos = videosArray.length;
+    }
+  } catch {
+    // Ignore parsing errors
+  }
+
   return (
     <div className="px-6 py-8 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -109,6 +220,12 @@ export default async function StaffRegistrationDetailPage({
           >
             🛡️ Open Form
           </a>
+          <ForceSubmitButton
+            draftId={draft.id}
+            targetUserId={draft.user.id}
+            status={draft.status}
+            forceSubmitAction={forceSubmit}
+          />
         </div>
       </div>
 
@@ -167,6 +284,23 @@ export default async function StaffRegistrationDetailPage({
           <div>
             <span className="text-slate-500">Created:</span>{" "}
             {new Date(draft.createdAt).toLocaleString()}
+          </div>
+          <div>
+            <span className="text-slate-500">Media:</span>{" "}
+            <span
+              className={
+                mediaCount.photos < 3 ? "text-amber-600 font-medium" : ""
+              }
+            >
+              {mediaCount.photos} photo{mediaCount.photos !== 1 ? "s" : ""}
+            </span>
+            {", "}
+            {mediaCount.videos} video{mediaCount.videos !== 1 ? "s" : ""}
+            {mediaCount.photos < 3 && (
+              <span className="ml-2 text-[10px] text-amber-600">
+                ⚠ Need 3+ photos
+              </span>
+            )}
           </div>
         </div>
         <div className="mt-4">

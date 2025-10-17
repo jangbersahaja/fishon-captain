@@ -397,13 +397,48 @@ export async function finalizeDraftSubmission(args: FinalizeArgs): Promise<{
       versionForFinalize,
     });
   }
+  // Prefer backend error message if present, fallback to mapped message
+  let errorMsg: string | undefined = undefined;
+  if (typeof err?.error === "string") {
+    // Map known backend error codes to user-friendly messages
+    switch (err.error) {
+      case "rate_limited":
+        errorMsg = "You are submitting too quickly. Please wait and try again.";
+        break;
+      case "unauthorized":
+        errorMsg = CharterMessages.finalize.authRequired;
+        break;
+      case "not_found":
+        errorMsg = "Draft not found. Please refresh and try again.";
+        break;
+      case "invalid_draft_data":
+        errorMsg = "Draft data is invalid. Please review your form.";
+        break;
+      case "missing_captain_profile":
+        errorMsg = "Your captain profile is missing. Please contact support.";
+        break;
+      case "validation":
+        errorMsg = CharterMessages.finalize.validationFail;
+        break;
+      default:
+        // If backend provides a message, use it; else fallback
+        errorMsg = err.message || CharterMessages.finalize.genericFail;
+    }
+  }
   setSubmitState({
     type: "error",
-    message:
-      err?.error === "validation"
-        ? CharterMessages.finalize.validationFail
-        : CharterMessages.finalize.genericFail,
+    message: errorMsg || CharterMessages.finalize.genericFail,
   });
+  // Optionally, surface requestId for support/debugging
+  if (typeof window !== "undefined" && err?.requestId) {
+    // Attach requestId to error toast for support
+    try {
+      window.sessionStorage.setItem(
+        "last_finalize_request_id",
+        String(err.requestId)
+      );
+    } catch {}
+  }
   return {
     ok: false,
     status: finalizeRes.status,

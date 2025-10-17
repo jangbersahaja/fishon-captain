@@ -337,9 +337,16 @@ export async function loadStorageData(
         select: {
           id: true,
           charterId: true,
+          captainId: true,
           kind: true,
           storageKey: true,
           charter: { select: { name: true } },
+          captain: {
+            select: {
+              displayName: true,
+              user: { select: { email: true, name: true } },
+            },
+          },
         },
       }),
       prisma.captainProfile.findMany({
@@ -365,6 +372,8 @@ export async function loadStorageData(
         select: {
           id: true,
           ownerId: true,
+          charterId: true,
+          charterMediaId: true,
           originalUrl: true,
           blobKey: true,
           thumbnailUrl: true,
@@ -380,12 +389,35 @@ export async function loadStorageData(
     ]);
 
   charterMedia.forEach((media) => {
+    // Determine appropriate label based on whether media is finalized or pending
+    let label: string;
+    let href: string | undefined;
+
+    if (media.charterId) {
+      // Finalized: linked to a charter
+      label = `Charter ${media.charter?.name ?? media.charterId} • ${
+        media.kind
+      }`;
+      href = `/staff/charters/${media.charterId}`;
+    } else if (media.captainId) {
+      // Pending: uploaded but not yet finalized
+      const captainLabel =
+        media.captain?.displayName ||
+        media.captain?.user?.name ||
+        media.captain?.user?.email?.split("@")[0] ||
+        `Captain ${media.captainId.slice(0, 8)}`;
+      label = `Pending ${media.kind} • ${captainLabel}`;
+      href = undefined; // No charter page yet
+    } else {
+      // Truly orphaned: no captain or charter
+      label = `Orphan ${media.kind} • ${media.id.slice(0, 8)}`;
+      href = undefined;
+    }
+
     addReference(media.storageKey, {
       type: "CharterMedia",
-      label: `Charter ${media.charter?.name ?? media.charterId ?? ""} • ${
-        media.kind
-      }`,
-      href: media.charterId ? `/staff/charters/${media.charterId}` : undefined,
+      label,
+      href,
     });
   });
 
@@ -520,9 +552,20 @@ export async function loadStorageData(
       avatar: null,
     };
     const ownerLabel = owner.name;
+
+    // Determine video status label based on linkage
+    let statusSuffix = "";
+    if (video.charterMediaId) {
+      statusSuffix = " • Finalized";
+    } else if (video.charterId) {
+      statusSuffix = " • Linked to Charter";
+    } else {
+      statusSuffix = " • Pending";
+    }
+
     const videoLabel = `Video ${video.id.slice(0, 8)} • ${ownerLabel} • ${
       video.processStatus
-    }`;
+    }${statusSuffix}`;
     const originalDeleted = video.originalDeletedAt !== null;
 
     const videoMeta = {
@@ -549,7 +592,7 @@ export async function loadStorageData(
       videoKeyMap.set(normalizeKey(normalizedKey) || normalizedKey, videoMeta);
     }
 
-    // Add references
+    // Add references - videos are always "linked" since they belong to a captain (ownerId)
     if (originalKey && !originalDeleted) {
       addReference(originalKey, {
         type: "CaptainVideo",

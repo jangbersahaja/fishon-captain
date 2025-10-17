@@ -86,7 +86,7 @@ export function hydrateDraftValues(
       typeof draft.pickup.fee === "number" &&
       Number.isFinite(draft.pickup.fee)
         ? draft.pickup.fee
-        : undefined,
+        : null,
     areas: draft.pickup?.areas ?? defaults.pickup?.areas ?? [],
   };
 
@@ -120,7 +120,11 @@ export function hydrateDraftValues(
   merged.videos = [];
 
   // Restore uploaded media metadata arrays if present (keep existing default empty arrays otherwise)
-  type UploadedPhotoMeta = { name: string; url: string };
+  type UploadedPhotoMeta = {
+    name: string;
+    url: string;
+    charterMediaId?: string;
+  };
   type UploadedVideoMeta = {
     name: string;
     url: string;
@@ -132,9 +136,10 @@ export function hydrateDraftValues(
   const dVideos = (draft as unknown as { uploadedVideos?: UploadedVideoMeta[] })
     .uploadedVideos;
   if (Array.isArray(dPhotos)) {
+    // Copy charterMediaId if present (backward compatible)
     (
       merged as unknown as { uploadedPhotos: UploadedPhotoMeta[] }
-    ).uploadedPhotos = [...dPhotos];
+    ).uploadedPhotos = dPhotos.map((p) => ({ ...p }));
   }
   if (Array.isArray(dVideos)) {
     (

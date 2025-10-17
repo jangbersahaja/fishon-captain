@@ -5,6 +5,7 @@
  */
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import { isFormDebug } from "@features/charter-onboarding/debug";
+import { useSession } from "next-auth/react";
 import {
   useCallback,
   useEffect,
@@ -167,38 +168,34 @@ export function useCharterMediaManager({
     [videoPreviewBase, existingVideos, getThumbnailUrl]
   );
 
-  // Hydrate from form once (draft restore/edit)
+  // Fetch captain's CharterMedia photos as canonical source
+  const { data: session } = useSession();
   useEffect(() => {
-    const photos = form.getValues("uploadedPhotos") as
-      | Array<{ name: string; url: string }>
-      | undefined;
-    if (photos?.length) setExistingImages(photos);
-    const vids = form.getValues("uploadedVideos") as
-      | Array<{
-          name: string;
-          url: string;
-          thumbnailUrl?: string | null;
-          durationSeconds?: number;
-        }>
-      | undefined;
-    if (vids?.length) {
-      // Normalize null to undefined for thumbnailUrl
-      const normalized = vids.map((v) => ({
-        ...v,
-        thumbnailUrl: v.thumbnailUrl ?? undefined,
-      }));
-      setExistingVideos(normalized);
+    let ignore = false;
+    const userId = (session?.user as { id?: string })?.id;
+    if (!userId) return;
+    async function fetchCaptainPhotos() {
+      try {
+        const res = await fetch(`/api/captain/photos?userId=${userId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!ignore && Array.isArray(data.photos)) {
+          setExistingImages(
+            data.photos.map((p: { storageKey: string; url: string }) => ({
+              name: p.storageKey,
+              url: p.url,
+            }))
+          );
+        }
+      } catch (e) {
+        dlog("fetch_captain_photos_error", { error: String(e) });
+      }
     }
-    const avatarUrl = form.getValues("operator.avatarUrl");
-    if (avatarUrl) setCaptainAvatarPreview(avatarUrl);
-    dlog("hydrate_from_form", {
-      photos: photos?.length || 0,
-      videos: vids?.length || 0,
-      videosWithThumbs: vids?.filter((v) => v.thumbnailUrl).length || 0,
-      hasAvatar: !!avatarUrl,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchCaptainPhotos();
+    return () => {
+      ignore = true;
+    };
+  }, [session, dlog]);
 
   // Late hydration watcher: handles case where draft reset happens AFTER initial mount (common on reload)
   useEffect(() => {
@@ -423,7 +420,13 @@ export function useCharterMediaManager({
             const resp = await uploadPhoto(f, currentCharterId);
             setExistingImages((prev) => [
               ...prev,
-              { name: resp.key, url: resp.url },
+              {
+                name: resp.key,
+                url: resp.url,
+                ...(resp.charterMediaId
+                  ? { charterMediaId: resp.charterMediaId }
+                  : {}),
+              },
             ]);
           } catch (e) {
             console.error("photo pending upload failed", e);

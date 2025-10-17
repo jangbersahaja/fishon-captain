@@ -226,7 +226,7 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
                     "pickup",
                     {
                       available: false,
-                      fee: undefined,
+                      fee: null,
                       areas: [],
                       notes: "",
                     },
