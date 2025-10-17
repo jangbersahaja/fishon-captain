@@ -1,7 +1,7 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
-import { CharterUpdateSchema } from "@/schemas";
+import { CharterUpdateSchema } from "@fishon/schemas";
 import { diffObjects, writeAuditLog } from "@/server/audit";
 import { CharterStyle, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
