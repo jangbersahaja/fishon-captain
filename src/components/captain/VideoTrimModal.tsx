@@ -4,7 +4,7 @@ import {
   trimMp4BoxKeyframeSlice,
   TrimResult,
 } from "@/lib/video/trimMp4BoxKeyframeSlice";
-import { isValidVideoFile } from "@fishon/schemas/dist/video";
+import { isValidVideoFile } from "@/lib/schemas/video";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { generateFrameThumbnails } from "./utils/generateFrameThumbnails";
 // TODO(worker): Integrate AbortController + web worker pipeline for thumbnail & probe extraction.
