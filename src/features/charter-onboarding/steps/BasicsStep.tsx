@@ -156,6 +156,7 @@ export function BasicsStep({
             render={({ field }) => (
               <PhoneInput
                 {...field}
+                value={field.value ?? ""}
                 error={Boolean(fieldError("operator.phone"))}
               />
             )}
@@ -255,7 +256,7 @@ export function BasicsStep({
           name="startingPoint"
           render={({ field }) => (
             <AddressAutocomplete
-              value={field.value}
+              value={field.value ?? ""}
               onChange={(val) => {
                 field.onChange(val);
                 if (!val) {
@@ -409,8 +410,8 @@ export function BasicsStep({
         <LocationMap
           key={mapRefreshKey}
           active={mapActive}
-          lat={Number.isFinite(latitude) ? latitude : null}
-          lng={Number.isFinite(longitude) ? longitude : null}
+          lat={Number.isFinite(latitude) ? (latitude as number) : null}
+          lng={Number.isFinite(longitude) ? (longitude as number) : null}
           onChange={(lat, lng) => {
             setValue("latitude", lat, { shouldDirty: true });
             setValue("longitude", lng, { shouldDirty: true });

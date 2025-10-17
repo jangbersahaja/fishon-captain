@@ -65,7 +65,7 @@ export async function PATCH(
   const session = await getServerSession(authOptions);
   const userId = getUserId(session);
   const userRole = getUserRole(session);
-  if (!userId)
+  if (!userId || !session)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
     );
@@ -112,12 +112,30 @@ export async function PATCH(
     );
   }
   const { dataPartial, clientVersion, currentStep } = parsed.data;
+  if (typeof clientVersion !== "number") {
+    return applySecurityHeaders(
+      NextResponse.json(
+        {
+          error: "invalid_payload",
+          issues: [
+            { path: ["clientVersion"], message: "clientVersion is required" },
+          ],
+          requestId,
+        },
+        { status: 400 }
+      )
+    );
+  }
+
+  // TypeScript now knows clientVersion is a number here
+  const validClientVersion: number = clientVersion;
+
   try {
     const result = await withTiming("patchDraft", () =>
       patchDraft({
         id: draftId,
-        userId: effectiveUserId,
-        clientVersion,
+        userId: session.user.id,
+        clientVersion: validClientVersion,
         dataPartial,
         currentStep,
       })

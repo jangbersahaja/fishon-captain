@@ -77,14 +77,16 @@ export async function createCharterFromDraftData(params: {
     create: {
       userId,
       // Placeholder first/last names until future migration splitting session name
-      firstName: draft.operator.displayName?.split(" ")[0] || "Captain",
-      lastName: draft.operator.displayName?.split(" ").slice(1).join(" ") || "",
-      displayName: draft.operator.displayName,
-      phone: draft.operator.phone,
-      bio: draft.operator.bio ?? "",
-      experienceYrs: Number.isFinite(draft.operator.experienceYears)
-        ? (draft.operator.experienceYears as number)
-        : 0,
+      firstName: draft.operator?.displayName?.split(" ")[0] || "Captain",
+      lastName:
+        draft.operator?.displayName?.split(" ").slice(1).join(" ") || "",
+      displayName: draft.operator?.displayName ?? "",
+      phone: draft.operator?.phone ?? "",
+      bio: draft.operator?.bio ?? "",
+      experienceYrs:
+        draft.operator && Number.isFinite(draft.operator.experienceYears)
+          ? (draft.operator.experienceYears as number)
+          : 0,
       avatarUrl: media.avatar?.url ?? undefined,
     },
   });
@@ -93,14 +95,16 @@ export async function createCharterFromDraftData(params: {
   const { charter } = await prisma.$transaction(async (tx) => {
     const boatRecord = await tx.boat.create({
       data: {
-        name: draft.boat.name ?? "",
-        type: draft.boat.type ?? "",
-        lengthFt: Number.isFinite(draft.boat.lengthFeet)
-          ? Math.trunc(draft.boat.lengthFeet as number)
-          : 0,
-        capacity: Number.isFinite(draft.boat.capacity)
-          ? Math.trunc(draft.boat.capacity as number)
-          : 1,
+        name: draft.boat?.name ?? "",
+        type: draft.boat?.type ?? "",
+        lengthFt:
+          draft.boat && Number.isFinite(draft.boat.lengthFeet)
+            ? Math.trunc(draft.boat.lengthFeet as number)
+            : 0,
+        capacity:
+          draft.boat && Number.isFinite(draft.boat.capacity)
+            ? Math.trunc(draft.boat.capacity as number)
+            : 1,
       },
       select: { id: true },
     });
@@ -108,12 +112,12 @@ export async function createCharterFromDraftData(params: {
     const charterRecord = await tx.charter.create({
       data: {
         captainId: captainProfile.id,
-        charterType: draft.charterType,
-        name: draft.charterName,
-        state: draft.state,
-        city: draft.city,
-        startingPoint: draft.startingPoint,
-        postcode: draft.postcode,
+        charterType: draft.charterType ?? "",
+        name: draft.charterName ?? "",
+        state: draft.state ?? "",
+        city: draft.city ?? "",
+        startingPoint: draft.startingPoint ?? "",
+        postcode: draft.postcode ?? "",
         latitude:
           typeof draft.latitude === "number" && Number.isFinite(draft.latitude)
             ? new Prisma.Decimal(draft.latitude)
@@ -152,45 +156,47 @@ export async function createCharterFromDraftData(params: {
           : undefined,
         policies: {
           create: {
-            licenseProvided: draft.policies.licenseProvided,
-            catchAndKeep: draft.policies.catchAndKeep,
-            catchAndRelease: draft.policies.catchAndRelease,
-            childFriendly: draft.policies.childFriendly,
-            liveBaitProvided: draft.policies.liveBaitProvided,
-            alcoholNotAllowed: draft.policies.alcoholNotAllowed,
-            smokingNotAllowed: draft.policies.smokingNotAllowed,
+            licenseProvided: draft.policies?.licenseProvided ?? false,
+            catchAndKeep: draft.policies?.catchAndKeep ?? false,
+            catchAndRelease: draft.policies?.catchAndRelease ?? false,
+            childFriendly: draft.policies?.childFriendly ?? false,
+            liveBaitProvided: draft.policies?.liveBaitProvided ?? false,
+            alcoholNotAllowed: draft.policies?.alcoholNotAllowed ?? false,
+            smokingNotAllowed: draft.policies?.smokingNotAllowed ?? false,
           },
         },
         trips: {
-          create: draft.trips.map((t, index) => ({
-            name: t.name,
-            tripType: t.tripType ?? `custom-${index + 1}`,
-            price: toDecimal(t.price),
-            promoPrice:
-              t.promoPrice !== undefined && t.promoPrice !== null
-                ? toDecimal(t.promoPrice)
-                : undefined,
-            durationHours: Number.isFinite(t.durationHours)
-              ? (t.durationHours as number)
-              : 0,
-            maxAnglers: Number.isFinite(t.maxAnglers)
-              ? (t.maxAnglers as number)
-              : 1,
-            style:
-              t.charterStyle === "private"
-                ? CharterStyle.PRIVATE
-                : CharterStyle.SHARED,
-            description: t.description ?? null,
-            startTimes: {
-              create: (t.startTimes ?? []).map((value) => ({ value })),
-            },
-            species: {
-              create: (t.species ?? []).map((value) => ({ value })),
-            },
-            techniques: {
-              create: (t.techniques ?? []).map((value) => ({ value })),
-            },
-          })),
+          create: (draft.trips ?? [])
+            .filter((t) => t.name && t.tripType) // Only include trips with required fields
+            .map((t, index) => ({
+              name: t.name ?? "",
+              tripType: t.tripType ?? `custom-${index + 1}`,
+              price: toDecimal(t.price),
+              promoPrice:
+                t.promoPrice !== undefined && t.promoPrice !== null
+                  ? toDecimal(t.promoPrice)
+                  : undefined,
+              durationHours: Number.isFinite(t.durationHours)
+                ? (t.durationHours as number)
+                : 0,
+              maxAnglers: Number.isFinite(t.maxAnglers)
+                ? (t.maxAnglers as number)
+                : 1,
+              style:
+                t.charterStyle === "private"
+                  ? CharterStyle.PRIVATE
+                  : CharterStyle.SHARED,
+              description: t.description ?? null,
+              startTimes: {
+                create: (t.startTimes ?? []).map((value) => ({ value })),
+              },
+              species: {
+                create: (t.species ?? []).map((value) => ({ value })),
+              },
+              techniques: {
+                create: (t.techniques ?? []).map((value) => ({ value })),
+              },
+            })),
         },
         media: {
           create: [

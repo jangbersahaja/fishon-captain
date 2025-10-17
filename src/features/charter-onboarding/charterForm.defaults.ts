@@ -11,7 +11,9 @@ import {
 
 import type { CharterFormValues } from "./charterForm.schema";
 
-export const defaultTrip: () => CharterFormValues["trips"][number] = () => ({
+type TripType = NonNullable<CharterFormValues["trips"]>[number];
+
+export const defaultTrip: () => TripType = () => ({
   name: "",
   tripType: "",
   price: Number.NaN,
@@ -66,7 +68,7 @@ export function createDefaultCharterFormValues(): CharterFormValues {
     },
     pickup: {
       available: false,
-      fee: null,
+      fee: undefined,
       areas: [],
       notes: "",
     },

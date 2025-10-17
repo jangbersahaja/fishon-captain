@@ -380,18 +380,23 @@ export async function POST(
                   : undefined,
                 policies: {
                   create: {
-                    licenseProvided: transformed.policies.licenseProvided,
-                    catchAndKeep: transformed.policies.catchAndKeep,
-                    catchAndRelease: transformed.policies.catchAndRelease,
-                    childFriendly: transformed.policies.childFriendly,
-                    liveBaitProvided: transformed.policies.liveBaitProvided,
-                    alcoholNotAllowed: transformed.policies.alcoholNotAllowed,
-                    smokingNotAllowed: transformed.policies.smokingNotAllowed,
+                    licenseProvided:
+                      transformed.policies.licenseProvided ?? false,
+                    catchAndKeep: transformed.policies.catchAndKeep ?? false,
+                    catchAndRelease:
+                      transformed.policies.catchAndRelease ?? false,
+                    childFriendly: transformed.policies.childFriendly ?? false,
+                    liveBaitProvided:
+                      transformed.policies.liveBaitProvided ?? false,
+                    alcoholNotAllowed:
+                      transformed.policies.alcoholNotAllowed ?? false,
+                    smokingNotAllowed:
+                      transformed.policies.smokingNotAllowed ?? false,
                   },
                 },
                 trips: {
                   create: transformed.trips.map((t, index) => ({
-                    name: t.name,
+                    name: t.name ?? `Trip ${index + 1}`,
                     tripType: t.tripType || `custom-${index + 1}`,
                     price: new Prisma.Decimal(
                       Number.isFinite(t.price) ? (t.price as number) : 0

@@ -28,15 +28,24 @@ export async function patchEditCharter({
       longitude: values.longitude || null,
       description: values.description,
     },
-    captain: {
-      displayName: values.operator.displayName,
-      phone: values.operator.phone,
-      backupPhone: values.operator.backupPhone || null,
-      bio: values.operator.bio,
-      experienceYrs: values.operator.experienceYears,
-      // Include avatarUrl when editing so live charter updates get propagated without separate endpoint.
-      avatarUrl: values.operator.avatarUrl || null,
-    },
+    captain: values.operator
+      ? {
+          displayName: values.operator.displayName,
+          phone: values.operator.phone,
+          backupPhone: values.operator.backupPhone || null,
+          bio: values.operator.bio,
+          experienceYrs: values.operator.experienceYears,
+          // Include avatarUrl when editing so live charter updates get propagated without separate endpoint.
+          avatarUrl: values.operator.avatarUrl || null,
+        }
+      : {
+          displayName: "",
+          phone: "",
+          backupPhone: null,
+          bio: "",
+          experienceYrs: undefined,
+          avatarUrl: null,
+        },
     boat: values.boat
       ? {
           name: values.boat.name,
@@ -59,35 +68,20 @@ export async function patchEditCharter({
       : undefined,
     trips:
       values.trips
-        ?.map(
-          (t: {
-            id?: string;
-            name: string;
-            tripType: string;
-            price?: number | null;
-            promoPrice?: number | null;
-            durationHours?: number | null;
-            maxAnglers?: number | null;
-            charterStyle?: string;
-            description?: string | null;
-            startTimes?: string[];
-            species?: string[];
-            techniques?: string[];
-          }) => ({
-            id: t?.id || undefined,
-            name: t.name,
-            tripType: t.tripType,
-            price: t.price ?? null,
-            promoPrice: t.promoPrice ?? null,
-            durationHours: t.durationHours ?? null,
-            maxAnglers: t.maxAnglers ?? null,
-            style: t.charterStyle?.toLowerCase(),
-            description: t.description ?? null,
-            startTimes: t.startTimes || [],
-            species: t.species || [],
-            techniques: t.techniques || [],
-          })
-        )
+        ?.filter((t) => t.name && t.tripType) // Only include trips with required fields
+        ?.map((t) => ({
+          name: t.name ?? "",
+          tripType: t.tripType ?? "",
+          price: t.price ?? null,
+          promoPrice: t.promoPrice ?? null,
+          durationHours: t.durationHours ?? null,
+          maxAnglers: t.maxAnglers ?? null,
+          style: t.charterStyle?.toLowerCase(),
+          description: t.description ?? null,
+          startTimes: t.startTimes || [],
+          species: t.species || [],
+          techniques: t.techniques || [],
+        }))
         ?.filter(Boolean) || [],
   };
   const adminParam = adminUserId
@@ -254,7 +248,7 @@ export async function finalizeDraftSubmission(args: FinalizeArgs): Promise<{
   // Avatar (only during create)
   let avatarPayload: { name: string; url: string } | null | undefined =
     undefined;
-  const avatarFile = values.operator.avatar;
+  const avatarFile = values.operator?.avatar;
   if (!isEditing && avatarFile instanceof File) {
     const pre = getUploadedMediaInfo?.(avatarFile, "avatar");
     if (pre) {
@@ -269,7 +263,7 @@ export async function finalizeDraftSubmission(args: FinalizeArgs): Promise<{
         avatarPayload = undefined;
       }
     }
-  } else if (!isEditing && !avatarFile && values.operator.avatarUrl) {
+  } else if (!isEditing && !avatarFile && values.operator?.avatarUrl) {
     // No file in form (maybe uploaded earlier in flow) but we have a persisted avatarUrl.
     // Provide a synthetic name so backend can persist reference.
     avatarPayload = { name: "avatar", url: values.operator.avatarUrl };

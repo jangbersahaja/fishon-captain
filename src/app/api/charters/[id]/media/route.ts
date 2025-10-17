@@ -69,12 +69,14 @@ export async function PUT(
   );
 
   // Replace charter media with provided set and sort order
-  const images = body.media.images ?? [];
-  const videos = body.media.videos ?? [];
+  const media = body.media ?? { images: [], videos: [] };
+  const images = media.images ?? [];
+  const videos = media.videos ?? [];
 
   // Enforce path pattern for new media (reject non-compliant new keys except legacy existing ones)
   for (const m of [...images, ...videos]) {
-    if (!mediaKeyPattern(m.name)) {
+    const mediaName = m.name;
+    if (!mediaName || !mediaKeyPattern(mediaName)) {
       return applySecurityHeaders(
         NextResponse.json(
           { error: "invalid_media_path", key: m.name },
@@ -84,21 +86,32 @@ export async function PUT(
     }
   }
 
-  const imageCreates = images.map((m, i) => ({
-    kind: "CHARTER_PHOTO" as const,
-    url: m.url,
-    storageKey: m.name,
-    sortOrder: i,
-    thumbnailUrl: m.thumbnailUrl,
-  }));
-  const videoCreates = videos.map((m, i) => ({
-    kind: "CHARTER_VIDEO" as const,
-    url: m.url,
-    storageKey: m.name,
-    sortOrder: i,
-    thumbnailUrl: m.thumbnailUrl,
-    durationSeconds: m.durationSeconds,
-  }));
+  // Ensure all required fields are present and non-undefined
+  const imageCreates = images.map((m, i) => {
+    if (!m.url || !m.name) {
+      throw new Error("Missing required image media fields");
+    }
+    return {
+      kind: "CHARTER_PHOTO" as const,
+      url: m.url,
+      storageKey: m.name,
+      sortOrder: i,
+      thumbnailUrl: m.thumbnailUrl ?? null,
+    };
+  });
+  const videoCreates = videos.map((m, i) => {
+    if (!m.url || !m.name || typeof m.durationSeconds !== "number") {
+      throw new Error("Missing required video media fields");
+    }
+    return {
+      kind: "CHARTER_VIDEO" as const,
+      url: m.url,
+      storageKey: m.name,
+      sortOrder: i,
+      thumbnailUrl: m.thumbnailUrl ?? null,
+      durationSeconds: m.durationSeconds,
+    };
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.charterMedia.deleteMany({ where: { charterId } });
