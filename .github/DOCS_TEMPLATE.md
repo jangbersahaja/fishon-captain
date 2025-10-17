@@ -1,4 +1,4 @@
-## ++ .github/DOCS_TEMPLATE.md
+# ++ .github/DOCS_TEMPLATE.md
 
 type: fix # fix | feature | plan | design | cleanup
 status: draft # draft | in-progress | complete | deprecated
