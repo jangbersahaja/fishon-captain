@@ -29,6 +29,7 @@ export function createPreviewCharter(
   ) as string[];
   const location = locationParts.length ? locationParts.join(", ") : "Malaysia";
   const experienceYears =
+    values.operator &&
     typeof values.operator.experienceYears === "number" &&
     Number.isFinite(values.operator.experienceYears)
       ? values.operator.experienceYears
@@ -91,27 +92,32 @@ export function createPreviewCharter(
     ? amenities
     : ["Amenities you select will show up here"];
   const capacity =
+    values.boat &&
     typeof values.boat.capacity === "number" &&
     Number.isFinite(values.boat.capacity) &&
     values.boat.capacity > 0
       ? values.boat.capacity
       : 1;
   const lengthFeet =
+    values.boat &&
     typeof values.boat.lengthFeet === "number" &&
     Number.isFinite(values.boat.lengthFeet) &&
     values.boat.lengthFeet > 0
       ? `${values.boat.lengthFeet} ft`
       : "Length TBD";
   const pickupFee =
-    typeof values.pickup.fee === "number" && Number.isFinite(values.pickup.fee)
+    values.pickup &&
+    typeof values.pickup.fee === "number" &&
+    Number.isFinite(values.pickup.fee)
       ? values.pickup.fee
       : undefined;
-  const pickupAreas = (values.pickup.areas ?? []).filter(Boolean);
-  const captainName = values.operator.displayName?.trim() || "Charter operator";
+  const pickupAreas = (values.pickup?.areas ?? []).filter(Boolean);
+  const captainName =
+    values.operator?.displayName?.trim() || "Charter operator";
   const rawDescription = values.description || "";
   const description = sanitizeGeneratedText(rawDescription);
   const captainIntro = sanitizeGeneratedText(
-    values.operator.bio?.trim() || rawDescription
+    values.operator?.bio?.trim() || rawDescription
   );
   return {
     id: 0,
@@ -127,22 +133,30 @@ export function createPreviewCharter(
     techniques: previewTechniques,
     includes: previewAmenities,
     excludes: [],
-    licenseProvided: values.policies.licenseProvided,
+    licenseProvided: values.policies?.licenseProvided ?? false,
     pickup: {
-      available: values.pickup.available,
-      included: values.pickup.available && (!pickupFee || pickupFee === 0),
+      available: values.pickup?.available ?? false,
+      included:
+        (values.pickup?.available ?? false) && (!pickupFee || pickupFee === 0),
       fee: pickupFee,
-      areas: values.pickup.available ? pickupAreas : [],
-      notes: values.pickup.available ? values.pickup.notes : undefined,
+      areas: values.pickup?.available ? pickupAreas : [],
+      notes: values.pickup?.available ? values.pickup.notes : undefined,
     },
-    policies: values.policies,
+    policies: {
+      catchAndKeep: values.policies?.catchAndKeep ?? false,
+      catchAndRelease: values.policies?.catchAndRelease ?? false,
+      childFriendly: values.policies?.childFriendly ?? false,
+      liveBaitProvided: values.policies?.liveBaitProvided ?? false,
+      alcoholAllowed: !(values.policies?.alcoholNotAllowed ?? false),
+      smokingAllowed: !(values.policies?.smokingNotAllowed ?? false),
+    },
     languages: ["BM", "English"],
     boat: {
-      name: values.boat.name || "Boat name",
-      type: values.boat.type || "Boat type",
+      name: values.boat?.name || "Boat name",
+      type: values.boat?.type || "Boat type",
       length: lengthFeet,
       capacity,
-      features: values.boat.features ?? [],
+      features: values.boat?.features ?? [],
     },
     captain: {
       name: captainName,

@@ -138,9 +138,10 @@ export async function POST(req: NextRequest) {
   // If clip selection (end-start OR full original when endSec missing & startSec=0) <=30s AND resolution <= 1280x720
   // then mark ready immediately. Otherwise normalize if external worker available.
   const hasExternalWorker = !!process.env.EXTERNAL_WORKER_URL;
-  let selectionDuration = parsed.data.endSec
-    ? Math.max(0, parsed.data.endSec - parsed.data.startSec)
-    : undefined;
+  let selectionDuration =
+    parsed.data.endSec !== undefined && parsed.data.startSec !== undefined
+      ? Math.max(0, parsed.data.endSec - parsed.data.startSec)
+      : undefined;
   // Fallback: if no endSec but originalDurationSec provided, startSec is 0, and duration <=30, treat whole video as selected
   if (
     selectionDuration === undefined &&
@@ -183,7 +184,7 @@ export async function POST(req: NextRequest) {
     video = await prisma.captainVideo.create({
       data: {
         ownerId: effectiveOwnerId,
-        originalUrl: parsed.data.videoUrl,
+        originalUrl: parsed.data.videoUrl ?? "",
         blobKey: typeof blobKey === "string" ? blobKey : null,
         trimStartSec: parsed.data.startSec,
         originalDurationSec: parsed.data.originalDurationSec || null,

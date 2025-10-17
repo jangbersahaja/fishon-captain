@@ -1,5 +1,5 @@
+import type { CharterFormValues } from "@fishon/schemas";
 import { defaultTrip } from "./charterForm.defaults";
-import type { CharterFormValues } from "./charterForm.schema";
 
 function normalizeNumber(value: unknown, fallback: number = Number.NaN) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -14,7 +14,7 @@ export function sanitizeForDraft(values: CharterFormValues) {
     operator,
     ...rest
   } = values;
-  const { avatar: _avatar, avatarUrl, ...operatorRest } = operator;
+  const { avatar: _avatar, avatarUrl, ...operatorRest } = operator ?? {};
 
   // We still ignore raw photos/videos and avatar File objects for draft payload size, but we DO persist avatarUrl if present
   void _photos;
@@ -26,7 +26,7 @@ export function sanitizeForDraft(values: CharterFormValues) {
     operator: {
       ...operatorRest,
       avatarUrl,
-      backupPhone: operator.backupPhone || "",
+      backupPhone: operator?.backupPhone || "",
     },
     uploadedPhotos: [...(uploadedPhotos || [])],
     uploadedVideos: [...(uploadedVideos || [])],
@@ -57,7 +57,7 @@ export function hydrateDraftValues(
       draft.operator?.experienceYears,
       Number.NaN
     ),
-    bio: draft.operator?.bio ?? defaults.operator.bio,
+    bio: draft.operator?.bio ?? defaults.operator?.bio,
     avatar: undefined,
     avatarUrl: draft.operator?.avatarUrl,
   };
@@ -86,10 +86,8 @@ export function hydrateDraftValues(
       typeof draft.pickup.fee === "number" &&
       Number.isFinite(draft.pickup.fee)
         ? draft.pickup.fee
-        : draft.pickup?.fee === null
-        ? null
-        : null,
-    areas: draft.pickup?.areas ?? defaults.pickup.areas,
+        : undefined,
+    areas: draft.pickup?.areas ?? defaults.pickup?.areas ?? [],
   };
 
   merged.policies = {
@@ -99,8 +97,8 @@ export function hydrateDraftValues(
 
   const draftTrips =
     draft.trips && draft.trips.length ? draft.trips : defaults.trips;
-  merged.trips = draftTrips.map((trip, index) => {
-    const base = defaults.trips[index] ?? defaultTrip();
+  merged.trips = (draftTrips ?? []).map((trip, index) => {
+    const base = defaults.trips?.[index] ?? defaultTrip();
     return {
       ...base,
       ...trip,

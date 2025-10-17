@@ -1,6 +1,6 @@
 // POST /api/blob/create
 // Issues a direct upload URL for Vercel Blob for a forthcoming 30s trimmed clip.
-import { CreateUploadSchema } from "@/lib/schemas/video";
+import { CreateUploadSchema } from "@fishon/schemas";
 import { NextRequest, NextResponse } from "next/server";
 // NOTE: Depending on @vercel/blob version, generateUploadURL may reside under '@vercel/blob' root export.
 // If this import continues to error, consider dynamic import or upgrading the package.
@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
   // Interim: client will upload via forthcoming /api/blob/upload route which calls put(). Return a provisional blobKey the client must echo back.
   const { fileName, fileType } = parsed.data;
   const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const safeFileName = fileName ?? "unnamed";
+  const sanitized = safeFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const blobKey = `captain-videos/${unique}-${sanitized}`;
   return NextResponse.json({
     uploadUrl: "/api/blob/upload",

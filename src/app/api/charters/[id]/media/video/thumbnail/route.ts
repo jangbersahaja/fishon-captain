@@ -76,6 +76,12 @@ export async function PATCH(
     );
   }
 
+  if (!dataUrl) {
+    return applySecurityHeaders(
+      NextResponse.json({ error: "missing_data_url" }, { status: 400 })
+    );
+  }
+
   const match = /^data:(image\/(?:png|jpe?g|webp));base64,(.*)$/i.exec(dataUrl);
   if (!match) {
     return applySecurityHeaders(
