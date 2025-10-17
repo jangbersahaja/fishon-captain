@@ -1,2 +1,0 @@
--- Intentionally left blank (no-op) to preserve historical checksum alignment.
--- Original alteration replaced by forward repair migration.
