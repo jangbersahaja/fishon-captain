@@ -10,8 +10,6 @@
 
 ## Core Workflows
 
-## Core Workflows
-
 - Charter onboarding form supports **new registration** and **edit mode**; draft saves hit `/api/charter-drafts` and finalization calls `/api/charter-drafts/:id/finalize`. Always check `isEditing`/initial state before changing flow logic.
 
 - **Charter onboarding form** supports **new registration** and **edit mode**; draft saves hit `/api/charter-drafts` and finalization calls `/api/charter-drafts/:id/finalize`. Always check `isEditing`/initial state before changing flow logic.- Media lifecycle: uploads land in `PendingMedia`, finalize moves them to `CharterMedia`. Videos use `CaptainVideo` with a metadata-rich record (trim start, processed duration, blob keys, deletion flags).
