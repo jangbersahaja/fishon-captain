@@ -46,45 +46,61 @@ export async function POST(req: Request) {
       addRandomSuffix: false,
     });
 
-    let charterMediaId: string | null = null;
-    if (charterId) {
+    // CharterMedia creation: always create, use temp charterId for drafts
+    // Get CaptainProfile for captainId
+    const draftIdRaw = form.get("draftId");
+    const draftId = typeof draftIdRaw === "string" ? draftIdRaw : null;
+    const profile = await prisma.captainProfile.findUnique({
+      where: { userId },
+    });
+    if (!profile) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "captain_profile_not_found",
+          message:
+            "CaptainProfile not found for user. Please complete onboarding.",
+        },
+        { status: 400 }
+      );
+    }
+    // Only set charterId if a real charter exists, else null
+    const charterIdFinal = charterId || null;
+    // Compute next sortOrder (if charterIdFinal is set, else default 0)
+    let nextOrder = 0;
+    if (charterIdFinal) {
       try {
-        // Compute next sortOrder (append semantics) instead of static 999
-        let nextOrder = 0;
-        try {
-          const max = await prisma.charterMedia.aggregate({
-            where: { charterId },
-            _max: { sortOrder: true },
-          });
-          nextOrder = (max._max.sortOrder ?? -1) + 1;
-        } catch (e) {
-          console.warn(
-            "photo upload: failed to compute next sortOrder, defaulting 0",
-            e
-          );
-        }
-        const cm = await prisma.charterMedia.create({
-          data: {
-            charterId,
-            kind: "CHARTER_PHOTO",
-            url: putRes.url,
-            storageKey,
-            sortOrder: nextOrder,
-            // original filename kept client-side; add field here if schema later supports it
-          },
-          select: { id: true },
+        const max = await prisma.charterMedia.aggregate({
+          where: { charterId: charterIdFinal },
+          _max: { sortOrder: true },
         });
-        charterMediaId = cm.id;
+        nextOrder = (max._max.sortOrder ?? -1) + 1;
       } catch (e) {
-        console.error("photo upload charterMedia create failed", e);
+        console.warn(
+          "photo upload: failed to compute next sortOrder, defaulting 0",
+          e
+        );
       }
     }
-
+    // Create CharterMedia record
+    const cm = await prisma.charterMedia.create({
+      data: {
+        captainId: profile.id,
+        charterId: charterIdFinal, // will be null if no real charter
+        kind: "CHARTER_PHOTO",
+        url: putRes.url,
+        storageKey,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        sortOrder: nextOrder,
+      },
+      select: { id: true },
+    });
     return NextResponse.json({
       ok: true,
       url: putRes.url,
       key: storageKey,
-      charterMediaId,
+      charterMediaId: cm.id,
     });
   } catch (e) {
     console.error("photo upload error", e);

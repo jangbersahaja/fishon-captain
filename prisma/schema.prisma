@@ -46,19 +46,20 @@ model User {
 }
 
 model CaptainProfile {
-  id            String    @id @default(cuid())
-  userId        String    @unique
+  id            String         @id @default(cuid())
+  userId        String         @unique
   firstName     String
   lastName      String
   displayName   String
   phone         String
   bio           String
-  experienceYrs Int       @default(0)
+  experienceYrs Int            @default(0)
   avatarUrl     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User           @relation(fields: [userId], references: [id])
   charters      Charter[]
+  media         CharterMedia[]
 }
 
 model Charter {
@@ -146,8 +147,8 @@ model CharterFeature {
 }
 
 model CharterMedia {
-  id              String    @id @default(cuid())
-  charterId       String
+  id              String          @id @default(cuid())
+  charterId       String?
   tripId          String?
   kind            MediaKind
   url             String
@@ -156,12 +157,18 @@ model CharterMedia {
   sizeBytes       Int?
   width           Int?
   height          Int?
-  sortOrder       Int       @default(0)
-  createdAt       DateTime  @default(now())
-  thumbnailUrl    String?   @map("thumbnail_url")
-  durationSeconds Int?      @map("duration_seconds")
-  charter         Charter   @relation(fields: [charterId], references: [id])
-  trip            Trip?     @relation(fields: [tripId], references: [id])
+  sortOrder       Int             @default(0)
+  createdAt       DateTime        @default(now())
+  thumbnailUrl    String?         @map("thumbnail_url")
+  durationSeconds Int?            @map("duration_seconds")
+  captainId       String?
+  captain         CaptainProfile? @relation(fields: [captainId], references: [id])
+  charter         Charter?        @relation(fields: [charterId], references: [id])
+  trip            Trip?           @relation(fields: [tripId], references: [id])
+  captainVideos   CaptainVideo[]
+
+  @@index([captainId, createdAt])
+  @@index([charterId, sortOrder])
 }
 
 model CharterDraft {
@@ -308,30 +315,33 @@ model AuditLog {
 /// Captain short-form video library (30s trimmed clips)
 /// --------------------------------------------------
 model CaptainVideo {
-  id                   String    @id @default(cuid())
+  id                   String        @id @default(cuid())
   ownerId              String
   originalUrl          String
   thumbnailUrl         String?
-  trimStartSec         Float     @default(0)
+  trimStartSec         Float         @default(0)
   ready720pUrl         String?
-  processStatus        String    @default("queued")
+  processStatus        String        @default("queued")
   errorMessage         String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   blobKey              String?
   normalizedBlobKey    String?
   thumbnailBlobKey     String?
-  didFallback          Boolean   @default(false)
+  didFallback          Boolean       @default(false)
   fallbackReason       String?
   originalDurationSec  Float?
   processedDurationSec Float?
   appliedTrimStartSec  Float?
   processedAt          DateTime?
   originalDeletedAt    DateTime?
-  originalWidth        Int?
   originalHeight       Int?
-  processedWidth       Int?
+  originalWidth        Int?
   processedHeight      Int?
+  processedWidth       Int?
+  charterId            String?
+  charterMediaId       String?
+  charterMedia         CharterMedia? @relation(fields: [charterMediaId], references: [id])
 
   @@index([ownerId, processStatus])
   @@index([createdAt])

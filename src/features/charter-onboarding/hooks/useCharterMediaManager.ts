@@ -5,6 +5,7 @@
  */
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import { isFormDebug } from "@features/charter-onboarding/debug";
+import { useSession } from "next-auth/react";
 import {
   useCallback,
   useEffect,
@@ -167,8 +168,34 @@ export function useCharterMediaManager({
     [videoPreviewBase, existingVideos, getThumbnailUrl]
   );
 
-  // Hydrate from form once (draft restore/edit)
+  // Fetch captain's CharterMedia photos as canonical source
+  const { data: session } = useSession();
   useEffect(() => {
+    let ignore = false;
+    const userId = (session?.user as { id?: string })?.id;
+    if (!userId) return;
+    async function fetchCaptainPhotos() {
+      try {
+        const res = await fetch(`/api/captain/photos?userId=${userId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!ignore && Array.isArray(data.photos)) {
+          setExistingImages(
+            data.photos.map((p: { storageKey: string; url: string }) => ({
+              name: p.storageKey,
+              url: p.url,
+            }))
+          );
+        }
+      } catch (e) {
+        dlog("fetch_captain_photos_error", { error: String(e) });
+      }
+    }
+    fetchCaptainPhotos();
+    return () => {
+      ignore = true;
+    };
+  }, [session, dlog]);
     const photos = form.getValues("uploadedPhotos") as
       | Array<{ name: string; url: string }>
       | undefined;
@@ -423,7 +450,13 @@ export function useCharterMediaManager({
             const resp = await uploadPhoto(f, currentCharterId);
             setExistingImages((prev) => [
               ...prev,
-              { name: resp.key, url: resp.url },
+              {
+                name: resp.key,
+                url: resp.url,
+                ...(resp.charterMediaId
+                  ? { charterMediaId: resp.charterMediaId }
+                  : {}),
+              },
             ]);
           } catch (e) {
             console.error("photo pending upload failed", e);

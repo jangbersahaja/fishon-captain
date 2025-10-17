@@ -90,7 +90,24 @@ export async function POST(req: Request) {
   // Create user with unverified email
   const user = await prisma.user.create({
     data: createData,
-    select: { id: true, email: true, firstName: true },
+    select: { id: true, email: true, firstName: true, lastName: true },
+  });
+
+  // Create CaptainProfile immediately after user creation
+  const displayName =
+    body.displayName?.trim() || `${trimmedFirstName} ${trimmedLastName}`.trim();
+  // Only create if not exists (should always be new)
+  await prisma.captainProfile.create({
+    data: {
+      userId: user.id,
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName,
+      displayName,
+      phone: "", // can be updated later
+      bio: "",
+      experienceYrs: 0,
+      avatarUrl: null,
+    },
   });
 
   // Generate and send OTP

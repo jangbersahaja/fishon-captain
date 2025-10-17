@@ -1,10 +1,11 @@
 "use client";
+import { useToasts } from "@/components/toast/ToastContext";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useCharterFormSelectors } from "@features/charter-onboarding/context/CharterFormContext";
 import { logFormDebug } from "@features/charter-onboarding/debug";
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useCallback } from "react";
 
 export const ActionButtons: React.FC = () => {
   const router = useRouter();
@@ -17,6 +18,13 @@ export const ActionButtons: React.FC = () => {
       handlePrev: s.navigation?.handlePrev || (() => {}),
       handleNext: s.navigation?.handleNext || (() => {}),
     }));
+  const existingImagesCount = useCharterFormSelectors(
+    (s) => s.media?.existingImagesCount ?? 0
+  );
+  const toasts = useToasts();
+
+  // Get the index of the media step (hardcoded as 4, or import if available)
+  const MEDIA_STEP_INDEX = 4;
   const { serverSaving, savingEdit, saveEditChanges } = useCharterFormSelectors(
     (s) => ({
       serverSaving: s.submission?.serverSaving ?? false,
@@ -38,6 +46,19 @@ export const ActionButtons: React.FC = () => {
   // In edit mode we do not depend on a serverDraftId, so only block when actively saving or uploading avatar.
   const nextDisabled =
     serverSaving || avatarUploading || (!isEditing && !serverDraftId); // block navigation during avatar upload (create flow only)
+
+  // Guard: block next on media step if <3 photos
+  const handleNextWithPhotoGuard = useCallback(() => {
+    if (currentStep === MEDIA_STEP_INDEX && existingImagesCount < 3) {
+      toasts.push({
+        type: "error",
+        message: "Please upload at least 3 photos before continuing",
+      });
+      return;
+    }
+    handleNext();
+  }, [currentStep, existingImagesCount, handleNext, toasts]);
+
   return (
     <div className="flex flex-wrap justify-end gap-3">
       {isEditing && (
@@ -93,7 +114,7 @@ export const ActionButtons: React.FC = () => {
         >
           <button
             type="button"
-            onClick={handleNext}
+            onClick={handleNextWithPhotoGuard}
             disabled={nextDisabled}
             aria-label={
               serverSaving

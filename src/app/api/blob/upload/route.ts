@@ -276,6 +276,47 @@ export async function POST(req: Request) {
       }
     }
 
+    // Phase 2: Direct CharterMedia creation for photo uploads
+    if (docType === "charter_media" && !isVideo) {
+      // Get or create captain profile
+      const profile = await prisma.captainProfile.findUnique({
+        where: { userId },
+      });
+      if (!profile) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "captain_profile_not_found",
+            message:
+              "CaptainProfile not found for user. Please complete onboarding.",
+          },
+          { status: 400 }
+        );
+      }
+      // Use draftId if provided, else fallback to userId
+      const draftIdRaw = form.get("draftId");
+      const draftId = typeof draftIdRaw === "string" ? draftIdRaw : null;
+      const tempCharterId = draftId ? `temp-${draftId}` : `temp-${userId}`;
+      // Create CharterMedia record immediately
+      const media = await prisma.charterMedia.create({
+        data: {
+          captainId: profile.id,
+          charterId: tempCharterId,
+          kind: "CHARTER_PHOTO",
+          url,
+          storageKey: key,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          sortOrder: 0, // Will be reordered on finalize
+        },
+      });
+      return NextResponse.json({
+        ok: true,
+        url,
+        key,
+        charterMediaId: media.id,
+      });
+    }
     return NextResponse.json({ ok: true, url, key, overwrite: allowOverwrite });
   } catch (e: unknown) {
     console.error("Blob upload error", e);

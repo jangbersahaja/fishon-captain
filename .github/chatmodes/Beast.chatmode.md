@@ -134,6 +134,11 @@ Carefully read the issue and think hard about a plan to solve it before coding.
 
 # How to create a Todo List
 
+Use todo list tools if available.
+
+For multi-file changes, create a todo list before making any code changes, and update it as you complete each step.
+
+If todo list tools are not available, create a todo list in markdown with this format:
 Use the following format to create a todo list:
 
 ```markdown
