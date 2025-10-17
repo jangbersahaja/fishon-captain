@@ -14,7 +14,7 @@ import { buildMapEmbedSrc } from "./previewUtils";
 // Dynamically loaded heavy/interactive preview components (only needed in Review step)
 // Register group once (idempotent)
 registerLazyGroup("review_preview", [
-  "CharterGallery",
+  "PhotoGallery",
   "GuestFeedbackPanel",
   "LocationMap",
   "PoliciesInfoCard",
@@ -22,13 +22,13 @@ registerLazyGroup("review_preview", [
   "SpeciesTechniquesCard",
 ]);
 // Individual dynamic imports with timing instrumentation + group tracking
-const CharterGallery = dynamic(
+const PhotoGallery = dynamic(
   async () => {
     const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const mod = await import("@/components/charter/CharterGallery");
+    const mod = await import("@/components/charter/PhotoGallery");
     const ms =
       typeof performance !== "undefined" ? performance.now() - t0 : undefined;
-    trackLazyComponentLoad("review_preview", "CharterGallery", ms);
+    trackLazyComponentLoad("review_preview", "PhotoGallery", ms);
     return mod;
   },
   {
@@ -36,7 +36,7 @@ const CharterGallery = dynamic(
     loading: () => (
       <div
         className="text-[10px] text-slate-400"
-        aria-label="CharterGallery loading"
+        aria-label="PhotoGallery loading"
       >
         Loading gallery…
       </div>
@@ -154,10 +154,14 @@ type PreviewPanelProps = {
   videos?: { url: string; name?: string; thumbnailUrl?: string | null }[];
 };
 
-const VideoPreviewCarousel = dynamic(
+const VideoGallery = dynamic(
   async () => {
-    const mod = await import("@/components/charter/VideoPreviewCarousel");
-    return mod.VideoPreviewCarousel;
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    const mod = await import("@/components/charter/VideoGallery");
+    const ms =
+      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
+    trackLazyComponentLoad("review_preview", "VideoGallery", ms);
+    return mod;
   },
   {
     ssr: false,
@@ -208,9 +212,9 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
         </header>
       </div>
       <div className="mt-6 px-5 space-y-8 w-full overflow-hidden">
-        <CharterGallery images={images} title={charter.name} />
+        <PhotoGallery images={images} title={charter.name} />
         {videos && videos.length > 0 ? (
-          <VideoPreviewCarousel
+          <VideoGallery
             videos={videos}
             className="border-t border-neutral-200 pt-6"
           />
