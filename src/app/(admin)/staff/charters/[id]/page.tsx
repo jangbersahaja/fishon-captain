@@ -1,3 +1,4 @@
+import { AdminBypassLink } from "@/components/admin";
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type {
@@ -202,9 +203,17 @@ export default async function StaffCharterDetailPage({
                   View Verification
                 </span>
               </a>
-              <a
+              <AdminBypassLink
                 href={`/captain?adminUserId=${c.captain.userId}`}
-                className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-orange-700 hover:bg-orange-100 transition-colors"
+                confirmTitle="Admin Impersonation - Open Dashboard"
+                confirmDescription={`You are about to view the dashboard as:\n\nCaptain: ${
+                  c.captain.user.name || "Unknown"
+                }\nEmail: ${
+                  c.captain.user.email || "No email"
+                }\n\nThis will allow you to view their captain dashboard. Please enter your admin password to confirm.`}
+                variant="outline"
+                size="sm"
+                className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
               >
                 <svg
                   className="w-3.5 h-3.5"
@@ -228,12 +237,20 @@ export default async function StaffCharterDetailPage({
                 <span className="hidden sm:inline text-xs font-medium">
                   🛡️ Open Dashboard
                 </span>
-              </a>
+              </AdminBypassLink>
 
               {charter.id && (
-                <a
+                <AdminBypassLink
                   href={`/captain/form?editCharterId=${charter.id}&adminUserId=${c.captain.userId}`}
-                  className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-orange-700 hover:bg-orange-100 transition-colors"
+                  confirmTitle="Admin Impersonation - Edit Charter"
+                  confirmDescription={`You are about to edit this charter as:\n\nCaptain: ${
+                    c.captain.user.name || "Unknown"
+                  }\nEmail: ${c.captain.user.email || "No email"}\nCharter: ${
+                    charter.name || charter.id
+                  }\n\nThis will allow you to view and edit their charter. Please enter your admin password to confirm.`}
+                  variant="outline"
+                  size="sm"
+                  className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
                 >
                   <svg
                     className="w-3.5 h-3.5"
@@ -251,7 +268,7 @@ export default async function StaffCharterDetailPage({
                   <span className="hidden sm:inline text-xs font-medium">
                     🛡️ Edit Charter
                   </span>
-                </a>
+                </AdminBypassLink>
               )}
             </>
           ) : null}

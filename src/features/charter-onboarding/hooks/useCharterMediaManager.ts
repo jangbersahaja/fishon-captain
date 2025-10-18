@@ -196,6 +196,7 @@ export function useCharterMediaManager({
       ignore = true;
     };
   }, [session, dlog]);
+  useEffect(() => {
     const photos = form.getValues("uploadedPhotos") as
       | Array<{ name: string; url: string }>
       | undefined;

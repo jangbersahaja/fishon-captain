@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminBypassAction } from "@/components/admin";
 import { useState } from "react";
 
 interface ForceSubmitButtonProps {
@@ -26,21 +27,14 @@ export function ForceSubmitButton({
     text: string;
   } | null>(null);
 
-  const handleSubmit = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to force submit this draft? This will finalize the registration on behalf of the user."
-      )
-    ) {
-      return;
-    }
-
+  const handleSubmit = async (password: string) => {
     setIsSubmitting(true);
     setMessage(null);
 
     const formData = new FormData();
     formData.append("draftId", draftId);
     formData.append("targetUserId", targetUserId);
+    formData.append("password", password);
 
     try {
       const result = await forceSubmitAction(formData);
@@ -50,7 +44,6 @@ export function ForceSubmitButton({
           type: "success",
           text: result.message || "Draft successfully submitted!",
         });
-        // Reload after success to show updated status
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setMessage({
@@ -75,14 +68,33 @@ export function ForceSubmitButton({
 
   return (
     <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        className="rounded-full border border-red-300 bg-red-50 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+      <AdminBypassAction
+        actionLabel={isSubmitting ? "Submitting..." : "Force Submit"}
+        buttonVariant="default"
+        buttonSize="sm"
+        buttonClassName="bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+        confirmTitle="Confirm Force Submit"
+        confirmDescription="Are you sure you want to force submit this draft? This will finalize the registration on behalf of the user. Please enter your admin password to confirm."
+        onConfirm={handleSubmit}
+        loading={isSubmitting}
       >
-        {isSubmitting ? "⏳ Submitting..." : "🚀 Force Submit"}
-      </button>
+        <svg
+          className="w-3.5 h-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <span className="text-xs font-medium">
+          {isSubmitting ? "Submitting..." : "Force Submit"}
+        </span>
+      </AdminBypassAction>
       {message && (
         <div
           className={`text-xs px-2 py-1 rounded ${

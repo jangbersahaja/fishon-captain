@@ -347,9 +347,6 @@ export async function loadStorageData(
               user: { select: { email: true, name: true } },
             },
           },
-          kind: true,
-          storageKey: true,
-          charter: { select: { name: true } },
         },
       }),
       prisma.captainProfile.findMany({
@@ -569,9 +566,6 @@ export async function loadStorageData(
     const videoLabel = `Video ${video.id.slice(0, 8)} • ${ownerLabel} • ${
       video.processStatus
     }${statusSuffix}`;
-    const videoLabel = `Video ${video.id.slice(0, 8)} • ${ownerLabel} • ${
-      video.processStatus
-    }`;
     const originalDeleted = video.originalDeletedAt !== null;
 
     const videoMeta = {

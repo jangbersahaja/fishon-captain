@@ -256,6 +256,7 @@ export default async function StaffChartersPage({
             pageSize: String(pageSize),
             page: String(page),
           }).toString()}`}
+          isAdmin={role === "ADMIN"}
         />
       )}
       <div className="flex items-center justify-between pt-2 text-xs text-slate-600">

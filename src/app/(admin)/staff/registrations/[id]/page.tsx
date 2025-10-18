@@ -1,3 +1,4 @@
+import { AdminBypassLink } from "@/components/admin";
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -214,12 +215,20 @@ export default async function StaffRegistrationDetailPage({
           >
             Email User
           </a>
-          <a
+          <AdminBypassLink
             href={`/captain/form?adminUserId=${draft.user.id}`}
-            className="rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-sm text-orange-700 hover:bg-orange-100"
+            confirmTitle="Admin Impersonation - Open Draft Form"
+            confirmDescription={`You are about to open the registration form as:\n\nUser: ${
+              draft.user.name || "Unknown"
+            }\nEmail: ${draft.user.email || "No email"}\nDraft ID: ${
+              draft.id
+            }\n\nThis will allow you to view and edit their draft. Please enter your admin password to confirm.`}
+            variant="outline"
+            size="sm"
+            className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
           >
             🛡️ Open Form
-          </a>
+          </AdminBypassLink>
           <ForceSubmitButton
             draftId={draft.id}
             targetUserId={draft.user.id}

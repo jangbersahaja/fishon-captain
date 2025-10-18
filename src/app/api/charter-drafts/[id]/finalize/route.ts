@@ -6,18 +6,21 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
 import { getRequestId } from "@/lib/requestId";
 import { withTiming } from "@/lib/requestTiming";
+import { diffObjects, writeAuditLog } from "@/server/audit";
+import { createCharterFromDraftData } from "@/server/charters";
 import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import { CharterPricingPlan, CharterStyle, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 // import { createCharterFromDraftData } from "@/server/charters";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
-  const requestId = getRequestId(req);
+  const requestId = getRequestId(request);
+  const params = await context.params;
   const draftId = params.id;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -79,41 +82,50 @@ export async function POST(
   });
   if (!captainProfile) {
     logger.warn("finalize_missing_captain_profile", {
-
-  const mediaNormalized = normalizeFinalizeMedia(parsed.data.media);
-  const media: FinalizeMediaPayload | null = mediaNormalized
-    ? {
-        images: mediaNormalized.images,
-        videos: mediaNormalized.videos,
-        imagesOrder: mediaNormalized.imagesOrder,
-        videosOrder: mediaNormalized.videosOrder,
-        imagesCoverIndex: mediaNormalized.imagesCoverIndex,
-        videosCoverIndex: mediaNormalized.videosCoverIndex,
-        avatar: mediaNormalized.avatar,
-      }
-    : null;
-  // forcing the user to re-upload.
-
+      requestId,
+      draftId,
+      userId,
+    });
+    counter("finalize.validation_failed").inc();
+    return applySecurityHeaders(
+      NextResponse.json(
+        { error: "missing_captain_profile", requestId },
+        { status: 400 }
+      )
+    );
+  }
   // ...existing code...
+
+  // Parse media from request body for both create and update paths
+  let media: {
+    images: Array<{ url: string; name: string }>;
+    videos: Array<{ url: string; name: string }>;
+  } | null = null;
+  try {
+    const body = await request.json();
+    media = body.media ?? null;
+  } catch {
+    media = null;
+  }
 
   let result:
     | { ok: true; charterId: string }
     | { ok: false; errors: Record<string, string> };
-
   if (draft.charterId) {
     // Update existing charter instead of creating a new one.
-    result = await withTiming(
-      "finalize_updateExisting",
-      async (): Promise<
-        | { ok: true; charterId: string }
-        | { ok: false; errors: Record<string, string> }
-      > => {
-        try {
-          const transformed = draft.data as unknown as DraftValues;
-          const existingCharterId = draft.charterId!;
-          const incomingImages = media?.images ?? [];
-          const incomingVideos = media?.videos ?? [];
-
+    const existingCharterId = draft.charterId;
+    const transformed = draft.data as DraftValues;
+    const incomingImages: Array<{ url: string; name: string }> =
+      media?.images ?? [];
+    const incomingVideos: Array<{ url: string; name: string }> =
+      media?.videos ?? [];
+    try {
+      result = await withTiming(
+        "finalize_updateExisting",
+        async (): Promise<
+          | { ok: true; charterId: string }
+          | { ok: false; errors: Record<string, string> }
+        > => {
           // BEFORE snapshot for audit (broad include mirrors PATCH endpoint)
           const beforeSnapshot = await prisma.charter.findUnique({
             where: { id: existingCharterId },
@@ -150,11 +162,11 @@ export async function POST(
               },
             });
             if (!existing) throw new Error("forbidden");
-            const captainProfile = await tx.captainProfile.findUnique({
+            const captainProfileTx = await tx.captainProfile.findUnique({
               where: { id: existing.captainId },
               select: { userId: true },
             });
-            if (!captainProfile || captainProfile.userId !== userId)
+            if (!captainProfileTx || captainProfileTx.userId !== userId)
               throw new Error("forbidden");
 
             const existingPhotoCount = existing.media.filter(
@@ -271,6 +283,7 @@ export async function POST(
                     ? new Prisma.Decimal(transformed.longitude)
                     : undefined,
                 description: transformed.description ?? "",
+                backupPhone: transformed.operator.backupPhone ?? "",
                 amenities: {
                   create: (transformed.amenities ?? []).map((label) => ({
                     label,
@@ -324,6 +337,11 @@ export async function POST(
                     price: new Prisma.Decimal(
                       Number.isFinite(t.price) ? (t.price as number) : 0
                     ),
+                    promoPrice:
+                      typeof t.promoPrice === "number" &&
+                      Number.isFinite(t.promoPrice)
+                        ? new Prisma.Decimal(t.promoPrice)
+                        : undefined,
                     durationHours: Number.isFinite(t.durationHours)
                       ? (t.durationHours as number)
                       : 0,
@@ -350,18 +368,22 @@ export async function POST(
                   : {
                       media: {
                         create: [
-                          ...incomingImages.map((m, i) => ({
-                            kind: "CHARTER_PHOTO" as const,
-                            url: m.url,
-                            storageKey: m.name,
-                            sortOrder: i,
-                          })),
-                          ...incomingVideos.map((m, i) => ({
-                            kind: "CHARTER_VIDEO" as const,
-                            url: m.url,
-                            storageKey: m.name,
-                            sortOrder: i,
-                          })),
+                          ...incomingImages.map(
+                            (m: { url: string; name: string }, i: number) => ({
+                              kind: "CHARTER_PHOTO" as const,
+                              url: m.url,
+                              storageKey: m.name,
+                              sortOrder: i,
+                            })
+                          ),
+                          ...incomingVideos.map(
+                            (m: { url: string; name: string }, i: number) => ({
+                              kind: "CHARTER_VIDEO" as const,
+                              url: m.url,
+                              storageKey: m.name,
+                              sortOrder: i,
+                            })
+                          ),
                         ],
                       },
                     }),
@@ -408,39 +430,39 @@ export async function POST(
           }
 
           return { ok: true as const, charterId: updated.charterId };
-        } catch (e) {
-          if (e instanceof Error && e.message === "missing_media") {
-            return {
-              ok: false as const,
-              errors: { images: "At least 3 photos required" } as Record<
-                string,
-                string
-              >,
-            };
-          }
-          if (e instanceof Error && e.message === "forbidden") {
-            return {
-              ok: false as const,
-              errors: { auth: "Not authorized to edit this charter" } as Record<
-                string,
-                string
-              >,
-            };
-          }
-          const msg = e instanceof Error ? e.message : String(e);
-          logger.error("finalize_update_exception", {
-            error: msg,
-            userId,
-            draftId: draft.id,
-            requestId,
-          });
-          return {
-            ok: false as const,
-            errors: { server: "Update failed" } as Record<string, string>,
-          };
         }
+      );
+    } catch (e) {
+      if (e instanceof Error && e.message === "missing_media") {
+        result = {
+          ok: false as const,
+          errors: { images: "At least 3 photos required" } as Record<
+            string,
+            string
+          >,
+        };
+      } else if (e instanceof Error && e.message === "forbidden") {
+        result = {
+          ok: false as const,
+          errors: { auth: "Not authorized to edit this charter" } as Record<
+            string,
+            string
+          >,
+        };
+      } else {
+        const msg = e instanceof Error ? e.message : String(e);
+        logger.error("finalize_update_exception", {
+          error: msg,
+          userId,
+          draftId: draft.id,
+          requestId,
+        });
+        result = {
+          ok: false as const,
+          errors: { server: "Update failed" } as Record<string, string>,
+        };
       }
-    );
+    }
   } else {
     // Create path still requires new media
     if (!media || media.images.length === 0) {
@@ -471,15 +493,10 @@ export async function POST(
       draftId: draft.id,
       errors: result.errors,
       requestId,
-      draftId,
-      userId,
     });
     counter("finalize.validation_failed").inc();
     return applySecurityHeaders(
-      NextResponse.json(
-        { error: "missing_captain_profile", requestId },
-        { status: 400 }
-      )
+      NextResponse.json({ error: result.errors, requestId }, { status: 400 })
     );
   }
   const canonicalPhotos = await prisma.charterMedia.findMany({
@@ -592,23 +609,26 @@ export async function POST(
   };
   let charterCreateData = charterCreateDataBase;
   if (draftData.boat && typeof draftData.boat.name === "string") {
-    charterCreateData = Object.assign({}, charterCreateDataBase, {
-      boat: {
-        create: {
-          name: draftData.boat.name ?? "",
-          type: draftData.boat.type ?? "",
-          lengthFt:
-            typeof draftData.boat.lengthFeet === "number" &&
-            Number.isFinite(draftData.boat.lengthFeet)
-              ? Math.trunc(draftData.boat.lengthFeet)
-              : 0,
-          capacity:
-            typeof draftData.boat.capacity === "number" &&
-            Number.isFinite(draftData.boat.capacity)
-              ? Math.trunc(draftData.boat.capacity)
-              : 1,
-        },
+    // Create Boat first, then use boatId in Charter
+    const boatRecord = await prisma.boat.create({
+      data: {
+        name: draftData.boat.name ?? "",
+        type: draftData.boat.type ?? "",
+        lengthFt:
+          typeof draftData.boat.lengthFeet === "number" &&
+          Number.isFinite(draftData.boat.lengthFeet)
+            ? Math.trunc(draftData.boat.lengthFeet)
+            : 0,
+        capacity:
+          typeof draftData.boat.capacity === "number" &&
+          Number.isFinite(draftData.boat.capacity)
+            ? Math.trunc(draftData.boat.capacity)
+            : 1,
       },
+      select: { id: true },
+    });
+    charterCreateData = Object.assign({}, charterCreateDataBase, {
+      boatId: boatRecord.id,
     });
   }
   let charter: { id: string };

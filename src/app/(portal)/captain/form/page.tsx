@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import FormSection from "@features/charter-onboarding/FormSection";
@@ -18,6 +19,10 @@ export default async function CaptainFormPage({
   const role = (session.user as { role?: string } | undefined)?.role;
   const resolvedSearchParams = await searchParams;
   const adminUserId = resolvedSearchParams?.adminUserId;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
 
   // Allow ADMIN to access any user's form with adminUserId parameter
   if (role === "ADMIN" && adminUserId) {
@@ -36,9 +41,6 @@ export default async function CaptainFormPage({
   // If the logged-in user already has a published charter, send them to dashboard by default
   // Allow bypass when explicitly editing via ?editCharterId=
   if (!resolvedSearchParams?.editCharterId) {
-    // Use adminUserId if provided (for admin override), otherwise use session user ID
-    const effectiveUserId =
-      adminUserId || (session.user as { id?: string } | undefined)?.id;
     if (effectiveUserId) {
       const profile = await prisma.captainProfile.findUnique({
         where: { userId: effectiveUserId },
@@ -52,8 +54,6 @@ export default async function CaptainFormPage({
   } else {
     // Editing mode: validate that the charter exists
     const editCharterId = resolvedSearchParams.editCharterId;
-    const effectiveUserId =
-      adminUserId || (session.user as { id?: string } | undefined)?.id;
     if (editCharterId && effectiveUserId) {
       let charter;
       if (role === "ADMIN") {
