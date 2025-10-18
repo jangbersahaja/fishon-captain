@@ -4,12 +4,7 @@ import {
   validateDraftForFinalizeFeature,
   type FinalizeMediaPayload,
 } from "@features/charter-onboarding/server/validation";
-import {
-  CharterPricingPlan,
-  CharterStyle,
-  MediaKind,
-  Prisma,
-} from "@prisma/client";
+import { CharterStyle, MediaKind, Prisma } from "@prisma/client";
 
 // Backward compatibility named export (keep existing imports working during migration)
 export type { FinalizeMediaPayload };
@@ -50,8 +45,6 @@ export async function createCharterFromDraftData(params: {
   const validated = validateDraftForFinalizeFeature(draft, media);
   if (!validated.ok) return validated;
 
-  const pricingPlan = CharterPricingPlan.BASIC; // future: dynamic
-
   const imagesOrdered = moveIndexToFront(
     normalizeOrder(media.images, media.imagesOrder),
     media.imagesCoverIndex
@@ -65,7 +58,6 @@ export async function createCharterFromDraftData(params: {
   const captainProfile = await prisma.captainProfile.upsert({
     where: { userId },
     update: {
-      // Retain existing first/last name values if present; we no longer collect them here
       displayName: draft.operator.displayName,
       phone: draft.operator.phone,
       bio: draft.operator.bio ?? "",
@@ -76,7 +68,6 @@ export async function createCharterFromDraftData(params: {
     },
     create: {
       userId,
-      // Placeholder first/last names until future migration splitting session name
       firstName: draft.operator?.displayName?.split(" ")[0] || "Captain",
       lastName:
         draft.operator?.displayName?.split(" ").slice(1).join(" ") || "",
@@ -128,7 +119,8 @@ export async function createCharterFromDraftData(params: {
             ? new Prisma.Decimal(draft.longitude)
             : undefined,
         description: draft.description ?? "",
-        pricingPlan,
+        // backupPhone is not on CaptainProfile, handled on Charter below
+        backupPhone: draft.operator?.backupPhone ?? "",
         boatId: boatRecord.id,
         amenities: {
           create: (draft.amenities ?? []).map((label) => ({ label })),
@@ -167,13 +159,14 @@ export async function createCharterFromDraftData(params: {
         },
         trips: {
           create: (draft.trips ?? [])
-            .filter((t) => t.name && t.tripType) // Only include trips with required fields
+            .filter((t) => t.name && t.tripType)
             .map((t, index) => ({
               name: t.name ?? "",
               tripType: t.tripType ?? `custom-${index + 1}`,
               price: toDecimal(t.price),
               promoPrice:
-                t.promoPrice !== undefined && t.promoPrice !== null
+                typeof t.promoPrice === "number" &&
+                Number.isFinite(t.promoPrice)
                   ? toDecimal(t.promoPrice)
                   : undefined,
               durationHours: Number.isFinite(t.durationHours)

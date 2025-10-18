@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -27,14 +28,13 @@ interface ProfileWithCharter {
 }
 async function getCharter(adminUserId?: string) {
   const session = await getServerSession(authOptions);
-  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
-  const role = (session?.user as { role?: string } | undefined)?.role;
-
-  if (!sessionUserId) redirect("/auth?mode=signin");
-
-  // Use adminUserId if provided and user is ADMIN, otherwise use session user ID
-  const effectiveUserId =
-    role === "ADMIN" && adminUserId ? adminUserId : sessionUserId;
+  if (!(session?.user as { id?: string } | undefined)?.id)
+    redirect("/auth?mode=signin");
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+  if (!effectiveUserId) redirect("/auth?mode=signin");
 
   const profile = await prisma.captainProfile.findUnique({
     where: { userId: effectiveUserId },

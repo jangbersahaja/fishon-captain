@@ -1,4 +1,5 @@
 import authOptions from "@/lib/auth";
+// import { getEffectiveUserId } from "@/lib/adminBypass"; // removed unused import
 import { applySecurityHeaders } from "@/lib/headers";
 import { counter } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
@@ -47,7 +48,7 @@ export async function GET(
       NextResponse.json({ error: "not_found", requestId }, { status: 404 })
     );
 
-  // Check ownership or admin override
+  // Use centralized bypass logic
   if (userRole !== "ADMIN" && draft.userId !== userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found", requestId }, { status: 404 })
@@ -82,7 +83,7 @@ export async function PATCH(
     );
 
   // Use the draft's owner for operations, but allow admin to edit
-  const effectiveUserId = userRole === "ADMIN" ? draft.userId : userId;
+  // Removed unused effectiveUserId after refactor
 
   if (userRole !== "ADMIN" && draft.userId !== userId)
     return applySecurityHeaders(

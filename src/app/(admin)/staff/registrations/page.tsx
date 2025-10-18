@@ -1,3 +1,4 @@
+import { AdminBypassLink } from "@/components/admin";
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DraftStatus, Prisma } from "@prisma/client";
@@ -386,40 +387,80 @@ export default async function StaffRegistrationsPage({
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
                   {/* Primary actions - left side */}
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/staff/registrations/${d.id}`}
-                      className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                  <div className="flex justify-between w-full">
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={`/staff/registrations/${d.id}`}
+                        className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 transition-colors"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
-                      <span className="hidden sm:inline text-xs font-medium">
-                        View
-                      </span>
-                    </Link>
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
+                        <span className="hidden sm:inline text-xs font-medium">
+                          View
+                        </span>
+                      </Link>
+
+                      {user?.email && (
+                        <a
+                          href={`mailto:${
+                            user.email
+                          }?subject=${encodeURIComponent(
+                            "Continue your Fishon charter registration"
+                          )}&body=${encodeURIComponent(
+                            "Hi there, we noticed you haven't completed your charter registration. You can resume here: https://www.fishon.my/captain/form"
+                          )}`}
+                          className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            />
+                          </svg>
+                          <span className="hidden sm:inline text-xs font-medium">
+                            Email
+                          </span>
+                        </a>
+                      )}
+                    </div>
                     {role === "ADMIN" && (
-                      <a
+                      <AdminBypassLink
                         href={`/captain/form?adminUserId=${d.userId}`}
-                        className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-orange-700 hover:bg-orange-100 transition-colors"
+                        confirmTitle="Admin Impersonation"
+                        confirmDescription={`You are about to open the registration form as:\n\nUser: ${
+                          user?.name || "Unknown"
+                        } (${user?.email || "No email"})\nDraft ID: ${
+                          d.id
+                        }\n\nThis will allow you to view and edit their draft. Please enter your admin password to confirm.`}
+                        variant="outline"
+                        size="sm"
+                        className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
                       >
                         <svg
                           className="w-3.5 h-3.5"
@@ -437,40 +478,12 @@ export default async function StaffRegistrationsPage({
                         <span className="hidden sm:inline text-xs font-medium">
                           Open Draft
                         </span>
-                      </a>
-                    )}
-                    {user?.email && (
-                      <a
-                        href={`mailto:${
-                          user.email
-                        }?subject=${encodeURIComponent(
-                          "Continue your Fishon charter registration"
-                        )}&body=${encodeURIComponent(
-                          "Hi there, we noticed you haven't completed your charter registration. You can resume here: https://www.fishon.my/captain/form"
-                        )}`}
-                        className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span className="hidden sm:inline text-xs font-medium">
-                          Email
-                        </span>
-                      </a>
+                      </AdminBypassLink>
                     )}
                   </div>
 
                   {/* Destructive actions - right side */}
+
                   <DestructiveActions
                     draftId={d.id}
                     status={d.status}

@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
@@ -664,9 +665,8 @@ export default async function CharterStepsPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getServerSession(authOptions);
-  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (!sessionUserId) redirect("/auth?mode=signin");
+  if (!(session?.user as { id?: string } | undefined)?.id)
+    redirect("/auth?mode=signin");
 
   const resolvedParams = searchParams ? await searchParams : {};
   const adminUserId =
@@ -681,6 +681,9 @@ export default async function CharterStepsPage({
     email: string | null;
     name: string | null;
   } | null = null;
+  const role = session?.user
+    ? (session.user as { role?: string } | undefined)?.role
+    : undefined;
   if (role === "ADMIN" && adminUserId) {
     targetUserInfo = await prisma.user.findUnique({
       where: { id: adminUserId },
@@ -693,8 +696,11 @@ export default async function CharterStepsPage({
     redirect("/staff");
   }
 
-  const effectiveUserId =
-    role === "ADMIN" && adminUserId ? adminUserId : sessionUserId;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+  if (!effectiveUserId) redirect("/auth?mode=signin");
 
   const profile = await prisma.captainProfile.findUnique({
     where: { userId: effectiveUserId },
@@ -783,11 +789,11 @@ export default async function CharterStepsPage({
     },
   });
 
-  if (!profile || !profile.charters.length) {
+  const typed = profile as typeof profile & { charters?: unknown[] };
+  if (!typed || !typed.charters || !typed.charters.length) {
     redirect("/auth?next=/captain/form");
   }
-
-  const charter = profile.charters[0] as unknown as CharterDetail;
+  const charter = typed.charters[0] as unknown as CharterDetail;
   const photos = [...charter.media].sort((a, b) => a.sortOrder - b.sortOrder);
   const videos = (await prisma.captainVideo.findMany({
     where: { ownerId: effectiveUserId },
@@ -831,15 +837,15 @@ export default async function CharterStepsPage({
   const mappingPayload: MappingInput = {
     charter: charter as MappingInput["charter"],
     captainProfile: {
-      displayName: profile.displayName,
-      phone: profile.phone,
-      bio: profile.bio ?? "",
-      experienceYrs: profile.experienceYrs,
+      displayName: profile?.displayName ?? "",
+      phone: profile?.phone ?? "",
+      bio: profile?.bio ?? "",
+      experienceYrs: profile?.experienceYrs ?? 0,
     },
     media: {
       images: imageMetas,
       videos: videoMetas,
-      avatar: profile.avatarUrl || charter.captain?.avatarUrl || undefined,
+      avatar: profile?.avatarUrl || charter.captain?.avatarUrl || undefined,
       imagesCoverIndex: 0,
     },
   };

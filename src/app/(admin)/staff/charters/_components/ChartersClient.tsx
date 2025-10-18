@@ -17,10 +17,12 @@ export default function ChartersClient({
   items,
   bulkAction,
   redirectTo,
+  isAdmin,
 }: {
   items: CharterItem[];
   bulkAction: (formData: FormData) => Promise<void>;
   redirectTo: string;
+  isAdmin: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const bulkFormId = "bulkForm";
@@ -163,6 +165,7 @@ export default function ChartersClient({
                 isActive={c.isActive}
                 bulkAction={bulkAction}
                 redirectTo={redirectTo}
+                isAdmin={isAdmin}
               />
             </div>
           </div>

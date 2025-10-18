@@ -345,12 +345,19 @@ function Lightbox({
       role="dialog"
       aria-modal="true"
       ref={containerRef}
-      onClick={onClose}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }}
     >
       {/* Top bar */}
       <div
         className="pointer-events-none absolute left-0 right-0 top-0 z-10 mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-white"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       >
         <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm">
           <span className="truncate">{title}</span>
@@ -377,7 +384,10 @@ function Lightbox({
       <div
         ref={fsRef}
         className="absolute inset-0 mx-auto flex max-w-7xl items-center justify-center px-4"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -408,14 +418,22 @@ function Lightbox({
           <>
             <button
               className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
-              onClick={prev}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                prev();
+              }}
               aria-label="Previous"
             >
               <ArrowLeft />
             </button>
             <button
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
-              onClick={next}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                next();
+              }}
               aria-label="Next"
             >
               <ArrowRight />
@@ -443,7 +461,11 @@ function Lightbox({
                   "relative h-20 w-32 shrink-0 overflow-hidden rounded-md border",
                   i === current ? "border-white" : "border-white/30"
                 )}
-                onClick={() => setCurrent(i)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrent(i);
+                }}
                 aria-label={`Go to item ${i + 1}`}
               >
                 {mm.type === "video" ? (
