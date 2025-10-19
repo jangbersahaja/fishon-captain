@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
 
-  // Transpile @fishon/schemas package since it's installed from git without pre-built JS
-  transpilePackages: ["@fishon/schemas"],
+  // Transpile local workspace packages that ship TS sources
+  transpilePackages: ["@fishon/schemas", "@fishon/ui"],
 
   // Exclude test files from TypeScript checking during build
   typescript: {

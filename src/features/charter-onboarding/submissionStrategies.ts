@@ -32,7 +32,10 @@ export async function patchEditCharter({
       ? {
           displayName: values.operator.displayName,
           phone: values.operator.phone,
-          backupPhone: values.operator.backupPhone || null,
+          backupPhone:
+            typeof values.operator.backupPhone === "string"
+              ? values.operator.backupPhone
+              : "",
           bio: values.operator.bio,
           experienceYrs: values.operator.experienceYears,
           // Include avatarUrl when editing so live charter updates get propagated without separate endpoint.
@@ -41,7 +44,7 @@ export async function patchEditCharter({
       : {
           displayName: "",
           phone: "",
-          backupPhone: null,
+          backupPhone: "",
           bio: "",
           experienceYrs: undefined,
           avatarUrl: null,
@@ -60,10 +63,18 @@ export async function patchEditCharter({
     policies: values.policies ? { ...values.policies } : undefined,
     pickup: values.pickup
       ? {
-          available: values.pickup.available,
-          fee: values.pickup.fee ?? null,
-          notes: values.pickup.notes,
-          areas: values.pickup.areas || [],
+          available:
+            typeof values.pickup.available === "boolean"
+              ? values.pickup.available
+              : false,
+          fee:
+            typeof values.pickup.fee === "number" &&
+            Number.isFinite(values.pickup.fee)
+              ? values.pickup.fee
+              : null,
+          notes:
+            typeof values.pickup.notes === "string" ? values.pickup.notes : "",
+          areas: Array.isArray(values.pickup.areas) ? values.pickup.areas : [],
         }
       : undefined,
     trips:
@@ -72,15 +83,28 @@ export async function patchEditCharter({
         ?.map((t) => ({
           name: t.name ?? "",
           tripType: t.tripType ?? "",
-          price: t.price ?? null,
-          promoPrice: t.promoPrice ?? null,
-          durationHours: t.durationHours ?? null,
-          maxAnglers: t.maxAnglers ?? null,
+          price:
+            typeof t.price === "number" && Number.isFinite(t.price)
+              ? t.price
+              : null,
+          promoPrice:
+            typeof t.promoPrice === "number" && Number.isFinite(t.promoPrice)
+              ? t.promoPrice
+              : null,
+          durationHours:
+            typeof t.durationHours === "number" &&
+            Number.isFinite(t.durationHours)
+              ? t.durationHours
+              : null,
+          maxAnglers:
+            typeof t.maxAnglers === "number" && Number.isFinite(t.maxAnglers)
+              ? t.maxAnglers
+              : null,
           style: t.charterStyle?.toLowerCase(),
           description: t.description ?? null,
-          startTimes: t.startTimes || [],
-          species: t.species || [],
-          techniques: t.techniques || [],
+          startTimes: Array.isArray(t.startTimes) ? t.startTimes : [],
+          species: Array.isArray(t.species) ? t.species : [],
+          techniques: Array.isArray(t.techniques) ? t.techniques : [],
         }))
         ?.filter(Boolean) || [],
   };

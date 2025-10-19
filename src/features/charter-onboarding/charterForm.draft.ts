@@ -52,7 +52,10 @@ export function hydrateDraftValues(
   merged.operator = {
     ...defaults.operator,
     ...draft.operator,
-    backupPhone: draft.operator?.backupPhone || "",
+    backupPhone:
+      typeof draft.operator?.backupPhone === "string"
+        ? draft.operator.backupPhone
+        : "",
     experienceYears: normalizeNumber(
       draft.operator?.experienceYears,
       Number.NaN
@@ -81,6 +84,10 @@ export function hydrateDraftValues(
   merged.pickup = {
     ...defaults.pickup,
     ...draft.pickup,
+    available:
+      typeof draft.pickup?.available === "boolean"
+        ? draft.pickup.available
+        : false,
     fee:
       draft.pickup &&
       typeof draft.pickup.fee === "number" &&
@@ -103,10 +110,10 @@ export function hydrateDraftValues(
       ...base,
       ...trip,
       price: normalizeNumber(trip?.price, Number.NaN),
-      promoPrice: normalizeNumber(
-        (trip as unknown as { promoPrice?: number }).promoPrice,
-        Number.NaN
-      ),
+      promoPrice:
+        typeof trip?.promoPrice === "number" && Number.isFinite(trip.promoPrice)
+          ? trip.promoPrice
+          : Number.NaN,
       durationHours: normalizeNumber(trip?.durationHours, Number.NaN),
       maxAnglers: normalizeNumber(trip?.maxAnglers, Number.NaN),
     };
