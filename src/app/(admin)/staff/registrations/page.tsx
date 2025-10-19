@@ -1,11 +1,14 @@
 import { AdminBypassLink } from "@/components/admin";
 import authOptions from "@/lib/auth";
+import { timeAgo } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
 import { DraftStatus, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DestructiveActions } from "./_components/DestructiveActions";
+import { CollapsibleDraftCard } from "./CollapsibleDraftCard";
+import { RegistrationsFilter } from "./RegistrationsFilter";
 
 const PAGE_SIZE = 25;
 
@@ -36,7 +39,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
+      <div className="flex items-center justify-center w-8 h-8 text-xs font-semibold border rounded-full bg-slate-100 border-slate-200 text-slate-700">
         {stepInfo.step}
       </div>
       <div className="text-xs text-slate-600">
@@ -82,17 +85,11 @@ export default async function StaffRegistrationsPage({
   const showAll = (params.all as string | undefined) === "1";
 
   const where: Prisma.CharterDraftWhereInput = {};
-  if (
-    status &&
-    ["DRAFT", "SUBMITTED", "ABANDONED", "DELETED"].includes(status)
-  ) {
-    where.status = status as DraftStatus;
-  }
+  // Search filter
   if (q) {
     where.OR = [
       { id: { contains: q, mode: "insensitive" } },
       { userId: { contains: q, mode: "insensitive" } },
-      // Search by user name and email
       {
         user: {
           OR: [
@@ -103,26 +100,19 @@ export default async function StaffRegistrationsPage({
       },
     ];
   }
+  // Status filter
+  if (
+    status &&
+    ["DRAFT", "SUBMITTED", "ABANDONED", "DELETED"].includes(status)
+  ) {
+    where.status = status as DraftStatus;
+  }
+  // Stale filter (if ever re-enabled)
   if (staleOnly) {
     const cutoff = new Date(Date.now() - 24 * 3600 * 1000);
     where.lastTouchedAt = { lt: cutoff };
   }
-
-  // Default view: only FIRST TIME registrations (no created charter yet and not abandoned/deleted)
-  if (!showAll) {
-    // Only apply default filters if no specific status is selected
-    if (!status) {
-      // Show only active drafts and submissions for first-time registrations
-      where.charterId = null;
-      where.status = { in: ["DRAFT", "SUBMITTED"] };
-    } else {
-      // If specific status is selected, respect it but still filter to first-time registrations
-      // unless it's ABANDONED or DELETED (which might have charters)
-      if (status !== "ABANDONED" && status !== "DELETED") {
-        where.charterId = null;
-      }
-    }
-  }
+  // If no status selected ("All"), show all drafts (no restrictive charterId/status filter)
 
   const [total, drafts] = await Promise.all([
     prisma.charterDraft.count({ where }),
@@ -214,181 +204,78 @@ export default async function StaffRegistrationsPage({
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">Registrations</h1>
         <div className="text-sm text-slate-500">
           Monitor in-progress captain & charter registrations
         </div>
       </div>
 
-      {/* (Removed quick filter chips per request) */}
-
-      {/* Filters */}
-      <form
-        action="/staff/registrations"
-        method="get"
-        className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm"
-      >
-        <div className="flex flex-col">
-          <label className="text-xs font-medium text-slate-500">Search</label>
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Search by name, email, draft ID, or user ID"
-            className="mt-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label className="text-xs font-medium text-slate-500">Status</label>
-          <select
-            name="status"
-            defaultValue={status}
-            className="mt-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
-          >
-            <option value="">All</option>
-            <option value="DRAFT">DRAFT</option>
-            <option value="SUBMITTED">SUBMITTED</option>
-            <option value="ABANDONED">ABANDONED</option>
-            <option value="DELETED">DELETED</option>
-          </select>
-        </div>
-        <div className="flex items-center gap-2 pt-5">
-          <input
-            type="checkbox"
-            name="stale"
-            value="1"
-            defaultChecked={staleOnly}
-            id="staleOnly"
-            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-          />
-          <label
-            htmlFor="staleOnly"
-            className="text-xs font-medium text-slate-600"
-          >
-            Stale (&gt;24h)
-          </label>
-        </div>
-        <div className="flex items-center gap-2 pt-5">
-          <input
-            type="checkbox"
-            name="all"
-            value="1"
-            defaultChecked={showAll}
-            id="allToggle"
-            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-          />
-          <label
-            htmlFor="allToggle"
-            className="text-xs font-medium text-slate-600"
-          >
-            Show all drafts
-          </label>
-        </div>
-        <button
-          type="submit"
-          className="ml-auto rounded-full border border-slate-300 bg-slate-50 px-4 py-1.5 text-sm text-slate-700 hover:bg-white"
-        >
-          Apply
-        </button>
-      </form>
+      {/* Filters: Client Component */}
+      <RegistrationsFilter q={q} status={status} />
 
       {/* Mobile-friendly cards layout */}
-      <div className="space-y-4">
+      <div className="bg-white border rounded-xl border-slate-200">
         {drafts.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600">
-            No drafts found.
-          </div>
+          <div className="p-8 text-center text-slate-600">No drafts found.</div>
         ) : (
           drafts.map((d) => {
             const user = userMap.get(d.userId);
-            const staleHours =
-              (Date.now() - new Date(d.lastTouchedAt).getTime()) / 36e5;
-            const stale = staleHours > 24;
-            const verificationStatus = user?.verification?.status || "—";
             const charter = d.charterId ? charterMap.get(d.charterId) : null;
             const noteCount = noteCountMap.get(d.id) || 0;
-
-            return (
-              <div
-                key={d.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 hover:shadow-sm transition-shadow"
+            const statusBadge = (
+              <span
+                className={
+                  d.status === "SUBMITTED"
+                    ? "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                    : d.status === "ABANDONED"
+                    ? "inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                    : d.status === "DELETED"
+                    ? "inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800"
+                    : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
+                }
               >
-                {/* Header row - User info and status */}
+                {d.status}
+              </span>
+            );
+            return (
+              <CollapsibleDraftCard
+                key={d.id}
+                user={user ? { ...user, name: user.name ?? undefined } : user}
+                charter={charter}
+                statusBadge={statusBadge}
+                lastTouchedAt={timeAgo(d.lastTouchedAt)}
+                email={user?.email || "—"}
+              >
+                {/* Expanded content */}
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-slate-800 truncate">
-                        {user?.name || "—"}
-                      </h3>
                       {noteCount > 0 && (
                         <span className="inline-flex items-center rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-white">
                           {noteCount}
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-slate-600 truncate">
-                      {user?.email || "—"}
-                    </div>
-                    <div className="text-xs text-slate-500 font-mono mt-1">
+                    <div className="mt-1 font-mono text-xs text-slate-500">
                       {d.id}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span
-                      className={
-                        d.status === "SUBMITTED"
-                          ? "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
-                          : d.status === "ABANDONED"
-                          ? "inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
-                          : d.status === "DELETED"
-                          ? "inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800"
-                          : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
-                      }
-                    >
-                      {d.status}
-                      {!showAll && d.charterId && (
-                        <span className="ml-1 text-[10px] text-slate-500">
-                          (edit)
-                        </span>
-                      )}
-                    </span>
                     <div className="text-xs text-slate-500">
-                      Verification: {verificationStatus}
+                      Verification: {user?.verification?.status || "—"}
                     </div>
                   </div>
                 </div>
-
-                {/* Progress and details row */}
                 <div className="flex items-center justify-between gap-4 mb-3">
                   <StepIndicator currentStep={d.currentStep || 0} />
-                  <div className="text-right">
-                    <div className="text-xs text-slate-500">
-                      {new Date(d.lastTouchedAt).toLocaleString()}
-                    </div>
-                    {stale && (
-                      <div className="text-[10px] text-amber-600 font-medium">
-                        stale (&gt;24h)
-                      </div>
-                    )}
+                  <div className="text-xs text-right text-slate-500">
+                    <span>Created at</span>
+                    <span>{new Date(d.createdAt).toLocaleString()}</span>
                   </div>
                 </div>
 
-                {/* Charter link if exists */}
-                {charter && (
-                  <div className="mb-3 text-sm">
-                    <span className="text-slate-500">Charter: </span>
-                    <Link
-                      href={`/staff/charters/${charter.id}`}
-                      className="text-sky-600 hover:underline"
-                    >
-                      {charter.name || charter.id}
-                    </Link>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
-                  {/* Primary actions - left side */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                   <div className="flex justify-between w-full">
                     <div className="flex flex-wrap gap-2">
                       <Link
@@ -414,11 +301,10 @@ export default async function StaffRegistrationsPage({
                             d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                           />
                         </svg>
-                        <span className="hidden sm:inline text-xs font-medium">
+                        <span className="hidden text-xs font-medium sm:inline">
                           View
                         </span>
                       </Link>
-
                       {user?.email && (
                         <a
                           href={`mailto:${
@@ -443,7 +329,7 @@ export default async function StaffRegistrationsPage({
                               d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                             />
                           </svg>
-                          <span className="hidden sm:inline text-xs font-medium">
+                          <span className="hidden text-xs font-medium sm:inline">
                             Email
                           </span>
                         </a>
@@ -460,7 +346,7 @@ export default async function StaffRegistrationsPage({
                         }\n\nThis will allow you to view and edit their draft. Please enter your admin password to confirm.`}
                         variant="outline"
                         size="sm"
-                        className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                        className="text-orange-700 border-orange-300 bg-orange-50 hover:bg-orange-100"
                       >
                         <svg
                           className="w-3.5 h-3.5"
@@ -475,15 +361,12 @@ export default async function StaffRegistrationsPage({
                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                           />
                         </svg>
-                        <span className="hidden sm:inline text-xs font-medium">
+                        <span className="hidden text-xs font-medium sm:inline">
                           Open Draft
                         </span>
                       </AdminBypassLink>
                     )}
                   </div>
-
-                  {/* Destructive actions - right side */}
-
                   <DestructiveActions
                     draftId={d.id}
                     status={d.status}
@@ -493,7 +376,7 @@ export default async function StaffRegistrationsPage({
                     softDelete={softDelete}
                   />
                 </div>
-              </div>
+              </CollapsibleDraftCard>
             );
           })
         )}

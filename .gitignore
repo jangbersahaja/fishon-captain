@@ -15,22 +15,6 @@
 /src/app/dev/_external-worker/.env.example
 /src/app/dev/_external-worker/*.md
 
-# testing
-/coverage
-/__tests__
-**/__tests__/
-*.test.ts
-*.test.tsx
-*.spec.ts
-*.spec.tsx
-
-# fishon-schemas
-/@fishon-schemas/
-
-# But allow schema tests (consolidated schemas need version control)
-!src/schemas/__tests__/
-!src/schemas/__tests__/*.test.ts
-
 # next.js
 /.next/
 /out/

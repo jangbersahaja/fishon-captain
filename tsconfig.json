@@ -21,7 +21,10 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@features/*": ["./src/features/*"]
+      "@features/*": ["./src/features/*"],
+      "@fishon/ui": ["./packages/ui/src"],
+      "@fishon/ui/*": ["./packages/ui/src/*"],
+      "@fishon/ui/charter": ["./packages/ui/src/components/charter/index.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

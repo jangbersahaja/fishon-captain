@@ -1,153 +1,30 @@
-import AboutSection from "@/components/charter/AboutSection";
-import AmenitiesCard from "@/components/charter/AmenitiesCard";
-import BoatCard from "@/components/charter/BoatCard";
-import BookingWidget from "@/components/charter/BookingWidget";
-import CaptainSection from "@/components/charter/CaptainSection";
 import type { Charter } from "@/dummy/charter";
+import { registerLazyGroup } from "@features/charter-onboarding/analytics";
 import {
-  registerLazyGroup,
-  trackLazyComponentLoad,
-} from "@features/charter-onboarding/analytics";
-import { PREVIEW_PLACEHOLDER_IMAGES } from "@features/charter-onboarding/constants";
+  AboutSection,
+  AmenitiesCard,
+  BoatCard,
+  BookingWidget,
+  CaptainSection,
+  GuestFeedback,
+  PhotoGallery,
+  TechniqueCard,
+} from "@fishon/ui/charter";
 import dynamic from "next/dynamic";
 import { buildMapEmbedSrc } from "./previewUtils";
 // Dynamically loaded heavy/interactive preview components (only needed in Review step)
 // Register group once (idempotent)
 registerLazyGroup("review_preview", [
-  "CharterGallery",
-  "GuestFeedbackPanel",
+  "PhotoGallery",
+  "GuestFeedback",
   "LocationMap",
-  "PoliciesInfoCard",
-  "ReviewsList",
-  "SpeciesTechniquesCard",
+  "PoliciesCard",
+  "TechniqueCard",
 ]);
 // Individual dynamic imports with timing instrumentation + group tracking
-const CharterGallery = dynamic(
-  async () => {
-    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const mod = await import("@/components/charter/CharterGallery");
-    const ms =
-      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
-    trackLazyComponentLoad("review_preview", "CharterGallery", ms);
-    return mod;
-  },
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="text-[10px] text-slate-400"
-        aria-label="CharterGallery loading"
-      >
-        Loading gallery…
-      </div>
-    ),
-  }
-);
-const GuestFeedbackPanel = dynamic(
-  async () => {
-    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const mod = await import("@/components/charter/GuestFeedbackPanel");
-    const ms =
-      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
-    trackLazyComponentLoad("review_preview", "GuestFeedbackPanel", ms);
-    return mod;
-  },
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="text-[10px] text-slate-400"
-        aria-label="GuestFeedbackPanel loading"
-      >
-        Loading feedback…
-      </div>
-    ),
-  }
-);
-const LocationMap = dynamic(
-  async () => {
-    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const mod = await import("@/components/charter/LocationMap");
-    const ms =
-      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
-    trackLazyComponentLoad("review_preview", "LocationMap", ms);
-    return mod;
-  },
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="text-[10px] text-slate-400"
-        aria-label="LocationMap loading"
-      >
-        Loading map…
-      </div>
-    ),
-  }
-);
-const PoliciesInfoCard = dynamic(
-  async () => {
-    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const mod = await import("@/components/charter/PoliciesInfoCard");
-    const ms =
-      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
-    trackLazyComponentLoad("review_preview", "PoliciesInfoCard", ms);
-    return mod;
-  },
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="text-[10px] text-slate-400"
-        aria-label="PoliciesInfoCard loading"
-      >
-        Loading policies…
-      </div>
-    ),
-  }
-);
-const ReviewsList = dynamic(
-  async () => {
-    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const mod = await import("@/components/charter/ReviewsList");
-    const ms =
-      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
-    trackLazyComponentLoad("review_preview", "ReviewsList", ms);
-    return mod;
-  },
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="text-[10px] text-slate-400"
-        aria-label="ReviewsList loading"
-      >
-        Loading reviews…
-      </div>
-    ),
-  }
-);
-const SpeciesTechniquesCard = dynamic(
-  async () => {
-    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const mod = await import("@/components/charter/SpeciesTechniquesCard");
-    const ms =
-      typeof performance !== "undefined" ? performance.now() - t0 : undefined;
-    trackLazyComponentLoad("review_preview", "SpeciesTechniquesCard", ms);
-    return mod;
-  },
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="text-[10px] text-slate-400"
-        aria-label="SpeciesTechniquesCard loading"
-      >
-        Loading species & techniques…
-      </div>
-    ),
-  }
-);
+// PhotoGallery is now imported from @fishon/ui/charter
+
+import { LocationMap, PoliciesCard } from "@fishon/ui/charter";
 
 type PreviewPanelProps = {
   charter: Charter;
@@ -171,9 +48,7 @@ const VideoPreviewCarousel = dynamic(
 
 export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
   const images =
-    charter.images && charter.images.length
-      ? charter.images
-      : PREVIEW_PLACEHOLDER_IMAGES;
+    charter.images && charter.images.length ? charter.images : undefined;
   const mapEmbedSrc = buildMapEmbedSrc(charter);
   const personsMax = charter.boat.capacity || undefined;
 
@@ -187,8 +62,8 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
   }
 
   return (
-    <section className="rounded-3xl border border-neutral-200 bg-white shadow-sm w-full">
-      <div className="border-b border-neutral-200 px-6 py-5">
+    <section className="w-full bg-white border shadow-sm rounded-3xl border-neutral-200">
+      <div className="px-6 py-5 border-b border-neutral-200">
         <h2 className="text-xl font-semibold text-slate-900">
           Preview listing
         </h2>
@@ -197,7 +72,7 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
         </p>
       </div>
       <div className="px-6 pt-6">
-        <header className="mt-3 flex flex-col gap-1">
+        <header className="flex flex-col gap-1 mt-3">
           <h3 className="text-2xl font-bold text-slate-900">
             {charter.name || "Your charter name"}
           </h3>
@@ -207,12 +82,12 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
           <p className="text-sm text-slate-500">{charter.location}</p>
         </header>
       </div>
-      <div className="mt-6 px-5 space-y-8 w-full overflow-hidden">
-        <CharterGallery images={images} title={charter.name} />
+      <div className="w-full px-5 mt-6 space-y-8 overflow-hidden">
+        <PhotoGallery images={images ? images : []} title={charter.name} />
         {videos && videos.length > 0 ? (
           <VideoPreviewCarousel
             videos={videos}
-            className="border-t border-neutral-200 pt-6"
+            className="pt-6 border-t border-neutral-200"
           />
         ) : null}
       </div>
@@ -220,9 +95,9 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
         <div className="lg:col-span-1">
           <AboutSection description={charter.description} />
           <CaptainSection charter={charter} />
-          <BoatCard charter={charter} />
-          <SpeciesTechniquesCard charter={charter} />
-          <AmenitiesCard charter={charter} />
+          <BoatCard boat={charter?.boat} />
+          <TechniqueCard techniques={charter.techniques} />
+          <AmenitiesCard includes={charter.includes} />
           <LocationMap title={charter.name} mapEmbedSrc={mapEmbedSrc} />
         </div>
         <div className="lg:col-span-1 lg:h-full">
@@ -238,10 +113,21 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
           </div>
         </div>
       </section>
-      <div className="space-y-6 border-t border-neutral-100 px-6 py-6">
-        <PoliciesInfoCard charter={charter} />
-        <GuestFeedbackPanel reviews={[]} ratingAvg={0} ratingCount={0} />
-        <ReviewsList reviews={[]} />
+      <div className="px-6 py-6 space-y-6 border-t border-neutral-100">
+        <PoliciesCard
+          policies={charter.policies}
+          pickup={{
+            ...charter.pickup,
+            fee: charter.pickup.fee ?? null,
+            areas: charter.pickup.areas ?? [],
+          }}
+        />
+        <GuestFeedback
+          reviews={[]}
+          ratingAvg={0}
+          ratingCount={0}
+          summariseBadges={() => []}
+        />
       </div>
     </section>
   );

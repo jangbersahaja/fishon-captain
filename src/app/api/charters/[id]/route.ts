@@ -1,11 +1,43 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
-import { CharterUpdateSchema } from "@fishon/schemas";
 import { diffObjects, writeAuditLog } from "@/server/audit";
+import { CharterUpdateSchema } from "@fishon/schemas";
 import { CharterStyle, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import type { z } from "zod";
+
+interface CharterUpdateData {
+  charterType?: string;
+  name?: string;
+  state?: string;
+  city?: string;
+  startingPoint?: string;
+  postcode?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  description?: string;
+  backupPhone?: string;
+  [key: string]: unknown;
+}
+
+interface TripUpdateData {
+  id?: string | null;
+  _delete?: boolean;
+  name?: string;
+  tripType?: string;
+  price?: number | null;
+  promoPrice?: number | null;
+  durationHours?: number | null;
+  maxAnglers?: number | null;
+  style?: string;
+  description?: string | null;
+  startTimes?: string[];
+  species?: string[];
+  techniques?: string[];
+  [key: string]: unknown;
+}
 
 interface SessionLikeUser {
   id?: string;
@@ -60,7 +92,7 @@ export async function PATCH(
         { status: 400 }
       )
     );
-  const data = parsed.data;
+  const data = parsed.data as z.infer<typeof CharterUpdateSchema>;
 
   // Snapshot BEFORE (lean) for audit
   const beforeSnapshot = await prisma.charter.findUnique({
@@ -91,10 +123,22 @@ export async function PATCH(
     // Exclude non-persistent helper fields (tone) before persisting
     if ("tone" in data.charter)
       delete (data.charter as Record<string, unknown>)["tone"]; // defensive
+    // Patch: ensure backupPhone is updated on charter table
+    const charterUpdateData: CharterUpdateData = { ...data.charter };
+    const captain = data.captain as { backupPhone?: string };
+    if (captain && typeof captain.backupPhone === "string") {
+      charterUpdateData.backupPhone = captain.backupPhone;
+    } else if (
+      captain &&
+      typeof captain.backupPhone === "undefined" &&
+      "backupPhone" in captain
+    ) {
+      charterUpdateData.backupPhone = undefined;
+    }
     tx.push(
       prisma.charter.update({
         where: { id: charter.id },
-        data: { ...data.charter },
+        data: charterUpdateData,
       })
     );
   }
@@ -274,55 +318,76 @@ export async function PATCH(
     });
     const keepIds = new Set<string>();
     for (const t of data.trips) {
-      if (t._delete && t.id) continue;
-      if (t.id && existingTrips.find((et) => et.id === t.id)) {
-        keepIds.add(t.id);
+      const trip: TripUpdateData = t;
+      if (trip._delete && trip.id) continue;
+      if (trip.id && existingTrips.find((et) => et.id === trip.id)) {
+        keepIds.add(trip.id);
         tx.push(
           prisma.trip.update({
-            where: { id: t.id },
+            where: { id: trip.id },
             data: {
-              name: t.name ?? undefined,
-              tripType: t.tripType ?? undefined,
-              price: t.price ?? undefined,
-              durationHours: t.durationHours ?? undefined,
-              maxAnglers: t.maxAnglers ?? undefined,
-              style: t.style
+              name: trip.name ?? undefined,
+              tripType: trip.tripType ?? undefined,
+              price: trip.price ?? undefined,
+              promoPrice: trip.promoPrice ?? undefined,
+              durationHours: trip.durationHours ?? undefined,
+              maxAnglers: trip.maxAnglers ?? undefined,
+              style: trip.style
                 ? Object.values(CharterStyle).includes(
-                    t.style.toUpperCase() as CharterStyle
+                    trip.style.toUpperCase() as CharterStyle
                   )
-                  ? (t.style.toUpperCase() as CharterStyle)
+                  ? (trip.style.toUpperCase() as CharterStyle)
                   : undefined
                 : undefined,
-              description: t.description ?? undefined,
+              description: trip.description ?? undefined,
             },
           })
         );
         if (t.startTimes) {
-          tx.push(prisma.tripStartTime.deleteMany({ where: { tripId: t.id } }));
-          if (t.startTimes.length)
+          if (typeof t.id === "string") {
             tx.push(
-              prisma.tripStartTime.createMany({
-                data: t.startTimes.map((value) => ({ tripId: t.id!, value })),
-              })
+              prisma.tripStartTime.deleteMany({ where: { tripId: t.id } })
             );
+            if (t.startTimes.length)
+              tx.push(
+                prisma.tripStartTime.createMany({
+                  data: t.startTimes.map((value) => ({
+                    tripId: t.id as string,
+                    value,
+                  })),
+                })
+              );
+          }
         }
         if (t.species) {
-          tx.push(prisma.tripSpecies.deleteMany({ where: { tripId: t.id } }));
-          if (t.species.length)
-            tx.push(
-              prisma.tripSpecies.createMany({
-                data: t.species.map((value) => ({ tripId: t.id!, value })),
-              })
-            );
+          if (typeof t.id === "string") {
+            tx.push(prisma.tripSpecies.deleteMany({ where: { tripId: t.id } }));
+            if (t.species.length)
+              tx.push(
+                prisma.tripSpecies.createMany({
+                  data: t.species.map((value) => ({
+                    tripId: t.id as string,
+                    value,
+                  })),
+                })
+              );
+          }
         }
         if (t.techniques) {
-          tx.push(prisma.tripTechnique.deleteMany({ where: { tripId: t.id } }));
-          if (t.techniques.length)
+          if (typeof t.id === "string") {
             tx.push(
-              prisma.tripTechnique.createMany({
-                data: t.techniques.map((value) => ({ tripId: t.id!, value })),
-              })
+              prisma.tripTechnique.deleteMany({ where: { tripId: t.id } })
             );
+            if (t.techniques.length)
+              tx.push(
+                prisma.tripTechnique.createMany({
+                  data: t.techniques.map((value) => ({
+                    tripId: t.id as string,
+                    value,
+                  })),
+                })
+              );
+          }
         }
       } else {
         // create
@@ -330,27 +395,28 @@ export async function PATCH(
           prisma.trip.create({
             data: {
               charterId,
-              name: t.name || "",
-              tripType: t.tripType || "",
-              price: t.price || 0,
-              durationHours: t.durationHours || 0,
-              maxAnglers: t.maxAnglers || 0,
+              name: trip.name || "",
+              tripType: trip.tripType || "",
+              price: trip.price || 0,
+              promoPrice: trip.promoPrice ?? undefined,
+              durationHours: trip.durationHours || 0,
+              maxAnglers: trip.maxAnglers || 0,
               style:
-                t.style &&
+                trip.style &&
                 Object.values(CharterStyle).includes(
-                  t.style.toUpperCase() as CharterStyle
+                  trip.style.toUpperCase() as CharterStyle
                 )
-                  ? (t.style.toUpperCase() as CharterStyle)
+                  ? (trip.style.toUpperCase() as CharterStyle)
                   : CharterStyle.PRIVATE,
-              description: t.description || null,
-              startTimes: t.startTimes?.length
-                ? { create: t.startTimes.map((value) => ({ value })) }
+              description: trip.description || null,
+              startTimes: trip.startTimes?.length
+                ? { create: trip.startTimes.map((value) => ({ value })) }
                 : undefined,
-              species: t.species?.length
-                ? { create: t.species.map((value) => ({ value })) }
+              species: trip.species?.length
+                ? { create: trip.species.map((value) => ({ value })) }
                 : undefined,
-              techniques: t.techniques?.length
-                ? { create: t.techniques.map((value) => ({ value })) }
+              techniques: trip.techniques?.length
+                ? { create: trip.techniques.map((value) => ({ value })) }
                 : undefined,
             },
           })
@@ -360,12 +426,18 @@ export async function PATCH(
     // Delete removed trips (must delete children first to satisfy FK constraints)
     for (const et of existingTrips) {
       if (!keepIds.has(et.id)) {
-        tx.push(prisma.tripStartTime.deleteMany({ where: { tripId: et.id } }));
-        tx.push(prisma.tripSpecies.deleteMany({ where: { tripId: et.id } }));
-        tx.push(prisma.tripTechnique.deleteMany({ where: { tripId: et.id } }));
-        // In case there is trip-scoped media
-        tx.push(prisma.charterMedia.deleteMany({ where: { tripId: et.id } }));
-        tx.push(prisma.trip.delete({ where: { id: et.id } }));
+        if (et.id) {
+          tx.push(
+            prisma.tripStartTime.deleteMany({ where: { tripId: et.id } })
+          );
+          tx.push(prisma.tripSpecies.deleteMany({ where: { tripId: et.id } }));
+          tx.push(
+            prisma.tripTechnique.deleteMany({ where: { tripId: et.id } })
+          );
+          // In case there is trip-scoped media
+          tx.push(prisma.charterMedia.deleteMany({ where: { tripId: et.id } }));
+          tx.push(prisma.trip.delete({ where: { id: et.id } }));
+        }
       }
     }
   }
