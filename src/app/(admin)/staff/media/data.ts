@@ -371,7 +371,8 @@ export async function loadStorageData(
       prisma.captainVideo.findMany({
         select: {
           id: true,
-          ownerId: true,
+          captainId: true,
+          captain: { select: { userId: true } },
           charterId: true,
           originalUrl: true,
           blobKey: true,
@@ -517,7 +518,7 @@ export async function loadStorageData(
 
   // Fetch owner profiles for videos
   const videoOwnerIds = Array.from(
-    new Set(captainVideos.map((v) => v.ownerId))
+    new Set(captainVideos.map((v) => v.captain.userId))
   );
   const videoOwnerProfiles = await prisma.captainProfile.findMany({
     where: { userId: { in: videoOwnerIds } },
@@ -546,7 +547,7 @@ export async function loadStorageData(
     const originalKey = extractKeyFromUrl(video.originalUrl);
     const thumbnailKey = extractKeyFromUrl(video.thumbnailUrl);
     const normalizedKey = extractKeyFromUrl(video.ready720pUrl);
-    const owner = videoOwnerMap.get(video.ownerId) || {
+    const owner = videoOwnerMap.get(video.captain.userId) || {
       name: "Unknown",
       avatar: null,
     };
@@ -567,7 +568,7 @@ export async function loadStorageData(
 
     const videoMeta = {
       id: video.id,
-      ownerId: video.ownerId,
+      ownerId: video.captain.userId,
       ownerName: owner.name,
       ownerAvatar: owner.avatar,
       status: video.processStatus,

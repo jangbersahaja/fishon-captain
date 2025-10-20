@@ -509,7 +509,7 @@ export async function POST(
   });
   const canonicalVideos = await prisma.captainVideo.findMany({
     where: {
-      ownerId: userId,
+      captainId: captainProfile.id,
       charterId: null,
     },
     orderBy: { createdAt: "asc" },

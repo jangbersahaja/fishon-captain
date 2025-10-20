@@ -200,9 +200,20 @@ export async function POST(req: Request) {
 
       // 2. Create CaptainVideo record (NEW - Phase 2C)
       try {
+        // Get captain profile ID from userId
+        const captainProfile = await prisma.captainProfile.findUnique({
+          where: { userId },
+          select: { id: true },
+        });
+        
+        if (!captainProfile) {
+          console.error(`[blob-upload] No CaptainProfile found for user ${userId}`);
+          return NextResponse.json({ error: "captain_profile_not_found" }, { status: 404 });
+        }
+        
         const captainVideo = await prisma.captainVideo.create({
           data: {
-            ownerId: userId,
+            captainId: captainProfile.id,
             originalUrl: url,
             blobKey: key,
             processStatus: "queued",
@@ -211,7 +222,7 @@ export async function POST(req: Request) {
         captainVideoId = captainVideo.id;
 
         console.log(
-          `[blob-upload] Created CaptainVideo ${captainVideo.id} for user ${userId}`
+          `[blob-upload] Created CaptainVideo ${captainVideo.id} for captain ${captainProfile.id}`
         );
         counter("captain_video_created").inc();
 
