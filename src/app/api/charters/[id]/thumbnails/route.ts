@@ -29,33 +29,28 @@ export async function GET(
     where: { id: charterId },
     include: {
       captain: { select: { userId: true } },
+      videos: {
+        where: { processStatus: "ready" },
+        select: {
+          id: true,
+          ready720pUrl: true,
+          originalUrl: true,
+          thumbnailUrl: true,
+          blobKey: true,
+        },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
   if (!charter || charter.captain.userId !== userId) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  
-  // Fetch videos from CaptainVideo table
-  const videos = await prisma.captainVideo.findMany({
-    where: {
-      charterId: charterId,
-      processStatus: "ready",
-    },
-    select: {
-      id: true,
-      ready720pUrl: true,
-      originalUrl: true,
-      thumbnailUrl: true,
-      blobKey: true,
-    },
-    orderBy: { createdAt: "asc" },
-  });
 
   // Generate thumbnail URLs for videos
   const videoThumbnails = (
     await Promise.all(
-      videos
+      charter.videos
         .filter((video) => {
           const videoKey = video.blobKey || "";
           // Accept either legacy charter-scoped or new captain-scoped paths

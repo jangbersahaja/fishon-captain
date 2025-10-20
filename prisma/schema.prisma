@@ -89,6 +89,7 @@ model Charter {
   pickup        Pickup?
   policies      Policies?
   trips         Trip[]
+  videos        CaptainVideo[]
 }
 
 model Boat {
@@ -340,11 +341,13 @@ model CaptainVideo {
   processedHeight      Int?
   processedWidth       Int?
   charterId            String?
+  charter              Charter?      @relation(fields: [charterId], references: [id], onDelete: SetNull)
   charterMediaId       String?
   charterMedia         CharterMedia? @relation(fields: [charterMediaId], references: [id])
 
   @@index([ownerId, processStatus])
   @@index([createdAt])
+  @@index([charterId])
 }
 
 model PasswordHistory {

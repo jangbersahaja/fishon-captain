@@ -50,6 +50,18 @@ export async function GET(
         },
         orderBy: { sortOrder: "asc" },
       },
+      videos: {
+        where: { processStatus: "ready" },
+        select: {
+          id: true,
+          ready720pUrl: true,
+          thumbnailUrl: true,
+          processedDurationSec: true,
+          blobKey: true,
+          originalUrl: true,
+        },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -66,30 +78,13 @@ export async function GET(
     );
   }
   
-  // Fetch videos separately from CaptainVideo table
-  const captainVideos = await prisma.captainVideo.findMany({
-    where: {
-      charterId: charter.id,
-      processStatus: "ready",
-    },
-    select: {
-      id: true,
-      ready720pUrl: true,
-      thumbnailUrl: true,
-      processedDurationSec: true,
-      blobKey: true,
-      originalUrl: true,
-    },
-    orderBy: { createdAt: "asc" },
-  });
-  
   const images = charter.media.map((m) => ({
     name: m.storageKey || m.url,
     url: m.url,
     storageKey: m.storageKey || undefined,
     sortOrder: m.sortOrder ?? undefined,
   }));
-  const videos = captainVideos.map((v) => ({
+  const videos = charter.videos.map((v) => ({
     name: v.blobKey || v.id,
     url: v.ready720pUrl || v.originalUrl,
     thumbnailUrl: v.thumbnailUrl || undefined,
