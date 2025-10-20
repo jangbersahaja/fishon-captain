@@ -30,15 +30,11 @@ export async function POST(
   // Transaction: delete all related except draft, charter photos, and captain profile
   try {
     await prisma.$transaction(async (tx) => {
-      // Remove all CharterMedia except photos
-      await tx.charterMedia.deleteMany({
-        where: {
-          charterId,
-          kind: { not: "CHARTER_PHOTO" },
-        },
+      // Unlink all CaptainVideo from this charter (videos remain owned by captain)
+      await tx.captainVideo.updateMany({
+        where: { charterId },
+        data: { charterId: null },
       });
-      // Remove all CaptainVideo for this charter
-      await tx.captainVideo.deleteMany({ where: { charterId } });
       // Remove all amenities, features, policies, pickup, pickup areas
       await tx.charterAmenity.deleteMany({ where: { charterId } });
       await tx.charterFeature.deleteMany({ where: { charterId } });

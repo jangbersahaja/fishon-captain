@@ -545,12 +545,9 @@ export async function GET(
       },
       media: {
         select: {
-          kind: true,
           url: true,
           sortOrder: true,
           storageKey: true,
-          thumbnailUrl: true,
-          durationSeconds: true,
         },
         orderBy: { sortOrder: "asc" },
       },
@@ -560,30 +557,35 @@ export async function GET(
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found" }, { status: 404 })
     );
+  
+  // Fetch videos separately from CaptainVideo table
+  const captainVideos = await prisma.captainVideo.findMany({
+    where: {
+      charterId: charter.id,
+      processStatus: "ready",
+    },
+    select: {
+      id: true,
+      ready720pUrl: true,
+      thumbnailUrl: true,
+      processedDurationSec: true,
+      blobKey: true,
+      originalUrl: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  
   // IMPORTANT: use storageKey as the stable identifier (was previously sortOrder string which broke deletion)
-  const images = charter.media
-    .filter((m) => m.kind === "CHARTER_PHOTO")
-    .map((m) => ({ name: m.storageKey, url: m.url }));
-  const videos = charter.media
-    .filter((m) => m.kind === "CHARTER_VIDEO")
-    .map((m) => {
-      const meta: {
-        thumbnailUrl?: string | null;
-        durationSeconds?: number | null;
-      } = {
-        // Prisma select guarantees these fields exist (possibly undefined)
-        thumbnailUrl: (m as unknown as { thumbnailUrl?: string | null })
-          .thumbnailUrl,
-        durationSeconds: (m as unknown as { durationSeconds?: number | null })
-          .durationSeconds,
-      };
-      return {
-        name: m.storageKey,
-        url: m.url,
-        thumbnailUrl: meta.thumbnailUrl || undefined,
-        durationSeconds: meta.durationSeconds || undefined,
-      };
-    });
+  const images = charter.media.map((m) => ({
+    name: m.storageKey,
+    url: m.url,
+  }));
+  const videos = captainVideos.map((v) => ({
+    name: v.blobKey || v.id,
+    url: v.ready720pUrl || v.originalUrl,
+    thumbnailUrl: v.thumbnailUrl || undefined,
+    durationSeconds: v.processedDurationSec || undefined,
+  }));
   return applySecurityHeaders(
     NextResponse.json({
       charter,

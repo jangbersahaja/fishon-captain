@@ -373,7 +373,6 @@ export async function loadStorageData(
           id: true,
           ownerId: true,
           charterId: true,
-          charterMediaId: true,
           originalUrl: true,
           blobKey: true,
           thumbnailUrl: true,
@@ -555,9 +554,7 @@ export async function loadStorageData(
 
     // Determine video status label based on linkage
     let statusSuffix = "";
-    if (video.charterMediaId) {
-      statusSuffix = " • Finalized";
-    } else if (video.charterId) {
+    if (video.charterId) {
       statusSuffix = " • Linked to Charter";
     } else {
       statusSuffix = " • Pending";

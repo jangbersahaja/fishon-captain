@@ -192,20 +192,12 @@ export async function createCharterFromDraftData(params: {
             })),
         },
         media: {
-          create: [
-            ...imagesOrdered.map((m, i) => ({
-              kind: MediaKind.CHARTER_PHOTO,
-              url: m.url,
-              storageKey: m.name,
-              sortOrder: i,
-            })),
-            ...videosOrdered.map((m, i) => ({
-              kind: MediaKind.CHARTER_VIDEO,
-              url: m.url,
-              storageKey: m.name,
-              sortOrder: i,
-            })),
-          ],
+          create: imagesOrdered.map((m, i) => ({
+            kind: MediaKind.CHARTER_PHOTO,
+            url: m.url,
+            storageKey: m.name,
+            sortOrder: i,
+          })),
         },
       },
       select: { id: true },

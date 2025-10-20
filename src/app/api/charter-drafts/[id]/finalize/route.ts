@@ -655,21 +655,11 @@ export async function POST(
       data: { charterId: charter.id },
     })
   );
-  for (const [i, video] of canonicalVideos.entries()) {
-    const charterMedia = await prisma.charterMedia.create({
-      data: {
-        charterId: charter.id,
-        captainId: captainProfile.id,
-        kind: "CHARTER_VIDEO",
-        url: video.ready720pUrl || video.originalUrl,
-        storageKey:
-          video.blobKey || video.normalizedBlobKey || video.originalUrl,
-        sortOrder: i,
-      },
-    });
+  // Link videos directly to charter (no CharterMedia creation for videos)
+  for (const video of canonicalVideos) {
     await prisma.captainVideo.update({
       where: { id: video.id },
-      data: { charterId: charter.id, charterMediaId: charterMedia.id },
+      data: { charterId: charter.id },
     });
   }
   await withTiming("finalize_updateDraftStatus", () =>

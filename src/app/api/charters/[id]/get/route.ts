@@ -44,11 +44,8 @@ export async function GET(
       },
       media: {
         select: {
-          kind: true,
           url: true,
           sortOrder: true,
-          thumbnailUrl: true,
-          durationSeconds: true,
           storageKey: true,
         },
         orderBy: { sortOrder: "asc" },
@@ -68,24 +65,38 @@ export async function GET(
       NextResponse.json({ error: "not_found" }, { status: 404 })
     );
   }
-  const images = charter.media
-    .filter((m) => m.kind === "CHARTER_PHOTO")
-    .map((m) => ({
-      name: m.storageKey || m.url,
-      url: m.url,
-      storageKey: m.storageKey || undefined,
-      sortOrder: m.sortOrder ?? undefined,
-    }));
-  const videos = charter.media
-    .filter((m) => m.kind === "CHARTER_VIDEO")
-    .map((m) => ({
-      name: m.storageKey || m.url,
-      url: m.url,
-      thumbnailUrl: m.thumbnailUrl || undefined,
-      durationSeconds: m.durationSeconds || undefined,
-      storageKey: m.storageKey || undefined,
-      sortOrder: m.sortOrder ?? undefined,
-    }));
+  
+  // Fetch videos separately from CaptainVideo table
+  const captainVideos = await prisma.captainVideo.findMany({
+    where: {
+      charterId: charter.id,
+      processStatus: "ready",
+    },
+    select: {
+      id: true,
+      ready720pUrl: true,
+      thumbnailUrl: true,
+      processedDurationSec: true,
+      blobKey: true,
+      originalUrl: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  
+  const images = charter.media.map((m) => ({
+    name: m.storageKey || m.url,
+    url: m.url,
+    storageKey: m.storageKey || undefined,
+    sortOrder: m.sortOrder ?? undefined,
+  }));
+  const videos = captainVideos.map((v) => ({
+    name: v.blobKey || v.id,
+    url: v.ready720pUrl || v.originalUrl,
+    thumbnailUrl: v.thumbnailUrl || undefined,
+    durationSeconds: v.processedDurationSec || undefined,
+    storageKey: v.blobKey || undefined,
+    sortOrder: undefined, // Videos don't have sortOrder in CaptainVideo
+  }));
   // Default cover index to 0 (first image) for now; future: store in DB
   const imagesCoverIndex = images.length > 0 ? 0 : null;
   return applySecurityHeaders(
