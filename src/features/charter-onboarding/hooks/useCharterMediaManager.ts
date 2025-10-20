@@ -169,8 +169,12 @@ export function useCharterMediaManager({
   );
 
   // Fetch captain's CharterMedia photos as canonical source
+  // ONLY for NEW charters (not edit mode) - edit mode uses form data
   const { data: session } = useSession();
   useEffect(() => {
+    // Skip photo fetch in edit mode - use form data instead
+    if (isEditing) return;
+
     let ignore = false;
     const userId = (session?.user as { id?: string })?.id;
     if (!userId) return;
@@ -195,7 +199,7 @@ export function useCharterMediaManager({
     return () => {
       ignore = true;
     };
-  }, [session, dlog]);
+  }, [session, dlog, isEditing]);
   useEffect(() => {
     const photos = form.getValues("uploadedPhotos") as
       | Array<{ name: string; url: string }>

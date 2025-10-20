@@ -207,8 +207,9 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
             <label className="flex items-center gap-3 text-sm">
               <input
                 type="radio"
+                name="pickup-available"
                 value="yes"
-                checked={pickupAvailable === true}
+                checked={Boolean(pickupAvailable) === true}
                 onChange={() =>
                   setValue("pickup.available", true, { shouldValidate: true })
                 }
@@ -219,8 +220,9 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
             <label className="flex items-center gap-3 text-sm">
               <input
                 type="radio"
+                name="pickup-available"
                 value="no"
-                checked={pickupAvailable === false}
+                checked={Boolean(pickupAvailable) === false}
                 onChange={() =>
                   setValue(
                     "pickup",

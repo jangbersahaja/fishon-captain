@@ -18,7 +18,7 @@ interface CharterUpdateData {
   latitude?: number | null;
   longitude?: number | null;
   description?: string;
-  backupPhone?: string;
+  backupPhone?: string | null;
   [key: string]: unknown;
 }
 
@@ -329,7 +329,8 @@ export async function PATCH(
               name: trip.name ?? undefined,
               tripType: trip.tripType ?? undefined,
               price: trip.price ?? undefined,
-              promoPrice: trip.promoPrice ?? undefined,
+              promoPrice:
+                trip.promoPrice !== undefined ? trip.promoPrice : undefined,
               durationHours: trip.durationHours ?? undefined,
               maxAnglers: trip.maxAnglers ?? undefined,
               style: trip.style
@@ -398,7 +399,10 @@ export async function PATCH(
               name: trip.name || "",
               tripType: trip.tripType || "",
               price: trip.price || 0,
-              promoPrice: trip.promoPrice ?? undefined,
+              promoPrice:
+                trip.promoPrice !== undefined && trip.promoPrice !== null
+                  ? trip.promoPrice
+                  : undefined,
               durationHours: trip.durationHours || 0,
               maxAnglers: trip.maxAnglers || 0,
               style:

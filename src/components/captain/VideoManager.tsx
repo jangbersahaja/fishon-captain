@@ -29,6 +29,11 @@ interface VideoRecord {
   // didFallback & fallbackReason intentionally not surfaced in UI anymore
   didFallback?: boolean;
   fallbackReason?: string | null;
+  // Blob storage keys for media validation
+  normalizedBlobKey?: string | null;
+  blobKey?: string | null;
+  // Duration for video display and validation
+  processedDurationSec?: number | null;
 }
 interface VideoManagerProps {
   ownerId: string;

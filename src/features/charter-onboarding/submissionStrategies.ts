@@ -27,15 +27,12 @@ export async function patchEditCharter({
       latitude: values.latitude || null,
       longitude: values.longitude || null,
       description: values.description,
+      backupPhone: values.operator?.backupPhone || null,
     },
     captain: values.operator
       ? {
           displayName: values.operator.displayName,
           phone: values.operator.phone,
-          backupPhone:
-            typeof values.operator.backupPhone === "string"
-              ? values.operator.backupPhone
-              : "",
           bio: values.operator.bio,
           experienceYrs: values.operator.experienceYears,
           // Include avatarUrl when editing so live charter updates get propagated without separate endpoint.
@@ -44,7 +41,6 @@ export async function patchEditCharter({
       : {
           displayName: "",
           phone: "",
-          backupPhone: "",
           bio: "",
           experienceYrs: undefined,
           avatarUrl: null,
@@ -81,6 +77,7 @@ export async function patchEditCharter({
       values.trips
         ?.filter((t) => t.name && t.tripType) // Only include trips with required fields
         ?.map((t) => ({
+          id: (t as { id?: string }).id || null,
           name: t.name ?? "",
           tripType: t.tripType ?? "",
           price:

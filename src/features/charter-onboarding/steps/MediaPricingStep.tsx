@@ -145,10 +145,25 @@ export function MediaPricingStep({
   const [refreshToken, setRefreshToken] = useState(0);
 
   const handleVideoSet = useCallback(
-    (list: { id: string; originalUrl: string; processStatus: string }[]) => {
+    (
+      list: {
+        id: string;
+        originalUrl: string;
+        processStatus: string;
+        normalizedBlobKey?: string | null;
+        blobKey?: string | null;
+        thumbnailUrl?: string | null;
+        processedDurationSec?: number | null;
+      }[]
+    ) => {
       const ready = list
         .filter((v) => v.processStatus === "ready")
-        .map((v) => ({ name: v.id, url: v.originalUrl }));
+        .map((v) => ({
+          name: v.normalizedBlobKey || v.blobKey || v.id,
+          url: v.originalUrl,
+          thumbnailUrl: v.thumbnailUrl ?? undefined,
+          durationSeconds: v.processedDurationSec ?? undefined,
+        }));
       setValue("uploadedVideos", ready, { shouldValidate: false });
       onReadyVideosChangeAction?.(ready);
     },
@@ -180,7 +195,7 @@ export function MediaPricingStep({
   );
 
   return (
-    <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <section className="p-6 bg-white border shadow-sm rounded-3xl border-neutral-200">
       <header className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold text-slate-900">
           Photos & videos
@@ -191,7 +206,7 @@ export function MediaPricingStep({
         </p>
       </header>
 
-      <hr className="border-t my-6 border-neutral-200" />
+      <hr className="my-6 border-t border-neutral-200" />
       <div className="space-y-6">
         <div
           className={`rounded-2xl border p-4 ${
@@ -204,7 +219,7 @@ export function MediaPricingStep({
           onDragLeave={() => handleDragLeave("photo")}
           onPaste={(e) => handlePaste(e, "photo")}
         >
-          <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-800">
               Photos{" "}
               <span className="ml-1 text-xs text-slate-500">
@@ -245,13 +260,13 @@ export function MediaPricingStep({
           />
         </div>
 
-        <div className="rounded-2xl border p-4 border-neutral-200 space-y-6">
+        <div className="p-4 space-y-6 border rounded-2xl border-neutral-200">
           <div>
-            <h3 className="text-sm font-semibold text-slate-800 mb-2">
+            <h3 className="mb-2 text-sm font-semibold text-slate-800">
               Short videos
             </h3>
             {!ownerId && (
-              <div className="text-xs text-amber-600 mb-3">
+              <div className="mb-3 text-xs text-amber-600">
                 Save earlier steps to unlock video uploads.
               </div>
             )}

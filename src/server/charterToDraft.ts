@@ -18,6 +18,7 @@ interface PickupArea {
   label: string;
 }
 interface PickupRecord {
+  available: boolean;
   fee: unknown;
   areas: PickupArea[];
   notes: string | null;
@@ -32,6 +33,7 @@ interface TripTechnique {
   value: string;
 }
 interface TripRecord {
+  id: string;
   name: string;
   tripType: string;
   price: unknown;
@@ -60,6 +62,7 @@ interface CharterFull {
   latitude: unknown;
   longitude: unknown;
   description: string;
+  backupPhone: string | null;
   boat: BoatRecord | null;
   features: CharterFeature[];
   amenities: CharterAmenity[];
@@ -88,7 +91,7 @@ export function mapCharterToDraftValues(params: {
       experienceYears: captainProfile.experienceYrs ?? 0,
       bio: captainProfile.bio || "",
       phone: captainProfile.phone || "",
-      backupPhone: "",
+      backupPhone: charter.backupPhone || "",
     },
     charterType: charter.charterType || "",
     charterName: charter.name || "",
@@ -121,17 +124,21 @@ export function mapCharterToDraftValues(params: {
     },
     pickup: pickup
       ? {
-          available: true,
+          available: Boolean(pickup.available),
           fee: pickup.fee ? Number(pickup.fee) : null,
           areas: (pickup.areas || []).map((a) => a.label),
           notes: pickup.notes || "",
         }
       : { available: false, fee: null, areas: [], notes: "" },
     trips: (charter.trips || []).map((t) => ({
+      id: t.id,
       name: t.name || "",
       tripType: t.tripType || "",
       price: t.price ? Number(t.price) : Number.NaN,
-      promoPrice: t.promoPrice ? Number(t.promoPrice) : Number.NaN,
+      promoPrice:
+        t.promoPrice !== undefined && t.promoPrice !== null
+          ? Number(t.promoPrice)
+          : Number.NaN,
       durationHours:
         typeof t.durationHours === "number" ? t.durationHours : Number.NaN,
       startTimes: (t.startTimes || []).map((st) => st.value),

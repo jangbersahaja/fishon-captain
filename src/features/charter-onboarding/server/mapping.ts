@@ -19,6 +19,7 @@ interface PickupArea {
   label: string;
 }
 interface PickupRecord {
+  available: boolean;
   fee: unknown;
   areas: PickupArea[];
   notes: string | null;
@@ -33,9 +34,11 @@ interface TripTechnique {
   value: string;
 }
 interface TripRecord {
+  id: string;
   name: string;
   tripType: string;
   price: unknown;
+  promoPrice?: unknown;
   durationHours: number;
   maxAnglers: number;
   style: string;
@@ -63,6 +66,7 @@ interface CharterFull {
   latitude: unknown;
   longitude: unknown;
   description: string;
+  backupPhone: string | null;
   boat: BoatRecord | null;
   features: CharterFeature[];
   amenities: CharterAmenity[];
@@ -106,6 +110,7 @@ export function mapCharterToDraftValuesFeature(params: {
       experienceYears: captainProfile.experienceYrs ?? 0,
       bio: captainProfile.bio || "",
       phone: captainProfile.phone || "",
+      backupPhone: charter.backupPhone || "",
       avatarUrl: media?.avatar || charter.captain?.avatarUrl || undefined,
     },
     charterType: charter.charterType || "",
@@ -138,7 +143,7 @@ export function mapCharterToDraftValuesFeature(params: {
     },
     pickup: pickup
       ? {
-          available: true,
+          available: Boolean(pickup.available),
           fee: (() => {
             const n = safeNumber(pickup.fee);
             return Number.isFinite(n) ? n : null;
@@ -148,9 +153,14 @@ export function mapCharterToDraftValuesFeature(params: {
         }
       : { available: false, fee: null, areas: [], notes: "" },
     trips: (charter.trips || []).map((t) => ({
+      id: t.id,
       name: t.name || "",
       tripType: t.tripType || "",
       price: safeNumber(t.price),
+      promoPrice:
+        t.promoPrice !== undefined && t.promoPrice !== null
+          ? safeNumber(t.promoPrice)
+          : Number.NaN,
       durationHours:
         typeof t.durationHours === "number" ? t.durationHours : Number.NaN,
       startTimes: (t.startTimes || []).map((st) => st.value),

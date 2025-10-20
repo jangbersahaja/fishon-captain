@@ -11,6 +11,7 @@ const mediaKeyPattern = (key: string) => {
   if (key.startsWith("captains/") && key.includes("/media/")) return true; // new standard
   if (key.startsWith("temp/") && key.includes("/original/")) return true; // in-flight video
   if (key.startsWith("charters/") && key.includes("/media/")) return true; // legacy existing
+  if (key.startsWith("captain-videos/")) return true; // all video storage paths (normalized, thumbnails, uploads)
   return false;
 };
 
@@ -38,7 +39,11 @@ export async function PUT(
 
   const charter = await prisma.charter.findUnique({
     where: { id: charterId },
-    select: { captain: { select: { userId: true } }, media: true, id: true },
+    select: {
+      captain: { select: { userId: true, id: true } },
+      media: true,
+      id: true,
+    },
   });
   if (!charter || charter.captain.userId !== userId)
     return applySecurityHeaders(
@@ -73,10 +78,22 @@ export async function PUT(
   const images = media.images ?? [];
   const videos = media.videos ?? [];
 
+  // Get existing storage keys to allow them even if they don't match the new pattern
+  const existingStorageKeys = new Set(charter.media.map((m) => m.storageKey));
+
   // Enforce path pattern for new media (reject non-compliant new keys except legacy existing ones)
   for (const m of [...images, ...videos]) {
     const mediaName = m.name;
-    if (!mediaName || !mediaKeyPattern(mediaName)) {
+    if (!mediaName) {
+      return applySecurityHeaders(
+        NextResponse.json(
+          { error: "invalid_media_path", key: m.name },
+          { status: 400 }
+        )
+      );
+    }
+    // Allow existing media keys even if they don't match the new pattern (for backward compatibility)
+    if (!existingStorageKeys.has(mediaName) && !mediaKeyPattern(mediaName)) {
       return applySecurityHeaders(
         NextResponse.json(
           { error: "invalid_media_path", key: m.name },
@@ -87,6 +104,7 @@ export async function PUT(
   }
 
   // Ensure all required fields are present and non-undefined
+  const captainId = charter.captain.id;
   const imageCreates = images.map((m, i) => {
     if (!m.url || !m.name) {
       throw new Error("Missing required image media fields");
@@ -97,6 +115,7 @@ export async function PUT(
       storageKey: m.name,
       sortOrder: i,
       thumbnailUrl: m.thumbnailUrl ?? null,
+      captainId,
     };
   });
   const videoCreates = videos.map((m, i) => {
@@ -110,6 +129,7 @@ export async function PUT(
       sortOrder: i,
       thumbnailUrl: m.thumbnailUrl ?? null,
       durationSeconds: m.durationSeconds,
+      captainId,
     };
   });
 
