@@ -223,6 +223,7 @@ export async function POST(
         ? new Prisma.Decimal(draftData.longitude)
         : undefined,
     description: draftData.description ?? "",
+    backupPhone: draftData.operator?.backupPhone ?? null,
     pricingPlan: CharterPricingPlan.BASIC,
     amenities: {
       create: (draftData.amenities ?? []).map((label: string) => ({ label })),
