@@ -14,6 +14,10 @@ SET "captainId" = cp.id
 FROM "public"."CaptainProfile" cp
 WHERE cv."ownerId" = cp."userId";
 
+-- Step 2a: Handle orphaned videos - delete videos that have no corresponding CaptainProfile
+-- These are videos uploaded by users who never completed captain profile setup
+DELETE FROM "public"."CaptainVideo" WHERE "captainId" IS NULL;
+
 -- Step 3: Make captainId non-nullable
 ALTER TABLE "public"."CaptainVideo" ALTER COLUMN "captainId" SET NOT NULL;
 
