@@ -49,10 +49,7 @@ export async function createCharterFromDraftData(params: {
     normalizeOrder(media.images, media.imagesOrder),
     media.imagesCoverIndex
   );
-  const videosOrdered = moveIndexToFront(
-    normalizeOrder(media.videos, media.videosOrder),
-    media.videosCoverIndex
-  );
+  // Note: Videos are no longer created in CharterMedia - handled separately by CaptainVideo
 
   // Ensure a captain profile exists (idempotent)
   const captainProfile = await prisma.captainProfile.upsert({

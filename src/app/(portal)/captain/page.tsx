@@ -61,12 +61,11 @@ async function getCharter(adminUserId?: string) {
     redirect("/auth?next=/captain/form");
   }
   const charter = typed.charters[0];
-  const photoCount = charter.media.filter(
-    (m: { kind: string }) => m.kind === "CHARTER_PHOTO"
-  ).length;
-  const videoCount = await prisma.captainVideo.count({
-    where: { ownerId: effectiveUserId },
-  });
+  // All charter.media are photos now - no need to filter
+  const photoCount = charter.media.length;
+  const videoCount = profile ? await prisma.captainVideo.count({
+    where: { captainId: profile.id },
+  }) : 0;
   return {
     profile: typed,
     charter,

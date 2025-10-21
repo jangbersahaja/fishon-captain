@@ -772,7 +772,7 @@ export default async function CharterStepsPage({
             },
           },
           media: {
-            where: { kind: "CHARTER_PHOTO" },
+            // All CharterMedia are photos now - no need to filter by kind
             select: {
               id: true,
               url: true,
@@ -795,8 +795,10 @@ export default async function CharterStepsPage({
   }
   const charter = typed.charters[0] as unknown as CharterDetail;
   const photos = [...charter.media].sort((a, b) => a.sortOrder - b.sortOrder);
-  const videos = (await prisma.captainVideo.findMany({
-    where: { ownerId: effectiveUserId },
+  
+  // Get videos by captainId instead of ownerId
+  const videos = profile ? (await prisma.captainVideo.findMany({
+    where: { captainId: profile.id },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -808,7 +810,7 @@ export default async function CharterStepsPage({
       createdAt: true,
       processedDurationSec: true,
     },
-  })) as CaptainVideoRow[];
+  })) : [] as CaptainVideoRow[];
 
   const imageMetas = photos
     .filter((photo) => !!photo.url)

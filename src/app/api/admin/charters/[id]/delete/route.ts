@@ -48,7 +48,7 @@ export async function POST(
       // Remove all trips and their related data
       const trips = await tx.trip.findMany({ where: { charterId } });
       for (const trip of trips) {
-        await tx.charterMedia.deleteMany({ where: { tripId: trip.id } });
+        // Note: Trip.media relation removed - CharterMedia no longer has tripId
         await tx.tripStartTime.deleteMany({ where: { tripId: trip.id } });
         await tx.tripSpecies.deleteMany({ where: { tripId: trip.id } });
         await tx.tripTechnique.deleteMany({ where: { tripId: trip.id } });

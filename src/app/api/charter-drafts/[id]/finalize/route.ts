@@ -158,7 +158,7 @@ export async function POST(
                 captainId: true,
                 boatId: true,
                 id: true,
-                media: { select: { id: true, kind: true } },
+                media: { select: { id: true } },
               },
             });
             if (!existing) throw new Error("forbidden");
@@ -169,9 +169,8 @@ export async function POST(
             if (!captainProfileTx || captainProfileTx.userId !== userId)
               throw new Error("forbidden");
 
-            const existingPhotoCount = existing.media.filter(
-              (m) => m.kind === "CHARTER_PHOTO"
-            ).length;
+            // All media in CharterMedia are photos now
+            const existingPhotoCount = existing.media.length;
             const reuseExistingMedia =
               incomingImages.length === 0 && incomingVideos.length === 0;
 
@@ -240,9 +239,7 @@ export async function POST(
               });
               const tripIds = existingTrips.map((t) => t.id);
               if (tripIds.length) {
-                await tx.charterMedia.deleteMany({
-                  where: { tripId: { in: tripIds } },
-                });
+                // Note: Trip.media relation removed - CharterMedia no longer has tripId
                 await tx.tripStartTime.deleteMany({
                   where: { tripId: { in: tripIds } },
                 });
@@ -370,20 +367,12 @@ export async function POST(
                         create: [
                           ...incomingImages.map(
                             (m: { url: string; name: string }, i: number) => ({
-                              kind: "CHARTER_PHOTO" as const,
                               url: m.url,
                               storageKey: m.name,
                               sortOrder: i,
                             })
                           ),
-                          ...incomingVideos.map(
-                            (m: { url: string; name: string }, i: number) => ({
-                              kind: "CHARTER_VIDEO" as const,
-                              url: m.url,
-                              storageKey: m.name,
-                              sortOrder: i,
-                            })
-                          ),
+                          // Note: Videos are no longer created in CharterMedia
                         ],
                       },
                     }),
@@ -499,9 +488,9 @@ export async function POST(
       NextResponse.json({ error: result.errors, requestId }, { status: 400 })
     );
   }
+  // All CharterMedia are photos now - no need to filter by kind
   const canonicalPhotos = await prisma.charterMedia.findMany({
     where: {
-      kind: "CHARTER_PHOTO",
       captainId: captainProfile.id,
       OR: [{ charterId: null }, { charterId: { startsWith: "temp-" } }],
     },

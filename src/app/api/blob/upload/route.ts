@@ -162,41 +162,10 @@ export async function POST(req: Request) {
     }
 
     if (isVideo && charterId && docType === "charter_media") {
-      // Phase 2C: Dual pipeline approach (both legacy + new CaptainVideo pipeline)
-      let nextOrder = 0;
+      // Phase 2C: New CaptainVideo pipeline only
       let captainVideoId: string | null = null;
 
-      // Calculate next sort order
-      try {
-        const max = await prisma.charterMedia.aggregate({
-          where: { charterId },
-          _max: { sortOrder: true },
-        });
-        nextOrder = (max._max.sortOrder ?? -1) + 1;
-      } catch (e) {
-        console.warn(
-          "blob upload temp video: failed computing next sortOrder",
-          e
-        );
-      }
-
-      // 1. Create CharterMedia record (backward compatibility with legacy pipeline)
-      try {
-        await prisma.charterMedia.create({
-          data: {
-            charterId,
-            kind: "CHARTER_VIDEO",
-            url, // original temp URL (will be replaced after transcode)
-            storageKey: key,
-            sortOrder: nextOrder,
-          },
-        });
-      } catch (err) {
-        console.warn(
-          "Temp video record create failed (possible duplicate after sortOrder logic)",
-          err
-        );
-      }
+      // Note: We no longer create CharterMedia for videos - CaptainVideo is the source of truth
 
       // 2. Create CaptainVideo record (NEW - Phase 2C)
       try {
@@ -308,12 +277,11 @@ export async function POST(req: Request) {
       const draftIdRaw = form.get("draftId");
       const draftId = typeof draftIdRaw === "string" ? draftIdRaw : null;
       const tempCharterId = draftId ? `temp-${draftId}` : `temp-${userId}`;
-      // Create CharterMedia record immediately
+      // Create CharterMedia record immediately (CharterMedia is now photos only)
       const media = await prisma.charterMedia.create({
         data: {
           captainId: profile.id,
           charterId: tempCharterId,
-          kind: "CHARTER_PHOTO",
           url,
           storageKey: key,
           mimeType: file.type,

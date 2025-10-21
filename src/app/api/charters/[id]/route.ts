@@ -438,8 +438,7 @@ export async function PATCH(
           tx.push(
             prisma.tripTechnique.deleteMany({ where: { tripId: et.id } })
           );
-          // In case there is trip-scoped media
-          tx.push(prisma.charterMedia.deleteMany({ where: { tripId: et.id } }));
+          // Note: Trip.media relation removed - CharterMedia no longer has tripId
           tx.push(prisma.trip.delete({ where: { id: et.id } }));
         }
       }
