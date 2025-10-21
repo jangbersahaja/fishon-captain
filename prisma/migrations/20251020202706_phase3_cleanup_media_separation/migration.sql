@@ -37,7 +37,11 @@ ALTER TABLE "public"."CaptainVideo" DROP COLUMN "ownerId";
 ALTER TABLE "public"."CaptainVideo" DROP CONSTRAINT IF EXISTS "CaptainVideo_charterMediaId_fkey";
 ALTER TABLE "public"."CaptainVideo" DROP COLUMN IF EXISTS "charterMediaId";
 
--- Step 9: Drop legacy columns from CharterMedia
+-- Step 9: Drop dependent views before dropping columns
+-- The v_public_charters view (if it exists) depends on CharterMedia.kind column
+DROP VIEW IF EXISTS "public"."v_public_charters" CASCADE;
+
+-- Step 9a: Drop legacy columns from CharterMedia
 ALTER TABLE "public"."CharterMedia" DROP COLUMN IF EXISTS "tripId";
 ALTER TABLE "public"."CharterMedia" DROP COLUMN IF EXISTS "kind";
 ALTER TABLE "public"."CharterMedia" DROP COLUMN IF EXISTS "thumbnail_url";
