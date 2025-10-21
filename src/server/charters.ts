@@ -4,7 +4,7 @@ import {
   validateDraftForFinalizeFeature,
   type FinalizeMediaPayload,
 } from "@features/charter-onboarding/server/validation";
-import { CharterStyle, MediaKind, Prisma } from "@prisma/client";
+import { CharterStyle, Prisma } from "@prisma/client";
 
 // Backward compatibility named export (keep existing imports working during migration)
 export type { FinalizeMediaPayload };
@@ -190,7 +190,6 @@ export async function createCharterFromDraftData(params: {
         },
         media: {
           create: imagesOrdered.map((m, i) => ({
-            kind: MediaKind.CHARTER_PHOTO,
             url: m.url,
             storageKey: m.name,
             sortOrder: i,

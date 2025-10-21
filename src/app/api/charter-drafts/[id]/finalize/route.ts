@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
 import { getRequestId } from "@/lib/requestId";
 import { withTiming } from "@/lib/requestTiming";
-import { diffObjects, writeAuditLog } from "@/server/audit";
+// update-path auditing removed; no longer importing audit helpers here
 import { createCharterFromDraftData } from "@/server/charters";
 import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import { CharterPricingPlan, CharterStyle, Prisma } from "@prisma/client";
@@ -60,6 +60,28 @@ export async function POST(
       NextResponse.json({ error: "not_found", requestId }, { status: 404 })
     );
   }
+  // Block finalize when draft already created a charter or is not in DRAFT status
+  if (draft.charterId || draft.status !== "DRAFT") {
+    logger.info("finalize_blocked_update_or_submitted", {
+      requestId,
+      draftId,
+      userId,
+      status: draft.status,
+      charterId: draft.charterId,
+    });
+    counter("finalize.blocked").inc();
+    return applySecurityHeaders(
+      NextResponse.json(
+        {
+          error: "already_submitted",
+          message:
+            "This draft has already created a charter. Use /api/charters/[id] to edit.",
+          requestId,
+        },
+        { status: 409 }
+      )
+    );
+  }
   let draftData: DraftValues | null = null;
   try {
     draftData = draft.data as DraftValues;
@@ -111,347 +133,25 @@ export async function POST(
   let result:
     | { ok: true; charterId: string }
     | { ok: false; errors: Record<string, string> };
-  if (draft.charterId) {
-    // Update existing charter instead of creating a new one.
-    const existingCharterId = draft.charterId;
-    const transformed = draft.data as DraftValues;
-    const incomingImages: Array<{ url: string; name: string }> =
-      media?.images ?? [];
-    const incomingVideos: Array<{ url: string; name: string }> =
-      media?.videos ?? [];
-    try {
-      result = await withTiming(
-        "finalize_updateExisting",
-        async (): Promise<
-          | { ok: true; charterId: string }
-          | { ok: false; errors: Record<string, string> }
-        > => {
-          // BEFORE snapshot for audit (broad include mirrors PATCH endpoint)
-          const beforeSnapshot = await prisma.charter.findUnique({
-            where: { id: existingCharterId },
-            include: {
-              boat: true,
-              amenities: true,
-              features: true,
-              policies: true,
-              pickup: { include: { areas: true } },
-              trips: {
-                include: { startTimes: true, species: true, techniques: true },
-              },
-              captain: {
-                select: {
-                  displayName: true,
-                  phone: true,
-                  bio: true,
-                  experienceYrs: true,
-                  avatarUrl: true,
-                },
-              },
-            },
-          });
-
-          const updated = await prisma.$transaction(async (tx) => {
-            // Fetch charter including current media for reuse decision & auth
-            const existing = await tx.charter.findUnique({
-              where: { id: existingCharterId },
-              select: {
-                captainId: true,
-                boatId: true,
-                id: true,
-                media: { select: { id: true } },
-              },
-            });
-            if (!existing) throw new Error("forbidden");
-            const captainProfileTx = await tx.captainProfile.findUnique({
-              where: { id: existing.captainId },
-              select: { userId: true },
-            });
-            if (!captainProfileTx || captainProfileTx.userId !== userId)
-              throw new Error("forbidden");
-
-            // All media in CharterMedia are photos now
-            const existingPhotoCount = existing.media.length;
-            const reuseExistingMedia =
-              incomingImages.length === 0 && incomingVideos.length === 0;
-
-            if (!reuseExistingMedia && incomingImages.length === 0) {
-              throw new Error("missing_media");
-            }
-            if (reuseExistingMedia && existingPhotoCount < 3) {
-              throw new Error("missing_media");
-            }
-
-            await tx.captainProfile.update({
-              where: { userId },
-              data: {
-                displayName: transformed.operator.displayName,
-                phone: transformed.operator.phone,
-                bio: transformed.operator.bio ?? "",
-                experienceYrs: Number.isFinite(
-                  transformed.operator.experienceYears
-                )
-                  ? (transformed.operator.experienceYears as number)
-                  : 0,
-              },
-            });
-
-            if (existing.boatId) {
-              await tx.boat.update({
-                where: { id: existing.boatId },
-                data: {
-                  name: transformed.boat.name,
-                  type: transformed.boat.type,
-                  lengthFt: Number.isFinite(transformed.boat.lengthFeet)
-                    ? Math.trunc(transformed.boat.lengthFeet as number)
-                    : 0,
-                  capacity: Number.isFinite(transformed.boat.capacity)
-                    ? Math.trunc(transformed.boat.capacity as number)
-                    : 1,
-                },
-              });
-            }
-
-            await tx.charterAmenity.deleteMany({
-              where: { charterId: existingCharterId },
-            });
-            await tx.charterFeature.deleteMany({
-              where: { charterId: existingCharterId },
-            });
-            await tx.policies.deleteMany({
-              where: { charterId: existingCharterId },
-            });
-            const existingPickup = await tx.pickup.findUnique({
-              where: { charterId: existingCharterId },
-              select: { id: true },
-            });
-            if (existingPickup) {
-              await tx.pickupArea.deleteMany({
-                where: { pickupId: existingPickup.id },
-              });
-              await tx.pickup.delete({
-                where: { charterId: existingCharterId },
-              });
-            }
-            {
-              const existingTrips = await tx.trip.findMany({
-                where: { charterId: existingCharterId },
-                select: { id: true },
-              });
-              const tripIds = existingTrips.map((t) => t.id);
-              if (tripIds.length) {
-                // Note: Trip.media relation removed - CharterMedia no longer has tripId
-                await tx.tripStartTime.deleteMany({
-                  where: { tripId: { in: tripIds } },
-                });
-                await tx.tripSpecies.deleteMany({
-                  where: { tripId: { in: tripIds } },
-                });
-                await tx.tripTechnique.deleteMany({
-                  where: { tripId: { in: tripIds } },
-                });
-              }
-              await tx.trip.deleteMany({
-                where: { charterId: existingCharterId },
-              });
-            }
-            if (!reuseExistingMedia) {
-              await tx.charterMedia.deleteMany({
-                where: { charterId: existingCharterId },
-              });
-            }
-
-            await tx.charter.update({
-              where: { id: existingCharterId },
-              data: {
-                charterType: transformed.charterType,
-                name: transformed.charterName,
-                state: transformed.state,
-                city: transformed.city,
-                startingPoint: transformed.startingPoint,
-                postcode: transformed.postcode,
-                latitude:
-                  typeof transformed.latitude === "number" &&
-                  Number.isFinite(transformed.latitude)
-                    ? new Prisma.Decimal(transformed.latitude)
-                    : undefined,
-                longitude:
-                  typeof transformed.longitude === "number" &&
-                  Number.isFinite(transformed.longitude)
-                    ? new Prisma.Decimal(transformed.longitude)
-                    : undefined,
-                description: transformed.description ?? "",
-                backupPhone: transformed.operator.backupPhone ?? "",
-                amenities: {
-                  create: (transformed.amenities ?? []).map((label) => ({
-                    label,
-                  })),
-                },
-                features: {
-                  create: (transformed.boat.features ?? []).map((label) => ({
-                    label,
-                  })),
-                },
-                pickup: transformed.pickup?.available
-                  ? {
-                      create: {
-                        available: true,
-                        fee:
-                          typeof transformed.pickup.fee === "number" &&
-                          Number.isFinite(transformed.pickup.fee)
-                            ? new Prisma.Decimal(transformed.pickup.fee)
-                            : undefined,
-                        notes: transformed.pickup.notes ?? null,
-                        areas: {
-                          create: (transformed.pickup.areas ?? []).map(
-                            (label) => ({
-                              label,
-                            })
-                          ),
-                        },
-                      },
-                    }
-                  : undefined,
-                policies: {
-                  create: {
-                    licenseProvided:
-                      transformed.policies.licenseProvided ?? false,
-                    catchAndKeep: transformed.policies.catchAndKeep ?? false,
-                    catchAndRelease:
-                      transformed.policies.catchAndRelease ?? false,
-                    childFriendly: transformed.policies.childFriendly ?? false,
-                    liveBaitProvided:
-                      transformed.policies.liveBaitProvided ?? false,
-                    alcoholNotAllowed:
-                      transformed.policies.alcoholNotAllowed ?? false,
-                    smokingNotAllowed:
-                      transformed.policies.smokingNotAllowed ?? false,
-                  },
-                },
-                trips: {
-                  create: transformed.trips.map((t, index) => ({
-                    name: t.name ?? `Trip ${index + 1}`,
-                    tripType: t.tripType || `custom-${index + 1}`,
-                    price: new Prisma.Decimal(
-                      Number.isFinite(t.price) ? (t.price as number) : 0
-                    ),
-                    promoPrice:
-                      typeof t.promoPrice === "number" &&
-                      Number.isFinite(t.promoPrice)
-                        ? new Prisma.Decimal(t.promoPrice)
-                        : undefined,
-                    durationHours: Number.isFinite(t.durationHours)
-                      ? (t.durationHours as number)
-                      : 0,
-                    maxAnglers: Number.isFinite(t.maxAnglers)
-                      ? (t.maxAnglers as number)
-                      : 1,
-                    style: t.charterStyle === "shared" ? "SHARED" : "PRIVATE",
-                    description: t.description || null,
-                    startTimes: {
-                      create: (t.startTimes || []).map((value) => ({ value })),
-                    },
-                    species: {
-                      create: (t.species || []).map((value) => ({
-                        value,
-                      })),
-                    },
-                    techniques: {
-                      create: (t.techniques || []).map((value) => ({ value })),
-                    },
-                  })),
-                },
-                ...(reuseExistingMedia
-                  ? {}
-                  : {
-                      media: {
-                        create: [
-                          ...incomingImages.map(
-                            (m: { url: string; name: string }, i: number) => ({
-                              url: m.url,
-                              storageKey: m.name,
-                              sortOrder: i,
-                            })
-                          ),
-                          // Note: Videos are no longer created in CharterMedia
-                        ],
-                      },
-                    }),
-              },
-            });
-            return { charterId: existingCharterId };
-          });
-
-          // AFTER snapshot for audit
-          const afterSnapshot = await prisma.charter.findUnique({
-            where: { id: existingCharterId },
-            include: {
-              boat: true,
-              amenities: true,
-              features: true,
-              policies: true,
-              pickup: { include: { areas: true } },
-              trips: {
-                include: { startTimes: true, species: true, techniques: true },
-              },
-              captain: {
-                select: {
-                  displayName: true,
-                  phone: true,
-                  bio: true,
-                  experienceYrs: true,
-                  avatarUrl: true,
-                },
-              },
-            },
-          });
-          if (afterSnapshot) {
-            const changedTop = diffObjects(beforeSnapshot, afterSnapshot);
-            writeAuditLog({
-              actorUserId: userId,
-              entityType: "charter",
-              entityId: existingCharterId,
-              action: "finalize_update",
-              before: beforeSnapshot || undefined,
-              after: afterSnapshot,
-              changed: changedTop,
-              correlationId: requestId,
-            }).catch(() => {});
-          }
-
-          return { ok: true as const, charterId: updated.charterId };
-        }
-      );
-    } catch (e) {
-      if (e instanceof Error && e.message === "missing_media") {
-        result = {
-          ok: false as const,
-          errors: { images: "At least 3 photos required" } as Record<
-            string,
-            string
-          >,
-        };
-      } else if (e instanceof Error && e.message === "forbidden") {
-        result = {
-          ok: false as const,
-          errors: { auth: "Not authorized to edit this charter" } as Record<
-            string,
-            string
-          >,
-        };
-      } else {
-        const msg = e instanceof Error ? e.message : String(e);
-        logger.error("finalize_update_exception", {
-          error: msg,
-          userId,
-          draftId: draft.id,
+  if (draft.charterId || draft.status !== "DRAFT") {
+    logger.info("finalize_blocked_update_or_submitted", {
+      userId,
+      draftId: draft.id,
+      status: draft.status,
+      charterId: draft.charterId,
+      requestId,
+    });
+    return applySecurityHeaders(
+      NextResponse.json(
+        {
+          error: "already_submitted",
+          message:
+            "This draft has already created a charter. Use /api/charters/[id] to edit.",
           requestId,
-        });
-        result = {
-          ok: false as const,
-          errors: { server: "Update failed" } as Record<string, string>,
-        };
-      }
-    }
+        },
+        { status: 409 }
+      )
+    );
   } else {
     // Create path still requires new media
     if (!media || media.images.length === 0) {

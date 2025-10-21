@@ -76,12 +76,16 @@ export async function PUT(
   // Replace charter media with provided images (videos are managed separately in CaptainVideo table)
   const media = body.media ?? { images: [], videos: [] };
   const images = media.images ?? [];
-  
+
   // Reject if videos are in the payload - videos should not be edited through this route
   if (media.videos && media.videos.length > 0) {
     return applySecurityHeaders(
       NextResponse.json(
-        { error: "videos_not_supported", message: "Videos cannot be edited through this route. They are managed separately." },
+        {
+          error: "videos_not_supported",
+          message:
+            "Videos cannot be edited through this route. They are managed separately.",
+        },
         { status: 400 }
       )
     );
@@ -119,11 +123,9 @@ export async function PUT(
       throw new Error("Missing required image media fields");
     }
     return {
-      kind: "CHARTER_PHOTO" as const,
       url: m.url,
       storageKey: m.name,
       sortOrder: i,
-      thumbnailUrl: m.thumbnailUrl ?? null,
       captainId,
     };
   });
