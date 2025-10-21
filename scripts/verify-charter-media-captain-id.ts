@@ -83,17 +83,12 @@ async function main() {
     console.log("✅ All captainIds match their charter's captainId");
   }
 
-  // Group by kind
-  console.log("\n📷 Breakdown by media kind:");
-  const byKind = await prisma.charterMedia.groupBy({
-    by: ["kind"],
-    _count: true,
+  // Note: kind field removed from CharterMedia - all records are photos now
+  console.log("\n📷 CharterMedia records (all photos):");
+  const totalCount = await prisma.charterMedia.count({
     where: { captainId: { not: null } },
   });
-
-  byKind.forEach((group) => {
-    console.log(`  ${group.kind}: ${group._count} records`);
-  });
+  console.log(`  Total: ${totalCount} records`);
 
   console.log("\n✅ Verification complete!");
 }

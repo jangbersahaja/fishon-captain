@@ -60,6 +60,7 @@ model CaptainProfile {
   user          User           @relation(fields: [userId], references: [id])
   charters      Charter[]
   media         CharterMedia[]
+  videos        CaptainVideo[]
 }
 
 model Charter {
@@ -89,6 +90,7 @@ model Charter {
   pickup        Pickup?
   policies      Policies?
   trips         Trip[]
+  videos        CaptainVideo[]
 }
 
 model Boat {
@@ -147,25 +149,19 @@ model CharterFeature {
 }
 
 model CharterMedia {
-  id              String          @id @default(cuid())
-  charterId       String?
-  tripId          String?
-  kind            MediaKind
-  url             String
-  storageKey      String
-  mimeType        String?
-  sizeBytes       Int?
-  width           Int?
-  height          Int?
-  sortOrder       Int             @default(0)
-  createdAt       DateTime        @default(now())
-  thumbnailUrl    String?         @map("thumbnail_url")
-  durationSeconds Int?            @map("duration_seconds")
-  captainId       String?
-  captain         CaptainProfile? @relation(fields: [captainId], references: [id])
-  charter         Charter?        @relation(fields: [charterId], references: [id])
-  trip            Trip?           @relation(fields: [tripId], references: [id])
-  captainVideos   CaptainVideo[]
+  id         String          @id @default(cuid())
+  charterId  String?
+  url        String
+  storageKey String
+  mimeType   String?
+  sizeBytes  Int?
+  width      Int?
+  height     Int?
+  sortOrder  Int             @default(0)
+  createdAt  DateTime        @default(now())
+  captainId  String?
+  captain    CaptainProfile? @relation(fields: [captainId], references: [id])
+  charter    Charter?        @relation(fields: [charterId], references: [id])
 
   @@index([captainId, createdAt])
   @@index([charterId, sortOrder])
@@ -237,7 +233,6 @@ model Trip {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   promoPrice    Decimal?        @db.Decimal(10, 2)
-  media         CharterMedia[]
   charter       Charter         @relation(fields: [charterId], references: [id])
   species       TripSpecies[]
   startTimes    TripStartTime[]
@@ -315,20 +310,21 @@ model AuditLog {
 /// Captain short-form video library (30s trimmed clips)
 /// --------------------------------------------------
 model CaptainVideo {
-  id                   String        @id @default(cuid())
-  ownerId              String
+  id                   String          @id @default(cuid())
+  captainId            String
+  captain              CaptainProfile  @relation(fields: [captainId], references: [id])
   originalUrl          String
   thumbnailUrl         String?
-  trimStartSec         Float         @default(0)
+  trimStartSec         Float           @default(0)
   ready720pUrl         String?
-  processStatus        String        @default("queued")
+  processStatus        String          @default("queued")
   errorMessage         String?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
   blobKey              String?
   normalizedBlobKey    String?
   thumbnailBlobKey     String?
-  didFallback          Boolean       @default(false)
+  didFallback          Boolean         @default(false)
   fallbackReason       String?
   originalDurationSec  Float?
   processedDurationSec Float?
@@ -340,11 +336,11 @@ model CaptainVideo {
   processedHeight      Int?
   processedWidth       Int?
   charterId            String?
-  charterMediaId       String?
-  charterMedia         CharterMedia? @relation(fields: [charterMediaId], references: [id])
+  charter              Charter?        @relation(fields: [charterId], references: [id], onDelete: SetNull)
 
-  @@index([ownerId, processStatus])
+  @@index([captainId, processStatus])
   @@index([createdAt])
+  @@index([charterId])
 }
 
 model PasswordHistory {
@@ -377,9 +373,7 @@ enum CharterStyle {
 
 enum MediaKind {
   CHARTER_PHOTO
-  CHARTER_VIDEO
   CAPTAIN_AVATAR
-  TRIP_MEDIA
 }
 
 enum Role {

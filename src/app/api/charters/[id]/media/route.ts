@@ -73,16 +73,29 @@ export async function PUT(
     )
   );
 
-  // Replace charter media with provided set and sort order
+  // Replace charter media with provided images (videos are managed separately in CaptainVideo table)
   const media = body.media ?? { images: [], videos: [] };
   const images = media.images ?? [];
-  const videos = media.videos ?? [];
+
+  // Reject if videos are in the payload - videos should not be edited through this route
+  if (media.videos && media.videos.length > 0) {
+    return applySecurityHeaders(
+      NextResponse.json(
+        {
+          error: "videos_not_supported",
+          message:
+            "Videos cannot be edited through this route. They are managed separately.",
+        },
+        { status: 400 }
+      )
+    );
+  }
 
   // Get existing storage keys to allow them even if they don't match the new pattern
   const existingStorageKeys = new Set(charter.media.map((m) => m.storageKey));
 
   // Enforce path pattern for new media (reject non-compliant new keys except legacy existing ones)
-  for (const m of [...images, ...videos]) {
+  for (const m of images) {
     const mediaName = m.name;
     if (!mediaName) {
       return applySecurityHeaders(
@@ -110,37 +123,21 @@ export async function PUT(
       throw new Error("Missing required image media fields");
     }
     return {
-      kind: "CHARTER_PHOTO" as const,
       url: m.url,
       storageKey: m.name,
       sortOrder: i,
-      thumbnailUrl: m.thumbnailUrl ?? null,
-      captainId,
-    };
-  });
-  const videoCreates = videos.map((m, i) => {
-    if (!m.url || !m.name || typeof m.durationSeconds !== "number") {
-      throw new Error("Missing required video media fields");
-    }
-    return {
-      kind: "CHARTER_VIDEO" as const,
-      url: m.url,
-      storageKey: m.name,
-      sortOrder: i,
-      thumbnailUrl: m.thumbnailUrl ?? null,
-      durationSeconds: m.durationSeconds,
       captainId,
     };
   });
 
   await prisma.$transaction(async (tx) => {
     await tx.charterMedia.deleteMany({ where: { charterId } });
-    if (imageCreates.length + videoCreates.length) {
+    if (imageCreates.length) {
       await tx.charter.update({
         where: { id: charterId },
         data: {
           media: {
-            create: [...imageCreates, ...videoCreates],
+            create: imageCreates,
           },
         },
       });

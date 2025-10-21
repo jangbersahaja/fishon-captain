@@ -29,10 +29,16 @@ export async function GET(
     where: { id: charterId },
     include: {
       captain: { select: { userId: true } },
-      media: {
-        where: { kind: "CHARTER_VIDEO" },
-        select: { url: true, storageKey: true, sortOrder: true },
-        orderBy: { sortOrder: "asc" },
+      videos: {
+        where: { processStatus: "ready" },
+        select: {
+          id: true,
+          ready720pUrl: true,
+          originalUrl: true,
+          thumbnailUrl: true,
+          blobKey: true,
+        },
+        orderBy: { createdAt: "asc" },
       },
     },
   });
@@ -41,12 +47,12 @@ export async function GET(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // Generate thumbnail URLs only for videos in proper charter path
+  // Generate thumbnail URLs for videos
   const videoThumbnails = (
     await Promise.all(
-      charter.media
+      charter.videos
         .filter((video) => {
-          const videoKey = video.storageKey || "";
+          const videoKey = video.blobKey || "";
           // Accept either legacy charter-scoped or new captain-scoped paths
           return (
             videoKey.startsWith(`charters/${charterId}/media/`) ||
@@ -55,7 +61,18 @@ export async function GET(
           );
         })
         .map(async (video) => {
-          const videoKey = video.storageKey || "";
+          // Use pre-generated thumbnail if available
+          if (video.thumbnailUrl) {
+            return {
+              videoUrl: video.ready720pUrl || video.originalUrl,
+              videoKey: video.blobKey || "",
+              thumbnailUrl: video.thumbnailUrl,
+              thumbnailKey: video.blobKey || "",
+              sortOrder: 0, // CaptainVideo doesn't have sortOrder
+            };
+          }
+          
+          const videoKey = video.blobKey || "";
           // Convert video path to thumbnail path
           const thumbnailKey = videoKey
             .replace("/media/", "/thumbnails/")
@@ -74,11 +91,11 @@ export async function GET(
           }
 
           return {
-            videoUrl: video.url,
+            videoUrl: video.ready720pUrl || video.originalUrl,
             videoKey: videoKey,
             thumbnailUrl,
             thumbnailKey,
-            sortOrder: video.sortOrder,
+            sortOrder: 0,
           };
         })
     )

@@ -4,7 +4,7 @@ import {
   validateDraftForFinalizeFeature,
   type FinalizeMediaPayload,
 } from "@features/charter-onboarding/server/validation";
-import { CharterStyle, MediaKind, Prisma } from "@prisma/client";
+import { CharterStyle, Prisma } from "@prisma/client";
 
 // Backward compatibility named export (keep existing imports working during migration)
 export type { FinalizeMediaPayload };
@@ -49,10 +49,7 @@ export async function createCharterFromDraftData(params: {
     normalizeOrder(media.images, media.imagesOrder),
     media.imagesCoverIndex
   );
-  const videosOrdered = moveIndexToFront(
-    normalizeOrder(media.videos, media.videosOrder),
-    media.videosCoverIndex
-  );
+  // Note: Videos are no longer created in CharterMedia - handled separately by CaptainVideo
 
   // Ensure a captain profile exists (idempotent)
   const captainProfile = await prisma.captainProfile.upsert({
@@ -192,20 +189,11 @@ export async function createCharterFromDraftData(params: {
             })),
         },
         media: {
-          create: [
-            ...imagesOrdered.map((m, i) => ({
-              kind: MediaKind.CHARTER_PHOTO,
-              url: m.url,
-              storageKey: m.name,
-              sortOrder: i,
-            })),
-            ...videosOrdered.map((m, i) => ({
-              kind: MediaKind.CHARTER_VIDEO,
-              url: m.url,
-              storageKey: m.name,
-              sortOrder: i,
-            })),
-          ],
+          create: imagesOrdered.map((m, i) => ({
+            url: m.url,
+            storageKey: m.name,
+            sortOrder: i,
+          })),
         },
       },
       select: { id: true },

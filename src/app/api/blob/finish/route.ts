@@ -36,8 +36,18 @@ export async function POST(req: NextRequest) {
   if (!sessionUserId) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
-  // If client sent an ownerId that doesn't match session, ignore it (do not leak) but do not block legitimate session user.
-  const effectiveOwnerId = sessionUserId;
+  
+  // Get captain profile ID from userId
+  const captainProfile = await prisma.captainProfile.findUnique({
+    where: { userId: sessionUserId },
+    select: { id: true },
+  });
+  
+  if (!captainProfile) {
+    return NextResponse.json({ error: "captain_profile_not_found" }, { status: 404 });
+  }
+  
+  const effectiveCaptainId = captainProfile.id;
 
   const parsed = FinishFormSchema.safeParse({
     videoUrl: typeof videoUrl === "string" ? videoUrl : undefined,
@@ -183,7 +193,7 @@ export async function POST(req: NextRequest) {
   try {
     video = await prisma.captainVideo.create({
       data: {
-        ownerId: effectiveOwnerId,
+        captainId: effectiveCaptainId,
         originalUrl: parsed.data.videoUrl ?? "",
         blobKey: typeof blobKey === "string" ? blobKey : null,
         trimStartSec: parsed.data.startSec,

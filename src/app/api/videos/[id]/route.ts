@@ -11,11 +11,12 @@ export async function GET(
   const { id } = await params;
   const video = await prisma.captainVideo.findUnique({
     where: { id },
+    include: { captain: { select: { userId: true } } },
   });
   if (!video) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const session = await getServerSession(authOptions);
   const sessionUserId = (session?.user as { id?: string })?.id;
-  if (!sessionUserId || sessionUserId !== video.ownerId) {
+  if (!sessionUserId || sessionUserId !== video.captain.userId) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   return NextResponse.json({ video });
@@ -29,12 +30,13 @@ export async function DELETE(
     const { id } = await params;
     const existing = await prisma.captainVideo.findUnique({
       where: { id },
+      include: { captain: { select: { userId: true } } },
     });
     if (!existing)
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     const session = await getServerSession(authOptions);
     const sessionUserId = (session?.user as { id?: string })?.id;
-    if (!sessionUserId || sessionUserId !== existing.ownerId) {
+    if (!sessionUserId || sessionUserId !== existing.captain.userId) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 

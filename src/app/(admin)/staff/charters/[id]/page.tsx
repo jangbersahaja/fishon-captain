@@ -44,7 +44,6 @@ interface CharterWithIncludes extends Charter {
     species: TripSpecies[];
     startTimes: TripStartTime[];
     techniques: TripTechnique[];
-    media: CharterMedia[];
   })[];
   draft: CharterDraft | null;
 }
@@ -111,7 +110,7 @@ export default async function StaffCharterDetailPage({
           species: true,
           startTimes: true,
           techniques: true,
-          media: true,
+          // Note: Trip.media relation removed
         },
       },
       draft: true,
@@ -608,7 +607,7 @@ export default async function StaffCharterDetailPage({
                         )}
                       </a>
                     </td>
-                    <td className="px-2 py-1 text-slate-700">{m.kind}</td>
+                    <td className="px-2 py-1 text-slate-700">Photo</td>
                     <td className="px-2 py-1 text-slate-700">
                       {m.mimeType || "—"}
                     </td>
@@ -761,40 +760,7 @@ export default async function StaffCharterDetailPage({
                     )}
                   </div>
                 </div>
-                {t.media.length ? (
-                  <div className="mt-2 space-y-2">
-                    <div className="text-xs text-slate-500">
-                      Trip media: {t.media.length}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {t.media.map((m) => (
-                        <a
-                          key={m.id}
-                          href={m.url}
-                          target="_blank"
-                          className="group block overflow-hidden rounded-md border border-slate-200"
-                        >
-                          {m.mimeType?.startsWith("image/") ||
-                          isImage(m.url) ? (
-                            <div className="relative h-24 w-full">
-                              <Image
-                                src={m.url}
-                                alt={m.url}
-                                fill
-                                sizes="(max-width: 640px) 50vw, 25vw"
-                                className="object-cover transition group-hover:opacity-90"
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex h-24 w-full items-center justify-center bg-slate-50 text-xs text-slate-600">
-                              {m.mimeType || "file"}
-                            </div>
-                          )}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+                {/* Note: Trip.media relation removed - trips no longer have media */}
               </div>
             ))}
           </div>

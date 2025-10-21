@@ -16,11 +16,10 @@ export async function GET(req: Request) {
   if (!captain) {
     return NextResponse.json({ photos: [] });
   }
-  // Find CharterMedia for this captain
+  // Find CharterMedia (photos only) for this captain
   const photos = await prisma.charterMedia.findMany({
     where: {
       captainId: captain.id,
-      kind: "CHARTER_PHOTO",
     },
     select: {
       id: true,

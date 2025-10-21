@@ -113,32 +113,35 @@ export async function loadVideoData(
     { queued: 0, processing: 0, ready: 0, failed: 0 }
   );
 
-  const ownerIds = Array.from(new Set(rawItems.map((item) => item.ownerId)));
+  // Get captain IDs from raw items (CharterMedia uses captainId directly)
+  const captainIdsFromMedia = Array.from(
+    new Set(rawItems.filter((item) => item.captainId).map((item) => item.captainId as string))
+  );
 
-  const [users, profiles] = await Promise.all([
-    ownerIds.length
-      ? prisma.user.findMany({
-          where: { id: { in: ownerIds } },
+  const [profiles] = await Promise.all([
+    captainIdsFromMedia.length
+      ? prisma.captainProfile.findMany({
+          where: { id: { in: captainIdsFromMedia } },
           select: {
             id: true,
-            email: true,
-            name: true,
-            firstName: true,
-            lastName: true,
+            displayName: true,
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
-        })
-      : Promise.resolve([]),
-    ownerIds.length
-      ? prisma.captainProfile.findMany({
-          where: { userId: { in: ownerIds } },
-          select: { userId: true, displayName: true },
         })
       : Promise.resolve([]),
   ]);
 
-  const userMap = new Map(users.map((user) => [user.id, user]));
   const profileMap = new Map(
-    profiles.map((profile) => [profile.userId, profile.displayName])
+    profiles.map((profile) => [profile.id, profile])
   );
 
   const nowMs = Date.now();
@@ -192,14 +195,14 @@ export async function loadVideoData(
       const val = record[key];
       return (val === undefined ? null : (val as T)) as T | null;
     };
-    const user = userMap.get(item.ownerId);
-    const profileName = profileMap.get(item.ownerId);
+    // For CaptainVideo, get profile info from the captain relation
+    const profile = profileMap.get(item.captainId);
     const displayName =
-      profileName ||
-      user?.name ||
-      [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+      profile?.displayName ||
+      profile?.user?.name ||
+      [profile?.user?.firstName, profile?.user?.lastName].filter(Boolean).join(" ") ||
       "(unknown)";
-    const email = user?.email ?? "-";
+    const email = profile?.user?.email ?? "-";
     const createdAgoMs = nowMs - item.createdAt.getTime();
     const updatedAgoMs = nowMs - item.updatedAt.getTime();
     const stale =
@@ -214,7 +217,7 @@ export async function loadVideoData(
 
     return {
       id: item.id,
-      ownerId: item.ownerId,
+      ownerId: profile?.userId || item.captainId, // Map to userId for backward compat in UI
       originalUrl: item.originalUrl,
       blobKey: item.blobKey,
       thumbnailUrl: item.thumbnailUrl,
@@ -338,7 +341,6 @@ export async function loadStorageData(
           id: true,
           charterId: true,
           captainId: true,
-          kind: true,
           storageKey: true,
           charter: { select: { name: true } },
           captain: {
@@ -371,9 +373,9 @@ export async function loadStorageData(
       prisma.captainVideo.findMany({
         select: {
           id: true,
-          ownerId: true,
+          captainId: true,
+          captain: { select: { userId: true } },
           charterId: true,
-          charterMediaId: true,
           originalUrl: true,
           blobKey: true,
           thumbnailUrl: true,
@@ -394,10 +396,8 @@ export async function loadStorageData(
     let href: string | undefined;
 
     if (media.charterId) {
-      // Finalized: linked to a charter
-      label = `Charter ${media.charter?.name ?? media.charterId} • ${
-        media.kind
-      }`;
+      // Finalized: linked to a charter (all CharterMedia are photos now)
+      label = `Charter ${media.charter?.name ?? media.charterId} • Photo`;
       href = `/staff/charters/${media.charterId}`;
     } else if (media.captainId) {
       // Pending: uploaded but not yet finalized
@@ -406,11 +406,11 @@ export async function loadStorageData(
         media.captain?.user?.name ||
         media.captain?.user?.email?.split("@")[0] ||
         `Captain ${media.captainId.slice(0, 8)}`;
-      label = `Pending ${media.kind} • ${captainLabel}`;
+      label = `Pending Photo • ${captainLabel}`;
       href = undefined; // No charter page yet
     } else {
       // Truly orphaned: no captain or charter
-      label = `Orphan ${media.kind} • ${media.id.slice(0, 8)}`;
+      label = `Orphan Photo • ${media.id.slice(0, 8)}`;
       href = undefined;
     }
 
@@ -518,7 +518,7 @@ export async function loadStorageData(
 
   // Fetch owner profiles for videos
   const videoOwnerIds = Array.from(
-    new Set(captainVideos.map((v) => v.ownerId))
+    new Set(captainVideos.map((v) => v.captain.userId))
   );
   const videoOwnerProfiles = await prisma.captainProfile.findMany({
     where: { userId: { in: videoOwnerIds } },
@@ -547,7 +547,7 @@ export async function loadStorageData(
     const originalKey = extractKeyFromUrl(video.originalUrl);
     const thumbnailKey = extractKeyFromUrl(video.thumbnailUrl);
     const normalizedKey = extractKeyFromUrl(video.ready720pUrl);
-    const owner = videoOwnerMap.get(video.ownerId) || {
+    const owner = videoOwnerMap.get(video.captain.userId) || {
       name: "Unknown",
       avatar: null,
     };
@@ -555,9 +555,7 @@ export async function loadStorageData(
 
     // Determine video status label based on linkage
     let statusSuffix = "";
-    if (video.charterMediaId) {
-      statusSuffix = " • Finalized";
-    } else if (video.charterId) {
+    if (video.charterId) {
       statusSuffix = " • Linked to Charter";
     } else {
       statusSuffix = " • Pending";
@@ -570,7 +568,7 @@ export async function loadStorageData(
 
     const videoMeta = {
       id: video.id,
-      ownerId: video.ownerId,
+      ownerId: video.captain.userId,
       ownerName: owner.name,
       ownerAvatar: owner.avatar,
       status: video.processStatus,

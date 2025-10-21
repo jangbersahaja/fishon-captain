@@ -438,8 +438,7 @@ export async function PATCH(
           tx.push(
             prisma.tripTechnique.deleteMany({ where: { tripId: et.id } })
           );
-          // In case there is trip-scoped media
-          tx.push(prisma.charterMedia.deleteMany({ where: { tripId: et.id } }));
+          // Note: Trip.media relation removed - CharterMedia no longer has tripId
           tx.push(prisma.trip.delete({ where: { id: et.id } }));
         }
       }
@@ -545,14 +544,23 @@ export async function GET(
       },
       media: {
         select: {
-          kind: true,
           url: true,
           sortOrder: true,
           storageKey: true,
-          thumbnailUrl: true,
-          durationSeconds: true,
         },
         orderBy: { sortOrder: "asc" },
+      },
+      videos: {
+        where: { processStatus: "ready" },
+        select: {
+          id: true,
+          ready720pUrl: true,
+          thumbnailUrl: true,
+          processedDurationSec: true,
+          blobKey: true,
+          originalUrl: true,
+        },
+        orderBy: { createdAt: "asc" },
       },
     },
   });
@@ -560,30 +568,18 @@ export async function GET(
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found" }, { status: 404 })
     );
+  
   // IMPORTANT: use storageKey as the stable identifier (was previously sortOrder string which broke deletion)
-  const images = charter.media
-    .filter((m) => m.kind === "CHARTER_PHOTO")
-    .map((m) => ({ name: m.storageKey, url: m.url }));
-  const videos = charter.media
-    .filter((m) => m.kind === "CHARTER_VIDEO")
-    .map((m) => {
-      const meta: {
-        thumbnailUrl?: string | null;
-        durationSeconds?: number | null;
-      } = {
-        // Prisma select guarantees these fields exist (possibly undefined)
-        thumbnailUrl: (m as unknown as { thumbnailUrl?: string | null })
-          .thumbnailUrl,
-        durationSeconds: (m as unknown as { durationSeconds?: number | null })
-          .durationSeconds,
-      };
-      return {
-        name: m.storageKey,
-        url: m.url,
-        thumbnailUrl: meta.thumbnailUrl || undefined,
-        durationSeconds: meta.durationSeconds || undefined,
-      };
-    });
+  const images = charter.media.map((m) => ({
+    name: m.storageKey,
+    url: m.url,
+  }));
+  const videos = charter.videos.map((v) => ({
+    name: v.blobKey || v.id,
+    url: v.ready720pUrl || v.originalUrl,
+    thumbnailUrl: v.thumbnailUrl || undefined,
+    durationSeconds: v.processedDurationSec || undefined,
+  }));
   return applySecurityHeaders(
     NextResponse.json({
       charter,

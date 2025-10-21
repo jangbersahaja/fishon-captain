@@ -9,8 +9,19 @@ export async function GET() {
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  
+  // Get captain profile ID from userId
+  const captainProfile = await prisma.captainProfile.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+  
+  if (!captainProfile) {
+    return NextResponse.json({ videos: [] });
+  }
+  
   const videos = await prisma.captainVideo.findMany({
-    where: { ownerId: userId },
+    where: { captainId: captainProfile.id },
     orderBy: { createdAt: "desc" },
     take: 50,
     select: {

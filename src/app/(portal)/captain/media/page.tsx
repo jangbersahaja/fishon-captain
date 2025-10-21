@@ -15,6 +15,7 @@ async function getMediaContext(userId: string) {
   const profile = await prisma.captainProfile.findUnique({
     where: { userId },
     select: {
+      id: true,
       charters: {
         take: 1,
         orderBy: { createdAt: "desc" },
@@ -22,7 +23,8 @@ async function getMediaContext(userId: string) {
           id: true,
           name: true,
           media: {
-            select: { id: true, url: true, kind: true, sortOrder: true },
+            // All CharterMedia are photos now
+            select: { id: true, url: true, sortOrder: true },
           },
           updatedAt: true,
         },
@@ -31,7 +33,7 @@ async function getMediaContext(userId: string) {
   });
   if (!profile || !profile.charters.length) return null;
   const videos = await prisma.captainVideo.findMany({
-    where: { ownerId: userId },
+    where: { captainId: profile.id },
     orderBy: { createdAt: "desc" },
   });
   return { charter: profile.charters[0], videos };
@@ -53,9 +55,8 @@ export default async function MediaManagementPage({
   const sp = searchParams ? await searchParams : {};
   const page = Number(sp?.page ?? 1) || 1;
   const pageSize = 24;
-  const photosAll = charter.media
-    .filter((m) => m.kind === "CHARTER_PHOTO")
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  // All charter.media are photos now - no need to filter
+  const photosAll = charter.media.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   const videosAll = captainVideos;
   const photos = paginate(photosAll, page, pageSize);
   const videosPage = paginate(videosAll, page, pageSize);

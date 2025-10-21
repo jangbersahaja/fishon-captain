@@ -46,10 +46,8 @@ export async function POST(req: Request) {
       addRandomSuffix: false,
     });
 
-    // CharterMedia creation: always create, use temp charterId for drafts
+    // CharterMedia creation: always create, use null charterId for drafts
     // Get CaptainProfile for captainId
-    const draftIdRaw = form.get("draftId");
-    const draftId = typeof draftIdRaw === "string" ? draftIdRaw : null;
     const profile = await prisma.captainProfile.findUnique({
       where: { userId },
     });
@@ -82,12 +80,11 @@ export async function POST(req: Request) {
         );
       }
     }
-    // Create CharterMedia record
+    // Create CharterMedia record (CharterMedia is now photos only)
     const cm = await prisma.charterMedia.create({
       data: {
         captainId: profile.id,
         charterId: charterIdFinal, // will be null if no real charter
-        kind: "CHARTER_PHOTO",
         url: putRes.url,
         storageKey,
         mimeType: file.type,

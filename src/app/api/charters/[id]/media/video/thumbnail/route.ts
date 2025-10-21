@@ -56,22 +56,23 @@ export async function PATCH(
     );
   }
 
-  const media = await prisma.charterMedia.findFirst({
-    where: { charterId, kind: "CHARTER_VIDEO", storageKey },
-    select: { id: true, thumbnailUrl: true, durationSeconds: true },
+  // Find video in CaptainVideo table
+  const video = await prisma.captainVideo.findFirst({
+    where: { charterId, blobKey: storageKey },
+    select: { id: true, thumbnailUrl: true, processedDurationSec: true },
   });
-  if (!media) {
+  if (!video) {
     return applySecurityHeaders(
-      NextResponse.json({ error: "media_not_found" }, { status: 404 })
+      NextResponse.json({ error: "video_not_found" }, { status: 404 })
     );
   }
 
-  if (media.thumbnailUrl) {
+  if (video.thumbnailUrl) {
     return applySecurityHeaders(
       NextResponse.json({
         ok: true,
-        thumbnailUrl: media.thumbnailUrl,
-        durationSeconds: media.durationSeconds,
+        thumbnailUrl: video.thumbnailUrl,
+        durationSeconds: video.processedDurationSec,
       })
     );
   }
@@ -109,7 +110,7 @@ export async function PATCH(
     : mime.includes("webp")
     ? "webp"
     : "jpg";
-  const key = `captains/${userId}/media/thumb/${media.id}-${crypto
+  const key = `captains/${userId}/media/thumb/${video.id}-${crypto
     .randomUUID()
     .slice(0, 8)}.${ext}`;
 
@@ -129,21 +130,21 @@ export async function PATCH(
     );
   }
 
-  const updated = await prisma.charterMedia.update({
-    where: { id: media.id },
+  const updated = await prisma.captainVideo.update({
+    where: { id: video.id },
     data: {
       thumbnailUrl: blobUrl,
-      durationSeconds:
-        typeof durationSeconds === "number" && !media.durationSeconds
+      processedDurationSec:
+        typeof durationSeconds === "number" && !video.processedDurationSec
           ? durationSeconds
           : undefined,
     },
-    select: { thumbnailUrl: true, durationSeconds: true },
+    select: { thumbnailUrl: true, processedDurationSec: true },
   });
   console.log("[thumb.persist] success", {
     charterId,
-    mediaId: media.id,
-    hasDuration: !!updated.durationSeconds,
+    videoId: video.id,
+    hasDuration: !!updated.processedDurationSec,
     size: buf.length,
   });
 
@@ -151,7 +152,7 @@ export async function PATCH(
     NextResponse.json({
       ok: true,
       thumbnailUrl: updated.thumbnailUrl,
-      durationSeconds: updated.durationSeconds,
+      durationSeconds: updated.processedDurationSec,
     })
   );
 }
