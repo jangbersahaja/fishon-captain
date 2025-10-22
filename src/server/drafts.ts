@@ -44,6 +44,45 @@ export async function createDraft(params: {
     where: { userId: params.userId, status: "DRAFT" },
     select: { id: true },
   });
+  // Upsert CaptainProfile on draft creation (basic step)
+  // Use displayName/phone from initial if available, else fallback
+  const operator =
+    params.initial &&
+    typeof params.initial.operator === "object" &&
+    params.initial.operator !== null
+      ? (params.initial.operator as Record<string, unknown>)
+      : {};
+  const displayName =
+    typeof operator.displayName === "string" ? operator.displayName : "";
+  const phone = typeof operator.phone === "string" ? operator.phone : "";
+  const bio = typeof operator.bio === "string" ? operator.bio : "";
+  const experienceYrs =
+    typeof operator.experienceYears === "number" &&
+    Number.isFinite(operator.experienceYears)
+      ? operator.experienceYears
+      : 0;
+  const avatarUrl =
+    typeof operator.avatarUrl === "string" ? operator.avatarUrl : undefined;
+  await prisma.captainProfile.upsert({
+    where: { userId: params.userId },
+    update: {
+      displayName,
+      phone,
+      bio,
+      experienceYrs,
+      avatarUrl,
+    },
+    create: {
+      userId: params.userId,
+      firstName: displayName.split(" ")[0] || "Captain",
+      lastName: displayName.split(" ").slice(1).join(" ") || "",
+      displayName,
+      phone,
+      bio,
+      experienceYrs,
+      avatarUrl,
+    },
+  });
   if (existing) {
     logger.info("draft_reuse_existing", {
       existingId: existing.id,
