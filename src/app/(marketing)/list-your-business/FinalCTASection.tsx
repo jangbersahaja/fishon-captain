@@ -38,7 +38,7 @@ export default function FinalCTASection() {
           <rect width="100%" height="100%" fill="url(#dots)" />
         </svg>
       </div>
-      <div className="relative flex flex-col items-center justify-between w-full gap-10 px-4 mx-auto text-white max-w-7xl py-25 sm:px-6 lg:px-8 sm:flex-row">
+      <div className="relative flex flex-col items-center justify-between w-full gap-20 px-4 pb-64 mx-auto text-white max-w-7xl pt-44 sm:px-6 lg:px-8 sm:flex-row">
         {/* Stat Showcase Row - tweaked for more contrast and icons */}
         <div className="grid w-full max-w-lg grid-cols-3 gap-4 ">
           <div className="flex flex-col items-center p-4 border shadow-md bg-white/90 rounded-xl border-white/30">

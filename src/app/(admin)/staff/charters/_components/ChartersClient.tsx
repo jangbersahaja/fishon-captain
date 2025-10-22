@@ -1,5 +1,6 @@
 "use client";
 
+import { useDevPanel } from "@/components/DevPanelProvider";
 import { useMemo, useState } from "react";
 import { CharterActions } from "./CharterActions";
 
@@ -26,9 +27,16 @@ export default function ChartersClient({
   isAdmin: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { showDummies } = useDevPanel();
   const bulkFormId = "bulkForm";
 
-  const allIds = useMemo(() => items.map((c) => c.id), [items]);
+  // Filter out dummy charters unless toggled on (from global context)
+  const filteredItems = useMemo(() => {
+    if (showDummies) return items;
+    return items.filter((c) => !c.captain?.displayName?.includes("[Dummy]"));
+  }, [items, showDummies]);
+
+  const allIds = useMemo(() => filteredItems.map((c) => c.id), [filteredItems]);
   const allSelected =
     selected.size > 0 && allIds.every((id) => selected.has(id));
 
@@ -47,8 +55,8 @@ export default function ChartersClient({
   return (
     <div className="space-y-4">
       {/* Bulk actions header */}
-      {items.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+      {filteredItems.length > 0 && (
+        <div className="p-4 bg-white border rounded-xl border-slate-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2">
@@ -57,10 +65,10 @@ export default function ChartersClient({
                   aria-label="Select all charters"
                   checked={allSelected}
                   onChange={toggleAll}
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 />
                 <span className="text-sm font-medium text-slate-700">
-                  Select all ({items.length})
+                  Select all ({filteredItems.length})
                 </span>
               </label>
               {selected.size > 0 && (
@@ -100,30 +108,30 @@ export default function ChartersClient({
       )}
 
       {/* Charter cards */}
-      {items.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600">
+      {filteredItems.length === 0 ? (
+        <div className="p-8 text-center bg-white border rounded-xl border-slate-200 text-slate-600">
           No charters found.
         </div>
       ) : (
-        items.map((c) => (
+        filteredItems.map((c) => (
           <div
             key={c.id}
-            className="rounded-xl border border-slate-200 bg-white p-4 hover:shadow-sm transition-shadow"
+            className="p-4 transition-shadow bg-white border rounded-xl border-slate-200 hover:shadow-sm"
           >
             {/* Header row - Charter info and status */}
             <div className="flex items-start justify-between gap-4 mb-3">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className="flex items-start flex-1 min-w-0 gap-3">
                 <label className="flex items-center pt-1">
                   <input
                     type="checkbox"
                     value={c.id}
                     checked={selected.has(c.id)}
                     onChange={(e) => onRowCheck(c.id, e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                   />
                 </label>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-slate-800 truncate mb-1">
+                  <h3 className="mb-1 font-medium truncate text-slate-800">
                     {c.name}
                   </h3>
                   <div className="text-sm text-slate-600">
@@ -151,20 +159,20 @@ export default function ChartersClient({
                   <span className="font-medium">Captain:</span>{" "}
                   {c.captain?.displayName || c.captain?.userId || "—"}
                 </div>
-                <div className="text-xs text-slate-400 mt-1">
+                <div className="mt-1 text-xs text-slate-400">
                   Updated {new Date(c.updatedAt).toLocaleString()}
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
               <div className="flex flex-col gap-0.5">
-                <div className="text-xs text-slate-400 font-mono">{c.id}</div>
+                <div className="font-mono text-xs text-slate-400">{c.id}</div>
                 {c.draftId && (
                   <a
                     href={`/staff/registrations/${c.draftId}`}
-                    className="text-xs text-blue-600 underline font-mono hover:text-blue-800"
+                    className="font-mono text-xs text-blue-600 underline hover:text-blue-800"
                     title="View registration draft"
                   >
                     draft: {c.draftId}

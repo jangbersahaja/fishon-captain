@@ -1,4 +1,5 @@
 import AuthSessionProvider from "@/components/AuthSessionProvider";
+import { DevPanelProvider } from "@/components/DevPanelProvider";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import OfflineBanner from "@/components/OfflineBanner";
@@ -41,23 +42,29 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" 
-          rel="stylesheet" 
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin=""
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
+          rel="stylesheet"
         />
       </head>
-      <body className="font-sans min-h-screen flex flex-col">
-        <AuthSessionProvider>
-          <ToastProvider>
-            <Navbar />
-            <OfflineBanner />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <SpeedInsights />
-            <Analytics />
-          </ToastProvider>
-        </AuthSessionProvider>
+      <body className="flex flex-col min-h-screen font-sans">
+        <DevPanelProvider>
+          <AuthSessionProvider>
+            <ToastProvider>
+              <Navbar />
+              <OfflineBanner />
+              <main className="flex-1">{children}</main>
+              <Footer />
+              <SpeedInsights />
+              <Analytics />
+            </ToastProvider>
+          </AuthSessionProvider>
+        </DevPanelProvider>
       </body>
     </html>
   );
