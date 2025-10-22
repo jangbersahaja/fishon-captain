@@ -1,5 +1,8 @@
 import { createOTP } from "@/lib/auth/otp";
-import { sendVerificationOTP } from "@/lib/email";
+import {
+  sendCaptainRegistrationNotification,
+  sendVerificationOTP,
+} from "@/lib/email";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
@@ -108,6 +111,11 @@ export async function POST(req: Request) {
       experienceYrs: 0,
       avatarUrl: null,
     },
+  });
+  // Send registration notification to captain (cc admin/ops)
+  await sendCaptainRegistrationNotification({
+    to: user.email,
+    name: displayName,
   });
 
   // Generate and send OTP

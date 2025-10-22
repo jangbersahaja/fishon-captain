@@ -46,20 +46,26 @@ export async function createDraft(params: {
   });
   // Upsert CaptainProfile on draft creation (basic step)
   // Use displayName/phone from initial if available, else fallback
-  const operator: any = params.initial?.operator || {};
+  type OperatorDraft = {
+    displayName?: string;
+    phone?: string;
+    bio?: string;
+    experienceYears?: number;
+    avatarUrl?: string;
+  };
+  const operator: OperatorDraft = params.initial?.operator || {};
   const displayName =
-    typeof operator.displayName === "string" && operator.displayName.trim()
+    operator.displayName && operator.displayName.trim()
       ? operator.displayName
       : "Captain";
-  const phone = typeof operator.phone === "string" ? operator.phone : "";
-  const bio = typeof operator.bio === "string" ? operator.bio : "";
+  const phone = operator.phone || "";
+  const bio = operator.bio || "";
   const experienceYrs =
     typeof operator.experienceYears === "number" &&
     Number.isFinite(operator.experienceYears)
       ? operator.experienceYears
       : 0;
-  const avatarUrl =
-    typeof operator.avatarUrl === "string" ? operator.avatarUrl : undefined;
+  const avatarUrl = operator.avatarUrl || undefined;
   await prisma.captainProfile.upsert({
     where: { userId: params.userId },
     update: {

@@ -1,4 +1,41 @@
 /**
+ * Send registration notification to captain, CC admin and ops
+ */
+export async function sendCaptainRegistrationNotification({
+  to,
+  name,
+}: {
+  to: string;
+  name: string;
+}) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #ec2227 0%, #c81e23 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Fishon Captain!</h1>
+        </div>
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #eee; border-top: none; border-radius: 0 0 10px 10px;">
+          <p style="font-size: 16px; margin-top: 0;">Hi ${name},</p>
+          <p style="font-size: 16px;">Your registration as a Captain on Fishon.my was successful!</p>
+          <p style="font-size: 16px;">We will review your profile and contact you if we need more information.</p>
+          <p style="font-size: 14px; color: #666; margin-top: 20px;">
+            Best regards,<br>
+            The Fishon Team
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+  return sendEmail({
+    to,
+    subject: "Fishon Captain Registration Successful",
+    html,
+    text: `Hi ${name},\n\nYour registration as a Captain on Fishon.my was successful!\n\nWe will review your profile and contact you if we need more information.\n\nBest regards,\nThe Fishon Team`,
+    cc: ["admin@fishon.my", "faisroyz@fishon.my"],
+  });
+}
+/**
  * Email service using Zoho SMTP via nodemailer
  */
 
@@ -38,6 +75,7 @@ export interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  cc?: string | string[];
 }
 
 async function sendEmail(options: EmailOptions): Promise<boolean> {
@@ -56,6 +94,7 @@ async function sendEmail(options: EmailOptions): Promise<boolean> {
       subject: options.subject,
       html: options.html,
       text: options.text,
+      cc: options.cc,
     });
 
     console.info("[email] Email sent successfully via Zoho SMTP", {
