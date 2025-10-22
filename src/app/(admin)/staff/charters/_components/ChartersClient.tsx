@@ -11,6 +11,7 @@ type CharterItem = {
   isActive: boolean;
   updatedAt: string;
   captain?: { displayName?: string | null; userId: string };
+  draftId?: string | null;
 };
 
 export default function ChartersClient({
@@ -157,8 +158,19 @@ export default function ChartersClient({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <div className="text-xs text-slate-400 font-mono">{c.id}</div>
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
+              <div className="flex flex-col gap-0.5">
+                <div className="text-xs text-slate-400 font-mono">{c.id}</div>
+                {c.draftId && (
+                  <a
+                    href={`/staff/registrations/${c.draftId}`}
+                    className="text-xs text-blue-600 underline font-mono hover:text-blue-800"
+                    title="View registration draft"
+                  >
+                    draft: {c.draftId}
+                  </a>
+                )}
+              </div>
               <CharterActions
                 charterId={c.id}
                 charterName={c.name}

@@ -5,9 +5,7 @@ import { counter } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
 import { getRequestId } from "@/lib/requestId";
-import { withTiming } from "@/lib/requestTiming";
 // update-path auditing removed; no longer importing audit helpers here
-import { createCharterFromDraftData } from "@/server/charters";
 import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import { CharterPricingPlan, CharterStyle, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
@@ -50,74 +48,6 @@ export async function POST(
     );
   }
   logger.info("finalize_attempt", { requestId, draftId, userId });
-  const draft = await withTiming("finalize_fetchDraft", () =>
-    prisma.charterDraft.findUnique({ where: { id: draftId } })
-  );
-  if (!draft) {
-    logger.warn("finalize_draft_not_found", { requestId, draftId, userId });
-    counter("finalize.validation_failed").inc();
-    return applySecurityHeaders(
-      NextResponse.json({ error: "not_found", requestId }, { status: 404 })
-    );
-  }
-  // Block finalize when draft already created a charter or is not in DRAFT status
-  if (draft.charterId || draft.status !== "DRAFT") {
-    logger.info("finalize_blocked_update_or_submitted", {
-      requestId,
-      draftId,
-      userId,
-      status: draft.status,
-      charterId: draft.charterId,
-    });
-    counter("finalize.blocked").inc();
-    return applySecurityHeaders(
-      NextResponse.json(
-        {
-          error: "already_submitted",
-          message:
-            "This draft has already created a charter. Use /api/charters/[id] to edit.",
-          requestId,
-        },
-        { status: 409 }
-      )
-    );
-  }
-  let draftData: DraftValues | null = null;
-  try {
-    draftData = draft.data as DraftValues;
-  } catch {
-    draftData = null;
-  }
-  if (!draftData) {
-    logger.warn("finalize_invalid_draft_data", { requestId, draftId, userId });
-    counter("finalize.validation_failed").inc();
-    return applySecurityHeaders(
-      NextResponse.json(
-        { error: "invalid_draft_data", requestId },
-        { status: 400 }
-      )
-    );
-  }
-  const captainProfile = await prisma.captainProfile.findUnique({
-    where: { userId },
-    select: { id: true },
-  });
-  if (!captainProfile) {
-    logger.warn("finalize_missing_captain_profile", {
-      requestId,
-      draftId,
-      userId,
-    });
-    counter("finalize.validation_failed").inc();
-    return applySecurityHeaders(
-      NextResponse.json(
-        { error: "missing_captain_profile", requestId },
-        { status: 400 }
-      )
-    );
-  }
-  // ...existing code...
-
   // Parse media from request body for both create and update paths
   let media: {
     images: Array<{ url: string; name: string }>;
@@ -130,242 +60,251 @@ export async function POST(
     media = null;
   }
 
-  let result:
-    | { ok: true; charterId: string }
-    | { ok: false; errors: Record<string, string> };
-  if (draft.charterId || draft.status !== "DRAFT") {
-    logger.info("finalize_blocked_update_or_submitted", {
-      userId,
-      draftId: draft.id,
-      status: draft.status,
-      charterId: draft.charterId,
-      requestId,
-    });
-    return applySecurityHeaders(
-      NextResponse.json(
-        {
+  // Transactional finalize logic
+  let charterId: string | null = null;
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Fetch draft and captainProfile inside transaction
+      const draft = await tx.charterDraft.findUnique({
+        where: { id: draftId },
+      });
+      if (!draft) {
+        throw { status: 404, error: "not_found" };
+      }
+      if (draft.charterId || draft.status !== "DRAFT") {
+        throw {
+          status: 409,
           error: "already_submitted",
           message:
             "This draft has already created a charter. Use /api/charters/[id] to edit.",
-          requestId,
-        },
-        { status: 409 }
-      )
-    );
-  } else {
-    // Create path still requires new media
-    if (!media || media.images.length === 0) {
-      logger.info("finalize_missing_media_create", {
-        userId,
-        draftId: draft.id,
-        requestId,
+        };
+      }
+      let draftData: DraftValues | null = null;
+      try {
+        draftData = draft.data as DraftValues;
+      } catch {
+        draftData = null;
+      }
+      if (!draftData) {
+        throw { status: 400, error: "invalid_draft_data" };
+      }
+      const captainProfile = await tx.captainProfile.findUnique({
+        where: { userId },
+        select: { id: true },
       });
-      counter("finalize.missing_media").inc();
+      if (!captainProfile) {
+        throw { status: 400, error: "missing_captain_profile" };
+      }
+      if (!media || media.images.length === 0) {
+        throw { status: 400, error: "missing_media" };
+      }
+      // All CharterMedia are photos now - no need to filter by kind
+      const canonicalPhotos = await tx.charterMedia.findMany({
+        where: {
+          captainId: captainProfile.id,
+          OR: [{ charterId: null }, { charterId: { startsWith: "temp-" } }],
+        },
+        orderBy: { createdAt: "asc" },
+      });
+      const canonicalVideos = await tx.captainVideo.findMany({
+        where: {
+          captainId: captainProfile.id,
+          charterId: null,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+      // Build charterCreateData in two steps to avoid Prisma type errors
+      const charterCreateDataBase = {
+        captainId: captainProfile.id,
+        charterType: draftData.charterType ?? "",
+        name: draftData.charterName ?? "",
+        state: draftData.state ?? "",
+        city: draftData.city ?? "",
+        startingPoint: draftData.startingPoint ?? "",
+        postcode: draftData.postcode ?? "",
+        latitude:
+          typeof draftData.latitude === "number" &&
+          Number.isFinite(draftData.latitude)
+            ? new Prisma.Decimal(draftData.latitude)
+            : undefined,
+        longitude:
+          typeof draftData.longitude === "number" &&
+          Number.isFinite(draftData.longitude)
+            ? new Prisma.Decimal(draftData.longitude)
+            : undefined,
+        description: draftData.description ?? "",
+        backupPhone: draftData.operator?.backupPhone ?? null,
+        pricingPlan: CharterPricingPlan.BASIC,
+        amenities: {
+          create: (draftData.amenities ?? []).map((label: string) => ({
+            label,
+          })),
+        },
+        features: {
+          create: (draftData.boat?.features ?? []).map((label: string) => ({
+            label,
+          })),
+        },
+        pickup: draftData.pickup?.available
+          ? {
+              create: {
+                available: true,
+                fee:
+                  typeof draftData.pickup.fee === "number" &&
+                  Number.isFinite(draftData.pickup.fee)
+                    ? new Prisma.Decimal(draftData.pickup.fee)
+                    : undefined,
+                notes: draftData.pickup.notes ?? null,
+                areas: {
+                  create: (draftData.pickup.areas ?? []).map(
+                    (label: string) => ({
+                      label,
+                    })
+                  ),
+                },
+              },
+            }
+          : undefined,
+        policies: {
+          create: {
+            licenseProvided: draftData.policies?.licenseProvided ?? false,
+            catchAndKeep: draftData.policies?.catchAndKeep ?? false,
+            catchAndRelease: draftData.policies?.catchAndRelease ?? false,
+            childFriendly: draftData.policies?.childFriendly ?? false,
+            liveBaitProvided: draftData.policies?.liveBaitProvided ?? false,
+            alcoholNotAllowed: draftData.policies?.alcoholNotAllowed ?? false,
+            smokingNotAllowed: draftData.policies?.smokingNotAllowed ?? false,
+          },
+        },
+        trips: {
+          create: (draftData.trips ?? []).map(
+            (t: DraftValues["trips"][number], index: number) => ({
+              name: t.name ?? `Trip ${index + 1}`,
+              tripType: t.tripType ?? `custom-${index + 1}`,
+              price:
+                typeof t.price === "number" && Number.isFinite(t.price)
+                  ? new Prisma.Decimal(t.price)
+                  : new Prisma.Decimal(0),
+              promoPrice:
+                t.promoPrice !== undefined &&
+                t.promoPrice !== null &&
+                Number.isFinite(t.promoPrice)
+                  ? new Prisma.Decimal(t.promoPrice)
+                  : undefined,
+              durationHours: Number.isFinite(t.durationHours)
+                ? t.durationHours
+                : 0,
+              maxAnglers: Number.isFinite(t.maxAnglers) ? t.maxAnglers : 1,
+              style:
+                t.charterStyle === "private"
+                  ? CharterStyle.PRIVATE
+                  : CharterStyle.SHARED,
+              description: t.description ?? null,
+              startTimes: {
+                create: (t.startTimes ?? []).map((value: string) => ({
+                  value,
+                })),
+              },
+              species: {
+                create: (t.species ?? []).map((value: string) => ({ value })),
+              },
+              techniques: {
+                create: (t.techniques ?? []).map((value: string) => ({
+                  value,
+                })),
+              },
+            })
+          ),
+        },
+      };
+      let charterCreateData = charterCreateDataBase;
+      if (draftData.boat && typeof draftData.boat.name === "string") {
+        // Create Boat first, then use boatId in Charter
+        const boatRecord = await tx.boat.create({
+          data: {
+            name: draftData.boat.name ?? "",
+            type: draftData.boat.type ?? "",
+            lengthFt:
+              typeof draftData.boat.lengthFeet === "number" &&
+              Number.isFinite(draftData.boat.lengthFeet)
+                ? Math.trunc(draftData.boat.lengthFeet)
+                : 0,
+            capacity:
+              typeof draftData.boat.capacity === "number" &&
+              Number.isFinite(draftData.boat.capacity)
+                ? Math.trunc(draftData.boat.capacity)
+                : 1,
+          },
+          select: { id: true },
+        });
+        charterCreateData = Object.assign({}, charterCreateDataBase, {
+          boatId: boatRecord.id,
+        });
+      }
+      const charter = await tx.charter.create({
+        data: charterCreateData,
+        select: { id: true },
+      });
+      charterId = charter.id;
+      await tx.charterMedia.updateMany({
+        where: { id: { in: canonicalPhotos.map((p) => p.id) } },
+        data: { charterId: charter.id },
+      });
+      for (const video of canonicalVideos) {
+        await tx.captainVideo.update({
+          where: { id: video.id },
+          data: { charterId: charter.id },
+        });
+      }
+      await tx.charterDraft.update({
+        where: { id: draft.id },
+        data: { status: "SUBMITTED", charterId: charter.id },
+      });
+    });
+  } catch (err) {
+    if (err && typeof err === "object" && "status" in err) {
+      const e = err as { status: number; error?: string; message?: string };
+      logger.info("finalize_blocked_or_failed", {
+        requestId,
+        draftId,
+        userId,
+        error: e.error,
+        message: e.message,
+      });
+      counter("finalize.blocked").inc();
       return applySecurityHeaders(
         NextResponse.json(
-          { error: "missing_media", requestId },
-          { status: 400 }
+          {
+            error: e.error,
+            message: e.message,
+            requestId,
+          },
+          { status: e.status }
         )
       );
     }
-    result = await withTiming("finalize_transformAndCreate", () =>
-      createCharterFromDraftData({
-        userId,
-        draft: draft.data as unknown as DraftValues,
-        media,
-      })
-    );
-  }
-  if (!result.ok) {
-    logger.info("finalize_validation_failed", {
-      userId,
-      draftId: draft.id,
-      errors: result.errors,
-      requestId,
-    });
-    counter("finalize.validation_failed").inc();
-    return applySecurityHeaders(
-      NextResponse.json({ error: result.errors, requestId }, { status: 400 })
-    );
-  }
-  // All CharterMedia are photos now - no need to filter by kind
-  const canonicalPhotos = await prisma.charterMedia.findMany({
-    where: {
-      captainId: captainProfile.id,
-      OR: [{ charterId: null }, { charterId: { startsWith: "temp-" } }],
-    },
-    orderBy: { createdAt: "asc" },
-  });
-  const canonicalVideos = await prisma.captainVideo.findMany({
-    where: {
-      captainId: captainProfile.id,
-      charterId: null,
-    },
-    orderBy: { createdAt: "asc" },
-  });
-  // Build charterCreateData in two steps to avoid Prisma type errors
-  const charterCreateDataBase = {
-    captainId: captainProfile.id,
-    charterType: draftData.charterType ?? "",
-    name: draftData.charterName ?? "",
-    state: draftData.state ?? "",
-    city: draftData.city ?? "",
-    startingPoint: draftData.startingPoint ?? "",
-    postcode: draftData.postcode ?? "",
-    latitude:
-      typeof draftData.latitude === "number" &&
-      Number.isFinite(draftData.latitude)
-        ? new Prisma.Decimal(draftData.latitude)
-        : undefined,
-    longitude:
-      typeof draftData.longitude === "number" &&
-      Number.isFinite(draftData.longitude)
-        ? new Prisma.Decimal(draftData.longitude)
-        : undefined,
-    description: draftData.description ?? "",
-    backupPhone: draftData.operator?.backupPhone ?? null,
-    pricingPlan: CharterPricingPlan.BASIC,
-    amenities: {
-      create: (draftData.amenities ?? []).map((label: string) => ({ label })),
-    },
-    features: {
-      create: (draftData.boat?.features ?? []).map((label: string) => ({
-        label,
-      })),
-    },
-    pickup: draftData.pickup?.available
-      ? {
-          create: {
-            available: true,
-            fee:
-              typeof draftData.pickup.fee === "number" &&
-              Number.isFinite(draftData.pickup.fee)
-                ? new Prisma.Decimal(draftData.pickup.fee)
-                : undefined,
-            notes: draftData.pickup.notes ?? null,
-            areas: {
-              create: (draftData.pickup.areas ?? []).map((label: string) => ({
-                label,
-              })),
-            },
-          },
-        }
-      : undefined,
-    policies: {
-      create: {
-        licenseProvided: draftData.policies?.licenseProvided ?? false,
-        catchAndKeep: draftData.policies?.catchAndKeep ?? false,
-        catchAndRelease: draftData.policies?.catchAndRelease ?? false,
-        childFriendly: draftData.policies?.childFriendly ?? false,
-        liveBaitProvided: draftData.policies?.liveBaitProvided ?? false,
-        alcoholNotAllowed: draftData.policies?.alcoholNotAllowed ?? false,
-        smokingNotAllowed: draftData.policies?.smokingNotAllowed ?? false,
-      },
-    },
-    trips: {
-      create: (draftData.trips ?? []).map(
-        (t: DraftValues["trips"][number], index: number) => ({
-          name: t.name ?? `Trip ${index + 1}`,
-          tripType: t.tripType ?? `custom-${index + 1}`,
-          price:
-            typeof t.price === "number" && Number.isFinite(t.price)
-              ? new Prisma.Decimal(t.price)
-              : new Prisma.Decimal(0),
-          promoPrice:
-            t.promoPrice !== undefined &&
-            t.promoPrice !== null &&
-            Number.isFinite(t.promoPrice)
-              ? new Prisma.Decimal(t.promoPrice)
-              : undefined,
-          durationHours: Number.isFinite(t.durationHours) ? t.durationHours : 0,
-          maxAnglers: Number.isFinite(t.maxAnglers) ? t.maxAnglers : 1,
-          style:
-            t.charterStyle === "private"
-              ? CharterStyle.PRIVATE
-              : CharterStyle.SHARED,
-          description: t.description ?? null,
-          startTimes: {
-            create: (t.startTimes ?? []).map((value: string) => ({ value })),
-          },
-          species: {
-            create: (t.species ?? []).map((value: string) => ({ value })),
-          },
-          techniques: {
-            create: (t.techniques ?? []).map((value: string) => ({ value })),
-          },
-        })
-      ),
-    },
-  };
-  let charterCreateData = charterCreateDataBase;
-  if (draftData.boat && typeof draftData.boat.name === "string") {
-    // Create Boat first, then use boatId in Charter
-    const boatRecord = await prisma.boat.create({
-      data: {
-        name: draftData.boat.name ?? "",
-        type: draftData.boat.type ?? "",
-        lengthFt:
-          typeof draftData.boat.lengthFeet === "number" &&
-          Number.isFinite(draftData.boat.lengthFeet)
-            ? Math.trunc(draftData.boat.lengthFeet)
-            : 0,
-        capacity:
-          typeof draftData.boat.capacity === "number" &&
-          Number.isFinite(draftData.boat.capacity)
-            ? Math.trunc(draftData.boat.capacity)
-            : 1,
-      },
-      select: { id: true },
-    });
-    charterCreateData = Object.assign({}, charterCreateDataBase, {
-      boatId: boatRecord.id,
-    });
-  }
-  let charter: { id: string };
-  try {
-    charter = await withTiming("finalize_createCharter", () =>
-      prisma.charter.create({
-        data: charterCreateData,
-        select: { id: true },
-      })
-    );
-  } catch (e: unknown) {
-    logger.error("finalize_charter_create_failed", {
+    logger.error("finalize_transaction_failed", {
       requestId,
       draftId,
       userId,
-      error: e instanceof Error ? e.message : String(e),
+      error: err instanceof Error ? err.message : String(err),
     });
     counter("finalize.error").inc();
-    throw e;
+    return applySecurityHeaders(
+      NextResponse.json(
+        { error: "transaction_failed", requestId },
+        { status: 500 }
+      )
+    );
   }
-  await withTiming("finalize_updateCharterMedia", () =>
-    prisma.charterMedia.updateMany({
-      where: { id: { in: canonicalPhotos.map((p) => p.id) } },
-      data: { charterId: charter.id },
-    })
-  );
-  // Link videos directly to charter (no CharterMedia creation for videos)
-  for (const video of canonicalVideos) {
-    await prisma.captainVideo.update({
-      where: { id: video.id },
-      data: { charterId: charter.id },
-    });
-  }
-  await withTiming("finalize_updateDraftStatus", () =>
-    prisma.charterDraft.update({
-      where: { id: draft.id },
-      data: { status: "SUBMITTED", charterId: charter.id },
-    })
-  );
   logger.info("finalize_success", {
     requestId,
     draftId,
     userId,
-    charterId: charter.id,
+    charterId,
   });
   counter("finalize.success").inc();
   return applySecurityHeaders(
-    NextResponse.json({ ok: true, charterId: charter.id, requestId })
+    NextResponse.json({ ok: true, charterId, requestId })
   );
 }

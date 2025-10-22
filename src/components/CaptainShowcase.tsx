@@ -1,21 +1,14 @@
 import { prisma } from "@/lib/prisma";
+
 import { Anchor } from "lucide-react";
 import Link from "next/link";
 import CaptainCard from "./CaptainCard";
 
 export default async function CaptainShowcase() {
-  // Fetch registered captains with their profiles and trip count
+  // Fetch captains and filter for full data, not ADMIN, not [Dummy]
   const captains = await prisma.captainProfile.findMany({
-    take: 8,
+    take: 16,
     orderBy: { createdAt: "desc" },
-    where: {
-      NOT: {
-        displayName: {
-          contains: "Dummy",
-          mode: "insensitive",
-        },
-      },
-    },
     select: {
       id: true,
       userId: true,
@@ -29,6 +22,7 @@ export default async function CaptainShowcase() {
       user: {
         select: {
           id: true,
+          role: true,
         },
       },
       charters: {
@@ -49,12 +43,40 @@ export default async function CaptainShowcase() {
     },
   });
 
-  if (captains.length === 0) {
+  // Filter captains: must have full data, not ADMIN, not [Dummy]
+  const filteredCaptains = captains.filter((captain) => {
+    // Exclude if displayName contains [Dummy]
+    if (
+      typeof captain.displayName === "string" &&
+      captain.displayName.includes("[Dummy]")
+    )
+      return false;
+    // Exclude if user role is ADMIN
+    if (captain.user && captain.user.role === "ADMIN") return false;
+    // Require displayName, avatarUrl, bio
+    if (!captain.displayName || !captain.avatarUrl || !captain.bio)
+      return false;
+    // Require at least one active charter
+    if (
+      !captain.charters ||
+      !Array.isArray(captain.charters) ||
+      captain.charters.length === 0
+    )
+      return false;
+    // Require at least one trip in any charter
+    const hasTrips = captain.charters.some(
+      (charter) => charter.trips && charter.trips.length > 0
+    );
+    if (!hasTrips) return false;
+    return true;
+  });
+
+  if (filteredCaptains.length === 0) {
     return null;
   }
 
   // Transform data for card component
-  const captainCards = captains.map((captain) => {
+  const captainCards = filteredCaptains.map((captain) => {
     // Count all trips across all active charters
     const tripCount = captain.charters.reduce(
       (sum, charter) => sum + charter.trips.length,
@@ -78,7 +100,7 @@ export default async function CaptainShowcase() {
 
   return (
     <section className="bg-gradient-to-b from-white to-neutral-50">
-      <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <div className="w-full px-4 py-20 mx-auto max-w-7xl sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-12 text-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#EC2227]/10 px-4 py-2 mb-4">
@@ -87,10 +109,10 @@ export default async function CaptainShowcase() {
               OUR CAPTAINS
             </span>
           </div>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-neutral-900">
+          <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl lg:text-5xl text-neutral-900">
             Meet Our Trusted Captains
           </h2>
-          <p className="mt-4 text-lg text-neutral-600 max-w-2xl mx-auto">
+          <p className="max-w-2xl mx-auto mt-4 text-lg text-neutral-600">
             Experienced fishing professionals from across Malaysia, ready to
             deliver unforgettable adventures. Join them and grow your business
             on Fishon.my.
@@ -98,18 +120,18 @@ export default async function CaptainShowcase() {
         </div>
 
         {/* Captain Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 justify-center">
+        <div className="grid justify-center gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {captainCards.map((captain) => (
             <CaptainCard key={captain.id} captain={captain} />
           ))}
         </div>
 
         {/* CTA at bottom */}
-        <div className="mt-16 flex flex-col items-center justify-center gap-4 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 mt-16 text-center">
           <h3 className="text-2xl font-bold text-neutral-900">
             Ready to become a captain?
           </h3>
-          <p className="text-neutral-600 max-w-lg">
+          <p className="max-w-lg text-neutral-600">
             Join our growing community of successful fishing charter operators.
             List your trips for free and start receiving bookings today.
           </p>
@@ -117,7 +139,7 @@ export default async function CaptainShowcase() {
             href="/auth?next=/captain/form"
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#EC2227] px-6 py-3 font-semibold text-white hover:bg-[#EC2227]/90 transition-colors shadow-lg hover:shadow-xl"
           >
-            <Anchor className="h-5 w-5" />
+            <Anchor className="w-5 h-5" />
             Get Started Now
           </Link>
         </div>
@@ -125,3 +147,4 @@ export default async function CaptainShowcase() {
     </section>
   );
 }
+// ...existing code...

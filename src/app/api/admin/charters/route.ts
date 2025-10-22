@@ -65,7 +65,10 @@ export async function GET(req: Request) {
     prisma.charter.findMany({
       where,
       orderBy,
-      include: { captain: { select: { displayName: true, userId: true } } },
+      include: {
+        captain: { select: { displayName: true, userId: true } },
+        draft: { select: { id: true } },
+      },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
@@ -81,6 +84,7 @@ export async function GET(req: Request) {
         isActive: c.isActive,
         updatedAt: c.updatedAt.toISOString(),
         captain: c.captain,
+        draftId: c.draft?.id ?? null,
       })),
       page,
       pageSize,
