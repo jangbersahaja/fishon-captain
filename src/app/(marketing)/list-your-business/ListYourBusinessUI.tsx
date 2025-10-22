@@ -3,7 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 
 export function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-3 transition-all hover:border-[#EC2227]/50 hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 bg-white/90 p-2 flex flex-col items-center transition-all hover:border-[#EC2227]/50 hover:shadow-md">
       <div className="absolute inset-0 bg-gradient-to-br from-[#EC2227]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       <div className="relative text-sm font-semibold">{value}</div>
       <div className="relative text-xs text-neutral-500">{label}</div>
@@ -23,9 +23,9 @@ export function Feature({
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 transition-all hover:border-[#EC2227]/50 hover:shadow-lg">
       <div className="absolute inset-0 bg-gradient-to-br from-[#EC2227]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="relative flex gap-3 items-center">
+      <div className="relative flex items-center gap-3">
         <Icon className="text-2xl text-[#ec2227] flex-shrink-0" />
-        <h3 className="font-semibold text-base md:text-lg">{title}</h3>
+        <h3 className="text-base font-semibold md:text-lg">{title}</h3>
       </div>
       <p className="relative mt-1 text-sm md:text-base text-neutral-700">
         {desc}
@@ -49,8 +49,8 @@ export function Step({
       <div className="relative inline-flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full bg-[#EC2227]/10 text-sm md:text-base font-semibold text-[#EC2227]">
         {n}
       </div>
-      <div className="relative mt-2 flex items-center gap-2">
-        <h3 className="font-semibold text-base md:text-lg">{title}</h3>
+      <div className="relative flex items-center gap-2 mt-2">
+        <h3 className="text-base font-semibold md:text-lg">{title}</h3>
       </div>
       <p className="relative mt-1 text-sm md:text-base text-neutral-700">
         {desc}
@@ -84,16 +84,16 @@ export function Plan({
       ].join(" ")}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[#EC2227]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="relative flex justify-between items-end">
+      <div className="relative flex items-end justify-between">
         {disabled ? (
-          <h1 className="text-lg md:text-xl font-bold">COMING SOON</h1>
+          <h1 className="text-lg font-bold md:text-xl">COMING SOON</h1>
         ) : (
-          <h3 className="text-lg md:text-xl font-semibold">{name}</h3>
+          <h3 className="text-lg font-semibold md:text-xl">{name}</h3>
         )}
         {!disabled && (
           <div className="flex flex-col items-center">
             <div
-              className="text-2xl md:text-3xl font-extrabold"
+              className="text-2xl font-extrabold md:text-3xl"
               style={{ color: highlight ? BRAND : "inherit" }}
             >
               {percent}
@@ -134,7 +134,7 @@ export function Award({
           : "border-neutral-200 bg-white hover:border-[#EC2227]/50 hover:shadow-lg",
       ].join(" ")}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute inset-0 transition-opacity opacity-0 bg-gradient-to-br from-white/10 to-transparent group-hover:opacity-100" />
       <div className="relative flex items-center gap-2">
         <Icon
           className={

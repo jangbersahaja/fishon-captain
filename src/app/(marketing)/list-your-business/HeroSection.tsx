@@ -1,6 +1,7 @@
 import HeroWallpaper from "@/components/HeroWallpaper";
 import { FilePenLine, MessageCircle } from "lucide-react";
 import Link from "next/link";
+import { Stat } from "./ListYourBusinessUI";
 
 const BRAND = "#EC2227";
 const WHATSAPP_NUMBER = "60165304304"; // TODO: replace with production number
@@ -40,11 +41,18 @@ export default function HeroSection() {
               Chat on WhatsApp
             </Link>
           </div>
+          {/* Stat Showcase Row (restored) */}
+          <div className="hidden w-full max-w-lg grid-cols-3 gap-4 mt-8 sm:grid ">
+            <Stat value="Malaysia‑first" label="Audience" />
+            <Stat value="RM0" label="Free to list" />
+            <Stat value="Verified" label="Trust & safety" />
+            {/* Add more Stat cards here as needed */}
+          </div>
         </div>
       </div>
       {/* Bottom: HeroWallpaper image */}
-      <div className="relative flex-1 w-full -mt-20 sm:-mt-50">
-        <div className="absolute top-0 z-10 w-full h-1/4 bg-gradient-to-b from-white to-white-10"></div>
+      <div className="relative flex-1 w-full -mt-20 sm:-mt-40">
+        <div className="absolute top-0 z-10 w-full h-2/7 bg-gradient-to-b from-white to-white-10"></div>
         <HeroWallpaper className="h-full min-h-[240px] md:min-h-[320px] lg:min-h-[400px]" />
       </div>
     </section>
