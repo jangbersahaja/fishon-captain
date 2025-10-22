@@ -4,11 +4,11 @@ import { Feature } from "./ListYourBusinessUI";
 export default function ValuePropsSection() {
   return (
     <section className="bg-[#ec2227]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-15 sm:px-6 lg:px-8 ">
-        <h2 className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight text-white">
+      <div className="w-full px-4 mx-auto max-w-7xl py-15 sm:px-6 lg:px-8 ">
+        <h2 className="text-2xl font-extrabold tracking-tight text-center text-white md:text-3xl lg:text-4xl">
           What you get
         </h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 mt-6 sm:grid-cols-2 lg:grid-cols-4">
           <Feature
             Icon={UserRoundCheck}
             title="Malaysia‑first audience"

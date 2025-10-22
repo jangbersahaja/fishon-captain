@@ -2,11 +2,11 @@ import { Step } from "./ListYourBusinessUI";
 
 export default function HowItWorksSection() {
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 pt-15 pb-5 sm:px-6 lg:px-8">
-      <h2 className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight">
+    <section className="w-full px-4 pb-5 mx-auto max-w-7xl pt-15 sm:px-6 lg:px-8">
+      <h2 className="text-2xl font-extrabold tracking-tight text-center md:text-3xl lg:text-4xl">
         How it works
       </h2>
-      <ol className="mt-6 grid gap-4 sm:grid-cols-3">
+      <ol className="grid gap-4 mt-6 sm:grid-cols-3">
         <Step
           n={1}
           title="Tell us about your charter"

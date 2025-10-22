@@ -5,11 +5,11 @@ import { Award } from "./ListYourBusinessUI";
 export default function SafetyAwardsSection() {
   return (
     <section className="bg-gradient-to-b from-[#EC2227] to-[#C41A1F]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-12 md:py-16 lg:py-20 text-white sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row gap-8 md:gap-10">
+      <div className="w-full px-4 py-12 mx-auto text-white max-w-7xl md:py-16 lg:py-20 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8 md:flex-row md:gap-10">
           {/* Left: Badges & Recognition */}
           <div className="flex-1">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight mb-8">
+            <h2 className="mb-8 text-2xl font-extrabold tracking-tight text-right md:text-3xl lg:text-4xl">
               Trusted & Verified
             </h2>
             <div className="grid gap-4 md:grid-cols-1">
@@ -34,21 +34,21 @@ export default function SafetyAwardsSection() {
             </div>
           </div>
           {/* Divider */}
-          <div className="my-6 md:my-0 mx-0 border-t md:border-t-0 md:border-l border-white/30" />
+          <div className="mx-0 my-6 border-t md:my-0 md:border-t-0 md:border-l border-white/30" />
 
           {/* Right: Safety & Legal Compliance */}
           <div className="flex-1">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight mb-4">
+            <h2 className="mb-4 text-2xl font-extrabold tracking-tight md:text-3xl lg:text-4xl">
               Safety & Compliance
             </h2>
-            <p className="mb-6 text-white/95 text-base leading-relaxed">
+            <p className="mb-6 text-base leading-relaxed text-white/95">
               Your safety and data protection are paramount. Fishon.my operates
               under strict compliance standards.
             </p>
 
             {/* Verification Checklist */}
             <div className="mb-8">
-              <h3 className="text-sm font-semibold uppercase tracking-wide mb-4 text-white/80">
+              <h3 className="mb-4 text-sm font-semibold tracking-wide uppercase text-white/80">
                 Captain Verification
               </h3>
               <ul className="space-y-3 text-sm">
@@ -80,20 +80,20 @@ export default function SafetyAwardsSection() {
             </div>
 
             {/* Legal & Data Protection */}
-            <div className="space-y-3 text-sm border-t border-white/20 pt-6">
+            <div className="pt-6 space-y-3 text-sm border-t border-white/20">
               <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
+                <Lock className="w-4 h-4" />
                 <span className="font-medium">
                   PDPA Compliant (Malaysian Data Protection Act)
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
+                <Users className="w-4 h-4" />
                 <span className="font-medium">
                   Made by Malaysians, for Malaysian anglers and captains.
                 </span>
               </div>
-              <div className="text-xs text-white/70 mt-4">
+              <div className="mt-4 text-xs text-white/70">
                 <p className="mb-2">Learn more:</p>
                 <div className="space-y-1">
                   <Link href="/terms" className="block hover:underline">

@@ -33,26 +33,26 @@ const jsonLd = {
 
 export default function FAQSection() {
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-12 md:py-16 lg:py-20 sm:px-6 lg:px-8">
-      <h2 className="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight">
+    <section className="w-full px-4 py-12 mx-auto max-w-7xl md:py-16 lg:py-20 sm:px-6 lg:px-8">
+      <h2 className="text-2xl font-extrabold tracking-tight text-center md:text-3xl lg:text-4xl">
         FAQs
       </h2>
-      <div className="mt-6 divide-y rounded-2xl border border-neutral-200">
+      <div className="mt-6 border divide-y rounded-2xl border-neutral-200">
         {faq.map((f) => (
           <details
             key={f.q}
-            className="group p-4 transition-colors hover:bg-neutral-50"
+            className="p-4 transition-colors group hover:bg-neutral-50"
           >
-            <summary className="flex cursor-pointer list-none items-center justify-between text-base md:text-lg font-medium">
+            <summary className="flex items-center justify-between text-base font-medium list-none cursor-pointer md:text-lg">
               <span>{f.q}</span>
               <span
                 aria-hidden
-                className="text-neutral-400 transition-transform group-open:rotate-90"
+                className="transition-transform text-neutral-400 group-open:rotate-90"
               >
                 ›
               </span>
             </summary>
-            <p className="mt-3 text-sm md:text-base text-neutral-700 leading-relaxed">
+            <p className="mt-3 text-sm leading-relaxed md:text-base text-neutral-700">
               {f.a}
             </p>
           </details>

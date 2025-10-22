@@ -63,7 +63,7 @@ export default function FinalCTASection() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-start gap-6 sm:items-center sm:justify-between">
+        <div className="flex flex-col items-center gap-6 sm:justify-between">
           <div>
             <h3 className="text-2xl font-semibold md:text-3xl drop-shadow-lg">
               Ready to reach more anglers?
@@ -72,7 +72,7 @@ export default function FinalCTASection() {
               Create your listing in minutes. It’s free to start.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col items-center gap-3 sm:flex-row">
             <Link
               href="/auth?next=/captain/form"
               className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-[#EC2227] shadow-lg hover:bg-white/90 text-base transition"

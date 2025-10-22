@@ -120,7 +120,7 @@ export default async function CaptainShowcase() {
         </div>
 
         {/* Captain Grid */}
-        <div className="grid justify-center gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid justify-center gap-6 px-15 sm:px-0 sm:grid-cols-2 lg:grid-cols-4">
           {captainCards.map((captain) => (
             <CaptainCard key={captain.id} captain={captain} />
           ))}
