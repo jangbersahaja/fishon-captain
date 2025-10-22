@@ -46,14 +46,11 @@ export async function createDraft(params: {
   });
   // Upsert CaptainProfile on draft creation (basic step)
   // Use displayName/phone from initial if available, else fallback
-  const operator =
-    params.initial &&
-    typeof params.initial.operator === "object" &&
-    params.initial.operator !== null
-      ? (params.initial.operator as Record<string, unknown>)
-      : {};
+  const operator: any = params.initial?.operator || {};
   const displayName =
-    typeof operator.displayName === "string" ? operator.displayName : "";
+    typeof operator.displayName === "string" && operator.displayName.trim()
+      ? operator.displayName
+      : "Captain";
   const phone = typeof operator.phone === "string" ? operator.phone : "";
   const bio = typeof operator.bio === "string" ? operator.bio : "";
   const experienceYrs =
