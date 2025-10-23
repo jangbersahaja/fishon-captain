@@ -1,0 +1,60 @@
+// This is a separate Prisma schema for accessing fishon-market database
+// It only includes the models we need to read from Market DB
+// Used by fishon-captain app for read-only access to bookings
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client-market"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("MARKET_DATABASE_URL")
+}
+
+// Booking model (read-only from Market DB)
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  PAID
+  CANCELLED
+}
+
+model Booking {
+  id                 String        @id @default(cuid())
+  userId             String
+  captainCharterId   String
+  charterName        String
+  location           String
+  tripName           String
+  unitPrice          Int
+  startTime          String?
+  date               DateTime
+  days               Int
+  adults             Int
+  children           Int
+  totalPrice         Int
+  status             BookingStatus @default(PENDING)
+  expiresAt          DateTime
+  captainDecisionAt  DateTime?
+  note               String?
+  rejectionReason    String?
+  cancellationReason String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([captainCharterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MarketUser {
+  id           String @id @default(cuid())
+  email        String @unique
+  displayName  String?
+
+  @@map("User")
+}
