@@ -21,7 +21,11 @@ export async function middleware(req: NextRequest) {
   }
 
   // Attempt to read token (works with JWT strategy). If missing, redirect.
-  const token = await getToken({ req, secret: env.NEXTAUTH_SECRET });
+  const token = await getToken({
+    req,
+    secret: env.NEXTAUTH_SECRET,
+    cookieName: "next-auth.session-token.captain",
+  });
   if (!token) {
     const loginUrl = new URL("/auth", req.url);
     loginUrl.searchParams.set("mode", "signin");

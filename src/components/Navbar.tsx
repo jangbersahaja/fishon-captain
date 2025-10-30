@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { NotificationBell } from "@/components/notifications";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { zIndexClasses } from "@/config/zIndex";
 
@@ -345,11 +346,14 @@ export default function Navbar() {
               )}
             </div>
             {authenticated && (
-              <Tooltip content={displayName}>
-                <div className="shrink-0">
-                  <ProfileAvatar />
-                </div>
-              </Tooltip>
+              <>
+                <NotificationBell />
+                <Tooltip content={displayName}>
+                  <div className="shrink-0">
+                    <ProfileAvatar />
+                  </div>
+                </Tooltip>
+              </>
             )}
           </div>
         </div>
@@ -358,11 +362,14 @@ export default function Navbar() {
           {logo}
           <div className="flex items-center gap-3">
             {authenticated && (
-              <Tooltip content={displayName}>
-                <div>
-                  <ProfileAvatar />
-                </div>
-              </Tooltip>
+              <>
+                <NotificationBell />
+                <Tooltip content={displayName}>
+                  <div>
+                    <ProfileAvatar />
+                  </div>
+                </Tooltip>
+              </>
             )}
             <div className="relative">
               <button
@@ -397,8 +404,8 @@ export default function Navbar() {
                           {loadingAccount
                             ? "Updating..."
                             : authenticated
-                            ? "Signed in"
-                            : "Guest access"}
+                              ? "Signed in"
+                              : "Guest access"}
                         </div>
                       </div>
                     </div>

@@ -15,7 +15,7 @@ authenticator.options = {
   window: 1, // Allow 1 step before/after for clock drift
 };
 
-const APP_NAME = "FishOn Captain";
+const APP_NAME = "Fishon Captain";
 
 /**
  * Generate a new TOTP secret

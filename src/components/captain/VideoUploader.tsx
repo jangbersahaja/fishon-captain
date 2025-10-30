@@ -17,7 +17,6 @@ import { VideoTrimModal } from "./VideoTrimModal";
  *
  * Migration guide: /docs/VIDEO_UPLOAD_MIGRATION.md
  */
-// TODO: Integrate mp4box.js for keyframe aware trimming.
 
 interface VideoUploaderProps {
   ownerId: string;

@@ -102,12 +102,12 @@ export function BookingActions({ bookingId }: Props) {
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center flex-1 w-full gap-2">
         <Button
           size="sm"
           onClick={() => setShowApproveModal(true)}
           disabled={isPending}
-          className="bg-green-600 hover:bg-green-700 text-white"
+          className="flex-1 text-white bg-green-600 hover:bg-green-700"
         >
           <CheckCircle2 className="h-4 w-4 mr-1.5" />
           Approve
@@ -117,6 +117,7 @@ export function BookingActions({ bookingId }: Props) {
           variant="destructive"
           onClick={() => setShowRejectModal(true)}
           disabled={isPending}
+          className="flex-1"
         >
           <XCircle className="h-4 w-4 mr-1.5" />
           Reject
@@ -128,7 +129,7 @@ export function BookingActions({ bookingId }: Props) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-700">
-              <CheckCircle2 className="h-5 w-5" />
+              <CheckCircle2 className="w-5 h-5" />
               Approve Booking
             </DialogTitle>
             <DialogDescription>
@@ -138,7 +139,7 @@ export function BookingActions({ bookingId }: Props) {
           </DialogHeader>
 
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            <div className="p-3 text-sm text-red-800 border border-red-200 rounded-lg bg-red-50">
               {error}
             </div>
           )}
@@ -159,16 +160,16 @@ export function BookingActions({ bookingId }: Props) {
               type="button"
               onClick={handleApprove}
               disabled={isPending}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="text-white bg-green-600 hover:bg-green-700"
             >
               {isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Approving...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
                   Confirm Approval
                 </>
               )}
@@ -182,7 +183,7 @@ export function BookingActions({ bookingId }: Props) {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-700">
-              <XCircle className="h-5 w-5" />
+              <XCircle className="w-5 h-5" />
               Reject Booking
             </DialogTitle>
             <DialogDescription>
@@ -191,7 +192,7 @@ export function BookingActions({ bookingId }: Props) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="py-4 space-y-4">
             <RadioGroup
               value={selectedReason}
               onValueChange={setSelectedReason}
@@ -206,7 +207,7 @@ export function BookingActions({ bookingId }: Props) {
                   />
                   <Label
                     htmlFor={reason}
-                    className="font-normal cursor-pointer leading-snug"
+                    className="font-normal leading-snug cursor-pointer"
                   >
                     {reason}
                   </Label>
@@ -232,7 +233,7 @@ export function BookingActions({ bookingId }: Props) {
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            <div className="p-3 text-sm text-red-800 border border-red-200 rounded-lg bg-red-50">
               {error}
             </div>
           )}
@@ -259,12 +260,12 @@ export function BookingActions({ bookingId }: Props) {
             >
               {isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Rejecting...
                 </>
               ) : (
                 <>
-                  <XCircle className="h-4 w-4 mr-2" />
+                  <XCircle className="w-4 h-4 mr-2" />
                   Confirm Rejection
                 </>
               )}

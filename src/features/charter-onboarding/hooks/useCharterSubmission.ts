@@ -9,7 +9,6 @@
  *  - Provide triggerSubmit (invoked by confirmation dialog)
  *  - Maintain submit state & saving flags
  */
-import { useToasts } from "@/components/toast/ToastContext";
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import {
   finalizeDraftSubmission,
@@ -23,6 +22,7 @@ import {
   type FormEventHandler,
 } from "react";
 import type { SubmitHandler, UseFormReturn } from "react-hook-form";
+import { toast } from "sonner";
 import { CharterMessages } from "../errors";
 
 export interface UseCharterSubmissionArgs {
@@ -91,11 +91,6 @@ export function useCharterSubmission({
   const [finalizing, setFinalizing] = useState(false);
   // Ref guard to block rapid double finalization clicks before state updates propagate.
   const finalizingRef = useRef(false);
-  const {
-    push: pushToast,
-    dismiss: dismissToast,
-    pushEphemeralError,
-  } = useToasts();
 
   // Live charter edit PATCH
   const saveEditChanges: () => Promise<void> = useCallback(async () => {
@@ -108,7 +103,7 @@ export function useCharterSubmission({
           "[submission] saveEditChanges aborted: no charter id available"
         );
       }
-      pushEphemeralError(CharterMessages.edit.notReady, { id: "charter-edit" });
+      toast.error(CharterMessages.edit.notReady, { id: "charter-edit" });
       return;
     }
     // Guard against overwriting live charter with mostly default values if hydration hasn't populated key fields yet.
@@ -123,18 +118,15 @@ export function useCharterSubmission({
           "[submission] fallback id present but form appears unhydrated; blocking save to avoid clobber"
         );
       }
-      pushEphemeralError(CharterMessages.edit.formUnhydrated, {
+      toast.error(CharterMessages.edit.formUnhydrated, {
         id: "charter-edit",
       });
       return;
     }
     setSavingEdit(true);
     try {
-      pushToast({
+      toast.loading(CharterMessages.edit.saving, {
         id: "charter-edit",
-        type: "progress",
-        message: CharterMessages.edit.saving,
-        replace: true,
       });
       const { ok } = await patchEditCharter({
         charterId: effectiveId,
@@ -143,28 +135,19 @@ export function useCharterSubmission({
         setLastSavedAt: (iso) => setLastSavedAt(iso),
       });
       if (ok) {
-        pushToast({
+        toast.success(CharterMessages.edit.saveSuccess, {
           id: "charter-edit",
-          type: "success",
-          message: CharterMessages.edit.saveSuccess,
-          replace: true,
-          autoDismiss: 2200,
+          duration: 2200,
         });
         // Maintain legacy behavior for tests & UI surfaces expecting submitState to reflect edit success
         setSubmitState({ type: "success", message: "Saved changes" });
       } else {
-        pushToast({
+        toast.error(CharterMessages.edit.saveFailed, {
           id: "charter-edit",
-          type: "error",
-          message: CharterMessages.edit.saveFailed,
-          replace: true,
-          actions: [
-            {
-              label: CharterMessages.edit.saveRetry,
-              onClick: () => void saveEditChanges(),
-            },
-          ],
-          persist: false,
+          action: {
+            label: CharterMessages.edit.saveRetry,
+            onClick: () => void saveEditChanges(),
+          },
         });
         setSubmitState({
           type: "error",
@@ -172,18 +155,12 @@ export function useCharterSubmission({
         });
       }
     } catch {
-      pushToast({
+      toast.error(CharterMessages.edit.saveFailed, {
         id: "charter-edit",
-        type: "error",
-        message: CharterMessages.edit.saveFailed,
-        replace: true,
-        actions: [
-          {
-            label: CharterMessages.edit.saveRetry,
-            onClick: () => void saveEditChanges(),
-          },
-        ],
-        persist: false,
+        action: {
+          label: CharterMessages.edit.saveRetry,
+          onClick: () => void saveEditChanges(),
+        },
       });
       setSubmitState({
         type: "error",
@@ -199,8 +176,6 @@ export function useCharterSubmission({
     adminUserId,
     form,
     setLastSavedAt,
-    pushToast,
-    pushEphemeralError,
   ]);
 
   // Finalize or edit save
@@ -222,11 +197,8 @@ export function useCharterSubmission({
       try {
         setFinalizing(true);
         finalizingRef.current = true;
-        pushToast({
+        toast.loading(CharterMessages.finalize.submitting, {
           id: "charter-finalize",
-          type: "progress",
-          message: CharterMessages.finalize.submitting,
-          replace: true,
         });
         const result = await finalizeDraftSubmission({
           values,
@@ -247,18 +219,16 @@ export function useCharterSubmission({
           existingVideos,
         });
         // Explicitly remove progress toast to ensure animation resets for terminal state.
-        dismissToast("charter-finalize");
+        toast.dismiss("charter-finalize");
         if (result.ok) {
-          pushToast({
+          toast.success(CharterMessages.finalize.success, {
             id: "charter-finalize-success",
-            type: "success",
-            message: CharterMessages.finalize.success,
-            autoDismiss: 3000,
+            duration: 3000,
           });
         } else {
-          pushEphemeralError(CharterMessages.finalize.genericFail, {
+          toast.error(CharterMessages.finalize.genericFail, {
             id: "charter-finalize-error",
-            autoDismiss: 5000,
+            duration: 5000,
           });
         }
       } catch (e) {
@@ -267,8 +237,8 @@ export function useCharterSubmission({
           message: e instanceof Error ? e.message : "Something went wrong",
         });
         // Remove progress (if still present) then show error.
-        dismissToast("charter-finalize");
-        pushEphemeralError(
+        toast.dismiss("charter-finalize");
+        toast.error(
           e instanceof Error
             ? e.message
             : CharterMessages.finalize.networkError,
@@ -290,8 +260,6 @@ export function useCharterSubmission({
       isEditing,
       serverDraftId,
       saveEditChanges,
-      pushToast,
-      dismissToast,
       currentCharterId,
       serverVersion,
       saveServerDraftSnapshot,
@@ -305,7 +273,6 @@ export function useCharterSubmission({
       existingImages,
       existingVideos,
       finalizingRef,
-      pushEphemeralError,
     ]
   );
 

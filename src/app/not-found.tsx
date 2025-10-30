@@ -33,7 +33,7 @@ export default function NotFound() {
         </div>
       </div>
       <footer className="mt-10 text-center text-[11px] text-slate-400">
-        &copy; {new Date().getFullYear()} FishOn. All rights reserved.
+        &copy; {new Date().getFullYear()} Fishon. All rights reserved.
       </footer>
     </div>
   );

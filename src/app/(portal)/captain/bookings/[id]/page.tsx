@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { getServerSession } from "next-auth";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { BookingActions } from "../BookingActions";
@@ -79,26 +80,36 @@ export default async function BookingDetailsPage({
   });
   const charterIds = charters.map((c) => c.id);
 
-  // Fetch booking from market DB
-  const { prismaMarket } = await import("@/lib/prisma-market");
-  const booking = await prismaMarket.booking.findUnique({
-    where: { id },
-  });
+  // Fetch enriched booking from market DB
+  const { getBooking } = await import("@/lib/booking-service");
+  const booking = await getBooking(id);
 
   if (!booking) {
     notFound();
   }
 
   // Verify this booking belongs to one of captain's charters
-  if (!charterIds.includes(booking.captainCharterId)) {
+  if (!charterIds.includes(booking.charterId)) {
     notFound();
   }
 
-  // Fetch angler info
-  const angler = await prismaMarket.marketUser.findUnique({
-    where: { id: booking.userId },
-    select: { id: true, displayName: true, email: true },
-  });
+  // Fetch angler info (only for authenticated bookings)
+  const { prismaMarket } = await import("@/lib/prisma-market");
+  const angler = booking.userId
+    ? await prismaMarket.marketUser.findUnique({
+        where: { id: booking.userId },
+        select: { id: true, name: true, email: true, image: true },
+      })
+    : null;
+
+  // Get customer info - either from user account or guest details
+  const customerName =
+    angler?.name ||
+    (booking.guestFirstName && booking.guestLastName
+      ? `${booking.guestFirstName} ${booking.guestLastName}`
+      : null);
+  const customerEmail = angler?.email || booking.guestEmail || null;
+  const isGuest = !booking.userId;
 
   const StatusIcon = getStatusIcon(booking.status);
 
@@ -107,10 +118,10 @@ export default async function BookingDetailsPage({
       {/* Back Link */}
       <Link
         href="/captain/bookings"
-        className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+        className="inline-flex items-center gap-2 text-sm transition-colors text-slate-600 hover:text-slate-900"
         prefetch={false}
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="w-4 h-4" />
         Back to Bookings
       </Link>
 
@@ -135,12 +146,12 @@ export default async function BookingDetailsPage({
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left Column - Booking Details */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Status Timeline */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">
+          <div className="p-6 bg-white border rounded-2xl border-slate-200">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">
               Booking Status
             </h2>
             <div className="flex items-center gap-3">
@@ -190,8 +201,8 @@ export default async function BookingDetailsPage({
           </div>
 
           {/* Trip Details */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">
+          <div className="p-6 bg-white border rounded-2xl border-slate-200">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">
               Trip Details
             </h2>
             <div className="space-y-4">
@@ -265,8 +276,8 @@ export default async function BookingDetailsPage({
 
           {/* Customer Note */}
           {booking.note && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
-              <h2 className="text-base font-semibold text-blue-900 mb-2">
+            <div className="p-6 border border-blue-200 rounded-2xl bg-blue-50">
+              <h2 className="mb-2 text-base font-semibold text-blue-900">
                 Customer Note
               </h2>
               <p className="text-sm text-blue-800">{booking.note}</p>
@@ -275,8 +286,8 @@ export default async function BookingDetailsPage({
 
           {/* Rejection Reason */}
           {booking.status === "REJECTED" && booking.rejectionReason && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-              <h2 className="text-base font-semibold text-red-900 mb-2">
+            <div className="p-6 border border-red-200 rounded-2xl bg-red-50">
+              <h2 className="mb-2 text-base font-semibold text-red-900">
                 Rejection Reason
               </h2>
               <p className="text-sm text-red-800">{booking.rejectionReason}</p>
@@ -285,8 +296,8 @@ export default async function BookingDetailsPage({
 
           {/* Cancellation Reason */}
           {booking.status === "CANCELLED" && booking.cancellationReason && (
-            <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6">
-              <h2 className="text-base font-semibold text-orange-900 mb-2">
+            <div className="p-6 border border-orange-200 rounded-2xl bg-orange-50">
+              <h2 className="mb-2 text-base font-semibold text-orange-900">
                 Cancellation Reason
               </h2>
               <p className="text-sm text-orange-800">
@@ -299,8 +310,8 @@ export default async function BookingDetailsPage({
         {/* Right Column - Pricing & Customer Info */}
         <div className="space-y-6">
           {/* Pricing Breakdown */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">
+          <div className="p-6 bg-white border rounded-2xl border-slate-200">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">
               Pricing
             </h2>
             <div className="space-y-3">
@@ -319,7 +330,7 @@ export default async function BookingDetailsPage({
                     Total
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <DollarSign className="h-5 w-5 text-slate-400" />
+                    <DollarSign className="w-5 h-5 text-slate-400" />
                     <span className="text-xl font-bold text-slate-900">
                       RM {booking.totalPrice.toLocaleString()}
                     </span>
@@ -330,41 +341,74 @@ export default async function BookingDetailsPage({
           </div>
 
           {/* Customer Information */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">
+          <div className="p-6 bg-white border rounded-2xl border-slate-200">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">
               Customer Information
             </h2>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700">Name</p>
-                <p className="text-sm text-slate-900">
-                  {angler?.displayName || "Not available"}
-                </p>
+            <div className="space-y-4">
+              {/* Avatar and Name */}
+              <div className="flex items-center gap-3">
+                <Image
+                  src={angler?.image || "/angler.svg"}
+                  alt={customerName || "Customer"}
+                  width={54}
+                  height={54}
+                  className="object-cover rounded-full bg-slate-100"
+                />
+                <div>
+                  <p className="text-base font-semibold text-slate-900">
+                    {customerName || "Not available"}
+                  </p>
+                  {isGuest && (
+                    <Badge variant="outline" className="mt-1 text-xs">
+                      Guest Booking
+                    </Badge>
+                  )}
+                </div>
               </div>
-              {booking.status === "PAID" && angler?.email && (
+
+              {booking.status === "PAID" && customerEmail && (
                 <>
                   <div className="flex items-start gap-2">
-                    <Mail className="h-4 w-4 text-slate-400 mt-1" />
+                    <Mail className="w-4 h-4 mt-1 text-slate-400" />
                     <div>
                       <p className="text-sm font-medium text-slate-700">
                         Email
                       </p>
                       <a
-                        href={`mailto:${angler.email}`}
+                        href={`mailto:${customerEmail}`}
                         className="text-sm text-blue-600 hover:text-blue-700"
                       >
-                        {angler.email}
+                        {customerEmail}
                       </a>
                     </div>
                   </div>
-                  <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                    <Phone className="h-3.5 w-3.5 inline mr-1" />
-                    Contact details available after payment
-                  </div>
+                  {booking.guestPhone && (
+                    <div className="flex items-start gap-2">
+                      <Phone className="w-4 h-4 mt-1 text-slate-400" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">
+                          Phone
+                        </p>
+                        <a
+                          href={`tel:${booking.guestPhone}`}
+                          className="text-sm text-blue-600 hover:text-blue-700"
+                        >
+                          {booking.guestPhone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {!isGuest && (
+                    <div className="p-3 text-xs rounded-lg bg-slate-50 text-slate-600">
+                      <Phone className="h-3.5 w-3.5 inline mr-1" />
+                      Contact details available after payment
+                    </div>
+                  )}
                 </>
               )}
               {booking.status !== "PAID" && (
-                <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                <div className="p-3 text-xs rounded-lg bg-slate-50 text-slate-600">
                   Full contact details will be available after payment is
                   confirmed
                 </div>
@@ -373,8 +417,8 @@ export default async function BookingDetailsPage({
           </div>
 
           {/* Booking Timeline */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">
+          <div className="p-6 bg-white border rounded-2xl border-slate-200">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">
               Timeline
             </h2>
             <div className="space-y-3 text-sm">

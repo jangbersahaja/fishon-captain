@@ -1,11 +1,11 @@
 import { createOTP } from "@/lib/auth/otp";
-import {
-  sendCaptainRegistrationNotification,
-  sendVerificationOTP,
-} from "@/lib/email";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
+import {
+  sendVerificationCode,
+  sendWelcomeEmail,
+} from "@/lib/services/email-service";
 import type { Prisma } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -112,10 +112,11 @@ export async function POST(req: Request) {
       avatarUrl: null,
     },
   });
-  // Send registration notification to captain (cc admin/ops)
-  await sendCaptainRegistrationNotification({
+  // Send welcome email to captain
+  await sendWelcomeEmail({
     to: user.email,
-    name: displayName,
+    captainName: displayName,
+    loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://fishon-captain.vercel.app"}/captain/login`,
   });
 
   // Generate and send OTP
@@ -135,11 +136,13 @@ export async function POST(req: Request) {
   }
 
   // Send verification email
-  const emailSent = await sendVerificationOTP(
-    user.email,
-    user.firstName || "there",
-    otpResult.code
-  );
+  const emailSent = await sendVerificationCode({
+    to: user.email,
+    userName: user.firstName || "there",
+    code: otpResult.code,
+    purpose: "registration",
+    expiryMinutes: 5,
+  });
 
   if (!emailSent) {
     console.error("[signup] Failed to send verification email");

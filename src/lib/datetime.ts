@@ -116,3 +116,34 @@ export function timeAgo(date: string | Date): string {
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
+
+/**
+ * Get today's date in Malaysia timezone as YYYY-MM-DD string
+ */
+export function getTodayMY(): string {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: MALAYSIA_TIMEZONE,
+  });
+
+  // en-CA locale formats as YYYY-MM-DD
+  return formatter.format(now);
+}
+
+/**
+ * Convert any Date object to YYYY-MM-DD string in Malaysia timezone
+ */
+export function toDateStringMY(date: Date): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: MALAYSIA_TIMEZONE,
+  });
+
+  // en-CA locale formats as YYYY-MM-DD
+  return formatter.format(date);
+}

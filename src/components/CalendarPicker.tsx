@@ -1,13 +1,15 @@
 "use client";
 
 import { zIndexClasses } from "@/config/zIndex";
+import { MALAYSIA_TIMEZONE } from "@/lib/datetime";
 import { useEffect, useMemo, useState } from "react";
 
 // Local date helpers (no UTC conversion)
-const DISPLAY_FORMATTER = new Intl.DateTimeFormat("en-US", {
+const DISPLAY_FORMATTER = new Intl.DateTimeFormat("en-MY", {
   year: "numeric",
   month: "short",
   day: "numeric",
+  timeZone: MALAYSIA_TIMEZONE,
 });
 
 function formatLocalYMD(d: Date) {

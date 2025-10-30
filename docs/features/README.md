@@ -3,7 +3,7 @@
 > **Last Updated:** 2025-10-17  
 > **Status:** Reorganization in progress
 
-This directory contains consolidated feature documentation for the FishOn Captain Register platform. Each document follows a standardized format with frontmatter metadata and focuses on current implementation state and future plans.
+This directory contains consolidated feature documentation for the Fishon Captain Register platform. Each document follows a standardized format with frontmatter metadata and focuses on current implementation state and future plans.
 
 ---
 

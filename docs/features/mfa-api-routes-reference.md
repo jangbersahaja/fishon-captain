@@ -19,7 +19,7 @@ sources:
 
 ## Overview
 
-This document describes all MFA-related API endpoints for the FishOn Captain Register application. All routes require authentication (except where noted) and include rate limiting, security headers, and comprehensive logging.
+This document describes all MFA-related API endpoints for the Fishon Captain Register application. All routes require authentication (except where noted) and include rate limiting, security headers, and comprehensive logging.
 
 ---
 
@@ -476,11 +476,11 @@ HTTP status codes:
 **Status**: ✅ All routes implemented and tested for type safety  
 **Next Steps**: Build UI components and integrate with NextAuth
 
-
-
 ## TODO: Review & Clean
+
 - [ ] Remove small duplicated lines / housekeeping.
 - [ ] Move anything clearly obsolete into Archive section below.
 
 ### Archive / Legacy (moved)
+
 > All originals moved to docs-archived/mfa-api-routes-reference/

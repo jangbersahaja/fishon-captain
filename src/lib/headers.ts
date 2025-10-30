@@ -37,7 +37,7 @@ export function applySecurityHeaders(res: Response): Response {
   ]
     .filter(Boolean)
     .join(" ");
-  // Allow XHR/web fetches to our origin + Google Maps + Vercel Blob upload endpoints
+  // Allow XHR/web fetches to our origin + Google Maps + Vercel Blob upload endpoints + Pusher
   const connectSrc = [
     "connect-src 'self'",
     GOOGLE_SCRIPT,
@@ -45,6 +45,9 @@ export function applySecurityHeaders(res: Response): Response {
     "https://vercel.com",
     "https://*.vercel.com",
     vercelBlobWildcard,
+    // Pusher real-time notifications
+    "wss://*.pusher.com",
+    "https://*.pusher.com",
   ]
     .filter(Boolean)
     .join(" ");

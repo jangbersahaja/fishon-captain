@@ -1,5 +1,4 @@
 "use client";
-import { useToasts } from "@/components/toast/ToastContext";
 import { zIndexClasses } from "@/config/zIndex";
 import { useCharterFormSelectors } from "@features/charter-onboarding/context/CharterFormContext";
 import { logFormDebug } from "@features/charter-onboarding/debug";
@@ -28,33 +27,34 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
     canSubmitMedia: s.media?.canSubmitMedia ?? false,
   }));
   const [show, setShow] = React.useState(false);
-  const { registerBottomAnchor } = useToasts();
   const barRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Update CSS variable for toast offset (Sonner integration)
   React.useEffect(() => {
-    if (!active) return; // register only when visible
-    if (!barRef.current) return;
-    const el = barRef.current;
-    const unregisterMaybe = registerBottomAnchor(
-      "review-bar",
-      () => el.offsetHeight
-    );
-    const unregister =
-      typeof unregisterMaybe === "function" ? unregisterMaybe : () => {};
-    const ro = new ResizeObserver(() => {
-      // trigger re-registration logic by re-registering height (simple approach)
-      try {
-        unregister();
-      } catch {
-        /* noop defensive */
-      }
-      registerBottomAnchor("review-bar", () => el.offsetHeight);
-    });
-    ro.observe(el);
+    if (!active || !barRef.current) {
+      // Remove offset when bar is hidden
+      document.documentElement.style.removeProperty("--review-bar-height");
+      return;
+    }
+
+    const updateHeight = () => {
+      const height = barRef.current?.offsetHeight || 0;
+      document.documentElement.style.setProperty(
+        "--review-bar-height",
+        `${height}px`
+      );
+    };
+
+    updateHeight();
+
+    const ro = new ResizeObserver(updateHeight);
+    ro.observe(barRef.current);
+
     return () => {
       ro.disconnect();
-      unregister();
+      document.documentElement.style.removeProperty("--review-bar-height");
     };
-  }, [active, registerBottomAnchor]);
+  }, [active]);
   React.useEffect(() => {
     if (active) {
       const t = setTimeout(() => setShow(true), 20);
@@ -103,12 +103,12 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
                 !canSubmitMedia
                   ? "Need at least 3 photos before submitting"
                   : isMediaUploading
-                  ? "Uploads still in progress"
-                  : finalizing
-                  ? "Finalizing submission..."
-                  : savingEdit || serverSaving
-                  ? "Saving in progress"
-                  : undefined
+                    ? "Uploads still in progress"
+                    : finalizing
+                      ? "Finalizing submission..."
+                      : savingEdit || serverSaving
+                        ? "Saving in progress"
+                        : undefined
               }
             >
               {savingEdit || finalizing ? (
@@ -119,10 +119,10 @@ export const ReviewBar: React.FC<ReviewBarProps> = ({ active, onPrimary }) => {
               {savingEdit
                 ? "Saving…"
                 : finalizing
-                ? "Submitting…"
-                : isEditing
-                ? "Save"
-                : "Submit Charter"}
+                  ? "Submitting…"
+                  : isEditing
+                    ? "Save"
+                    : "Submit Charter"}
             </button>
           </div>
         </div>

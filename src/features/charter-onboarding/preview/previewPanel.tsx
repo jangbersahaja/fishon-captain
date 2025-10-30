@@ -68,7 +68,7 @@ export function PreviewPanel({ charter, videos }: PreviewPanelProps) {
           Preview listing
         </h2>
         <p className="text-sm text-slate-500">
-          Snapshot of how anglers will view your charter on FishOn.
+          Snapshot of how anglers will view your charter on Fishon.
         </p>
       </div>
       <div className="px-6 pt-6">

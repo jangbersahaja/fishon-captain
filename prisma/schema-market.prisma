@@ -20,41 +20,48 @@ enum BookingStatus {
   EXPIRED
   PAID
   CANCELLED
+  COMPLETED
 }
 
 model Booking {
   id                 String        @id @default(cuid())
-  userId             String
-  captainCharterId   String
-  charterName        String
-  location           String
-  tripName           String
-  unitPrice          Int
+  userId             String?       // Nullable for guest bookings
+  charterId          String        // Charter ID (was captainCharterId)
+  tripId             String        // Trip ID reference
+  guests             Json?         // { adults: number, children: number }
+  tripPrice          Decimal       @db.Decimal(10, 2) // Unit price at booking time
   startTime          String?
   date               DateTime
   days               Int
-  adults             Int
-  children           Int
-  totalPrice         Int
+  finalPrice         Decimal       @db.Decimal(10, 2) // Total calculated price
   status             BookingStatus @default(PENDING)
   expiresAt          DateTime
   captainDecisionAt  DateTime?
-  note               String?
-  rejectionReason    String?
+  note               String?       @db.Text
+  rejectionReason    String?       @db.Text
   cancellationReason String?
+  // Guest booking fields
+  guestFirstName     String?
+  guestLastName      String?
+  guestEmail         String?
+  guestPhone         String?
+  emailVerified      Boolean       @default(false)
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
   @@index([userId])
-  @@index([captainCharterId])
+  @@index([guestEmail])
+  @@index([charterId])
+  @@index([tripId])
   @@index([status])
   @@index([createdAt])
 }
 
 model MarketUser {
-  id           String @id @default(cuid())
-  email        String @unique
-  displayName  String?
+  id    String  @id @default(cuid())
+  email String  @unique
+  name  String? // Display name (was displayName)
+  image String? // Profile image URL
 
   @@map("User")
 }

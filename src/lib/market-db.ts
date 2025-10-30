@@ -13,30 +13,34 @@ import { isMarketDbConfigured, prismaMarket } from "./prisma-market";
 
 export type MarketBooking = {
   id: string;
-  userId: string;
-  captainCharterId: string;
-  charterName: string;
-  location: string;
-  tripName: string;
-  unitPrice: number;
+  userId: string | null; // Nullable for guest bookings
+  charterId: string; // Updated from captainCharterId
+  tripId: string; // Trip reference
+  guests: { adults: number; children: number } | null; // JSON field, typed as guest count object
+  tripPrice: number; // Unit price at booking time
   startTime: string | null;
   date: Date;
   days: number;
-  adults: number;
-  children: number;
-  totalPrice: number;
+  finalPrice: number; // Total calculated price
   status:
     | "PENDING"
     | "APPROVED"
     | "REJECTED"
     | "EXPIRED"
     | "PAID"
-    | "CANCELLED";
+    | "CANCELLED"
+    | "COMPLETED";
   expiresAt: Date;
   captainDecisionAt: Date | null;
   note: string | null;
   rejectionReason: string | null;
   cancellationReason: string | null;
+  // Guest booking fields
+  guestFirstName: string | null;
+  guestLastName: string | null;
+  guestEmail: string | null;
+  guestPhone: string | null;
+  emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -62,7 +66,7 @@ export async function fetchBookingsByCharters(
   try {
     const bookings = await prismaMarket.booking.findMany({
       where: {
-        captainCharterId: {
+        charterId: {
           in: charterIds,
         },
       },
@@ -71,7 +75,13 @@ export async function fetchBookingsByCharters(
       },
     });
 
-    return bookings as MarketBooking[];
+    // Convert Decimal to number and cast guests
+    return bookings.map((b) => ({
+      ...b,
+      tripPrice: Number(b.tripPrice),
+      finalPrice: Number(b.finalPrice),
+      guests: b.guests as { adults: number; children: number } | null,
+    })) as MarketBooking[];
   } catch (error) {
     console.error("Error fetching bookings from Market DB:", error);
     throw new Error(
@@ -99,7 +109,17 @@ export async function fetchBookingById(
       where: { id: bookingId },
     });
 
-    return booking as MarketBooking | null;
+    if (!booking) {
+      return null;
+    }
+
+    // Convert Decimal to number and cast guests
+    return {
+      ...booking,
+      tripPrice: Number(booking.tripPrice),
+      finalPrice: Number(booking.finalPrice),
+      guests: booking.guests as { adults: number; children: number } | null,
+    } as MarketBooking;
   } catch (error) {
     console.error(`Error fetching booking ${bookingId} from Market DB:`, error);
     throw new Error(
@@ -131,7 +151,7 @@ export async function fetchBookingsByStatus(
   try {
     const bookings = await prismaMarket.booking.findMany({
       where: {
-        captainCharterId: {
+        charterId: {
           in: charterIds,
         },
         status,
@@ -141,7 +161,13 @@ export async function fetchBookingsByStatus(
       },
     });
 
-    return bookings as MarketBooking[];
+    // Convert Decimal to number and cast guests
+    return bookings.map((b) => ({
+      ...b,
+      tripPrice: Number(b.tripPrice),
+      finalPrice: Number(b.finalPrice),
+      guests: b.guests as { adults: number; children: number } | null,
+    })) as MarketBooking[];
   } catch (error) {
     console.error(`Error fetching ${status} bookings from Market DB:`, error);
     throw new Error(
@@ -172,29 +198,33 @@ export async function countBookingsByStatus(
       EXPIRED: 0,
       PAID: 0,
       CANCELLED: 0,
+      COMPLETED: 0,
     };
   }
 
   try {
-    const [pending, approved, rejected, expired, paid, cancelled] =
+    const [pending, approved, rejected, expired, paid, cancelled, completed] =
       await Promise.all([
         prismaMarket.booking.count({
-          where: { captainCharterId: { in: charterIds }, status: "PENDING" },
+          where: { charterId: { in: charterIds }, status: "PENDING" },
         }),
         prismaMarket.booking.count({
-          where: { captainCharterId: { in: charterIds }, status: "APPROVED" },
+          where: { charterId: { in: charterIds }, status: "APPROVED" },
         }),
         prismaMarket.booking.count({
-          where: { captainCharterId: { in: charterIds }, status: "REJECTED" },
+          where: { charterId: { in: charterIds }, status: "REJECTED" },
         }),
         prismaMarket.booking.count({
-          where: { captainCharterId: { in: charterIds }, status: "EXPIRED" },
+          where: { charterId: { in: charterIds }, status: "EXPIRED" },
         }),
         prismaMarket.booking.count({
-          where: { captainCharterId: { in: charterIds }, status: "PAID" },
+          where: { charterId: { in: charterIds }, status: "PAID" },
         }),
         prismaMarket.booking.count({
-          where: { captainCharterId: { in: charterIds }, status: "CANCELLED" },
+          where: { charterId: { in: charterIds }, status: "CANCELLED" },
+        }),
+        prismaMarket.booking.count({
+          where: { charterId: { in: charterIds }, status: "COMPLETED" },
         }),
       ]);
 
@@ -205,6 +235,7 @@ export async function countBookingsByStatus(
       EXPIRED: expired,
       PAID: paid,
       CANCELLED: cancelled,
+      COMPLETED: completed,
     };
   } catch (error) {
     console.error("Error counting bookings from Market DB:", error);

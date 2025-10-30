@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { zIndexClasses } from "@/config/zIndex";
 import { type BookingReview } from "@/dummy/receipts";
+import { formatDate as formatDateMY } from "@/lib/datetime";
 import { resolveBadges } from "@/utils/reviewBadges";
 
 import Stars from "./Stars";
@@ -13,7 +14,7 @@ function formatDate(iso: string): string {
   if (!iso) return "";
   try {
     const normalized = iso.length === 10 ? `${iso}T00:00:00` : iso;
-    return new Date(normalized).toLocaleDateString(undefined, {
+    return formatDateMY(new Date(normalized), {
       year: "numeric",
       month: "short",
       day: "numeric",

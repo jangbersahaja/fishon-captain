@@ -1,3 +1,8 @@
+import {
+  enrichBooking,
+  enrichBookings,
+  type EnrichedMarketBooking,
+} from "./enrich-booking";
 import type { MarketBooking } from "./market-db";
 import {
   countBookingsByStatus,
@@ -18,11 +23,11 @@ import {
 /**
  * Get all bookings for a captain's charters
  * @param charterIds - Array of charter IDs owned by the captain
- * @returns Array of bookings ordered by creation date (newest first)
+ * @returns Array of enriched bookings ordered by creation date (newest first)
  */
 export async function getCaptainBookings(
   charterIds: string[]
-): Promise<MarketBooking[]> {
+): Promise<EnrichedMarketBooking[]> {
   if (!isMarketDbConfigured()) {
     console.warn(
       "Market DB not configured. Set MARKET_DATABASE_URL to enable booking features."
@@ -30,17 +35,18 @@ export async function getCaptainBookings(
     return [];
   }
 
-  return fetchBookingsByCharters(charterIds);
+  const bookings = await fetchBookingsByCharters(charterIds);
+  return enrichBookings(bookings);
 }
 
 /**
  * Get a single booking by ID
  * @param bookingId - Booking ID
- * @returns Booking or null if not found
+ * @returns Enriched booking or null if not found
  */
 export async function getBooking(
   bookingId: string
-): Promise<MarketBooking | null> {
+): Promise<EnrichedMarketBooking | null> {
   if (!isMarketDbConfigured()) {
     console.warn(
       "Market DB not configured. Set MARKET_DATABASE_URL to enable booking features."
@@ -48,22 +54,28 @@ export async function getBooking(
     return null;
   }
 
-  return fetchBookingById(bookingId);
+  const booking = await fetchBookingById(bookingId);
+  if (!booking) {
+    return null;
+  }
+
+  return enrichBooking(booking);
 }
 
 /**
  * Get pending bookings for a captain (requires action)
  * @param charterIds - Array of charter IDs owned by the captain
- * @returns Array of pending bookings
+ * @returns Array of enriched pending bookings
  */
 export async function getPendingBookings(
   charterIds: string[]
-): Promise<MarketBooking[]> {
+): Promise<EnrichedMarketBooking[]> {
   if (!isMarketDbConfigured()) {
     return [];
   }
 
-  return fetchBookingsByStatus(charterIds, "PENDING");
+  const bookings = await fetchBookingsByStatus(charterIds, "PENDING");
+  return enrichBookings(bookings);
 }
 
 /**
@@ -82,6 +94,7 @@ export async function getBookingStats(
       EXPIRED: 0,
       PAID: 0,
       CANCELLED: 0,
+      COMPLETED: 0,
     };
   }
 
