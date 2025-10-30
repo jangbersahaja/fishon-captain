@@ -29,6 +29,8 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
   const pickupAreas = watch("pickup.areas");
   const pickupAvailable = watch("pickup.available");
   const withoutBoat = watch("withoutBoat");
+  const scheduleType = watch("scheduleType");
+  const operationalDays = watch("operationalDays");
 
   const toggleAmenity = useCallback(
     (value: string) => {
@@ -285,6 +287,63 @@ export function ExperienceStep({ form, fieldError }: ExperienceStepProps) {
             </div>
           ) : null}
         </div>
+      </Field>
+
+      <Field
+        label="Operational Schedule"
+        hint="When does your charter operate? This helps anglers know when they can book."
+        className="mt-6"
+        error={fieldError("scheduleType")}
+      >
+        <select {...register("scheduleType")} className={inputClass}>
+          <option value="EVERYDAY">Everyday</option>
+          <option value="WEEKDAYS">Weekdays (Mon-Fri)</option>
+          <option value="WEEKENDS">Weekends (Sat-Sun)</option>
+          <option value="CUSTOM">Custom Days</option>
+        </select>
+
+        {scheduleType === "CUSTOM" && (
+          <div className="mt-4">
+            <p className="text-sm text-slate-600 mb-2">
+              Select operating days:
+            </p>
+            <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-3">
+              {[
+                { label: "Sun", value: 0 },
+                { label: "Mon", value: 1 },
+                { label: "Tue", value: 2 },
+                { label: "Wed", value: 3 },
+                { label: "Thu", value: 4 },
+                { label: "Fri", value: 5 },
+                { label: "Sat", value: 6 },
+              ].map((day) => (
+                <label
+                  key={day.value}
+                  className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    value={day.value}
+                    checked={operationalDays?.includes(day.value)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      const updated = checked
+                        ? [...(operationalDays || []), day.value].sort(
+                            (a, b) => a - b
+                          )
+                        : operationalDays?.filter((d) => d !== day.value) || [];
+                      setValue("operationalDays", updated, {
+                        shouldValidate: true,
+                      });
+                    }}
+                    className="h-4 w-4 rounded border-slate-300"
+                  />
+                  <span>{day.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </Field>
     </section>
   );

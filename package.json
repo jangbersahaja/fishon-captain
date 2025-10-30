@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@fishon/email": "github:jangbersahaja/fishon-email#main",
-    "@fishon/schemas": "git+https://github.com/jangbersahaja/fishon-schemas#main",
+    "@fishon/schemas": "github:jangbersahaja/fishon-schemas#main",
     "@fishon/ui": "git+https://github.com/jangbersahaja/fishon-ui#main",
     "@hookform/resolvers": "^5.2.2",
     "@neondatabase/serverless": "github:neondatabase/serverless",

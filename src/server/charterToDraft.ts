@@ -148,6 +148,9 @@ export function mapCharterToDraftValues(params: {
       species: (t.species || []).map((s) => s.value),
       techniques: (t.techniques || []).map((tech) => tech.value),
     })),
+    // Schedule
+    scheduleType: "EVERYDAY",
+    operationalDays: [],
     // Media re-upload required during edit session, keep arrays empty in draft
     photos: [],
     videos: [],

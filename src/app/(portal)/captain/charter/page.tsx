@@ -82,6 +82,10 @@ type CharterDetail = {
     notes: string | null;
     areas: { label: string }[];
   } | null;
+  schedule: {
+    scheduleType: string;
+    operationalDays: number[];
+  } | null;
   trips: Array<{
     id: string;
     name: string;
@@ -422,8 +426,8 @@ function renderStepContent({
             trip.style === "SHARED"
               ? "Shared"
               : trip.style === "PRIVATE"
-              ? "Private"
-              : trip.style || "—";
+                ? "Private"
+                : trip.style || "—";
           return (
             <div
               key={trip.id}
@@ -753,6 +757,12 @@ export default async function CharterStepsPage({
               fee: true,
               notes: true,
               areas: { select: { label: true } },
+            },
+          },
+          schedule: {
+            select: {
+              scheduleType: true,
+              operationalDays: true,
             },
           },
           trips: {

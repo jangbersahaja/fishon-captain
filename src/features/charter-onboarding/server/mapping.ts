@@ -56,6 +56,10 @@ interface BoatRecord {
 interface CharterCaptainProfilePartial {
   avatarUrl?: string | null;
 }
+interface CharterSchedule {
+  scheduleType: string;
+  operationalDays: number[];
+}
 interface CharterFull {
   charterType: string;
   name: string;
@@ -72,6 +76,7 @@ interface CharterFull {
   amenities: CharterAmenity[];
   policies: CharterPolicyFlags | null;
   pickup: (PickupRecord & { areas: PickupArea[] }) | null;
+  schedule: CharterSchedule | null;
   trips: TripRecord[];
   captain?: CharterCaptainProfilePartial;
 }
@@ -152,6 +157,8 @@ export function mapCharterToDraftValuesFeature(params: {
           notes: pickup.notes || "",
         }
       : { available: false, fee: null, areas: [], notes: "" },
+    scheduleType: charter.schedule?.scheduleType || "EVERYDAY",
+    operationalDays: charter.schedule?.operationalDays || [],
     trips: (charter.trips || []).map((t) => ({
       id: t.id,
       name: t.name || "",

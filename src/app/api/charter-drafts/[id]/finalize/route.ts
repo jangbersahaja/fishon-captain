@@ -263,6 +263,16 @@ export async function POST(
         select: { id: true },
       });
       charterId = charter.id;
+
+      // Create charter schedule
+      await tx.charterSchedule.create({
+        data: {
+          charterId: charter.id,
+          scheduleType: draftData.scheduleType || "EVERYDAY",
+          operationalDays: draftData.operationalDays || [],
+        },
+      });
+
       await tx.charterMedia.updateMany({
         where: { id: { in: canonicalPhotos.map((p) => p.id) } },
         data: { charterId: charter.id },

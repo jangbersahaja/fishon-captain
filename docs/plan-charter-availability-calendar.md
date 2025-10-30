@@ -5,7 +5,7 @@ updated: 2025-01-30
 feature: charter-availability-calendar
 author: copilot
 progress:
-  phase: "Phase 9 Complete: Full Calendar System with Edit/Delete Features"
+  phase: "Phase 10 Complete: Charter Registration Integration"
   completed:
     - "Phase 1-3: Database, Service Layer, and APIs"
     - Database schema (CharterSchedule, CharterUnavailability models)
@@ -42,20 +42,30 @@ progress:
     - Filter unavailable list to show only upcoming dates
     - Fixed blocked date click detection (manual vs schedule-based)
     - Toast auto-dismiss for all operations (4-6 seconds)
+    - "Phase 10: Charter Registration Integration"
+    - Updated @fishon/schemas with scheduleType and operationalDays fields
+    - Added schedule fields to charterFormSchema and experienceStepSchema
+    - Added schedule defaults (EVERYDAY, empty operationalDays array)
+    - Integrated schedule UI in ExperienceStep component
+    - Draft save API handles schedule fields automatically
+    - Finalize API creates CharterSchedule record
+    - Charter edit API (PATCH) handles schedule updates with upsert logic
+    - Charter GET API includes schedule relation
+    - Charter-to-draft mapping includes schedule fields
+    - Both new registration and edit flows fully support schedule
   in-progress:
-    - Ready for next phase (Charter registration integration or Market integration)
+    - Ready for Phase 11 (Fishon-Market Integration)
   pending:
-    - Charter registration integration (add schedule to onboarding)
     - Fishon-market integration (availability API consumption)
 ---
 
 # Charter Availability & Calendar System
 
-## Current Status (Phase 9 Complete) ✅
+## Current Status (Phase 10 Complete) ✅
 
 **Last Updated:** January 30, 2025
 
-The Charter Availability & Calendar System is now fully functional with all core features implemented. The system allows captains to manage their operational schedules, block unavailable dates, and view all bookings in a comprehensive calendar interface.
+The Charter Availability & Calendar System is now fully integrated into the charter registration flow. Captains can configure their operational schedules during both new charter registration and when editing existing charters. The system allows captains to manage their operational schedules, block unavailable dates, and view all bookings in a comprehensive calendar interface.
 
 ### ✅ What's Complete
 
@@ -92,13 +102,62 @@ The Charter Availability & Calendar System is now fully functional with all core
    - Only upcoming unavailable dates shown in list
    - Visual distinction between manual blocks and schedule-based closures
 
+6. **Charter Registration Integration**
+   - Schedule configuration in Experience step (after boat/amenities)
+   - Four schedule types: Everyday, Weekdays, Weekends, Custom
+   - Custom days with multi-select checkbox grid
+   - Schedule persisted in draft auto-save
+   - CharterSchedule record created during finalization
+   - Schedule editable via charter edit API
+   - Schedule loaded correctly in edit mode
+   - Default schedule: EVERYDAY for all new charters
+
 ### 🚀 Ready for Next Phase
 
-**Phase 10: Charter Registration Integration**
+### Phase 10: Charter Registration Integration ✅
 
-- Add schedule configuration to charter onboarding flow
-- Integrate into Experience step (after boat/amenities)
-- Update finalization logic to create schedule
+**Implementation Complete:** January 30, 2025
+
+**Changes Made:**
+
+1. **Schema Updates (@fishon/schemas)**
+   - Added `scheduleType` field (enum: EVERYDAY, WEEKDAYS, WEEKENDS, CUSTOM)
+   - Added `operationalDays` field (array of day indexes 0-6)
+   - Updated `experienceStepSchema` to include schedule fields
+   - Default values: EVERYDAY schedule with empty operationalDays
+
+2. **UI Integration (ExperienceStep.tsx)**
+   - Schedule section added after Pickup section
+   - Dropdown selector for schedule type
+   - Conditional custom days grid (7 checkboxes for Sun-Sat)
+   - Responsive layout: 4-column grid on mobile, flex on desktop
+   - Matches existing form component styling
+
+3. **Draft Handling**
+   - Schedule fields automatically saved in draft dataJson
+   - `sanitizeForDraft()` includes schedule in spread operator
+   - `hydrateDraftValues()` correctly restores schedule data
+   - Charter-to-draft mapping includes schedule fields
+
+4. **API Updates**
+   - **Finalize API:** Creates CharterSchedule record after charter creation
+   - **Charter PATCH API:** Upserts schedule with update/create logic
+   - **Charter GET API:** Includes schedule relation in all queries
+   - **Audit logging:** Schedule changes tracked in before/after snapshots
+
+5. **Edit Mode Support**
+   - Schedule loaded from database in edit mode
+   - `mapCharterToDraftValues()` includes schedule mapping
+   - Charter detail type includes schedule field
+   - Database query includes schedule relation
+
+**Testing:**
+
+- ✅ New registration flow creates schedule
+- ✅ Edit flow loads and updates schedule
+- ✅ Draft auto-save persists schedule data
+- ✅ All TypeScript checks pass
+- ✅ No breaking changes to existing flows
 
 **Phase 11: Fishon-Market Integration**
 
