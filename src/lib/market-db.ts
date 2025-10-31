@@ -11,6 +11,40 @@ import { isMarketDbConfigured, prismaMarket } from "./prisma-market";
  * All write operations (approve/reject) should go through Market API endpoints.
  */
 
+// Raw Prisma booking type (with Decimal fields)
+type PrismaMarketBooking = {
+  id: string;
+  userId: string | null;
+  charterId: string;
+  tripId: string;
+  guests: unknown;
+  tripPrice: { toNumber: () => number } | number;
+  startTime: string | null;
+  date: Date;
+  days: number;
+  finalPrice: { toNumber: () => number } | number;
+  status:
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED"
+    | "EXPIRED"
+    | "PAID"
+    | "CANCELLED"
+    | "COMPLETED";
+  expiresAt: Date;
+  captainDecisionAt: Date | null;
+  note: string | null;
+  rejectionReason: string | null;
+  cancellationReason: string | null;
+  guestFirstName: string | null;
+  guestLastName: string | null;
+  guestEmail: string | null;
+  guestPhone: string | null;
+  emailVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type MarketBooking = {
   id: string;
   userId: string | null; // Nullable for guest bookings
@@ -76,7 +110,7 @@ export async function fetchBookingsByCharters(
     });
 
     // Convert Decimal to number and cast guests
-    return bookings.map((b) => ({
+    return bookings.map((b: PrismaMarketBooking) => ({
       ...b,
       tripPrice: Number(b.tripPrice),
       finalPrice: Number(b.finalPrice),
@@ -162,7 +196,7 @@ export async function fetchBookingsByStatus(
     });
 
     // Convert Decimal to number and cast guests
-    return bookings.map((b) => ({
+    return bookings.map((b: PrismaMarketBooking) => ({
       ...b,
       tripPrice: Number(b.tripPrice),
       finalPrice: Number(b.finalPrice),
