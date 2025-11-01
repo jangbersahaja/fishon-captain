@@ -4,6 +4,7 @@ import { BookingActions } from "@/app/(portal)/captain/bookings/BookingActions";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/datetime";
 import type { EnrichedMarketBooking } from "@/lib/enrich-booking";
+import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
 import {
   Calendar,
   ChevronDown,
@@ -44,6 +45,31 @@ function getStatusColor(
       return "destructive";
     default:
       return "secondary";
+  }
+}
+
+function getStatus(
+  status: string
+):
+  | "New Request"
+  | "Awaiting Payment"
+  | "Confirmed"
+  | "Cancelled"
+  | "Rejected"
+  | "Completed" {
+  switch (status) {
+    case "PENDING":
+      return "New Request";
+    case "APPROVED":
+      return "Awaiting Payment";
+    case "PAID":
+      return "Confirmed";
+    case "REJECTED":
+      return "Rejected";
+    case "CANCELLED":
+      return "Cancelled";
+    default:
+      return "Completed";
   }
 }
 
@@ -96,7 +122,7 @@ export function EnhancedBookingCard({
                       isCompact ? "text-xs py-0 capitalize" : "capitalize"
                     }
                   >
-                    {booking.status.toLocaleLowerCase()}
+                    {getStatus(booking.status)}
                   </Badge>
                   {priority && (
                     <Badge
@@ -166,7 +192,24 @@ export function EnhancedBookingCard({
                   <div
                     className={`font-medium text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
                   >
-                    {formatDate(booking.date)}
+                    <span>
+                      {new Date(booking.date).toLocaleDateString("en-MY", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <span>
+                      {" - "}
+                      {new Date(
+                        new Date(booking.date).getTime() +
+                          booking.days * 24 * 60 * 60 * 1000
+                      ).toLocaleDateString("en-MY", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
                   </div>
                   <div
                     className={`text-slate-600 ${isCompact ? "text-[10px]" : "text-xs"}`}
@@ -190,7 +233,7 @@ export function EnhancedBookingCard({
                     <div
                       className={`font-medium text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
                     >
-                      {booking.startTime}
+                      {convert24to12Hour(booking.startTime)}
                     </div>
                   </div>
                 </div>
@@ -325,7 +368,7 @@ export function EnhancedBookingCard({
               className="capitalize"
               variant={getStatusColor(booking.status)}
             >
-              {booking.status.toLocaleLowerCase()}
+              {getStatus(booking.status)}
             </Badge>
             {priority && (
               <Badge

@@ -1,12 +1,13 @@
+import { BookingTimeline } from "@/components/captain/BookingTimeline";
 import { Badge } from "@/components/ui/badge";
 import { authOptions } from "@/lib/auth";
+import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
 import { prisma } from "@/lib/prisma";
 import {
   ArrowLeft,
   Calendar,
   CheckCircle2,
   Clock,
-  DollarSign,
   Mail,
   MapPin,
   Phone,
@@ -113,6 +114,10 @@ export default async function BookingDetailsPage({
 
   const StatusIcon = getStatusIcon(booking.status);
 
+  const anglerPaid = Number(booking.finalPrice.toFixed(2));
+  const fishonCommission = anglerPaid * 0.1;
+  const yourEarning = anglerPaid - fishonCommission;
+
   return (
     <div className="px-6 py-8 space-y-6">
       {/* Back Link */}
@@ -126,8 +131,8 @@ export default async function BookingDetailsPage({
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="grid grid-cols-1 space-y-5 sm:grid-cols-4">
+        <div className="col-span-3">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               {booking.charterName}
@@ -140,9 +145,11 @@ export default async function BookingDetailsPage({
             Booking ID: {booking.id}
           </p>
         </div>
-        {booking.status === "PENDING" && (
-          <BookingActions bookingId={booking.id} />
-        )}
+        <div className="col-span-1">
+          {booking.status === "PENDING" && (
+            <BookingActions bookingId={booking.id} />
+          )}
+        </div>
       </div>
 
       {/* Main Content Grid */}
@@ -154,14 +161,14 @@ export default async function BookingDetailsPage({
             <h2 className="mb-4 text-base font-semibold text-slate-900">
               Booking Status
             </h2>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-6">
               <div
                 className={`rounded-xl p-2.5 ${
                   booking.status === "PENDING"
                     ? "bg-amber-50"
                     : booking.status === "APPROVED" || booking.status === "PAID"
-                    ? "bg-green-50"
-                    : "bg-red-50"
+                      ? "bg-green-50"
+                      : "bg-red-50"
                 }`}
               >
                 <StatusIcon
@@ -169,9 +176,9 @@ export default async function BookingDetailsPage({
                     booking.status === "PENDING"
                       ? "text-amber-600"
                       : booking.status === "APPROVED" ||
-                        booking.status === "PAID"
-                      ? "text-green-600"
-                      : "text-red-600"
+                          booking.status === "PAID"
+                        ? "text-green-600"
+                        : "text-red-600"
                   }`}
                 />
               </div>
@@ -186,18 +193,15 @@ export default async function BookingDetailsPage({
                 </p>
               </div>
             </div>
-            {booking.status === "PENDING" && (
-              <p className="mt-4 text-sm text-slate-600">
-                Expires:{" "}
-                {new Date(booking.expiresAt).toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </p>
-            )}
+
+            <BookingTimeline
+              status={booking.status}
+              createdAt={booking.createdAt}
+              updatedAt={booking.updatedAt}
+              tripDate={new Date(booking.date)}
+              rejectionReason={booking.rejectionReason}
+              cancellationReason={booking.cancellationReason}
+            />
           </div>
 
           {/* Trip Details */}
@@ -221,22 +225,35 @@ export default async function BookingDetailsPage({
                 <div>
                   <p className="text-sm font-medium text-slate-700">Date</p>
                   <p className="text-sm text-slate-900">
-                    {new Date(booking.date).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    <span>
+                      {new Date(booking.date).toLocaleDateString("en-MY", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <span>
+                      {" - "}
+                      {new Date(
+                        new Date(booking.date).getTime() +
+                          booking.days * 24 * 60 * 60 * 1000
+                      ).toLocaleDateString("en-MY", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
                   </p>
-                  {booking.startTime && (
+                  <p className="text-sm text-slate-900"></p>
+                  {booking.days && (
                     <p className="text-sm text-slate-600">
-                      Start time: {booking.startTime}
+                      {booking.days} day{booking.days !== 1 ? "s" : ""}
                     </p>
                   )}
                 </div>
               </div>
 
-              {booking.days > 1 && (
+              {booking.durationHour && (
                 <div className="flex items-start gap-3">
                   <Clock className="h-5 w-5 text-slate-400 mt-0.5" />
                   <div>
@@ -244,7 +261,16 @@ export default async function BookingDetailsPage({
                       Duration
                     </p>
                     <p className="text-sm text-slate-900">
-                      {booking.days} day{booking.days !== 1 ? "s" : ""}
+                      <span>
+                        {booking.durationHour} hour
+                        {booking.durationHour !== 1 ? "s" : ""}
+                      </span>
+                      {booking.startTime && (
+                        <span>
+                          {" "}
+                          · Starting at {convert24to12Hour(booking.startTime)}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -283,28 +309,6 @@ export default async function BookingDetailsPage({
               <p className="text-sm text-blue-800">{booking.note}</p>
             </div>
           )}
-
-          {/* Rejection Reason */}
-          {booking.status === "REJECTED" && booking.rejectionReason && (
-            <div className="p-6 border border-red-200 rounded-2xl bg-red-50">
-              <h2 className="mb-2 text-base font-semibold text-red-900">
-                Rejection Reason
-              </h2>
-              <p className="text-sm text-red-800">{booking.rejectionReason}</p>
-            </div>
-          )}
-
-          {/* Cancellation Reason */}
-          {booking.status === "CANCELLED" && booking.cancellationReason && (
-            <div className="p-6 border border-orange-200 rounded-2xl bg-orange-50">
-              <h2 className="mb-2 text-base font-semibold text-orange-900">
-                Cancellation Reason
-              </h2>
-              <p className="text-sm text-orange-800">
-                {booking.cancellationReason}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Right Column - Pricing & Customer Info */}
@@ -312,7 +316,7 @@ export default async function BookingDetailsPage({
           {/* Pricing Breakdown */}
           <div className="p-6 bg-white border rounded-2xl border-slate-200">
             <h2 className="mb-4 text-base font-semibold text-slate-900">
-              Pricing
+              Earning
             </h2>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
@@ -324,15 +328,21 @@ export default async function BookingDetailsPage({
                   RM {booking.totalPrice.toLocaleString()}
                 </span>
               </div>
+
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Commission (10%)</span>
+                <span className="text-slate-900">
+                  - RM {fishonCommission.toLocaleString()}
+                </span>
+              </div>
               <div className="pt-3 border-t border-slate-200">
                 <div className="flex items-center justify-between">
                   <span className="text-base font-semibold text-slate-900">
                     Total
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <DollarSign className="w-5 h-5 text-slate-400" />
                     <span className="text-xl font-bold text-slate-900">
-                      RM {booking.totalPrice.toLocaleString()}
+                      RM {yourEarning.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -450,6 +460,20 @@ export default async function BookingDetailsPage({
                         minute: "2-digit",
                       }
                     )}
+                  </p>
+                </div>
+              )}
+              {booking.status === "PENDING" && (
+                <div>
+                  <p className="font-medium text-slate-700">Expires </p>
+                  <p className="text-slate-600">
+                    {new Date(booking.expiresAt).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
                   </p>
                 </div>
               )}

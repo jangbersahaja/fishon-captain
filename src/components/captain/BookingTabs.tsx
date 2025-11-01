@@ -234,7 +234,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
     <div className="space-y-6">
       {/* Search + Filters */}
       <div className="flex flex-col items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl sm:flex-row sm:items-center">
-        <div className="relative flex-1">
+        <div className="relative flex-1 w-full">
           <Search className="absolute w-5 h-5 transform -translate-y-1/2 left-3 top-1/2 text-slate-400" />
           <input
             type="text"
@@ -245,7 +245,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end flex-1 w-full gap-2 sm:flex-none">
           <BookingFilters
             trips={trips}
             selectedTripId={selectedTripId}
@@ -296,9 +296,9 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
         </div>
 
         {/* View Density + Grid/List (Desktop Only) */}
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="items-center hidden gap-3 sm:flex">
           {/* Density Toggle */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100">
             <button
               onClick={() => setViewDensity("comfortable")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
@@ -326,7 +326,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
           </div>
 
           {/* Grid/List Toggle */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100">
             <button
               onClick={() => setViewMode("list")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
