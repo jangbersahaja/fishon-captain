@@ -36,16 +36,16 @@ jobs:
       - name: Run typecheck
         run: npm run typecheck
 
+      # Set up environment variables with fallbacks
+      - name: Set DATABASE_URL
+        run: echo "DATABASE_URL=${{ secrets.DATABASE_URL || 'postgresql://user:pass@localhost:5432/fishon_captain_ci' }}" >> $GITHUB_ENV
+
       # Generate Prisma clients before validation and tests
       - name: Generate Prisma client
         run: npx prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:pass@localhost:5432/fishon_captain_ci' }}
 
       - name: Validate Prisma schema
         run: npx prisma validate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:pass@localhost:5432/fishon_captain_ci' }}
 
       - name: Run tests
         run: npm run test:ci
