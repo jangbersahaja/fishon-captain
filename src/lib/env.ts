@@ -35,6 +35,10 @@ interface ServerEnvShape extends PublicEnvShape {
   EXTERNAL_WORKER_URL?: string;
   QSTASH_URL?: string;
   BLOB_HOSTNAME?: string;
+  // Fishon Market Integration
+  FISHON_MARKET_API_URL?: string;
+  CAPTAIN_API_SECRET?: string;
+  FISHON_CAPTAIN_API_KEY?: string;
   NODE_ENV: string;
 }
 
@@ -74,17 +78,18 @@ export function loadEnv(): ServerEnvShape {
   // Skip validation during build time (Next.js data collection phase)
   // Environment variables will be validated at runtime when the app actually runs
   // Use Next.js specific build phase indicator to avoid false positives
-  const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
-                      process.env.NEXT_PHASE === 'phase-production-server' && !w.DATABASE_URL;
-  
+  const isBuildTime =
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    (process.env.NEXT_PHASE === "phase-production-server" && !w.DATABASE_URL);
+
   if (isBuildTime) {
-    console.log('[env] Build-time detected, skipping environment validation');
+    console.log("[env] Build-time detected, skipping environment validation");
     // Return a partial shape with empty values for build-time only
     return {
-      DATABASE_URL: w.DATABASE_URL || '',
-      NEXTAUTH_SECRET: w.NEXTAUTH_SECRET || '',
-      GOOGLE_CLIENT_ID: w.GOOGLE_CLIENT_ID || '',
-      GOOGLE_CLIENT_SECRET: w.GOOGLE_CLIENT_SECRET || '',
+      DATABASE_URL: w.DATABASE_URL || "",
+      NEXTAUTH_SECRET: w.NEXTAUTH_SECRET || "",
+      GOOGLE_CLIENT_ID: w.GOOGLE_CLIENT_ID || "",
+      GOOGLE_CLIENT_SECRET: w.GOOGLE_CLIENT_SECRET || "",
       FACEBOOK_CLIENT_ID: w.FACEBOOK_CLIENT_ID,
       FACEBOOK_CLIENT_SECRET: w.FACEBOOK_CLIENT_SECRET,
       APPLE_CLIENT_ID: w.APPLE_CLIENT_ID,
@@ -97,9 +102,12 @@ export function loadEnv(): ServerEnvShape {
       EXTERNAL_WORKER_URL: w.EXTERNAL_WORKER_URL,
       QSTASH_URL: w.QSTASH_URL,
       BLOB_HOSTNAME: w.BLOB_HOSTNAME,
+      FISHON_MARKET_API_URL: w.FISHON_MARKET_API_URL,
+      CAPTAIN_API_SECRET: w.CAPTAIN_API_SECRET,
+      FISHON_CAPTAIN_API_KEY: w.FISHON_CAPTAIN_API_KEY,
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: w.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
       NEXT_PUBLIC_SITE_URL: w.NEXT_PUBLIC_SITE_URL,
-      NODE_ENV: w.NODE_ENV || 'production',
+      NODE_ENV: w.NODE_ENV || "production",
     };
   }
 
@@ -144,6 +152,30 @@ export function loadEnv(): ServerEnvShape {
     );
   }
 
+  // Warn if Fishon Market integration variables are missing
+  if (!w.FISHON_MARKET_API_URL) {
+    console.warn(
+      "[env] FISHON_MARKET_API_URL missing; booking approval/rejection API calls will fail."
+    );
+  }
+  if (!w.CAPTAIN_API_SECRET) {
+    console.warn(
+      "[env] CAPTAIN_API_SECRET missing; fishon-market webhooks will be rejected and API calls to market will fail."
+    );
+  }
+  if (!w.FISHON_CAPTAIN_API_KEY) {
+    console.warn(
+      "[env] FISHON_CAPTAIN_API_KEY missing; public API authentication will fail."
+    );
+  }
+
+  // Validate shared secret entropy if present
+  if (w.CAPTAIN_API_SECRET && !entropyCheck(w.CAPTAIN_API_SECRET)) {
+    console.warn(
+      "[env] CAPTAIN_API_SECRET appears weak (length < 32 or low entropy); recommend generating with: openssl rand -base64 48"
+    );
+  }
+
   // Secret leakage guard: disallow server secrets accidentally prefixed with NEXT_PUBLIC_
   for (const key of Object.keys(w)) {
     if (key.startsWith(PUBLIC_PREFIX) && REQUIRED_SERVER.includes(key)) {
@@ -177,6 +209,9 @@ export function loadEnv(): ServerEnvShape {
     EXTERNAL_WORKER_URL: w.EXTERNAL_WORKER_URL,
     QSTASH_URL: w.QSTASH_URL,
     BLOB_HOSTNAME: w.BLOB_HOSTNAME,
+    FISHON_MARKET_API_URL: w.FISHON_MARKET_API_URL,
+    CAPTAIN_API_SECRET: w.CAPTAIN_API_SECRET,
+    FISHON_CAPTAIN_API_KEY: w.FISHON_CAPTAIN_API_KEY,
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: publicVars.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     NEXT_PUBLIC_SITE_URL: publicVars.NEXT_PUBLIC_SITE_URL,
     NODE_ENV: w.NODE_ENV || "development",
