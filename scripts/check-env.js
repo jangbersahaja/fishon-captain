@@ -29,6 +29,11 @@ import("dotenv")
       "QSTASH_NEXT_SIGNING_KEY",
       "EXTERNAL_WORKER_URL",
       "NEXT_PUBLIC_SITE_URL",
+      // Fishon Market Integration
+      "FISHON_MARKET_API_URL", // Market API base URL (server-side)
+      "CAPTAIN_API_SECRET", // Shared secret for bidirectional auth
+      "FISHON_CAPTAIN_API_KEY", // Public API key for charter data
+      "MARKET_DATABASE_URL", // Optional: Direct market DB access
     ];
 
     const missing = REQUIRED.filter(
