@@ -81,7 +81,7 @@ export default function FinalCTASection() {
               Register your charter
             </Link>
             <Link
-              href={`https://wa.me/${WHATSAPP_NUMBER}?text=Nak%20Fishon`}
+              href={`https://wa.me/${WHATSAPP_NUMBER}?text=Saya%20nak%20join%20Fishon%20Captain`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-3 text-base font-semibold text-white transition border shadow-lg rounded-xl border-white/40 hover:bg-white/10"

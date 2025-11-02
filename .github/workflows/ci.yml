@@ -3,14 +3,19 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   ci:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x, 22.x]
 
     steps:
       - name: Checkout code
@@ -31,15 +36,30 @@ jobs:
       - name: Run typecheck
         run: npm run typecheck
 
+      # Generate Prisma clients before validation and tests
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:pass@localhost:5432/fishon_captain_ci' }}
+
       - name: Validate Prisma schema
         run: npx prisma validate
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:pass@localhost:5432/fishon_captain_ci' }}
 
       - name: Run tests
-        run: npm test
+        run: npm run test:ci
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-        continue-on-error: true
+          # Database
+          DATABASE_URL: ${{ secrets.DATABASE_URL != '' && secrets.DATABASE_URL || 'postgresql://user:pass@localhost:5432/fishon_captain_ci' }}
+          MARKET_DATABASE_URL: ${{ secrets.MARKET_DATABASE_URL != '' && secrets.MARKET_DATABASE_URL || 'postgresql://user:pass@localhost:5432/fishon_market_ci' }}
+          # Auth
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET != '' && secrets.NEXTAUTH_SECRET || 'test-secret-min-32-chars-long-for-ci-1234567890' }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL != '' && secrets.NEXTAUTH_URL || 'http://localhost:3000' }}
+          # Google OAuth (required for auth tests)
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID != '' && secrets.GOOGLE_CLIENT_ID || 'test-client-id' }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET != '' && secrets.GOOGLE_CLIENT_SECRET || 'test-client-secret' }}
+          # Fishon Market Integration
+          FISHON_MARKET_API_URL: ${{ secrets.FISHON_MARKET_API_URL != '' && secrets.FISHON_MARKET_API_URL || 'http://localhost:3001' }}
+          CAPTAIN_API_SECRET: ${{ secrets.CAPTAIN_API_SECRET != '' && secrets.CAPTAIN_API_SECRET || 'test-shared-secret-min-32-chars-1234567890abcdef' }}
+          FISHON_CAPTAIN_API_KEY: ${{ secrets.FISHON_CAPTAIN_API_KEY != '' && secrets.FISHON_CAPTAIN_API_KEY || 'test-api-key-min-32-chars-1234567890' }}
