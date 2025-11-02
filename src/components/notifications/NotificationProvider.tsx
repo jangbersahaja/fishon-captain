@@ -42,13 +42,20 @@ export function NotificationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  console.log("🔵 [NotificationProvider] Mounting provider...");
   const notificationState = useNotifications();
-  console.log("🔵 [NotificationProvider] Hook state:", {
-    hasNotifications: notificationState.notifications.length,
-    unreadCount: notificationState.unreadCount,
-    isLoading: notificationState.isLoading,
-  });
+
+  // Only log in development with debug flag
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_NOTIFICATIONS_DEBUG === "1"
+  ) {
+    console.log("🔵 [NotificationProvider] Mounting provider...");
+    console.log("🔵 [NotificationProvider] Hook state:", {
+      hasNotifications: notificationState.notifications.length,
+      unreadCount: notificationState.unreadCount,
+      isLoading: notificationState.isLoading,
+    });
+  }
 
   return (
     <NotificationContext.Provider value={notificationState}>

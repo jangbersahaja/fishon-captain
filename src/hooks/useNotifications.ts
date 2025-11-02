@@ -22,6 +22,16 @@ import { toast } from "sonner";
 // Global singleton to prevent duplicate toasts across multiple hook instances
 const shownToastIds = new Set<string>();
 
+// Debug logger - only logs when NEXT_PUBLIC_NOTIFICATIONS_DEBUG=1
+const debugLog = (...args: unknown[]) => {
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_NOTIFICATIONS_DEBUG === "1"
+  ) {
+    console.log(...args);
+  }
+};
+
 export interface Notification {
   id: string;
   type: string;
@@ -54,11 +64,17 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
-  console.log("🟢 [useNotifications] Hook called with:", {
-    userId,
-    autoConnect,
-    hasSession: !!session,
-  });
+  // Only log in development with debug flag
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_NOTIFICATIONS_DEBUG === "1"
+  ) {
+    console.log("🟢 [useNotifications] Hook called with:", {
+      userId,
+      autoConnect,
+      hasSession: !!session,
+    });
+  }
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -227,30 +243,30 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
    * Initialize Pusher connection and subscribe to user's private channel
    */
   useEffect(() => {
-    console.log("🟡 [useNotifications] Pusher effect triggered", {
+    debugLog("🟡 [useNotifications] Pusher effect triggered", {
       userId,
       autoConnect,
       hasUserId: !!userId,
     });
 
     if (!userId || !autoConnect) {
-      console.log(
+      debugLog(
         "⚠️ [useNotifications] Skipping Pusher setup - no userId or autoConnect disabled"
       );
       return;
     }
 
-    console.log("🟢 [useNotifications] Setting up Pusher...");
+    debugLog("🟢 [useNotifications] Setting up Pusher...");
 
     // Initialize Pusher
     if (!pusherRef.current) {
-      console.log("🔌 [useNotifications] Creating new Pusher instance");
+      debugLog("🔌 [useNotifications] Creating new Pusher instance");
       pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
         cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
         authEndpoint: "/api/pusher/auth",
       });
 
-      console.log("🔌 [useNotifications] Pusher instance created:", {
+      debugLog("🔌 [useNotifications] Pusher instance created:", {
         key: process.env.NEXT_PUBLIC_PUSHER_KEY,
         cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
       });
@@ -259,7 +275,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       pusherRef.current.connection.bind(
         "state_change",
         (states: { previous: string; current: string }) => {
-          console.log(
+          debugLog(
             `[Pusher] Connection state: ${states.previous} -> ${states.current}`
           );
         }
@@ -270,20 +286,20 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         console.error("[Pusher] Connection error:", err);
       });
     } else {
-      console.log("♻️ [useNotifications] Reusing existing Pusher instance");
+      debugLog("♻️ [useNotifications] Reusing existing Pusher instance");
     }
 
     // Subscribe to user's private channel
     const channelName = `private-user-${userId}`;
-    console.log(`[Pusher] Subscribing to channel: ${channelName}`);
+    debugLog(`[Pusher] Subscribing to channel: ${channelName}`);
 
     if (!channelRef.current) {
       channelRef.current = pusherRef.current.subscribe(channelName);
-      console.log(`[Pusher] Successfully subscribed to ${channelName}`);
+      debugLog(`[Pusher] Successfully subscribed to ${channelName}`);
 
       // Listen for new notifications
       channelRef.current.bind("notification", (data: Notification) => {
-        console.log("[useNotifications] 🔔 New notification received:", data);
+        debugLog("[useNotifications] 🔔 New notification received:", data);
 
         // Add to top of notifications list
         setNotifications((prev) => [data, ...prev]);
@@ -295,7 +311,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           data.type === "BOOKING_CANCELLED" ||
           data.type === "BOOKING_PAID"
         ) {
-          console.log(
+          debugLog(
             "[useNotifications] Booking notification received, refreshing page data..."
           );
           // Use Next.js router to soft refresh the page data
@@ -343,7 +359,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       channelRef.current.bind(
         "notification-count",
         (data: { count: number }) => {
-          console.log("[useNotifications] Unread count update:", data.count);
+          debugLog("[useNotifications] Unread count update:", data.count);
           setUnreadCount(data.count);
         }
       );
@@ -352,7 +368,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // Handle page visibility change (reconnect when tab becomes visible)
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && reconnectOnVisibility) {
-        console.log("[Pusher] Tab visible, refreshing data...");
+        debugLog("[Pusher] Tab visible, refreshing data...");
         fetchNotifications();
         fetchUnreadCount();
       }
