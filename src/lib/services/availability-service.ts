@@ -214,10 +214,27 @@ export async function getAvailabilityForRange(
 
   const results: Array<{ date: Date; available: boolean; reason?: string }> =
     [];
-  const currentDate = new Date(startDate);
 
-  while (currentDate <= endDate) {
-    const dateToCheck = new Date(currentDate);
+  // Create date objects in local timezone to ensure consistent day-of-week calculation
+  // This matches the approach used in fishon-market's availability-helpers.ts
+  const currentDate = new Date(
+    startDate.getFullYear(),
+    startDate.getMonth(),
+    startDate.getDate()
+  );
+  const endDateLocal = new Date(
+    endDate.getFullYear(),
+    endDate.getMonth(),
+    endDate.getDate()
+  );
+
+  while (currentDate <= endDateLocal) {
+    // Create a clean copy for this iteration
+    const dateToCheck = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      currentDate.getDate()
+    );
 
     // Check operational schedule
     const isOperational = isOperationalDay(dateToCheck, charter.schedule);

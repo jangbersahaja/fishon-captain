@@ -16,8 +16,23 @@ import {
   checkDateAvailability,
   getAvailabilityForRange,
 } from "@/lib/services/availability-service";
-import { addDays, parseISO } from "date-fns";
+import { addDays } from "date-fns";
 import { NextRequest, NextResponse } from "next/server";
+
+/**
+ * Parse YYYY-MM-DD string as local date (not UTC)
+ * This ensures day-of-week calculations are consistent with user's timezone
+ */
+function parseLocalDate(dateStr: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) {
+    throw new Error("Invalid date format. Expected YYYY-MM-DD");
+  }
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10) - 1; // JS months are 0-indexed
+  const day = parseInt(match[3], 10);
+  return new Date(year, month, day); // Local midnight
+}
 
 /**
  * GET /api/public/charters/[id]/availability
@@ -83,12 +98,12 @@ export async function GET(
     // Handle specific date check
     if (dateParam) {
       try {
-        const date = parseISO(dateParam);
+        const date = parseLocalDate(dateParam);
         const availability = await checkDateAvailability(charterId, date);
         response.dateCheck = availability;
       } catch {
         return NextResponse.json(
-          { error: "Invalid date format. Use ISO 8601 format." },
+          { error: "Invalid date format. Use YYYY-MM-DD format." },
           { status: 400 }
         );
       }
@@ -97,8 +112,8 @@ export async function GET(
     // Handle date range check
     if (startDateParam && endDateParam) {
       try {
-        const startDate = parseISO(startDateParam);
-        const endDate = parseISO(endDateParam);
+        const startDate = parseLocalDate(startDateParam);
+        const endDate = parseLocalDate(endDateParam);
 
         if (startDate >= endDate) {
           return NextResponse.json(
@@ -119,7 +134,7 @@ export async function GET(
         response.dateAvailability = dateAvailability;
       } catch {
         return NextResponse.json(
-          { error: "Invalid date format. Use ISO 8601 format." },
+          { error: "Invalid date format. Use YYYY-MM-DD format." },
           { status: 400 }
         );
       }
