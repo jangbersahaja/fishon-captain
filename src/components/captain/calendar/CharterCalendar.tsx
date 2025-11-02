@@ -85,6 +85,14 @@ export function CharterCalendar({
 
   const mobileScrollRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to format date as YYYY-MM-DD (local timezone)
+  const formatDateYMD = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
   // Fetch calendar data for current month
   useEffect(() => {
     const fetchCalendarData = async () => {
@@ -93,11 +101,11 @@ export function CharterCalendar({
         const monthStart = startOfMonth(currentMonth);
         const monthEnd = endOfMonth(currentMonth);
 
-        // Fetch availability data
+        // Fetch availability data (use local date format, not ISO)
         const availabilityRes = await fetch(
           `/api/public/charters/${charterId}/availability?` +
-            `startDate=${monthStart.toISOString()}&` +
-            `endDate=${monthEnd.toISOString()}`
+            `startDate=${formatDateYMD(monthStart)}&` +
+            `endDate=${formatDateYMD(monthEnd)}`
         );
 
         if (!availabilityRes.ok) {
@@ -142,8 +150,8 @@ export function CharterCalendar({
 
         const availabilityRes = await fetch(
           `/api/public/charters/${charterId}/availability?` +
-            `startDate=${monthStart.toISOString()}&` +
-            `endDate=${monthEnd.toISOString()}`
+            `startDate=${formatDateYMD(monthStart)}&` +
+            `endDate=${formatDateYMD(monthEnd)}`
         );
 
         if (availabilityRes.ok) {
