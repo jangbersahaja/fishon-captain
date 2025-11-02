@@ -43,6 +43,8 @@ model User {
   notesAuthored            DraftNote[]          @relation("UserDraftNotes")
   PasswordHistory          PasswordHistory[]
   sessions                 Session[]
+  notifications            Notification[]
+  notificationPreferences  NotificationPreferences?
 }
 
 model CaptainProfile {
@@ -91,6 +93,8 @@ model Charter {
   policies      Policies?
   trips         Trip[]
   videos        CaptainVideo[]
+  schedule      CharterSchedule?
+  unavailability CharterUnavailability[]
 }
 
 model Boat {
@@ -146,6 +150,50 @@ model CharterFeature {
   charterId String
   label     String
   charter   Charter @relation(fields: [charterId], references: [id])
+}
+
+// Charter operational schedule configuration
+model CharterSchedule {
+  id        String       @id @default(cuid())
+  charterId String       @unique
+  charter   Charter      @relation(fields: [charterId], references: [id], onDelete: Cascade)
+  
+  // Operational pattern
+  scheduleType ScheduleType @default(EVERYDAY)
+  
+  // Custom days (used when scheduleType = CUSTOM)
+  // Array of day indexes: 0=Sunday, 1=Monday, ..., 6=Saturday
+  operationalDays Int[] @default([])
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([charterId])
+  @@map("charter_schedules")
+}
+
+// Unavailable date ranges
+model CharterUnavailability {
+  id        String   @id @default(cuid())
+  charterId String
+  charter   Charter  @relation(fields: [charterId], references: [id], onDelete: Cascade)
+  
+  // Date range
+  startDate DateTime
+  endDate   DateTime
+  
+  // Optional reason
+  reason    String?
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  
+  @@index([charterId, startDate, endDate])
+  @@index([charterId])
+  @@map("charter_unavailability")
 }
 
 model CharterMedia {
@@ -371,6 +419,13 @@ enum CharterStyle {
   SHARED
 }
 
+enum ScheduleType {
+  EVERYDAY
+  WEEKDAYS
+  WEEKENDS
+  CUSTOM
+}
+
 enum MediaKind {
   CHARTER_PHOTO
   CAPTAIN_AVATAR
@@ -392,4 +447,87 @@ enum MfaMethod {
   TOTP
   WHATSAPP
   SMS
+}
+
+enum NotificationType {
+  // Booking lifecycle
+  BOOKING_RECEIVED      // Captain: New booking request
+  BOOKING_PAID          // Captain: Booking payment confirmed
+  BOOKING_CANCELLED     // Captain: Angler cancelled booking
+  
+  // Review system
+  REVIEW_RECEIVED       // Captain: New review posted for your charter
+  
+  // Charter events
+  CHARTER_APPROVED      // Captain: Charter approved by admin
+  CHARTER_REJECTED      // Captain: Charter rejected by admin
+  CHARTER_UPDATED       // Captain: Charter details updated
+  
+  // Account events
+  ACCOUNT_VERIFIED      // Captain: Email verified
+  PROFILE_INCOMPLETE    // Captain: Complete your profile
+  
+  // System
+  SYSTEM_ANNOUNCEMENT   // Platform updates
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+// Notification system
+model Notification {
+  id          String             @id @default(cuid())
+  userId      String
+  type        NotificationType
+  status      NotificationStatus @default(UNREAD)
+  
+  title       String
+  message     String
+  actionUrl   String?
+  actionLabel String?
+  
+  // Related entities
+  bookingId   String?
+  charterId   String?
+  
+  // Metadata
+  metadata    Json?
+  
+  // Timestamps
+  createdAt   DateTime           @default(now())
+  readAt      DateTime?
+  archivedAt  DateTime?
+  expiresAt   DateTime?
+  
+  // Relations
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("notifications")
+}
+
+model NotificationPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  
+  // Channel preferences
+  inAppEnabled    Boolean  @default(true)
+  emailEnabled    Boolean  @default(true)
+  
+  // Type preferences
+  bookingUpdates  Boolean  @default(true)
+  charterUpdates  Boolean  @default(true)
+  systemUpdates   Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notification_preferences")
 }

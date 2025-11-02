@@ -1,11 +1,12 @@
 import { type BookingReview } from "@/dummy/receipts";
+import { formatDate as formatDateMY } from "@/lib/datetime";
 import { summariseBadges } from "@/utils/reviewBadges";
 import Stars from "./Stars";
 
 function formatDate(iso: string | undefined) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return formatDateMY(new Date(iso), {
       year: "numeric",
       month: "short",
       day: "numeric",

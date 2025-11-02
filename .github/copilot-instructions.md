@@ -1,5 +1,5 @@
 `````instructions
-# Copilot Instructions · FishOn Captain
+# Copilot Instructions · Fishon Captain
 
 ## Platform Snapshot
 

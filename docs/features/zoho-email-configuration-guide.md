@@ -76,7 +76,7 @@ Auth: Required
 4. **Generate Application-Specific Password**
    - Find "App Passwords" or "Application-Specific Passwords"
    - Click "Generate New Password"
-   - Name it: "FishOn Captain Register"
+   - Name it: "Fishon Captain Register"
    - Copy the generated password
    - Use this password in `SMTP_PASSWORD` (NOT your regular Zoho password)
 
@@ -330,13 +330,13 @@ No code changes needed - email functions work identically:
 ---
 
 **Last Updated**: October 12, 2025  
-**Maintained By**: FishOn Development Team
-
-
+**Maintained By**: Fishon Development Team
 
 ## TODO: Review & Clean
+
 - [ ] Remove small duplicated lines / housekeeping.
 - [ ] Move anything clearly obsolete into Archive section below.
 
 ### Archive / Legacy (moved)
+
 > All originals moved to docs-archived/zoho-email-configuration-guide/

@@ -72,6 +72,8 @@ export function createDefaultCharterFormValues(): CharterFormValues {
       areas: [],
       notes: "",
     },
+    scheduleType: "EVERYDAY",
+    operationalDays: [],
     trips: [defaultTrip()],
     photos: [],
     videos: [],

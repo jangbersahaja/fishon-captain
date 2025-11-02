@@ -23,7 +23,7 @@ export default function DevPanel({
   if (!visible) return null;
 
   return (
-    <div className="fixed z-[9999] bottom-4 right-4 bg-black/80 text-white rounded-xl shadow-lg px-5 py-4 flex flex-col items-end gap-2 border border-white/20">
+    <div className="fixed z-[9999] inset-y-0 my-auto justify-center right-4 bg-black/80 text-white rounded-xl shadow-lg px-5 py-4 flex flex-col items-end gap-2 border border-white/20 h-fit">
       <div className="font-bold text-xs mb-1 tracking-widest text-[#EC2227]">
         DEV PANEL
       </div>

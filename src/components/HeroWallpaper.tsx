@@ -38,7 +38,7 @@ export default function HeroWallpaper({
         src={src}
         alt={alt}
         fill
-        sizes="100vw"
+        sizes="(max-width: 768px) 100vw, 1280px"
         className="object-cover"
         priority={priority}
       />
@@ -51,7 +51,7 @@ export default function HeroWallpaper({
       />
       {children ? (
         <div className="absolute inset-0">
-          <div className="mx-auto flex h-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center h-full px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             {children}
           </div>
         </div>

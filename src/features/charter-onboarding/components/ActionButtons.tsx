@@ -1,11 +1,11 @@
 "use client";
-import { useToasts } from "@/components/toast/ToastContext";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useCharterFormSelectors } from "@features/charter-onboarding/context/CharterFormContext";
 import { logFormDebug } from "@features/charter-onboarding/debug";
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useCallback } from "react";
+import { toast } from "sonner";
 
 export const ActionButtons: React.FC = () => {
   const router = useRouter();
@@ -21,7 +21,6 @@ export const ActionButtons: React.FC = () => {
   const existingImagesCount = useCharterFormSelectors(
     (s) => s.media?.existingImagesCount ?? 0
   );
-  const toasts = useToasts();
 
   // Get the index of the media step (hardcoded as 4, or import if available)
   const MEDIA_STEP_INDEX = 4;
@@ -50,14 +49,11 @@ export const ActionButtons: React.FC = () => {
   // Guard: block next on media step if <3 photos
   const handleNextWithPhotoGuard = useCallback(() => {
     if (currentStep === MEDIA_STEP_INDEX && existingImagesCount < 3) {
-      toasts.push({
-        type: "error",
-        message: "Please upload at least 3 photos before continuing",
-      });
+      toast.error("Please upload at least 3 photos before continuing");
       return;
     }
     handleNext();
-  }, [currentStep, existingImagesCount, handleNext, toasts]);
+  }, [currentStep, existingImagesCount, handleNext]);
 
   return (
     <div className="flex flex-wrap justify-end gap-3">
@@ -108,8 +104,8 @@ export const ActionButtons: React.FC = () => {
             serverSaving
               ? "Saving…"
               : avatarUploading
-              ? "Uploading avatar…"
-              : "Next"
+                ? "Uploading avatar…"
+                : "Next"
           }
         >
           <button
@@ -120,10 +116,10 @@ export const ActionButtons: React.FC = () => {
               serverSaving
                 ? "Saving"
                 : avatarUploading
-                ? "Uploading avatar"
-                : !serverDraftId
-                ? "Preparing"
-                : "Next"
+                  ? "Uploading avatar"
+                  : !serverDraftId
+                    ? "Preparing"
+                    : "Next"
             }
             className="inline-flex items-center justify-center rounded-full bg-slate-900 p-3 text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-900"
           >
@@ -138,10 +134,10 @@ export const ActionButtons: React.FC = () => {
               {serverSaving
                 ? "Saving"
                 : avatarUploading
-                ? "Uploading avatar"
-                : !isEditing && !serverDraftId
-                ? "Preparing"
-                : "Next"}
+                  ? "Uploading avatar"
+                  : !isEditing && !serverDraftId
+                    ? "Preparing"
+                    : "Next"}
             </span>
             <span
               aria-hidden
@@ -150,10 +146,10 @@ export const ActionButtons: React.FC = () => {
               {serverSaving
                 ? "Saving"
                 : avatarUploading
-                ? "Uploading…"
-                : !isEditing && !serverDraftId
-                ? "Preparing draft…"
-                : "Next"}
+                  ? "Uploading…"
+                  : !isEditing && !serverDraftId
+                    ? "Preparing draft…"
+                    : "Next"}
             </span>
           </button>
         </Tooltip>
@@ -186,8 +182,8 @@ export const ActionButtons: React.FC = () => {
               {savingEdit
                 ? "Saving…"
                 : hasBlockingMedia
-                ? "Waiting for video…"
-                : "Save"}
+                  ? "Waiting for video…"
+                  : "Save"}
             </span>
           </button>
         </Tooltip>

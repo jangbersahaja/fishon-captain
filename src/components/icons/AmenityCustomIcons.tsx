@@ -1,12 +1,12 @@
 import * as React from "react";
 
 /* ------------------------------------------------------------------
-   🎣  FishOn Amenity Icon System (Duotone)
+   🎣  Fishon Amenity Icon System (Duotone)
    ------------------------------------------------------------------
    Palette:
    --ink      → dark navy outline (#0F172A)
    --tint     → soft red tint (#FDE8E9)
-   --primary  → FishOn red accent (#EC2227)
+   --primary  → Fishon red accent (#EC2227)
 
    Shared base: IconBase()
    All icons: 36x36 viewBox, strokeWidth 1.1

@@ -12,7 +12,7 @@ sources:
 
 # Z-Index Design System
 
-This document outlines the z-index layering system used throughout the FishOn Captain Registration application.
+This document outlines the z-index layering system used throughout the Fishon Captain Registration application.
 
 ## Design System
 
@@ -155,13 +155,12 @@ When adding new components that need z-index positioning:
 ---
 
 Last updated: October 4, 2025 - Fixed navbar dropdown stacking context issues using React portal
-
 
 ---- SOURCE: docs/guides/Z_INDEX_SYSTEM.md ----
 
 # Z-Index Design System
 
-This document outlines the z-index layering system used throughout the FishOn Captain Registration application.
+This document outlines the z-index layering system used throughout the Fishon Captain Registration application.
 
 ## Design System
 
@@ -305,11 +304,11 @@ When adding new components that need z-index positioning:
 
 Last updated: October 4, 2025 - Fixed navbar dropdown stacking context issues using React portal
 
-
-
 ## TODO: Review & Clean
+
 - [ ] Remove small duplicated lines / housekeeping.
 - [ ] Move anything clearly obsolete into Archive section below.
 
 ### Archive / Legacy (moved)
+
 > All originals moved to docs-archived/z-index-design-system/

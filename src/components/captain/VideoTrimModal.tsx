@@ -1,13 +1,12 @@
 "use client";
 import { MAX_SHORT_VIDEO_BYTES } from "@/config/mediaProcessing";
+import { isValidVideoFile } from "@/lib/schemas/video";
 import {
   trimMp4BoxKeyframeSlice,
   TrimResult,
 } from "@/lib/video/trimMp4BoxKeyframeSlice";
-import { isValidVideoFile } from "@/lib/schemas/video";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { generateFrameThumbnails } from "./utils/generateFrameThumbnails";
-// TODO(worker): Integrate AbortController + web worker pipeline for thumbnail & probe extraction.
 
 interface VideoTrimModalProps {
   file: File;

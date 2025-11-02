@@ -1,5 +1,23 @@
 /**
+ * ⚠️ LEGACY EMAIL SYSTEM - DEPRECATED ⚠️
+ *
+ * This file contains the OLD email system with inline HTML templates.
+ * It is kept for backward compatibility during migration only.
+ *
+ * NEW EMAIL SYSTEM: Use @fishon/email package instead
+ * Location: src/lib/services/email-service.ts
+ *
+ * Migration Date: October 28, 2025
+ * Package: @fishon/email (git+https://github.com/jangbersahaja/fishon-email)
+ *
+ * DO NOT ADD NEW EMAIL FUNCTIONS HERE - use the new email service instead.
+ *
+ * @deprecated Use src/lib/services/email-service.ts with @fishon/email package
+ */
+
+/**
  * Send registration notification to captain, CC admin and ops
+ * @deprecated Use email-service.ts sendCaptainRegistration() with @fishon/email package
  */
 export async function sendCaptainRegistrationNotification({
   to,
@@ -114,6 +132,9 @@ async function sendEmail(options: EmailOptions): Promise<boolean> {
   }
 }
 
+/**
+ * @deprecated Use email-service.ts sendVerificationCode() with @fishon/email package
+ */
 export async function sendVerificationOTP(
   email: string,
   firstName: string,
@@ -158,6 +179,9 @@ export async function sendVerificationOTP(
   });
 }
 
+/**
+ * @deprecated Use email-service.ts sendVerificationCode() with purpose="password_reset"
+ */
 export async function sendPasswordResetOTP(
   email: string,
   firstName: string,
@@ -197,6 +221,9 @@ export async function sendPasswordResetOTP(
   });
 }
 
+/**
+ * @deprecated Use email-service.ts sendPasswordChangedEmail() with @fishon/email package
+ */
 export async function sendPasswordChangedNotification(
   email: string,
   firstName: string,

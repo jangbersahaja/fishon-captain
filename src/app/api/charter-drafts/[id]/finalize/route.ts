@@ -5,6 +5,7 @@ import { counter } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
 import { getRequestId } from "@/lib/requestId";
+import { sendCharterRegistration } from "@/lib/services/email-service";
 // update-path auditing removed; no longer importing audit helpers here
 import type { DraftValues } from "@features/charter-onboarding/charterForm.draft";
 import { CharterPricingPlan, CharterStyle, Prisma } from "@prisma/client";
@@ -62,6 +63,10 @@ export async function POST(
 
   // Transactional finalize logic
   let charterId: string | null = null;
+  let charterName: string | null = null;
+  let captainEmail: string | null = null;
+  let captainName: string | null = null;
+
   try {
     await prisma.$transaction(async (tx) => {
       // Fetch draft and captainProfile inside transaction
@@ -88,13 +93,25 @@ export async function POST(
       if (!draftData) {
         throw { status: 400, error: "invalid_draft_data" };
       }
+
+      // Capture charter name for email
+      charterName = draftData.charterName ?? null;
+
       const captainProfile = await tx.captainProfile.findUnique({
         where: { userId },
-        select: { id: true },
+        select: {
+          id: true,
+          displayName: true,
+          user: { select: { email: true } },
+        },
       });
       if (!captainProfile) {
         throw { status: 400, error: "missing_captain_profile" };
       }
+
+      // Capture captain info for email
+      captainEmail = captainProfile.user?.email ?? null;
+      captainName = captainProfile.displayName ?? null;
       if (!media || media.images.length === 0) {
         throw { status: 400, error: "missing_media" };
       }
@@ -246,6 +263,16 @@ export async function POST(
         select: { id: true },
       });
       charterId = charter.id;
+
+      // Create charter schedule
+      await tx.charterSchedule.create({
+        data: {
+          charterId: charter.id,
+          scheduleType: draftData.scheduleType || "EVERYDAY",
+          operationalDays: draftData.operationalDays || [],
+        },
+      });
+
       await tx.charterMedia.updateMany({
         where: { id: { in: canonicalPhotos.map((p) => p.id) } },
         data: { charterId: charter.id },
@@ -304,6 +331,25 @@ export async function POST(
     charterId,
   });
   counter("finalize.success").inc();
+
+  // Send charter registration email (async, non-blocking)
+  if (captainEmail && charterName && captainName) {
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://fishon-captain.vercel.app"}/captain/charters/${charterId}`;
+    sendCharterRegistration({
+      to: captainEmail,
+      captainName,
+      charterName,
+      dashboardUrl,
+      ccAdmin: process.env.ADMIN_EMAIL, // Optional CC to admin
+    }).catch((err) => {
+      logger.error("charter_registration_email_failed", {
+        requestId,
+        charterId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
+
   return applySecurityHeaders(
     NextResponse.json({ ok: true, charterId, requestId })
   );

@@ -417,8 +417,8 @@ for (const entry of history) {
 
    ```typescript
    const secret = speakeasy.generateSecret({
-     name: `FishOn Captain (${user.email})`,
-     issuer: "FishOn",
+     name: `Fishon Captain (${user.email})`,
+     issuer: "Fishon",
    });
 
    const qrCode = await QRCode.toDataURL(secret.otpauth_url);

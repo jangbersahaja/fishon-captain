@@ -4,10 +4,10 @@
  */
 
 import { canRequestOTP, createOTP, type OTPPurpose } from "@/lib/auth/otp";
-import { sendPasswordResetOTP, sendVerificationOTP } from "@/lib/email";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
+import { sendVerificationCode } from "@/lib/services/email-service";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -89,19 +89,21 @@ export async function POST(request: Request) {
     }
 
     // Send appropriate email based on purpose
-    if (purpose === "email_verification") {
-      await sendVerificationOTP(
-        user.email!,
-        otpResult.code,
-        user.name || "User"
-      );
-    } else if (purpose === "password_reset") {
-      await sendPasswordResetOTP(
-        user.email!,
-        otpResult.code,
-        user.name || "User"
-      );
-    }
+    const purposeMap: Record<
+      string,
+      "registration" | "login" | "forgot_password" | "profile_update"
+    > = {
+      email_verification: "registration",
+      password_reset: "forgot_password",
+    };
+
+    await sendVerificationCode({
+      to: user.email!,
+      userName: user.name || "User",
+      code: otpResult.code,
+      purpose: purposeMap[purpose] || "registration",
+      expiryMinutes: 5,
+    });
 
     return applySecurityHeaders(
       NextResponse.json({

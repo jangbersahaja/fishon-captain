@@ -22,7 +22,6 @@ export default function GlobalError({
       stack: error.stack,
       digest: (error as unknown as { digest?: string })?.digest,
     });
-    // TODO: ship to external monitoring (Sentry / Logtail) here.
   }, [error]);
 
   const isDev = process.env.NODE_ENV !== "production";
@@ -85,7 +84,7 @@ export default function GlobalError({
         )}
       </main>
       <footer className="mt-10 text-center text-[11px] text-slate-400">
-        &copy; {new Date().getFullYear()} FishOn. All rights reserved.
+        &copy; {new Date().getFullYear()} Fishon. All rights reserved.
       </footer>
     </div>
   );

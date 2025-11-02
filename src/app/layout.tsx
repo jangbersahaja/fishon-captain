@@ -2,8 +2,9 @@ import AuthSessionProvider from "@/components/AuthSessionProvider";
 import { DevPanelProvider } from "@/components/DevPanelProvider";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import { NotificationProvider } from "@/components/notifications";
 import OfflineBanner from "@/components/OfflineBanner";
-import { ToastProvider } from "@/components/toast/ToastContext";
+import { Toaster } from "@/components/ui/sonner";
 import { enableCharterFormConsoleLogging } from "@features/charter-onboarding/analytics";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -28,6 +29,8 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
   icons: { icon: "/favicon.ico", apple: "/apple-touch-icon.png" },
 };
+
+//TODO: Check offline banner implementation
 
 export default function RootLayout({
   children,
@@ -55,14 +58,15 @@ export default function RootLayout({
       <body className="flex flex-col min-h-screen font-sans">
         <DevPanelProvider>
           <AuthSessionProvider>
-            <ToastProvider>
+            <NotificationProvider>
+              <Toaster />
               <Navbar />
               <OfflineBanner />
               <main className="flex-1">{children}</main>
               <Footer />
               <SpeedInsights />
               <Analytics />
-            </ToastProvider>
+            </NotificationProvider>
           </AuthSessionProvider>
         </DevPanelProvider>
       </body>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="100" fill="#E2E8F0"/>
+  
+  <!-- Person icon -->
+  <g transform="translate(100, 100)">
+    <!-- Head -->
+    <circle cx="0" cy="-20" r="28" fill="#64748B"/>
+    
+    <!-- Body -->
+    <path d="M -35 25 Q -35 0, -28 -5 L 28 -5 Q 35 0, 35 25 L 35 50 L -35 50 Z" fill="#64748B"/>
+  </g>
+  
+  <!-- Fishing rod detail -->
+  <line x1="140" y1="50" x2="170" y2="30" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/>
+  <line x1="170" y1="30" x2="175" y2="45" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

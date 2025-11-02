@@ -1,5 +1,7 @@
 "use client";
 import {
+  Bell,
+  Calendar,
   IdCard,
   Image as ImageIcon,
   LayoutDashboard,
@@ -14,6 +16,9 @@ import { useMemo } from "react";
 const links = [
   { href: "/captain", label: "Overview", Icon: LayoutDashboard },
   { href: "/captain/charter", label: "Charter", Icon: Ship },
+  { href: "/captain/bookings", label: "Bookings", Icon: Calendar },
+  { href: "/captain/bookings/calendar", label: "Calendar", Icon: Calendar },
+  { href: "/captain/notifications", label: "Notifications", Icon: Bell },
   { href: "/captain/media", label: "Media", Icon: ImageIcon },
   { href: "/captain/verification", label: "Verification", Icon: IdCard },
   { href: "/captain/settings", label: "Settings", Icon: SettingsIcon },

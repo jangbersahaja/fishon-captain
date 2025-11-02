@@ -1,16 +1,21 @@
 const Cobia = "/images/species/saltwater/Aruan Tasik (Cobia).png";
-const GoldenPomfret = "/images/species/saltwater/Bawal Emas (Golden Pomfret).png";
-const BlackPomfret = "/images/species/saltwater/Bawal Hitam (Black Pomfret).png";
+const GoldenPomfret =
+  "/images/species/saltwater/Bawal Emas (Golden Pomfret).png";
+const BlackPomfret =
+  "/images/species/saltwater/Bawal Hitam (Black Pomfret).png";
 const HardtailScad = "/images/species/saltwater/Cencaru (Hardtail Scad).png";
 const DiamondTrevally = "/images/species/saltwater/Ebek (Diamond Trevally).png";
 const Croaker = "/images/species/saltwater/Gelama (Croaker).png";
 const Grunter = "/images/species/saltwater/Gerut (Grunter).png";
-const IndianTrevally = "/images/species/saltwater/Ikan Cermin (Indian Trevally).png";
-const MarineCatfish = "/images/species/saltwater/Ikan Duri (Marine Catfish).png";
+const IndianTrevally =
+  "/images/species/saltwater/Ikan Cermin (Indian Trevally).png";
+const MarineCatfish =
+  "/images/species/saltwater/Ikan Duri (Marine Catfish).png";
 const GiantTrevally = "/images/species/saltwater/Ikan GT (Giant Trevally).png";
 const RedSnapper = "/images/species/saltwater/Ikan Merah (Red Snapper).png";
 const GoldenSnapper = "/images/species/saltwater/Jenahak (Golden Snapper).png";
-const IndianMackerel = "/images/species/saltwater/Kembung (Indian Mackerel).png";
+const IndianMackerel =
+  "/images/species/saltwater/Kembung (Indian Mackerel).png";
 const Grouper = "/images/species/saltwater/Kerapu (Grouper).png";
 const Threadfin = "/images/species/saltwater/Kurau (Threadfin).png";
 const Sailfish = "/images/species/saltwater/Layaran (Sailfish).png";
@@ -21,15 +26,21 @@ const Rayfish = "/images/species/saltwater/Pari (Rayfish).png";
 const Salmon = "/images/species/saltwater/Salmon.png";
 const YellowtailScad = "/images/species/saltwater/Selar (Yellowtail Scad).png";
 const Sardine = "/images/species/saltwater/Selayang (Sardine).png";
-const EeltailCatfish = "/images/species/saltwater/Semilang (Eeltail Catfish).png";
-const FourfingerThreadfin = "/images/species/saltwater/Senangin (Fourfinger Threadfin).png";
+const EeltailCatfish =
+  "/images/species/saltwater/Semilang (Eeltail Catfish).png";
+const FourfingerThreadfin =
+  "/images/species/saltwater/Senangin (Fourfinger Threadfin).png";
 const Barramundi = "/images/species/saltwater/Siakap (Barramundi).png";
-const MangroveJack = "/images/species/saltwater/Siakap Merah (Mangrove Jack).png";
+const MangroveJack =
+  "/images/species/saltwater/Siakap Merah (Mangrove Jack).png";
 const Queenfish = "/images/species/saltwater/Talang (Queenfish).png";
 const Anchovy = "/images/species/saltwater/Tamban (Anchovy).png";
-const RussellsSnapper = "/images/species/saltwater/Tanda (Russell’s Snapper).png";
-const SweetlipEmperor = "/images/species/saltwater/Tebal Sisik (Sweetlip Emperor).png";
-const SpanishMackerel = "/images/species/saltwater/Tenggiri (Spanish Mackerel).png";
+const RussellsSnapper =
+  "/images/species/saltwater/Tanda (Russell’s Snapper).png";
+const SweetlipEmperor =
+  "/images/species/saltwater/Tebal Sisik (Sweetlip Emperor).png";
+const SpanishMackerel =
+  "/images/species/saltwater/Tenggiri (Spanish Mackerel).png";
 const Needlefish = "/images/species/saltwater/Todak (Needlefish).png";
 const Mackerel = "/images/species/saltwater/Tongkol (Mackerel Tuna).png";
 const Tuna = "/images/species/saltwater/Tuna.png";
@@ -85,7 +96,7 @@ export const SALTWATER_SPECIES = [
     image: Grunter,
   },
   {
-    id: "golden-snaper",
+    id: "golden-snapper",
     english_name: "Golden Snapper",
     local_name: "Jenahak",
     image: GoldenSnapper,
@@ -206,7 +217,7 @@ export const SALTWATER_SPECIES = [
     image: Anchovy,
   },
   {
-    id: "russell's-snapper",
+    id: "russells-snapper",
     english_name: "Russell's Snapper",
     local_name: "Tanda",
     image: RussellsSnapper,

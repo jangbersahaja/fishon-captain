@@ -18,7 +18,7 @@ const STEP_DESCRIPTIONS: Partial<Record<StepKey, string>> = {
   trips:
     "Active trip lineup with pricing, durations, species, and available start times.",
   description:
-    "Long-form charter description and tone that anglers see on FishOn.",
+    "Long-form charter description and tone that anglers see on Fishon.",
   media: "Published photo gallery and processed short-form videos.",
   review:
     "Final review step used when publishing updates through the onboarding flow.",
@@ -81,6 +81,10 @@ type CharterDetail = {
     fee: DecimalLike;
     notes: string | null;
     areas: { label: string }[];
+  } | null;
+  schedule: {
+    scheduleType: string;
+    operationalDays: number[];
   } | null;
   trips: Array<{
     id: string;
@@ -422,8 +426,8 @@ function renderStepContent({
             trip.style === "SHARED"
               ? "Shared"
               : trip.style === "PRIVATE"
-              ? "Private"
-              : trip.style || "—";
+                ? "Private"
+                : trip.style || "—";
           return (
             <div
               key={trip.id}
@@ -644,7 +648,7 @@ function renderStepContent({
       >
         <p>
           Use the review step in the onboarding flow to preview every section
-          and publish updates to FishOn.
+          and publish updates to Fishon.
         </p>
         <p className="text-xs text-slate-500">
           Selecting Edit opens the form at the review step so you can submit
@@ -755,6 +759,12 @@ export default async function CharterStepsPage({
               areas: { select: { label: true } },
             },
           },
+          schedule: {
+            select: {
+              scheduleType: true,
+              operationalDays: true,
+            },
+          },
           trips: {
             orderBy: { createdAt: "asc" },
             select: {
@@ -795,22 +805,24 @@ export default async function CharterStepsPage({
   }
   const charter = typed.charters[0] as unknown as CharterDetail;
   const photos = [...charter.media].sort((a, b) => a.sortOrder - b.sortOrder);
-  
+
   // Get videos by captainId instead of ownerId
-  const videos = profile ? (await prisma.captainVideo.findMany({
-    where: { captainId: profile.id },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      originalUrl: true,
-      ready720pUrl: true,
-      processStatus: true,
-      errorMessage: true,
-      thumbnailUrl: true,
-      createdAt: true,
-      processedDurationSec: true,
-    },
-  })) : [] as CaptainVideoRow[];
+  const videos = profile
+    ? await prisma.captainVideo.findMany({
+        where: { captainId: profile.id },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          originalUrl: true,
+          ready720pUrl: true,
+          processStatus: true,
+          errorMessage: true,
+          thumbnailUrl: true,
+          createdAt: true,
+          processedDurationSec: true,
+        },
+      })
+    : ([] as CaptainVideoRow[]);
 
   const imageMetas = photos
     .filter((photo) => !!photo.url)

@@ -1,6 +1,7 @@
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/services/notification-service";
 import type { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -119,10 +120,36 @@ export async function POST(req: Request) {
     );
 
   if (Array.isArray(ids) && ids.length > 0) {
+    // Update multiple charters
     await prisma.charter.updateMany({
       where: { id: { in: ids } },
       data: { isActive },
     });
+
+    // Send notifications to each charter's captain
+    if (isActive !== undefined) {
+      const charters = await prisma.charter.findMany({
+        where: { id: { in: ids } },
+        include: { captain: { select: { userId: true } } },
+      });
+
+      await Promise.all(
+        charters.map((charter) =>
+          createNotification({
+            userId: charter.captain.userId,
+            type: isActive ? "CHARTER_APPROVED" : "CHARTER_REJECTED",
+            title: isActive ? "Charter Approved" : "Charter Rejected",
+            message: isActive
+              ? `Your charter "${charter.name}" has been approved and is now live!`
+              : `Your charter "${charter.name}" has been rejected. Please review and update it.`,
+            actionUrl: `/captain/charter/${charter.id}`,
+            actionLabel: "View Charter",
+            charterId: charter.id,
+          })
+        )
+      );
+    }
+
     return applySecurityHeaders(
       NextResponse.json({ ok: true, count: ids.length })
     );
@@ -133,6 +160,27 @@ export async function POST(req: Request) {
       NextResponse.json({ error: "missing_id" }, { status: 400 })
     );
 
-  await prisma.charter.update({ where: { id }, data: { isActive } });
+  // Update single charter
+  const charter = await prisma.charter.update({
+    where: { id },
+    data: { isActive },
+    include: { captain: { select: { userId: true } } },
+  });
+
+  // Send notification to captain
+  if (isActive !== undefined) {
+    await createNotification({
+      userId: charter.captain.userId,
+      type: isActive ? "CHARTER_APPROVED" : "CHARTER_REJECTED",
+      title: isActive ? "Charter Approved" : "Charter Rejected",
+      message: isActive
+        ? `Your charter "${charter.name}" has been approved and is now live!`
+        : `Your charter "${charter.name}" has been rejected. Please review and update it.`,
+      actionUrl: `/captain/charter/${charter.id}`,
+      actionLabel: "View Charter",
+      charterId: charter.id,
+    });
+  }
+
   return applySecurityHeaders(NextResponse.json({ ok: true, count: 1 }));
 }

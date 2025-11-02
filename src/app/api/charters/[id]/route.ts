@@ -103,6 +103,7 @@ export async function PATCH(
       features: true,
       policies: true,
       pickup: { include: { areas: true } },
+      schedule: true,
       trips: { include: { startTimes: true, species: true, techniques: true } },
       captain: {
         select: {
@@ -310,6 +311,34 @@ export async function PATCH(
       );
     }
   }
+
+  if (data.schedule && Object.keys(data.schedule).length) {
+    const existingSchedule = await prisma.charterSchedule.findUnique({
+      where: { charterId },
+    });
+    if (existingSchedule) {
+      tx.push(
+        prisma.charterSchedule.update({
+          where: { charterId },
+          data: {
+            scheduleType: data.schedule.scheduleType ?? undefined,
+            operationalDays: data.schedule.operationalDays ?? undefined,
+          },
+        })
+      );
+    } else {
+      tx.push(
+        prisma.charterSchedule.create({
+          data: {
+            charterId,
+            scheduleType: data.schedule.scheduleType || "EVERYDAY",
+            operationalDays: data.schedule.operationalDays || [],
+          },
+        })
+      );
+    }
+  }
+
   if (data.trips) {
     // Upsert trips: simplistic replace strategy (could diff later)
     const existingTrips = await prisma.trip.findMany({
@@ -461,6 +490,7 @@ export async function PATCH(
       features: true,
       policies: true,
       pickup: { include: { areas: true } },
+      schedule: true,
       trips: { include: { startTimes: true, species: true, techniques: true } },
       captain: {
         select: {
@@ -503,6 +533,7 @@ export async function PATCH(
       features: true,
       policies: true,
       pickup: { include: { areas: true } },
+      schedule: true,
       trips: { include: { startTimes: true, species: true, techniques: true } },
     },
   });
@@ -532,6 +563,7 @@ export async function GET(
       policies: true,
       pickup: { include: { areas: true } },
       trips: { include: { startTimes: true, species: true, techniques: true } },
+      schedule: true,
       captain: {
         select: {
           userId: true,
@@ -568,7 +600,7 @@ export async function GET(
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found" }, { status: 404 })
     );
-  
+
   // IMPORTANT: use storageKey as the stable identifier (was previously sortOrder string which broke deletion)
   const images = charter.media.map((m) => ({
     name: m.storageKey,

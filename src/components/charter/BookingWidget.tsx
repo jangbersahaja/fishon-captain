@@ -313,7 +313,6 @@ export default function BookingWidget({
                   className="mt-3 w-full rounded-xl bg-[#ec2227] px-4 py-2 text-sm font-semibold text-white hover:translate-y-px transition disabled:opacity-50"
                   disabled={overMax}
                   onClick={() => {
-                    // TODO: replace with real reserve flow (route to checkout or call API)
                     console.log("Reserve", {
                       tripIndex: i,
                       date,

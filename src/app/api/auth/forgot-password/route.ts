@@ -4,10 +4,10 @@
  */
 
 import { canRequestOTP, createOTP } from "@/lib/auth/otp";
-import { sendPasswordResetOTP } from "@/lib/email";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimiter";
+import { sendVerificationCode } from "@/lib/services/email-service";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -101,11 +101,13 @@ export async function POST(request: Request) {
       );
     }
 
-    await sendPasswordResetOTP(
-      user.email!,
-      user.name || "User",
-      otpResult.code
-    );
+    await sendVerificationCode({
+      to: user.email!,
+      userName: user.name || "User",
+      code: otpResult.code,
+      purpose: "forgot_password",
+      expiryMinutes: 5,
+    });
 
     return applySecurityHeaders(
       NextResponse.json({
