@@ -123,6 +123,9 @@ export async function POST(
         },
         orderBy: { createdAt: "asc" },
       });
+      // Query unlinked videos (charterId: null)
+      // Note: Videos uploaded during draft editing with charterId may already have
+      // CharterVideo junction records. Those will be handled separately.
       const canonicalVideos = await tx.captainVideo.findMany({
         where: {
           captainId: captainProfile.id,
@@ -277,12 +280,59 @@ export async function POST(
         where: { id: { in: canonicalPhotos.map((p) => p.id) } },
         data: { charterId: charter.id },
       });
-      for (const video of canonicalVideos) {
-        await tx.captainVideo.update({
-          where: { id: video.id },
+
+      // Link videos via CharterVideo junction table (many-to-many)
+      // This replaces the old direct FK update approach
+
+      // Check for videos already linked during draft editing
+      // (e.g., if user uploaded videos with draftId or temp charterId)
+      const existingVideoLinks = await tx.charterVideo.findMany({
+        where: {
+          OR: [
+            { charterId: draft.id }, // Draft ID used as temp charter ID
+            { charterId: { startsWith: "temp-" } }, // Any temp IDs
+          ],
+        },
+        include: {
+          video: {
+            select: { captainId: true },
+          },
+        },
+      });
+
+      // Filter to only this captain's videos
+      const validExistingLinks = existingVideoLinks.filter(
+        (link) => link.video.captainId === captainProfile.id
+      );
+
+      // Update existing junction records with real charter ID
+      if (validExistingLinks.length > 0) {
+        await tx.charterVideo.updateMany({
+          where: {
+            id: { in: validExistingLinks.map((link) => link.id) },
+          },
           data: { charterId: charter.id },
         });
       }
+
+      // Get the current max order from existing links
+      const maxOrder =
+        validExistingLinks.length > 0
+          ? Math.max(...validExistingLinks.map((link) => link.order))
+          : -1;
+
+      // Create junction records for newly discovered unlinked videos
+      if (canonicalVideos.length > 0) {
+        await tx.charterVideo.createMany({
+          data: canonicalVideos.map((video, index) => ({
+            charterId: charter.id,
+            videoId: video.id,
+            order: maxOrder + 1 + index, // Continue from existing max order
+          })),
+          skipDuplicates: true, // Prevent duplicates if video already linked
+        });
+      }
+
       await tx.charterDraft.update({
         where: { id: draft.id },
         data: { status: "SUBMITTED", charterId: charter.id },
