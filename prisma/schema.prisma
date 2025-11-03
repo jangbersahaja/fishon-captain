@@ -92,7 +92,10 @@ model Charter {
   pickup        Pickup?
   policies      Policies?
   trips         Trip[]
-  videos        CaptainVideo[]
+  // Deprecated: Use charterVideos junction table
+  videos        CaptainVideo[]     @relation(name: "LegacyCharterVideos")
+  // New many-to-many relationship
+  charterVideos CharterVideo[]
   schedule      CharterSchedule?
   unavailability CharterUnavailability[]
 }
@@ -383,12 +386,31 @@ model CaptainVideo {
   originalWidth        Int?
   processedHeight      Int?
   processedWidth       Int?
+  // Deprecated: Use CharterVideo junction table for many-to-many relationship
   charterId            String?
-  charter              Charter?        @relation(fields: [charterId], references: [id], onDelete: SetNull)
+  charter              Charter?        @relation(name: "LegacyCharterVideos", fields: [charterId], references: [id], onDelete: SetNull)
+  // New many-to-many relationship
+  charters             CharterVideo[]
 
   @@index([captainId, processStatus])
   @@index([createdAt])
   @@index([charterId])
+}
+
+// Junction table for many-to-many Charter <-> CaptainVideo relationship with ordering
+model CharterVideo {
+  id        String       @id @default(cuid())
+  charterId String
+  videoId   String
+  order     Int          @default(0)
+  charter   Charter      @relation(fields: [charterId], references: [id], onDelete: Cascade)
+  video     CaptainVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([charterId, videoId])
+  @@index([charterId, order])
+  @@index([videoId])
 }
 
 model PasswordHistory {

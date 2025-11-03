@@ -25,6 +25,7 @@ export function useVideoQueue() {
               fallbackReason?: string | null;
             };
             priority?: QueuePriority;
+            charterId?: string | null;
           },
       priority?: QueuePriority
     ) => {

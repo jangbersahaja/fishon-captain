@@ -56,8 +56,8 @@ const getUploadStep = (
                   item.progressDetails.estimatedTimeRemaining
                 )} left`
               : item.progress >= 0.95
-              ? " • finishing up..."
-              : ""
+                ? " • finishing up..."
+                : ""
           }`
         : `${progress}% uploaded`;
       return { step: 1, total: 3, label: "Uploading File", details };
@@ -106,6 +106,7 @@ interface EnhancedVideoUploaderProps {
   allowMultiple?: boolean;
   autoStart?: boolean;
   showQueue?: boolean;
+  charterId?: string | null; // Optional charterId to link videos during upload
 }
 
 export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
@@ -115,6 +116,7 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
   allowMultiple = true,
   autoStart = true,
   showQueue = true, // Changed default to true so users can see trim buttons
+  charterId = null,
 }) => {
   const {
     items,
@@ -142,37 +144,28 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
       const availableSlots = maxFiles - items.length;
       const filesToUpload = fileArray.slice(0, availableSlots);
       if (filesToUpload.length > 0) {
-        const firstFile = filesToUpload[0];
-        if (!allowMultiple || filesToUpload.length === 1) {
-          const tempId = `temp-${Date.now()}`;
-          setTrimTargetId(tempId);
-          setTrimFile(firstFile);
-          setIsModalOpen(true);
-          if (filesToUpload.length > 1) {
-            filesToUpload.slice(1).forEach((file) => enqueue(file));
-          }
-        } else {
-          filesToUpload.forEach((file) => enqueue(file));
+        // Create queue of files to trim
+        const trimQueue = filesToUpload.map((file, index) => ({
+          file,
+          tempId: `temp-${Date.now()}-${index}`,
+        }));
+
+        // Open modal for first file
+        const firstItem = trimQueue[0];
+        setTrimTargetId(firstItem.tempId);
+        setTrimFile(firstItem.file);
+        setIsModalOpen(true);
+        setTotalTrimFiles(trimQueue.length);
+
+        // Store remaining files in pending queue
+        if (trimQueue.length > 1) {
+          setPendingTrimFiles(trimQueue.slice(1));
         }
       }
       if (inputRef.current) inputRef.current.value = "";
     },
-    [allowMultiple, enqueue, items.length, maxFiles]
+    [maxFiles, items.length]
   );
-
-  // Drag & drop support
-  const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      if (blockMore) return;
-      const files = e.dataTransfer.files;
-      handleFileSelect(files);
-    },
-    [blockMore, handleFileSelect]
-  );
-  const onDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const previousCompletedCountRef = useRef(0);
@@ -180,6 +173,12 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
   const [trimFile, setTrimFile] = useState<File | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Multi-file trim queue
+  const [pendingTrimFiles, setPendingTrimFiles] = useState<
+    Array<{ file: File; tempId: string }>
+  >([]);
+  const [totalTrimFiles, setTotalTrimFiles] = useState(0);
 
   // Set up queue configuration
   useEffect(() => {
@@ -242,7 +241,8 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
             didFallback: meta.didFallback,
             fallbackReason: meta.fallbackReason,
           },
-          priority: "normal",
+          priority: "normal" as const,
+          charterId: charterId,
         });
       } else {
         // This is an existing queue item - update it
@@ -260,9 +260,24 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
         });
       }
     }
-    setIsModalOpen(false);
-    setTrimTargetId(null);
-    setTrimFile(null);
+
+    // Check if there are more files to trim
+    if (pendingTrimFiles.length > 0) {
+      const nextFile = pendingTrimFiles[0];
+      const remainingFiles = pendingTrimFiles.slice(1);
+
+      // Update state for next file
+      setTrimTargetId(nextFile.tempId);
+      setTrimFile(nextFile.file);
+      setPendingTrimFiles(remainingFiles);
+      // Keep modal open for next file
+    } else {
+      // No more files, close modal
+      setIsModalOpen(false);
+      setTrimTargetId(null);
+      setTrimFile(null);
+      setTotalTrimFiles(0);
+    }
   };
 
   const handleTrimClose = () => {
@@ -277,6 +292,8 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
     setIsModalOpen(false);
     setTrimTargetId(null);
     setTrimFile(null);
+    setPendingTrimFiles([]); // Clear pending queue on cancel
+    setTotalTrimFiles(0);
   };
 
   // removed getStatusColor (inline logic used)
@@ -284,33 +301,32 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
   // removed canUploadMore & hasActiveUploads (not used after minimalist redesign)
 
   return (
-    <div className="space-y-4">
-      <div
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        className={`border-2 border-dashed rounded-lg p-4 text-center text-sm transition ${
-          blockMore
-            ? "opacity-50 cursor-not-allowed"
-            : "hover:border-blue-400 border-gray-300"
-        }`}
+    <div className="w-full space-y-4">
+      {/* Upload Button */}
+      <button
+        type="button"
+        onClick={() => !blockMore && inputRef.current?.click()}
+        disabled={blockMore}
+        className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-blue-600 transition-colors border border-blue-200 rounded-lg w-fit bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <p className="mb-2 font-medium">
-          {blockMore
-            ? "Maximum 10 videos reached"
-            : "Drag & drop videos here or"}
-        </p>
-        <button
-          type="button"
-          onClick={() => !blockMore && inputRef.current?.click()}
-          disabled={blockMore}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium disabled:opacity-50"
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
         >
-          Select Video{allowMultiple ? "s" : ""}
-        </button>
-        <p className="mt-2 text-xs text-gray-500">
-          Up to 5 concurrent uploads. Total limit 10.
-        </p>
-      </div>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
+        </svg>
+        {blockMore
+          ? "Maximum 10 videos reached"
+          : `Upload Video${allowMultiple ? "s" : ""}`}
+      </button>
 
       {/* Hidden File Input */}
       <input
@@ -327,7 +343,7 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
         items.some(
           (item) => item.status === "uploading" || item.status === "processing"
         ) && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-3 mt-4 border border-blue-200 rounded-lg bg-blue-50">
             {items
               .filter(
                 (item) =>
@@ -339,9 +355,9 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
                   <div key={item.id} className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
                       {stepInfo.step > 0 && stepInfo.step < stepInfo.total ? (
-                        <div className="w-4 h-4 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin"></div>
+                        <div className="w-4 h-4 border-2 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
                       ) : (
-                        <div className="w-4 h-4 rounded-full bg-blue-100"></div>
+                        <div className="w-4 h-4 bg-blue-100 rounded-full"></div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -363,7 +379,7 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
       {showQueue && items.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-gray-600 tracking-wide uppercase">
+            <h4 className="text-xs font-semibold tracking-wide text-gray-600 uppercase">
               Uploads
             </h4>
             <span className="text-[10px] text-gray-400">
@@ -376,38 +392,38 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
                 item.status === "uploading"
                   ? Math.round(item.progress * 100)
                   : item.status === "done"
-                  ? 100
-                  : item.status === "processing"
-                  ? 100
-                  : 0;
+                    ? 100
+                    : item.status === "processing"
+                      ? 100
+                      : 0;
               const statusLabel =
                 item.status === "pending"
                   ? "Waiting"
                   : item.status === "uploading"
-                  ? "Uploading"
-                  : item.status === "processing"
-                  ? "Processing"
-                  : item.status === "done"
-                  ? "Done"
-                  : item.status === "error"
-                  ? "Failed"
-                  : "Canceled";
+                    ? "Uploading"
+                    : item.status === "processing"
+                      ? "Processing"
+                      : item.status === "done"
+                        ? "Done"
+                        : item.status === "error"
+                          ? "Failed"
+                          : "Canceled";
               const dotColor =
                 item.status === "done"
                   ? "bg-emerald-500"
                   : item.status === "error"
-                  ? "bg-red-500"
-                  : item.status === "processing"
-                  ? "bg-indigo-500"
-                  : item.status === "uploading"
-                  ? "bg-blue-500"
-                  : item.status === "pending"
-                  ? "bg-gray-300"
-                  : "bg-gray-400";
+                    ? "bg-red-500"
+                    : item.status === "processing"
+                      ? "bg-indigo-500"
+                      : item.status === "uploading"
+                        ? "bg-blue-500"
+                        : item.status === "pending"
+                          ? "bg-gray-300"
+                          : "bg-gray-400";
               return (
                 <li
                   key={item.id}
-                  className="relative rounded-md bg-white ring-1 ring-gray-200/70 shadow-sm px-3 py-2 flex flex-col gap-1"
+                  className="relative flex flex-col gap-1 px-3 py-2 bg-white rounded-md shadow-sm ring-1 ring-gray-200/70"
                 >
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${dotColor}`} />
@@ -502,11 +518,21 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
           open={isModalOpen}
           onClose={handleTrimClose}
           onConfirm={handleTrimConfirm}
+          queuePosition={
+            totalTrimFiles > 1
+              ? {
+                  current: totalTrimFiles - pendingTrimFiles.length,
+                  total: totalTrimFiles,
+                }
+              : undefined
+          }
           onChangeVideo={() => {
             // Close current trim modal and open file picker
             setIsModalOpen(false);
             setTrimTargetId(null);
             setTrimFile(null);
+            setPendingTrimFiles([]);
+            setTotalTrimFiles(0);
             inputRef.current?.click();
           }}
         />

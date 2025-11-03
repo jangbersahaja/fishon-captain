@@ -4,6 +4,7 @@ import type { CharterFormValues } from "@features/charter-onboarding/charterForm
 import { PhotoGrid } from "@features/charter-onboarding/components";
 // Enhanced video upload system with queue management, retry, and persistence
 import { EnhancedVideoUploader } from "@/components/captain/EnhancedVideoUploader";
+import { VideoGalleryModal } from "@/components/captain/VideoGalleryModal";
 import { VideoManager } from "@/components/captain/VideoManager";
 import { useSession } from "next-auth/react";
 import React, { useCallback, useMemo, useState, type ChangeEvent } from "react";
@@ -47,7 +48,7 @@ export function MediaPricingStep({
   onAddPhotoFilesAction,
   onRemovePhotoAction,
   onReorderPhotosAction,
-  onVideoBlockingChangeAction,
+  currentCharterId,
   onReadyVideosChangeAction,
 }: MediaPricingStepProps) {
   const { watch, setValue } = form;
@@ -170,29 +171,13 @@ export function MediaPricingStep({
     [setValue, onReadyVideosChangeAction]
   );
 
-  // Debounce refreshToken updates to batch multiple uploads within 2s
-  const refreshDebounceRef = React.useRef<NodeJS.Timeout | null>(null);
-  const handleVideoUploaded = useCallback(() => {
-    // Clear any pending refresh
-    if (refreshDebounceRef.current) {
-      clearTimeout(refreshDebounceRef.current);
-    }
-    // Schedule new refresh after 2s of inactivity
-    refreshDebounceRef.current = setTimeout(() => {
-      setRefreshToken((t) => t + 1);
-      refreshDebounceRef.current = null;
-    }, 2000);
-  }, []);
+  // Video gallery modal state
+  const [showVideoGallery, setShowVideoGallery] = useState(false);
 
-  // Track client-side queue blocking separately from server-side processing
-  const handleQueueBlockingChange = useCallback(
-    (blocking: boolean) => {
-      // Only block submit/save during client-side upload to queue (uploading/processing in queue)
-      // Server-side transcoding (queued/processing in DB) is async and should NOT block
-      onVideoBlockingChangeAction?.(blocking);
-    },
-    [onVideoBlockingChangeAction]
-  );
+  const handleVideosLinked = useCallback(() => {
+    // Refresh video manager to show updated links
+    setRefreshToken((t) => t + 1);
+  }, []);
 
   return (
     <section className="p-6 bg-white border shadow-sm rounded-3xl border-neutral-200">
@@ -261,35 +246,77 @@ export function MediaPricingStep({
         </div>
 
         <div className="p-4 space-y-6 border rounded-2xl border-neutral-200">
-          <div>
-            <h3 className="mb-2 text-sm font-semibold text-slate-800">
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-slate-800">
               Short videos
             </h3>
             {!ownerId && (
-              <div className="mb-3 text-xs text-amber-600">
+              <div className="text-xs text-amber-600">
                 Save earlier steps to unlock video uploads.
               </div>
             )}
             {ownerId && (
-              <EnhancedVideoUploader
-                onUploaded={handleVideoUploaded}
-                onQueueBlockingChange={handleQueueBlockingChange}
-                maxFiles={5}
-                allowMultiple={true}
-                autoStart={true}
-                showQueue={true}
-              />
+              <div className="flex flex-col gap-3">
+                {/* Video action buttons - unified styling */}
+                <div className="flex flex-wrap items-start gap-3">
+                  {/* Select from existing videos */}
+                  {currentCharterId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowVideoGallery(true)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-blue-600 transition-colors border border-blue-200 rounded-lg w-fit bg-blue-50 hover:bg-blue-100"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                        />
+                      </svg>
+                      Select from Gallery
+                    </button>
+                  )}
+                  {/* Upload new videos */}
+                  <EnhancedVideoUploader
+                    onUploaded={handleVideosLinked}
+                    maxFiles={5}
+                    allowMultiple={true}
+                    autoStart={true}
+                    showQueue={true}
+                    charterId={currentCharterId || null}
+                  />
+                </div>
+              </div>
             )}
           </div>
           {ownerId && (
             <VideoManager
               ownerId={ownerId}
+              charterId={currentCharterId || null}
               refreshToken={refreshToken}
               onVideosChange={handleVideoSet}
               // Do NOT pass onPendingChange here - server-side transcoding should not block
             />
           )}
         </div>
+
+        {/* Video Gallery Modal */}
+        {ownerId && (
+          <VideoGalleryModal
+            open={showVideoGallery}
+            onClose={() => setShowVideoGallery(false)}
+            charterId={currentCharterId || null}
+            captainId={ownerId}
+            onVideosLinked={handleVideosLinked}
+          />
+        )}
       </div>
     </section>
   );
