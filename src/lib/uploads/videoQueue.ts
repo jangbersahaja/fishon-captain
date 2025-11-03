@@ -113,11 +113,13 @@ class VideoUploadQueue {
           file: File;
           trim?: PendingUploadItem["trim"];
           priority?: QueuePriority;
+          charterId?: string | null;
         }
   ): VideoUploadItem {
     let file: File;
     let trim: PendingUploadItem["trim"] | undefined;
     let priority: QueuePriority = "normal"; // Default priority
+    let charterId: string | null | undefined;
 
     if (fileOrOpts instanceof File) {
       file = fileOrOpts;
@@ -125,6 +127,7 @@ class VideoUploadQueue {
       file = fileOrOpts.file;
       trim = fileOrOpts.trim;
       priority = fileOrOpts.priority || "normal";
+      charterId = fileOrOpts.charterId;
     }
 
     // Phase 10: Check queue size limits
@@ -149,6 +152,7 @@ class VideoUploadQueue {
       createdAt: Date.now(),
       priority,
       ...(trim ? { trim } : {}),
+      ...(charterId !== undefined ? { charterId } : {}),
     };
 
     // Phase 10: Insert based on priority
@@ -492,6 +496,10 @@ class VideoUploadQueue {
       form.append("duration", String(duration));
       form.append("ownerId", "self"); // placeholder until actual owner context provided
       form.append("blobKey", processing.blobKey);
+      // Include charterId if available
+      if (processing.charterId) {
+        form.append("charterId", processing.charterId);
+      }
       if (processing.trim) {
         if (typeof processing.trim.endSec === "number") {
           form.append("endSec", String(processing.trim.endSec));
@@ -1218,9 +1226,12 @@ class VideoUploadQueue {
     }
 
     // Run cleanup every 5 minutes
-    this.cleanupTimer = setInterval(() => {
-      this.autoCleanup();
-    }, 5 * 60 * 1000);
+    this.cleanupTimer = setInterval(
+      () => {
+        this.autoCleanup();
+      },
+      5 * 60 * 1000
+    );
   }
 
   /**

@@ -479,9 +479,7 @@ export async function PATCH(
       NextResponse.json({ ok: true, noChange: true })
     );
   }
-  await prisma.$transaction(tx);
-
-  // AFTER snapshot
+  await prisma.$transaction(tx); // AFTER snapshot
   const afterSnapshot = await prisma.charter.findUnique({
     where: { id: charterId },
     include: {

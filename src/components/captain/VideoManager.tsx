@@ -1,5 +1,22 @@
 "use client";
-import { Trash2Icon } from "lucide-react";
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -18,6 +35,223 @@ function timeAgo(iso: string): string {
   return diffDay + "d ago";
 }
 
+// Sortable Video Item Component
+interface SortableVideoItemProps {
+  video: VideoRecord;
+  localThumb?: string;
+  isRetrying: boolean;
+  canReorder: boolean;
+  onRetry: (id: string) => void;
+  onDeleteClick: (video: VideoRecord) => void;
+  statusPill: (v: VideoRecord) => React.ReactNode;
+  setLastActivity: (time: number) => void;
+  setLocalThumbs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}
+
+const SortableVideoItem: React.FC<SortableVideoItemProps> = ({
+  video: v,
+  localThumb,
+  isRetrying,
+  canReorder,
+  onRetry,
+  onDeleteClick,
+  statusPill,
+  setLastActivity,
+  setLocalThumbs,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: v.id,
+    disabled: !canReorder,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const displayThumb = localThumb || v.thumbnailUrl;
+  const videoHref = v.ready720pUrl || v.originalUrl;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`border rounded-2xl p-2 space-y-1 backdrop-blur transition-all ${
+        isDragging
+          ? "z-50 shadow-2xl border-blue-500 bg-blue-900/20"
+          : canReorder
+            ? "border-neutral-600 bg-black hover:border-neutral-500 hover:shadow-lg"
+            : "border-neutral-700 bg-black"
+      }`}
+    >
+      {/* Drag handle - only show when can reorder */}
+      {canReorder ? (
+        <div
+          {...attributes}
+          {...listeners}
+          className="flex items-center justify-center gap-2 py-2 mb-1 -mx-2 transition-all border border-transparent rounded cursor-move group/drag hover:bg-neutral-800/70 hover:border-neutral-600 active:bg-neutral-700"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="w-5 h-5 transition-colors text-neutral-400 group-hover/drag:text-blue-400" />
+          <span className="text-[10px] font-medium text-neutral-400 group-hover/drag:text-blue-400 transition-colors uppercase tracking-wider">
+            Drag to Reorder
+          </span>
+          <GripVertical className="w-5 h-5 transition-colors text-neutral-400 group-hover/drag:text-blue-400" />
+        </div>
+      ) : (
+        <div className="flex items-center justify-center gap-2 py-2 mb-1 -mx-2 transition-all border border-transparent rounded cursor-wait ">
+          <svg
+            className="w-5 h-5 transition-colors animate-spin text-neutral-400 group-hover/drag:text-blue-400"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <span className="text-[10px] font-medium text-neutral-400  transition-colors uppercase tracking-wider">
+            Optimizing Video
+          </span>
+        </div>
+      )}
+
+      <div className="relative overflow-hidden text-xs text-gray-500 rounded-md aspect-video bg-neutral-800 group">
+        {(() => {
+          if (displayThumb) {
+            return (
+              <a
+                href={v.processStatus === "ready" ? videoHref : undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`block w-full h-full relative ${
+                  v.processStatus === "ready"
+                    ? "cursor-pointer"
+                    : "cursor-default"
+                }`}
+              >
+                <Image
+                  src={displayThumb}
+                  alt="thumb"
+                  fill
+                  sizes="(max-width:768px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                {v.processStatus !== "ready" && (
+                  <div className="absolute inset-0 bg-black/35 backdrop-blur-[1px] flex items-center justify-center"></div>
+                )}
+              </a>
+            );
+          }
+
+          if (v.processStatus === "ready") {
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  setLastActivity(Date.now());
+                  const videoEl = document.createElement("video");
+                  videoEl.crossOrigin = "anonymous";
+                  videoEl.src = videoHref;
+                  videoEl.preload = "metadata";
+                  videoEl.addEventListener("loadeddata", () => {
+                    try {
+                      videoEl.currentTime = Math.min(
+                        0.15,
+                        (videoEl.duration || 1) - 0.05
+                      );
+                    } catch {}
+                  });
+                  videoEl.addEventListener("seeked", () => {
+                    try {
+                      const canvas = document.createElement("canvas");
+                      canvas.width = videoEl.videoWidth || 320;
+                      canvas.height = videoEl.videoHeight || 180;
+                      const ctx = canvas.getContext("2d");
+                      if (ctx) {
+                        ctx.drawImage(videoEl, 0, 0);
+                        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                        setLocalThumbs((prev) => ({
+                          ...prev,
+                          [v.id]: dataUrl,
+                        }));
+                      }
+                    } catch (e) {
+                      console.warn("thumb capture fail", e);
+                    }
+                  });
+                }}
+                className="flex items-center justify-center w-full h-full text-sm font-semibold text-blue-500"
+              >
+                Generate Thumbnail
+              </button>
+            );
+          }
+
+          return (
+            <div className="flex items-center justify-center w-full h-full">
+              <span className="w-3 h-3 bg-yellow-300 rounded-full animate-pulse" />
+            </div>
+          );
+        })()}
+        {Date.now() - new Date(v.createdAt).getTime() < 2 * 60 * 1000 && (
+          <span className="absolute top-1 left-1 bg-blue-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full font-semibold tracking-wide shadow">
+            NEW
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 pt-1">
+        {statusPill(v)}
+        <div className="flex gap-1">
+          {v.processStatus === "failed" && (
+            <button
+              type="button"
+              onClick={() => onRetry(v.id)}
+              disabled={isRetrying}
+              className="text-[10px] px-2 py-0.5 rounded bg-amber-600 text-white disabled:opacity-50"
+            >
+              {isRetrying ? "…" : "Retry"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onDeleteClick(v)}
+            className="text-[10px] px-2 py-0.5 rounded bg-red-600 text-white hover:bg-red-700"
+          >
+            <Trash2Icon className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {v.errorMessage && v.processStatus === "failed" && (
+        <div className="text-[10px] text-red-500 line-clamp-2">
+          {v.errorMessage}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface VideoRecord {
   id: string;
   originalUrl: string;
@@ -26,6 +260,8 @@ interface VideoRecord {
   createdAt: string;
   errorMessage?: string | null;
   ready720pUrl?: string | null;
+  charterId?: string | null; // Charter this video is linked to
+  order?: number; // Order in charter (from junction table)
   // didFallback & fallbackReason intentionally not surfaced in UI anymore
   didFallback?: boolean;
   fallbackReason?: string | null;
@@ -37,6 +273,7 @@ interface VideoRecord {
 }
 interface VideoManagerProps {
   ownerId: string;
+  charterId?: string | null; // Optional: filter to only show videos linked to this charter
   onVideosChange?: (videos: VideoRecord[]) => void;
   onPendingChange?: (pending: boolean) => void;
   refreshToken?: number; // increment to force reload
@@ -44,6 +281,7 @@ interface VideoManagerProps {
 
 export const VideoManager: React.FC<VideoManagerProps> = ({
   ownerId,
+  charterId,
   onVideosChange,
   onPendingChange,
   refreshToken,
@@ -58,6 +296,15 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
   } | null>(null);
   const prevPendingRef = useRef<boolean | null>(null);
   const prevVideosRef = useRef<VideoRecord[]>([]);
+  const [reordering, setReordering] = useState(false);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Activity tracking for smart polling
   const [lastActivity, setLastActivity] = useState(Date.now());
@@ -66,10 +313,17 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/videos/list?ownerId=${ownerId}`);
+    // Build URL with optional charterId filter
+    let url = `/api/videos/list?ownerId=${ownerId}`;
+    if (charterId !== undefined && charterId !== null) {
+      url += `&charterId=${charterId}`;
+    }
+
+    const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       const incoming: VideoRecord[] = data.videos || [];
+
       setVideos((prev) => {
         if (prev.length === incoming.length) {
           let same = true;
@@ -101,11 +355,58 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
       });
     }
     setLoading(false);
-  }, [ownerId]);
+  }, [ownerId, charterId]);
 
   useEffect(() => {
     load();
   }, [load, refreshToken]);
+
+  // Handle drag end event
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (!over || active.id === over.id || !charterId) {
+        return;
+      }
+
+      const oldIndex = videos.findIndex((v) => v.id === active.id);
+      const newIndex = videos.findIndex((v) => v.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      // Optimistically update the UI
+      const newVideos = arrayMove(videos, oldIndex, newIndex);
+      setVideos(newVideos);
+
+      // Prepare reorder payload
+      const videoOrders = newVideos.map((video, index) => ({
+        videoId: video.id,
+        order: index,
+      }));
+
+      setReordering(true);
+      try {
+        const res = await fetch(`/api/charters/${charterId}/videos/reorder`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoOrders }),
+        });
+
+        if (!res.ok) {
+          // Revert on failure
+          console.error("Failed to reorder videos");
+          setVideos(videos);
+        }
+      } catch (error) {
+        console.error("Failed to reorder videos:", error);
+        setVideos(videos);
+      } finally {
+        setReordering(false);
+      }
+    },
+    [videos, charterId]
+  );
 
   // Page Visibility API: track when user switches tabs
   useEffect(() => {
@@ -304,8 +605,8 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
       v.processStatus === "ready"
         ? "bg-green-400"
         : v.processStatus === "processing" || v.processStatus === "queued"
-        ? "bg-yellow-400"
-        : "bg-slate-400";
+          ? "bg-yellow-400"
+          : "bg-slate-400";
     const pulse = v.processStatus !== "ready";
     return (
       <span className={`${base} text-white flex items-center gap-1`}>
@@ -316,172 +617,86 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2 items-center justify-between">
-        <h3 className="font-semibold">Your Short Videos</h3>
-        {loading && (
-          <div className="flex items-center gap-1.5 text-sm text-gray-500">
-            <svg
-              className="animate-spin h-4 w-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            <span>Loading...</span>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold">Your Short Videos</h3>
+          {loading && (
+            <div className="flex items-center gap-1.5 text-sm text-gray-500">
+              <svg
+                className="w-4 h-4 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <span>Loading...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Reordering hint - show when editing charter */}
+        {charterId && videos.some((v) => v.processStatus === "ready") && (
+          <div className="flex items-center gap-2 px-3 py-2 text-xs text-blue-300 border rounded-lg border-blue-700/30">
+            <GripVertical className="flex-shrink-0 w-4 h-4" />
+            <span>
+              <strong className="font-semibold">Tip:</strong> Drag videos by the
+              handle to change their display order
+            </span>
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {videos.map((v) => (
-          <div
-            key={v.id}
-            className="border border-neutral-700 rounded-2xl p-2 space-y-1 bg-black backdrop-blur"
-          >
-            <div className="aspect-video bg-neutral-800 text-xs text-gray-500 relative overflow-hidden rounded-md group">
-              {(() => {
-                const displayThumb = localThumbs[v.id] || v.thumbnailUrl;
-                const videoHref = v.ready720pUrl || v.originalUrl; // include bypassed originals
-                if (displayThumb) {
-                  return (
-                    <a
-                      href={v.processStatus === "ready" ? videoHref : undefined}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`block w-full h-full relative ${
-                        v.processStatus === "ready"
-                          ? "cursor-pointer"
-                          : "cursor-default"
-                      }`}
-                    >
-                      <Image
-                        src={displayThumb}
-                        alt="thumb"
-                        fill
-                        sizes="(max-width:768px) 50vw, 33vw"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      {v.processStatus !== "ready" && (
-                        <div className="absolute inset-0 bg-black/35 backdrop-blur-[1px] flex items-center justify-center">
-                          <span className="w-3 h-3 rounded-full bg-yellow-300 animate-pulse" />
-                        </div>
-                      )}
-                    </a>
-                  );
-                }
-                // Ready but no thumb yet: keep capture option (not link-wrapped to avoid nested interactive elements)
-                if (v.processStatus === "ready") {
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLastActivity(Date.now()); // Track activity
-                        const videoEl = document.createElement("video");
-                        videoEl.crossOrigin = "anonymous";
-                        videoEl.src = videoHref;
-                        videoEl.preload = "metadata";
-                        videoEl.addEventListener("loadeddata", () => {
-                          try {
-                            videoEl.currentTime = Math.min(
-                              0.15,
-                              (videoEl.duration || 1) - 0.05
-                            );
-                          } catch {}
-                        });
-                        videoEl.addEventListener("seeked", () => {
-                          try {
-                            const canvas = document.createElement("canvas");
-                            canvas.width = videoEl.videoWidth || 320;
-                            canvas.height = videoEl.videoHeight || 180;
-                            const ctx = canvas.getContext("2d");
-                            if (!ctx) return;
-                            ctx.drawImage(videoEl, 0, 0);
-                            const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-                            if (dataUrl.startsWith("data:image")) {
-                              setLocalThumbs((lt) => ({
-                                ...lt,
-                                [v.id]: dataUrl,
-                              }));
-                            }
-                          } catch {}
-                          videoEl.remove();
-                        });
-                      }}
-                      className="flex flex-col items-center justify-center gap-1 w-full h-full text-[10px] text-gray-400 hover:text-white transition-colors"
-                    >
-                      <span className="w-7 h-7 rounded-full bg-neutral-700 flex items-center justify-center">
-                        📷
-                      </span>
-                      Capture thumb
-                    </button>
-                  );
-                }
-                return (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <span className="w-3 h-3 rounded-full bg-yellow-300 animate-pulse" />
-                  </div>
-                );
-              })()}
-              {Date.now() - new Date(v.createdAt).getTime() < 2 * 60 * 1000 && (
-                <span className="absolute top-1 left-1 bg-blue-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full font-semibold tracking-wide shadow">
-                  NEW
-                </span>
-              )}
-            </div>
-            <div className="flex justify-between items-center gap-2 pt-1">
-              {statusPill(v)}
-              <div className="flex gap-1">
-                {v.processStatus === "failed" && (
-                  <button
-                    type="button"
-                    onClick={() => retry(v.id)}
-                    disabled={retrying[v.id]}
-                    className="text-[10px] px-2 py-0.5 rounded bg-amber-600 text-white disabled:opacity-50"
-                  >
-                    {retrying[v.id] ? "…" : "Retry"}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleDeleteClick(v)}
-                  className="text-[10px] px-2 py-0.5 rounded bg-red-600 text-white hover:bg-red-700"
-                >
-                  <Trash2Icon className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-            {v.errorMessage && v.processStatus === "failed" && (
-              <div className="text-[10px] text-red-500 line-clamp-2">
-                {v.errorMessage}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={videos.map((v) => v.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {videos.map((v) => (
+              <SortableVideoItem
+                key={v.id}
+                video={v}
+                localThumb={localThumbs[v.id]}
+                isRetrying={retrying[v.id] || false}
+                canReorder={!!(charterId && v.processStatus === "ready")}
+                onRetry={retry}
+                onDeleteClick={handleDeleteClick}
+                statusPill={statusPill}
+                setLastActivity={setLastActivity}
+                setLocalThumbs={setLocalThumbs}
+              />
+            ))}
+            {videos.length === 0 && !loading && (
+              <div className="text-sm text-gray-500 col-span-full">
+                No videos yet.
               </div>
             )}
           </div>
-        ))}
-        {videos.length === 0 && !loading && (
-          <div className="col-span-full text-sm text-gray-500">
-            No videos yet.
-          </div>
-        )}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirm?.show && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="w-full max-w-md p-6 space-y-4 bg-white rounded-2xl">
             <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
                 <svg
                   className="w-6 h-6 text-red-600"
                   fill="none"
@@ -496,10 +711,10 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">
                 Delete Video?
               </h3>
-              <p className="text-sm text-gray-600 mb-1">
+              <p className="mb-1 text-sm text-gray-600">
                 This will permanently delete the video and cannot be undone.
               </p>
               <p className="text-xs text-gray-500">
@@ -513,14 +728,14 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
               <button
                 type="button"
                 onClick={handleDeleteCancel}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleDeleteConfirm}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                className="flex-1 px-4 py-2 font-medium text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
               >
                 Delete Video
               </button>

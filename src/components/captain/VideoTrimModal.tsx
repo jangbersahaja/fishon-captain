@@ -24,6 +24,7 @@ interface VideoTrimModalProps {
     }
   ) => void;
   onChangeVideo?: () => void;
+  queuePosition?: { current: number; total: number }; // For multi-file trim queue
 }
 
 export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
@@ -32,13 +33,14 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   onClose,
   onConfirm,
   onChangeVideo,
+  queuePosition,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
   const [startSec, setStartSec] = useState(0);
-  const [endSec, setEndSec] = useState(30);
+  const [endSec, setEndSec] = useState(60);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(true);
@@ -68,18 +70,18 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
   // Derived readiness
   const isReady = !loading && duration > 0 && !!probe;
 
-  // Check if video already meets requirements (≤30s, resolution not exceeding 1280x720)
-  // Rationale: We treat any clip ≤30s and already at or below target dimensions as compliant (no need to upscale or transcode).
+  // Check if video already meets requirements (≤60s, resolution not exceeding 1280x720)
+  // Rationale: We treat any clip ≤60s and already at or below target dimensions as compliant (no need to upscale or transcode).
   // (Backend bypass uses width<=1280 && height<=720 with the same duration cap.)
   const isAlreadyCompliant =
     isReady &&
     probe &&
-    duration <= 30 &&
+    duration <= 60 &&
     probe.width <= 1280 &&
     probe.height <= 720;
 
   // Check if user made any changes to the default selection
-  const hasUserChanges = startSec !== 0 || endSec !== Math.min(30, duration);
+  const hasUserChanges = startSec !== 0 || endSec !== Math.min(60, duration);
 
   // Refactored: Use utility with AbortController stub
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -175,7 +177,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       setError(null);
       setDuration(0);
       setStartSec(0);
-      setEndSec(30);
+      setEndSec(60);
       setCurrentTime(0);
       setIsPlaying(false);
       setProbe({ width: 0, height: 0, codec: "", size: file.size });
@@ -219,7 +221,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
         const vw = video.videoWidth || 0;
         const vh = video.videoHeight || 0;
         setDuration(video.duration);
-        setEndSec(Math.min(30, video.duration));
+        setEndSec(Math.min(60, video.duration));
         setProbe({
           width: vw,
           height: vh,
@@ -281,7 +283,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
     ) {
       const videoDuration = videoRef.current.duration;
       setDuration(videoDuration);
-      setEndSec(Math.min(30, videoDuration));
+      setEndSec(Math.min(60, videoDuration));
       setLoading(false);
       setError(null);
       setProbe({
@@ -385,7 +387,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
           if (endSec - newStart < 0.25) setEndSec(clamp(newStart + 0.25));
         } else if (handle === "end") {
           const newEnd = clamp(Math.max(time, startSec + 0.25));
-          const maxEnd = clamp(startSec + 30, 0, duration);
+          const maxEnd = clamp(startSec + 60, 0, duration);
           setEndSec(Math.min(newEnd, maxEnd));
         } else if (handle === "selection") {
           const newStart = clamp(
@@ -441,7 +443,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
           if (endSec - newStart < 0.25) setEndSec(clamp(newStart + 0.25));
         } else if (handle === "end") {
           const newEnd = clamp(Math.max(time, startSec + 0.25));
-          const maxEnd = clamp(startSec + 30, 0, duration);
+          const maxEnd = clamp(startSec + 60, 0, duration);
           setEndSec(Math.min(newEnd, maxEnd));
         } else if (handle === "selection") {
           const newStart = clamp(
@@ -550,7 +552,14 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
       <div className="bg-neutral-900 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Trim Video</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-white">Trim Video</h2>
+              {queuePosition && queuePosition.total > 1 && (
+                <span className="px-2 py-1 text-xs font-medium bg-blue-600 text-white rounded">
+                  {queuePosition.current} of {queuePosition.total}
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={onClose}
@@ -819,7 +828,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
             </div>
             <div className="space-y-3">
               <div className="text-white text-sm sm:text-base font-medium">
-                Select clip duration (max 30s)
+                Select clip duration (max 60s)
               </div>
               {/* Add padding for better mobile drag UX */}
               <div className="px-4 sm:px-6">
@@ -924,12 +933,12 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
               </div>
               {/* Close padding wrapper */}
             </div>
-            {selectedDuration > 30 && (
+            {selectedDuration > 60 && (
               <div className="text-amber-400 text-xs sm:text-sm">
-                ⚠️ Max 30s allowed
+                ⚠️ Max 60s allowed
               </div>
             )}
-            {selectedDuration <= 30 && (
+            {selectedDuration <= 60 && (
               <div className="text-[11px] sm:text-xs text-gray-400 flex items-center gap-3 flex-wrap">
                 <span>
                   Size≈{(estimatedOutputBytes / 1024 / 1024).toFixed(1)}MB
@@ -982,7 +991,7 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                   className="px-5 sm:px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
                   onClick={handleConfirm}
                   disabled={
-                    !!error || exporting || selectedDuration > 30 || exceedsMax
+                    !!error || exporting || selectedDuration > 60 || exceedsMax
                   }
                 >
                   {exporting ? (
@@ -991,13 +1000,16 @@ export const VideoTrimModal: React.FC<VideoTrimModalProps> = ({
                       {isAlreadyCompliant && !hasUserChanges
                         ? "Processing..."
                         : exceedsMax
-                        ? "Too Large"
-                        : "Exporting..."}
+                          ? "Too Large"
+                          : "Exporting..."}
                     </div>
                   ) : isAlreadyCompliant && !hasUserChanges ? (
                     `Use Original (${duration.toFixed(1)}s)`
                   ) : exceedsMax ? (
                     `Too Large (${selectedDuration.toFixed(1)}s)`
+                  ) : queuePosition &&
+                    queuePosition.current < queuePosition.total ? (
+                    `Next (${selectedDuration.toFixed(1)}s)`
                   ) : (
                     `Confirm (${selectedDuration.toFixed(1)}s)`
                   )}

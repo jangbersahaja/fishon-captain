@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
   const originalDurationSec = form.get("originalDurationSec");
   const ownerIdField = form.get("ownerId");
   const blobKey = form.get("blobKey");
+  const charterId = form.get("charterId");
   const didFallbackRaw = form.get("didFallback");
   const fallbackReasonRaw = form.get("fallbackReason");
   const thumb = form.get("thumbnail");
@@ -36,17 +37,20 @@ export async function POST(req: NextRequest) {
   if (!sessionUserId) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
-  
+
   // Get captain profile ID from userId
   const captainProfile = await prisma.captainProfile.findUnique({
     where: { userId: sessionUserId },
     select: { id: true },
   });
-  
+
   if (!captainProfile) {
-    return NextResponse.json({ error: "captain_profile_not_found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "captain_profile_not_found" },
+      { status: 404 }
+    );
   }
-  
+
   const effectiveCaptainId = captainProfile.id;
 
   const parsed = FinishFormSchema.safeParse({
@@ -60,6 +64,8 @@ export async function POST(req: NextRequest) {
         ? Number(originalDurationSec)
         : undefined,
     ownerId: typeof ownerIdField === "string" ? ownerIdField : undefined,
+    blobKey: typeof blobKey === "string" ? blobKey : undefined,
+    charterId: typeof charterId === "string" ? charterId : undefined,
     didFallback:
       typeof didFallbackRaw === "string"
         ? didFallbackRaw === "true"
@@ -152,17 +158,17 @@ export async function POST(req: NextRequest) {
     parsed.data.endSec !== undefined && parsed.data.startSec !== undefined
       ? Math.max(0, parsed.data.endSec - parsed.data.startSec)
       : undefined;
-  // Fallback: if no endSec but originalDurationSec provided, startSec is 0, and duration <=30, treat whole video as selected
+  // Fallback: if no endSec but originalDurationSec provided, startSec is 0, and duration <=60, treat whole video as selected
   if (
     selectionDuration === undefined &&
     parsed.data.originalDurationSec !== undefined &&
     parsed.data.startSec === 0 &&
-    parsed.data.originalDurationSec <= 30.05
+    parsed.data.originalDurationSec <= 60.05
   ) {
     selectionDuration = parsed.data.originalDurationSec;
   }
   const withinDuration =
-    selectionDuration !== undefined && selectionDuration <= 30.05; // small epsilon
+    selectionDuration !== undefined && selectionDuration <= 60.05; // small epsilon
   // Resolution check: treat any video whose intrinsic dimensions are already <= target (1280x720) as compliant.
   // This includes smaller resolutions like 640x360 (should bypass) and also portrait (e.g., 720x1280 will NOT bypass because height >720).
   // If metadata is partially missing we default to 0 which passes, but duration guard still required.
@@ -191,11 +197,13 @@ export async function POST(req: NextRequest) {
   }
   let video: CreatedVideo | null = null;
   try {
+    // Create video and optionally link to charter via junction table
     video = await prisma.captainVideo.create({
       data: {
         captainId: effectiveCaptainId,
         originalUrl: parsed.data.videoUrl ?? "",
-        blobKey: typeof blobKey === "string" ? blobKey : null,
+        blobKey: parsed.data.blobKey || null,
+        charterId: parsed.data.charterId || null, // Keep for backward compatibility
         trimStartSec: parsed.data.startSec,
         originalDurationSec: parsed.data.originalDurationSec || null,
         appliedTrimStartSec: parsed.data.startSec,
@@ -207,6 +215,36 @@ export async function POST(req: NextRequest) {
         fallbackReason: parsed.data.fallbackReason,
       },
     });
+
+    // If charterId provided, create junction table record
+    if (parsed.data.charterId && video) {
+      try {
+        // Get current max order for this charter
+        const maxOrderRecord = await prisma.charterVideo.findFirst({
+          where: { charterId: parsed.data.charterId },
+          orderBy: { order: "desc" },
+          select: { order: true },
+        });
+        const nextOrder = maxOrderRecord ? maxOrderRecord.order + 1 : 0;
+
+        await prisma.charterVideo.create({
+          data: {
+            charterId: parsed.data.charterId,
+            videoId: video.id,
+            order: nextOrder,
+          },
+        });
+        console.log(
+          `[blob-finish] Created CharterVideo link: charterId=${parsed.data.charterId}, videoId=${video.id}, order=${nextOrder}`
+        );
+      } catch (junctionError) {
+        // Log but don't fail the request - video is created successfully
+        console.warn(
+          "[blob-finish] Failed to create CharterVideo junction record:",
+          junctionError
+        );
+      }
+    }
   } catch (e) {
     return NextResponse.json(
       { error: "db_error", message: (e as Error).message },
