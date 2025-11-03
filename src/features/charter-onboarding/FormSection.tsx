@@ -880,6 +880,8 @@ export default function FormSection() {
                 (session?.user as { id?: string; role?: string } | undefined)
                   ?.id || ""
               }
+              charterId={currentCharterId}
+              draftId={serverDraftId}
             />
           )}
           {submitState?.type === "error" && (
