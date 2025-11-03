@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 type ReviewStepProps = {
   charter: Charter;
   ownerId: string;
+  charterId?: string | null; // For edit mode: fetch from CharterVideo junction
+  draftId?: string | null; // For new charter: fetch from temp draft links
 };
 
 interface VideoRecord {
@@ -17,7 +19,12 @@ interface VideoRecord {
   processedDurationSec?: number | null;
 }
 
-export function ReviewStep({ charter, ownerId }: ReviewStepProps) {
+export function ReviewStep({
+  charter,
+  ownerId,
+  charterId,
+  draftId,
+}: ReviewStepProps) {
   const [videos, setVideos] = useState<
     { url: string; name?: string; thumbnailUrl?: string | null }[]
   >([]);
@@ -26,12 +33,76 @@ export function ReviewStep({ charter, ownerId }: ReviewStepProps) {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
+        // Priority 1: Edit mode - fetch from CharterVideo junction by charterId
+        if (charterId) {
+          const res = await fetch(`/api/videos/list?charterId=${charterId}`);
+          if (res.ok) {
+            const data = await res.json();
+            const videoRecords: VideoRecord[] = data.videos || [];
+
+            const previewVideos = videoRecords
+              .filter((v) => v.processStatus === "ready")
+              .map((v, index) => ({
+                url: v.ready720pUrl || v.originalUrl,
+                name: `video-${index + 1}`,
+                thumbnailUrl: v.thumbnailUrl,
+                durationSeconds: v.processedDurationSec ?? undefined,
+              }))
+              .filter((v) => !!v.url);
+
+            console.log(
+              "[ReviewStep] Fetched videos for charter (edit mode):",
+              {
+                charterId,
+                total: videoRecords.length,
+                ready: previewVideos.length,
+              }
+            );
+
+            setVideos(previewVideos);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Priority 2: New charter with draft - fetch from CharterVideo junction by draftId
+        if (draftId) {
+          const res = await fetch(`/api/videos/list?charterId=${draftId}`);
+          if (res.ok) {
+            const data = await res.json();
+            const videoRecords: VideoRecord[] = data.videos || [];
+
+            const previewVideos = videoRecords
+              .filter((v) => v.processStatus === "ready")
+              .map((v, index) => ({
+                url: v.ready720pUrl || v.originalUrl,
+                name: `video-${index + 1}`,
+                thumbnailUrl: v.thumbnailUrl,
+                durationSeconds: v.processedDurationSec ?? undefined,
+              }))
+              .filter((v) => !!v.url);
+
+            console.log(
+              "[ReviewStep] Fetched videos for draft (new charter mode):",
+              {
+                draftId,
+                total: videoRecords.length,
+                ready: previewVideos.length,
+              }
+            );
+
+            setVideos(previewVideos);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Priority 3: Fallback - fetch all captain's videos (legacy behavior)
         const res = await fetch(`/api/videos/list?ownerId=${ownerId}`);
         if (res.ok) {
           const data = await res.json();
           const videoRecords: VideoRecord[] = data.videos || [];
 
-          // Transform to preview format, only include ready videos
           const previewVideos = videoRecords
             .filter((v) => v.processStatus === "ready")
             .map((v, index) => ({
@@ -42,10 +113,9 @@ export function ReviewStep({ charter, ownerId }: ReviewStepProps) {
             }))
             .filter((v) => !!v.url);
 
-          console.log("[ReviewStep] Fetched videos:", {
+          console.log("[ReviewStep] Fetched all captain videos (fallback):", {
             total: videoRecords.length,
             ready: previewVideos.length,
-            sample: previewVideos[0],
           });
 
           setVideos(previewVideos);
@@ -58,7 +128,7 @@ export function ReviewStep({ charter, ownerId }: ReviewStepProps) {
     };
 
     fetchVideos();
-  }, [ownerId]);
+  }, [ownerId, charterId, draftId]);
 
   if (loading) {
     return (

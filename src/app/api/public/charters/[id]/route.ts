@@ -82,13 +82,15 @@ export async function GET(
     const { id } = await ctx.params;
 
     // Query the view for specific charter
-    const charters = await prisma.$queryRaw<PublicCharterView[]>`
+    const result = await prisma.$queryRaw<
+      Array<{ id: string; charter: PublicCharterView }>
+    >`
       SELECT * FROM v_public_charters
       WHERE id = ${id}
       LIMIT 1
     `;
 
-    if (charters.length === 0) {
+    if (result.length === 0) {
       return applySecurityHeaders(
         NextResponse.json(
           { error: "not_found", message: "Charter not found" },
@@ -97,16 +99,14 @@ export async function GET(
       );
     }
 
+    // The view returns { id, charter } where charter is the JSONB object
     return applySecurityHeaders(
-      NextResponse.json(
-        { charter: charters[0] },
-        {
-          status: 200,
-          headers: {
-            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-          },
-        }
-      )
+      NextResponse.json(result[0].charter, {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      })
     );
   } catch (error) {
     console.error("Error fetching charter:", error);
