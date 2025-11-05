@@ -102,16 +102,61 @@ export async function POST(
         select: {
           id: true,
           displayName: true,
-          user: { select: { email: true } },
+          user: { select: { email: true, firstName: true, lastName: true } },
         },
       });
       if (!captainProfile) {
         throw { status: 400, error: "missing_captain_profile" };
       }
 
+      // Update CaptainProfile with operator data from draft
+      if (draftData.operator) {
+        const updateData: {
+          displayName?: string;
+          bio?: string;
+          experienceYrs?: number;
+          phone?: string;
+          avatarUrl?: string;
+          firstName?: string;
+          lastName?: string;
+        } = {};
+
+        // Only update fields that are present in the draft
+        if (draftData.operator.displayName) {
+          updateData.displayName = draftData.operator.displayName;
+        }
+        if (draftData.operator.bio) {
+          updateData.bio = draftData.operator.bio;
+        }
+        if (
+          typeof draftData.operator.experienceYears === "number" &&
+          Number.isFinite(draftData.operator.experienceYears)
+        ) {
+          updateData.experienceYrs = Math.max(
+            0,
+            Math.trunc(draftData.operator.experienceYears)
+          );
+        }
+        if (draftData.operator.phone) {
+          updateData.phone = draftData.operator.phone;
+        }
+        if (draftData.operator.avatarUrl) {
+          updateData.avatarUrl = draftData.operator.avatarUrl;
+        }
+
+        // Update CaptainProfile if there are changes
+        if (Object.keys(updateData).length > 0) {
+          await tx.captainProfile.update({
+            where: { id: captainProfile.id },
+            data: updateData,
+          });
+        }
+      }
+
       // Capture captain info for email
       captainEmail = captainProfile.user?.email ?? null;
-      captainName = captainProfile.displayName ?? null;
+      captainName =
+        draftData.operator?.displayName ?? captainProfile.displayName ?? null;
       if (!media || media.images.length === 0) {
         throw { status: 400, error: "missing_media" };
       }

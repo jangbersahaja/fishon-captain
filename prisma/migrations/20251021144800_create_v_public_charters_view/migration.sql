@@ -3,6 +3,7 @@
 
 -- Create the v_public_charters view that aggregates charter data with all related entities
 -- Returns two columns: id (text) and charter (jsonb)
+
 DROP VIEW IF EXISTS "public"."v_public_charters";
 CREATE VIEW "public"."v_public_charters" AS
 SELECT 
@@ -157,7 +158,35 @@ SELECT
                     'smokingAllowed', NOT pol."smokingNotAllowed"
                 )
             ELSE NULL
-        END
+        END,
+        
+    -- Schedule data
+        'schedule', CASE 
+            WHEN cs.id IS NOT NULL THEN
+                jsonb_build_object(
+                    'type', cs."scheduleType",
+                    'operationalDays', cs."operationalDays"
+                )
+            ELSE NULL
+        END,
+        
+    -- Unavailability data (captain-defined blocked dates)
+        'unavailability', COALESCE(
+            (
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'startDate', cu."startDate",
+                        'endDate', cu."endDate",
+                        'reason', cu.reason
+                    )
+                    ORDER BY cu."startDate"
+                )
+                FROM "charter_unavailability" cu
+                WHERE cu."charterId" = c.id
+                  AND cu."endDate" >= CURRENT_DATE
+            ),
+            '[]'::jsonb
+        )
     ) AS charter
 
 FROM "Charter" c
@@ -165,7 +194,5 @@ INNER JOIN "CaptainProfile" cp ON c."captainId" = cp.id
 LEFT JOIN "Boat" b ON c."boatId" = b.id
 LEFT JOIN "Pickup" p ON c.id = p."charterId"
 LEFT JOIN "Policies" pol ON c.id = pol."charterId"
+LEFT JOIN "charter_schedules" cs ON c.id = cs."charterId"
 WHERE c."isActive" = true;
-
--- Create index on charter ID for faster lookups
-CREATE INDEX IF NOT EXISTS idx_charter_active ON "Charter"("isActive") WHERE "isActive" = true;

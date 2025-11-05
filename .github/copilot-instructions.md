@@ -32,8 +32,10 @@ Fishon Captain is the **management dashboard** for captains and charter operator
 - Domain logic lives in feature modules (e.g. `src/features/charter-onboarding`) that bundle `schema.ts`, `server/`, `components/`, `hooks/`, `__tests__/`, and README guidance
 - Import via barrels like `@features/charter-onboarding`
 - Middleware (`src/middleware.ts`) gates `/captain/*` and `/staff/*` routes; staff pages require STAFF or ADMIN roles
-- PostgreSQL view `v_public_charters` exposes charter data to fishon-market
-- Public API at `/api/public/charters` serves as fallback data source for fishon-market
+- PostgreSQL view `v_public_charters` exposes charter data to fishon-market (primary data source)
+- Public v1 API at `/api/public/v1/charters` serves as fallback data source for fishon-market
+- v1 API endpoints: `/api/public/v1/charters` (list), `/api/public/v1/charters/:id` (detail), `/api/public/v1/charters/:id/availability` (availability)
+- All legacy `/api/public/charters/*` endpoints have been removed and replaced with v1
 
 ## Core Workflows
 
