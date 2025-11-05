@@ -1,4 +1,5 @@
 import authOptions from "@/lib/auth";
+import { processImageFile } from "@/lib/heicConverter";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
 import { getServerSession } from "next-auth";
@@ -36,11 +37,15 @@ export async function POST(req: Request) {
     if (!file.type.startsWith("image/")) {
       return NextResponse.json({ error: "not_image" }, { status: 400 });
     }
-    const originalName = file.name || "photo";
+
+    // Convert HEIC to JPEG if needed
+    const processedFile = await processImageFile(file, 0.92);
+
+    const originalName = processedFile.name || "photo";
     const sanitized = originalName.replace(/[^\w\d.-]/g, "_").slice(0, 160);
     const ts = Date.now();
     const storageKey = `captains/${userId}/media/${ts}-${sanitized}`;
-    const putRes = await put(storageKey, file, {
+    const putRes = await put(storageKey, processedFile, {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
       addRandomSuffix: false,
@@ -87,8 +92,8 @@ export async function POST(req: Request) {
         charterId: charterIdFinal, // will be null if no real charter
         url: putRes.url,
         storageKey,
-        mimeType: file.type,
-        sizeBytes: file.size,
+        mimeType: processedFile.type,
+        sizeBytes: processedFile.size,
         sortOrder: nextOrder,
       },
       select: { id: true },
