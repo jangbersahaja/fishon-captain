@@ -13,7 +13,11 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate && prisma generate --schema=prisma/schema-market.prisma",
     "prebuild": "npm run check:env && npm run typecheck",
-    "migrate:drift-heal": "bash scripts/migrate-drift-heal.sh"
+    "migrate:drift-heal": "bash scripts/migrate-drift-heal.sh",
+    "migrate:heic": "tsx scripts/migrate-heic-to-jpeg.ts",
+    "migrate:avatar": "tsx scripts/migrate-avatar-heic-to-jpeg.ts",
+    "check:media": "tsx scripts/check-media-status.ts",
+    "check:avatar": "tsx scripts/check-avatar-status.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -88,6 +92,7 @@
     "jsdom": "^24.0.0",
     "prisma": "^6.17.1",
     "tailwindcss": "^4",
+    "tsx": "^4.20.6",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5",
     "vitest": "^3.2.4"

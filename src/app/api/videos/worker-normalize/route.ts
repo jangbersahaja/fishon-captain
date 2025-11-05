@@ -24,8 +24,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
   }
+  // Phase 2: Select fields to avoid nullable captainId issues
   const video = await prisma.captainVideo.findUnique({
     where: { id: videoId },
+    select: {
+      id: true,
+      processStatus: true,
+      originalUrl: true,
+      trimStartSec: true,
+      processedDurationSec: true,
+      blobKey: true,
+      normalizedBlobKey: true,
+      thumbnailBlobKey: true,
+    },
   });
   if (!video) return NextResponse.json({ error: "not_found" }, { status: 404 });
   if (video.processStatus !== "processing") {

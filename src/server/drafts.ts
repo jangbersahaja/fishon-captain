@@ -44,48 +44,12 @@ export async function createDraft(params: {
     where: { userId: params.userId, status: "DRAFT" },
     select: { id: true },
   });
-  // Upsert CaptainProfile on draft creation (basic step)
-  // Use displayName/phone from initial if available, else fallback
-  type OperatorDraft = {
-    displayName?: string;
-    phone?: string;
-    bio?: string;
-    experienceYears?: number;
-    avatarUrl?: string;
-  };
-  const operator: OperatorDraft = params.initial?.operator || {};
-  const displayName =
-    operator.displayName && operator.displayName.trim()
-      ? operator.displayName
-      : "Captain";
-  const phone = operator.phone || "";
-  const bio = operator.bio || "";
-  const experienceYrs =
-    typeof operator.experienceYears === "number" &&
-    Number.isFinite(operator.experienceYears)
-      ? operator.experienceYears
-      : 0;
-  const avatarUrl = operator.avatarUrl || undefined;
-  await prisma.captainProfile.upsert({
-    where: { userId: params.userId },
-    update: {
-      displayName,
-      phone,
-      bio,
-      experienceYrs,
-      avatarUrl,
-    },
-    create: {
-      userId: params.userId,
-      firstName: displayName.split(" ")[0] || "Captain",
-      lastName: displayName.split(" ").slice(1).join(" ") || "",
-      displayName,
-      phone,
-      bio,
-      experienceYrs,
-      avatarUrl,
-    },
-  });
+
+  // Phase 2: CaptainProfile creation removed from draft stage
+  // Will be created during finalize if user indicates they will be a captain
+  // This fixes the firstName="Captain" bug where automatic profile creation
+  // was setting firstName to "Captain" and lastName to ""
+
   if (existing) {
     logger.info("draft_reuse_existing", {
       existingId: existing.id,
@@ -98,6 +62,7 @@ export async function createDraft(params: {
       data: sanitized,
     };
   }
+
   const draft = await prisma.charterDraft.create({
     data: {
       userId: params.userId,

@@ -11,12 +11,22 @@ export async function GET(
   const { id } = await params;
   const video = await prisma.captainVideo.findUnique({
     where: { id },
-    include: { captain: { select: { userId: true } } },
+    select: {
+      id: true,
+      ownerId: true,
+      originalUrl: true,
+      thumbnailUrl: true,
+      ready720pUrl: true,
+      processStatus: true,
+      errorMessage: true,
+      createdAt: true,
+    },
   });
   if (!video) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const session = await getServerSession(authOptions);
   const sessionUserId = (session?.user as { id?: string })?.id;
-  if (!sessionUserId || sessionUserId !== video.captain.userId) {
+  // Phase 2: Check ownership via ownerId
+  if (!sessionUserId || sessionUserId !== video.ownerId) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   return NextResponse.json({ video });
@@ -30,13 +40,21 @@ export async function DELETE(
     const { id } = await params;
     const existing = await prisma.captainVideo.findUnique({
       where: { id },
-      include: { captain: { select: { userId: true } } },
+      select: {
+        id: true,
+        ownerId: true,
+        processStatus: true,
+        blobKey: true,
+        normalizedBlobKey: true,
+        thumbnailBlobKey: true,
+      },
     });
     if (!existing)
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     const session = await getServerSession(authOptions);
     const sessionUserId = (session?.user as { id?: string })?.id;
-    if (!sessionUserId || sessionUserId !== existing.captain.userId) {
+    // Phase 2: Check ownership via ownerId
+    if (!sessionUserId || sessionUserId !== existing.ownerId) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 

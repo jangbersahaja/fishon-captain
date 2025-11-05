@@ -7,7 +7,6 @@ import CaptainCard from "./CaptainCard";
 export default async function CaptainShowcase() {
   // Fetch captains and filter for full data, not ADMIN, not [Dummy]
   const captains = await prisma.captainProfile.findMany({
-    take: 16,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

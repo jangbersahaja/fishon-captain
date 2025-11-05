@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import Footer from "@/components/Footer";
 import CaptainShowcaseSection from "./(marketing)/list-your-business/CaptainShowcaseSection";
 import FAQSection from "./(marketing)/list-your-business/FAQSection";
 import FinalCTASection from "./(marketing)/list-your-business/FinalCTASection";
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
 
 export default function ListYourBusinessPage() {
   return (
-    <main className="min-h-screen flex flex-col bg-white">
+    <main className="flex flex-col min-h-screen bg-white">
       <HeroSection />
       <ValuePropsSection />
       <HowItWorksSection />
@@ -42,6 +43,7 @@ export default function ListYourBusinessPage() {
       <SafetyAwardsSection />
       <FAQSection />
       <FinalCTASection />
+      <Footer />
     </main>
   );
 }

@@ -26,7 +26,7 @@ interface VideoGalleryModalProps {
   open: boolean;
   onClose: () => void;
   charterId: string | null;
-  captainId: string;
+  ownerId: string; // Phase 2: renamed from captainId for clarity
   onVideosLinked?: () => void;
 }
 
@@ -34,7 +34,7 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
   open,
   onClose,
   charterId,
-  captainId,
+  ownerId,
   onVideosLinked,
 }) => {
   const [videos, setVideos] = useState<VideoRecord[]>([]);
@@ -44,14 +44,14 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Load captain's videos
+  // Load owner's videos (Phase 2: uses ownerId)
   const loadVideos = useCallback(async () => {
-    if (!captainId || !open) return;
+    if (!ownerId || !open) return;
 
     setLoading(true);
     try {
-      // Fetch all captain's videos
-      const res = await fetch(`/api/videos/list?ownerId=${captainId}`);
+      // Fetch all owner's videos
+      const res = await fetch(`/api/videos/list?ownerId=${ownerId}`);
       if (!res.ok) return;
 
       const data = await res.json();
@@ -64,7 +64,7 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
       // Pre-select videos already linked to this charter via junction table
       if (charterId) {
         const linkedRes = await fetch(
-          `/api/videos/list?ownerId=${captainId}&charterId=${charterId}`
+          `/api/videos/list?ownerId=${ownerId}&charterId=${charterId}`
         );
         if (linkedRes.ok) {
           const linkedData = await linkedRes.json();
@@ -78,7 +78,7 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [captainId, charterId, open]);
+  }, [ownerId, charterId, open]);
 
   useEffect(() => {
     loadVideos();

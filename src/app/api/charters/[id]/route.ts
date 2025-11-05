@@ -180,7 +180,7 @@ export async function PATCH(
             type: data.boat.type || "",
             lengthFt: data.boat.lengthFt || 0,
             capacity: data.boat.capacity || 0,
-            charter: { connect: { id: charter.id } },
+            charters: { connect: { id: charter.id } },
           },
         })
       );

@@ -56,7 +56,7 @@ export type PipelineViewModel = {
 
 export type VideoRow = {
   id: string;
-  ownerId: string;
+  ownerId: string | null; // Phase 2: can be null if no owner assigned
   originalUrl: string;
   blobKey: string | null;
   thumbnailUrl: string | null;

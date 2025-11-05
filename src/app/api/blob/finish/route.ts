@@ -38,20 +38,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
-  // Get captain profile ID from userId
+  // Get captain profile ID from userId (optional for Phase 2 - backward compatibility only)
   const captainProfile = await prisma.captainProfile.findUnique({
     where: { userId: sessionUserId },
     select: { id: true },
   });
 
-  if (!captainProfile) {
-    return NextResponse.json(
-      { error: "captain_profile_not_found" },
-      { status: 404 }
-    );
-  }
-
-  const effectiveCaptainId = captainProfile.id;
+  // Phase 2: CaptainProfile is optional - only used for backward compatibility
+  // Videos now use ownerId (userId) as primary ownership field
+  const effectiveCaptainId = captainProfile?.id || undefined;
 
   const parsed = FinishFormSchema.safeParse({
     videoUrl: typeof videoUrl === "string" ? videoUrl : undefined,
@@ -198,9 +193,11 @@ export async function POST(req: NextRequest) {
   let video: CreatedVideo | null = null;
   try {
     // Create video and optionally link to charter via junction table
+    // Phase 2: Use ownerId instead of captainId
     video = await prisma.captainVideo.create({
       data: {
-        captainId: effectiveCaptainId,
+        ownerId: sessionUserId, // Phase 2: Set ownerId (new architecture)
+        ...(effectiveCaptainId && { captainId: effectiveCaptainId }), // Keep for backward compatibility (only if exists)
         originalUrl: parsed.data.videoUrl ?? "",
         blobKey: parsed.data.blobKey || null,
         charterId: parsed.data.charterId || null, // Keep for backward compatibility

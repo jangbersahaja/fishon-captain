@@ -97,20 +97,55 @@ export async function POST(
       // Capture charter name for email
       charterName = draftData.charterName ?? null;
 
-      const captainProfile = await tx.captainProfile.findUnique({
-        where: { userId },
-        select: {
-          id: true,
-          displayName: true,
-          user: { select: { email: true, firstName: true, lastName: true } },
-        },
+      // Phase 2: Charter ownership architecture
+      // 1. Get user details for email
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { email: true, firstName: true, lastName: true },
       });
-      if (!captainProfile) {
-        throw { status: 400, error: "missing_captain_profile" };
+      if (!user) {
+        throw { status: 400, error: "user_not_found" };
       }
 
-      // Update CaptainProfile with operator data from draft
-      if (draftData.operator) {
+      // 2. Get or create CaptainProfile if user will be a captain
+      // For now, we assume owner is also the captain (Phase 3 will add crew management)
+      let captainProfile = await tx.captainProfile.findUnique({
+        where: { userId },
+        select: { id: true, displayName: true },
+      });
+
+      if (!captainProfile && draftData.operator) {
+        // Create CaptainProfile with real data from form
+        const displayName =
+          draftData.operator.displayName ||
+          `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+          "Captain";
+
+        captainProfile = await tx.captainProfile.create({
+          data: {
+            userId,
+            firstName:
+              user.firstName ||
+              draftData.operator.displayName?.split(" ")[0] ||
+              "Captain",
+            lastName:
+              user.lastName ||
+              draftData.operator.displayName?.split(" ").slice(1).join(" ") ||
+              "",
+            displayName,
+            phone: draftData.operator.phone || "",
+            bio: draftData.operator.bio || "",
+            experienceYrs:
+              typeof draftData.operator.experienceYears === "number" &&
+              Number.isFinite(draftData.operator.experienceYears)
+                ? Math.max(0, Math.trunc(draftData.operator.experienceYears))
+                : 0,
+            avatarUrl: draftData.operator.avatarUrl || undefined,
+          },
+          select: { id: true, displayName: true },
+        });
+      } else if (captainProfile && draftData.operator) {
+        // Update existing CaptainProfile with operator data from draft
         const updateData: {
           displayName?: string;
           bio?: string;
@@ -153,8 +188,12 @@ export async function POST(
         }
       }
 
+      if (!captainProfile) {
+        throw { status: 400, error: "missing_captain_profile" };
+      }
+
       // Capture captain info for email
-      captainEmail = captainProfile.user?.email ?? null;
+      captainEmail = user.email ?? null;
       captainName =
         draftData.operator?.displayName ?? captainProfile.displayName ?? null;
       if (!media || media.images.length === 0) {
@@ -163,7 +202,7 @@ export async function POST(
       // All CharterMedia are photos now - no need to filter by kind
       const canonicalPhotos = await tx.charterMedia.findMany({
         where: {
-          captainId: captainProfile.id,
+          ownerId: userId, // Phase 2: Query by ownerId instead of captainId
           OR: [{ charterId: null }, { charterId: { startsWith: "temp-" } }],
         },
         orderBy: { createdAt: "asc" },
@@ -173,14 +212,15 @@ export async function POST(
       // CharterVideo junction records. Those will be handled separately.
       const canonicalVideos = await tx.captainVideo.findMany({
         where: {
-          captainId: captainProfile.id,
+          ownerId: userId, // Phase 2: Query by ownerId instead of captainId
           charterId: null,
         },
         orderBy: { createdAt: "asc" },
       });
       // Build charterCreateData in two steps to avoid Prisma type errors
       const charterCreateDataBase = {
-        captainId: captainProfile.id,
+        ownerId: userId, // Phase 2: Use ownerId instead of captainId
+        captainId: captainProfile.id, // Keep for backward compatibility during migration
         charterType: draftData.charterType ?? "",
         name: draftData.charterName ?? "",
         state: draftData.state ?? "",
@@ -312,6 +352,16 @@ export async function POST(
       });
       charterId = charter.id;
 
+      // Phase 2: Create CharterCaptain assignment (owner is also primary captain)
+      await tx.charterCaptain.create({
+        data: {
+          charterId: charter.id,
+          captainId: captainProfile.id,
+          isPrimary: true,
+          isActive: true,
+        },
+      });
+
       // Create charter schedule
       await tx.charterSchedule.create({
         data: {
@@ -340,14 +390,14 @@ export async function POST(
         },
         include: {
           video: {
-            select: { captainId: true },
+            select: { ownerId: true }, // Phase 2: Query ownerId instead of captainId
           },
         },
       });
 
-      // Filter to only this captain's videos
+      // Filter to only this owner's videos (Phase 2: use ownerId)
       const validExistingLinks = existingVideoLinks.filter(
-        (link) => link.video.captainId === captainProfile.id
+        (link) => link.video.ownerId === userId
       );
 
       // Update existing junction records with real charter ID

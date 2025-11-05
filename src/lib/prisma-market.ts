@@ -44,6 +44,7 @@ const PrismaClient = loadPrismaMarketClient();
 interface PrismaClientInstance {
   booking: any;
   marketUser: any;
+  review: any;
   $disconnect: () => Promise<void>;
 }
 

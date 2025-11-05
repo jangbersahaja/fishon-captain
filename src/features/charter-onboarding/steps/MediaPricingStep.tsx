@@ -313,7 +313,7 @@ export function MediaPricingStep({
             open={showVideoGallery}
             onClose={() => setShowVideoGallery(false)}
             charterId={currentCharterId || null}
-            captainId={ownerId}
+            ownerId={ownerId}
             onVideosLinked={handleVideosLinked}
           />
         )}
