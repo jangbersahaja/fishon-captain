@@ -321,6 +321,13 @@ model CaptainVerification {
   boatRegistration Json?
   fishingLicense   Json?
   additional       Json               @default("[]")
+  // Banking information
+  bankName          String?
+  bankAccountNumber String?
+  bankAccountHolder String?
+  bankSwiftCode     String?
+  bankBranch        String?
+  bankStatement     Json?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   user             User               @relation(fields: [userId], references: [id])

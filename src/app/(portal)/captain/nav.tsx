@@ -20,7 +20,7 @@ const links = [
   { href: "/captain/bookings/calendar", label: "Calendar", Icon: Calendar },
   { href: "/captain/notifications", label: "Notifications", Icon: Bell },
   { href: "/captain/media", label: "Media", Icon: ImageIcon },
-  { href: "/captain/verification", label: "Verification", Icon: IdCard },
+  { href: "/captain/documents", label: "Documents", Icon: IdCard },
   { href: "/captain/settings", label: "Settings", Icon: SettingsIcon },
   { href: "/captain/support", label: "Support", Icon: LifeBuoy },
 ];
