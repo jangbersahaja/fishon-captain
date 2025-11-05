@@ -142,6 +142,12 @@ export default async function StaffCharterDetailPage({
           boatRegistration: true,
           fishingLicense: true,
           additional: true,
+          bankName: true,
+          bankAccountNumber: true,
+          bankAccountHolder: true,
+          bankSwiftCode: true,
+          bankBranch: true,
+          bankStatement: true,
           status: true,
           createdAt: true,
           updatedAt: true,
@@ -176,7 +182,7 @@ export default async function StaffCharterDetailPage({
       </div>
 
       {/* Actions */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-3 text-sm font-semibold text-slate-800">Actions</h2>
         <div className="flex flex-wrap gap-3">
           {c.captain?.userId ? (
@@ -198,7 +204,7 @@ export default async function StaffCharterDetailPage({
                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span className="hidden sm:inline text-xs font-medium">
+                <span className="hidden text-xs font-medium sm:inline">
                   View Verification
                 </span>
               </a>
@@ -212,7 +218,7 @@ export default async function StaffCharterDetailPage({
                 }\n\nThis will allow you to view their captain dashboard. Please enter your admin password to confirm.`}
                 variant="outline"
                 size="sm"
-                className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                className="text-orange-700 border-orange-300 bg-orange-50 hover:bg-orange-100"
               >
                 <svg
                   className="w-3.5 h-3.5"
@@ -233,7 +239,7 @@ export default async function StaffCharterDetailPage({
                     d="M8 5a2 2 0 012-2h4a2 2 0 012 2v1H8V5z"
                   />
                 </svg>
-                <span className="hidden sm:inline text-xs font-medium">
+                <span className="hidden text-xs font-medium sm:inline">
                   🛡️ Open Dashboard
                 </span>
               </AdminBypassLink>
@@ -249,7 +255,7 @@ export default async function StaffCharterDetailPage({
                   }\n\nThis will allow you to view and edit their charter. Please enter your admin password to confirm.`}
                   variant="outline"
                   size="sm"
-                  className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                  className="text-orange-700 border-orange-300 bg-orange-50 hover:bg-orange-100"
                 >
                   <svg
                     className="w-3.5 h-3.5"
@@ -264,7 +270,7 @@ export default async function StaffCharterDetailPage({
                       d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                     />
                   </svg>
-                  <span className="hidden sm:inline text-xs font-medium">
+                  <span className="hidden text-xs font-medium sm:inline">
                     🛡️ Edit Charter
                   </span>
                 </AdminBypassLink>
@@ -316,8 +322,8 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* User */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-2 flex items-center justify-between">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold text-slate-800">User</h2>
           {verification ? (
             <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
@@ -358,7 +364,7 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Draft (moved up) */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-2 text-sm font-semibold text-slate-800">Draft</h2>
         {c.draft ? (
           <div className="grid gap-2 text-sm text-slate-700 sm:grid-cols-3">
@@ -377,14 +383,14 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Captain */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-2 text-sm font-semibold text-slate-800">Captain</h2>
         {c.captain ? (
           <div className="grid items-start gap-4 sm:grid-cols-4">
             {/* Avatar (left) */}
             <div>
               {charter.captain?.avatarUrl ? (
-                <div className="relative h-24 w-24 overflow-hidden rounded-full border border-slate-200 bg-slate-100 sm:h-32 sm:w-32">
+                <div className="relative w-24 h-24 overflow-hidden border rounded-full border-slate-200 bg-slate-100 sm:h-32 sm:w-32">
                   <Image
                     src={charter.captain.avatarUrl!}
                     alt="Captain avatar"
@@ -394,7 +400,7 @@ export default async function StaffCharterDetailPage({
                   />
                 </div>
               ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs text-slate-500 sm:h-32 sm:w-32">
+                <div className="flex items-center justify-center w-24 h-24 text-xs border rounded-full border-slate-200 bg-slate-50 text-slate-500 sm:h-32 sm:w-32">
                   No avatar
                 </div>
               )}
@@ -429,11 +435,11 @@ export default async function StaffCharterDetailPage({
             {/* Bio and meta (full width below) */}
             <div className="sm:col-span-4">
               <div className="text-xs font-medium text-slate-500">Bio</div>
-              <div className="whitespace-pre-wrap text-sm text-slate-700">
+              <div className="text-sm whitespace-pre-wrap text-slate-700">
                 {c.captain.bio || "—"}
               </div>
             </div>
-            <div className="sm:col-span-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
+            <div className="grid gap-3 text-sm sm:col-span-4 text-slate-700 sm:grid-cols-3">
               <div>
                 <span className="text-slate-500">Created:</span>{" "}
                 {new Date(c.captain.createdAt).toLocaleString()}
@@ -454,8 +460,8 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Basics */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-2 flex items-center justify-between">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold text-slate-800">Basics</h2>
           <span className="text-xs text-slate-500">ID: {c.id}</span>
         </div>
@@ -495,14 +501,14 @@ export default async function StaffCharterDetailPage({
         </div>
         <div className="mt-3">
           <div className="text-sm font-medium text-slate-700">Description</div>
-          <p className="whitespace-pre-wrap text-sm text-slate-700">
+          <p className="text-sm whitespace-pre-wrap text-slate-700">
             {c.description}
           </p>
         </div>
       </section>
 
       {/* Boat */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-2 text-sm font-semibold text-slate-800">Boat</h2>
         {c.boat ? (
           <div className="grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
@@ -535,7 +541,7 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Amenities & Features */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-2 text-sm font-semibold text-slate-800">
           Amenities & Features
         </h2>
@@ -543,7 +549,7 @@ export default async function StaffCharterDetailPage({
           <div>
             <div className="text-xs font-medium text-slate-500">Amenities</div>
             {c.amenities.length ? (
-              <ul className="mt-1 list-inside list-disc text-sm text-slate-700">
+              <ul className="mt-1 text-sm list-disc list-inside text-slate-700">
                 {c.amenities.map((a) => (
                   <li key={a.id}>{a.label}</li>
                 ))}
@@ -555,7 +561,7 @@ export default async function StaffCharterDetailPage({
           <div>
             <div className="text-xs font-medium text-slate-500">Features</div>
             {c.features.length ? (
-              <ul className="mt-1 list-inside list-disc text-sm text-slate-700">
+              <ul className="mt-1 text-sm list-disc list-inside text-slate-700">
                 {c.features.map((f) => (
                   <li key={f.id}>{f.label}</li>
                 ))}
@@ -568,13 +574,13 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Media (table with preview) */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-2 text-sm font-semibold text-slate-800">
           Media ({c.media.length})
         </h2>
         {c.media.length ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-full text-sm text-left">
               <thead className="text-xs text-slate-500">
                 <tr>
                   <th className="px-2 py-1">Preview</th>
@@ -587,11 +593,11 @@ export default async function StaffCharterDetailPage({
               </thead>
               <tbody>
                 {c.media.map((m) => (
-                  <tr key={m.id} className="border-t align-middle">
+                  <tr key={m.id} className="align-middle border-t">
                     <td className="px-2 py-1">
                       <a href={m.url} target="_blank" className="block">
                         {m.mimeType?.startsWith("image/") || isImage(m.url) ? (
-                          <div className="relative h-16 w-24 overflow-hidden rounded border border-slate-200">
+                          <div className="relative w-24 h-16 overflow-hidden border rounded border-slate-200">
                             <Image
                               src={m.url}
                               alt={m.url}
@@ -631,7 +637,7 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Pickup */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-2 text-sm font-semibold text-slate-800">Pickup</h2>
         {c.pickup ? (
           <div className="grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
@@ -641,7 +647,7 @@ export default async function StaffCharterDetailPage({
             <div className="sm:col-span-3">
               <div className="text-xs font-medium text-slate-500">Areas</div>
               {c.pickup.areas.length ? (
-                <ul className="mt-1 list-inside list-disc">
+                <ul className="mt-1 list-disc list-inside">
                   {c.pickup.areas.map((a) => (
                     <li key={a.id} className="text-sm text-slate-700">
                       {a.label}
@@ -659,7 +665,7 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Policies */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-2 text-sm font-semibold text-slate-800">Policies</h2>
         {c.policies ? (
           <div className="grid gap-2 text-sm text-slate-700 sm:grid-cols-3">
@@ -687,7 +693,7 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Trips */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
         <h2 className="mb-2 text-sm font-semibold text-slate-800">
           Trips ({c.trips.length})
         </h2>
@@ -696,7 +702,7 @@ export default async function StaffCharterDetailPage({
             {c.trips.map((t) => (
               <div
                 key={t.id}
-                className="rounded-lg border border-slate-200 p-3"
+                className="p-3 border rounded-lg border-slate-200"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="font-medium text-slate-800">{t.name}</div>
@@ -704,7 +710,7 @@ export default async function StaffCharterDetailPage({
                     Updated {new Date(t.updatedAt).toLocaleString()}
                   </div>
                 </div>
-                <div className="mt-1 grid gap-2 text-sm text-slate-700 sm:grid-cols-3">
+                <div className="grid gap-2 mt-1 text-sm text-slate-700 sm:grid-cols-3">
                   <div>Type: {t.tripType}</div>
                   <div>Style: {t.style}</div>
                   <div>Price: {String(t.price)}</div>
@@ -716,13 +722,13 @@ export default async function StaffCharterDetailPage({
                     {t.description}
                   </div>
                 ) : null}
-                <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 mt-2 sm:grid-cols-3">
                   <div>
                     <div className="text-xs font-medium text-slate-500">
                       Species
                     </div>
                     {t.species.length ? (
-                      <ul className="list-inside list-disc text-sm text-slate-700">
+                      <ul className="text-sm list-disc list-inside text-slate-700">
                         {t.species.map((s) => (
                           <li key={s.id}>{s.value}</li>
                         ))}
@@ -736,7 +742,7 @@ export default async function StaffCharterDetailPage({
                       Techniques
                     </div>
                     {t.techniques.length ? (
-                      <ul className="list-inside list-disc text-sm text-slate-700">
+                      <ul className="text-sm list-disc list-inside text-slate-700">
                         {t.techniques.map((tech) => (
                           <li key={tech.id}>{tech.value}</li>
                         ))}
@@ -750,7 +756,7 @@ export default async function StaffCharterDetailPage({
                       Start times
                     </div>
                     {t.startTimes.length ? (
-                      <ul className="list-inside list-disc text-sm text-slate-700">
+                      <ul className="text-sm list-disc list-inside text-slate-700">
                         {t.startTimes.map((st) => (
                           <li key={st.id}>{st.value}</li>
                         ))}
@@ -770,8 +776,8 @@ export default async function StaffCharterDetailPage({
       </section>
 
       {/* Verification documents (table) */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-2 flex items-start justify-between">
+      <section className="p-4 bg-white border rounded-xl border-slate-200">
+        <div className="flex items-start justify-between mb-2">
           <h2 className="text-sm font-semibold text-slate-800">
             Verification documents
           </h2>
@@ -797,7 +803,7 @@ export default async function StaffCharterDetailPage({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-full text-sm text-left">
               <thead className="text-xs text-slate-500">
                 <tr>
                   <th className="px-2 py-1">Preview</th>
@@ -832,12 +838,12 @@ export default async function StaffCharterDetailPage({
                   return rows.map(({ type, d }, idx) => (
                     <tr
                       key={`${type}-${idx}`}
-                      className="border-t align-middle"
+                      className="align-middle border-t"
                     >
                       <td className="px-2 py-2">
                         {d?.url ? (
                           isImage(d.name || d.url) ? (
-                            <div className="relative h-16 w-24 overflow-hidden rounded border border-slate-200">
+                            <div className="relative w-24 h-16 overflow-hidden border rounded border-slate-200">
                               <Image
                                 src={d.url}
                                 alt={d.name}
@@ -858,7 +864,7 @@ export default async function StaffCharterDetailPage({
                         )}
                       </td>
                       <td className="px-2 py-2 text-slate-700">{type}</td>
-                      <td className="break-all px-2 py-2 text-slate-700">
+                      <td className="px-2 py-2 break-all text-slate-700">
                         {d?.name || "—"}
                       </td>
                       <td className="px-2 py-2 text-slate-700">
@@ -868,10 +874,11 @@ export default async function StaffCharterDetailPage({
                         {d?.validForPeriod?.forever
                           ? "Forever"
                           : d?.validForPeriod?.to
-                          ? new Date(d.validForPeriod.to).toLocaleDateString()
-                          : d?.status && d.status.toLowerCase() === "validated"
-                          ? "Forever"
-                          : "—"}
+                            ? new Date(d.validForPeriod.to).toLocaleDateString()
+                            : d?.status &&
+                                d.status.toLowerCase() === "validated"
+                              ? "Forever"
+                              : "—"}
                       </td>
                       <td className="px-2 py-2 text-slate-700">
                         {d?.updatedAt

@@ -1,4 +1,6 @@
 import authOptions from "@/lib/auth";
+import { validateBankingInfo } from "@/lib/banking-validation";
+import { decrypt, encrypt } from "@/lib/encryption";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -46,7 +48,8 @@ export async function POST(req: Request) {
       | "idBack"
       | "captainLicense"
       | "boatRegistration"
-      | "fishingLicense",
+      | "fishingLicense"
+      | "bankStatement",
       Uploaded
     >
   > & {
@@ -55,6 +58,13 @@ export async function POST(req: Request) {
     additionalUpdateName?: { key: string; name: string };
     additional?: Uploaded[];
     remove?: string; // remove a single-field document (idFront, idBack, etc.)
+    banking?: {
+      bankName?: string;
+      bankAccountNumber?: string;
+      bankAccountHolder?: string;
+      bankSwiftCode?: string;
+      bankBranch?: string;
+    };
   };
   const data = body as Body;
 
@@ -76,6 +86,12 @@ export async function POST(req: Request) {
     boatRegistration?: Json;
     fishingLicense?: Json;
     additional?: Json;
+    bankStatement?: Json;
+    bankName?: string;
+    bankAccountNumber?: string;
+    bankAccountHolder?: string;
+    bankSwiftCode?: string;
+    bankBranch?: string;
   } = {};
 
   const singleFields = [
@@ -84,6 +100,7 @@ export async function POST(req: Request) {
     "captainLicense",
     "boatRegistration",
     "fishingLicense",
+    "bankStatement",
   ] as const;
 
   let touched = false;
@@ -197,6 +214,59 @@ export async function POST(req: Request) {
           : x
       );
       updateData.additional = next as Prisma.InputJsonValue;
+      touched = true;
+    }
+  }
+
+  // Handle banking information update with encryption and validation
+  if (!touched && data.banking && typeof data.banking === "object") {
+    const banking = data.banking;
+
+    // Validate banking information
+    const validation = validateBankingInfo({
+      bankName: banking.bankName || "",
+      bankAccountNumber: banking.bankAccountNumber || "",
+      bankAccountHolder: banking.bankAccountHolder || "",
+      bankSwiftCode: banking.bankSwiftCode,
+    });
+
+    if (!validation.valid) {
+      return applySecurityHeaders(
+        NextResponse.json(
+          { error: "validation_failed", details: validation.errors },
+          { status: 400 }
+        )
+      );
+    }
+
+    // Encrypt sensitive banking data
+    if (banking.bankAccountNumber !== undefined) {
+      updateData.bankAccountNumber = banking.bankAccountNumber
+        ? encrypt(banking.bankAccountNumber)
+        : undefined;
+      touched = true;
+    }
+
+    if (banking.bankAccountHolder !== undefined) {
+      updateData.bankAccountHolder = banking.bankAccountHolder
+        ? encrypt(banking.bankAccountHolder)
+        : undefined;
+      touched = true;
+    }
+
+    // Store non-sensitive data as plain text
+    if (banking.bankName !== undefined) {
+      updateData.bankName = banking.bankName || undefined;
+      touched = true;
+    }
+
+    if (banking.bankSwiftCode !== undefined) {
+      updateData.bankSwiftCode = banking.bankSwiftCode || undefined;
+      touched = true;
+    }
+
+    if (banking.bankBranch !== undefined) {
+      updateData.bankBranch = banking.bankBranch || undefined;
       touched = true;
     }
   }
@@ -318,5 +388,29 @@ export async function GET() {
   const row = await prisma.captainVerification.findUnique({
     where: { userId },
   });
+
+  // Decrypt sensitive banking data before sending to client
+  if (row) {
+    try {
+      const decryptedRow = { ...row };
+
+      if (row.bankAccountNumber) {
+        decryptedRow.bankAccountNumber = decrypt(row.bankAccountNumber);
+      }
+
+      if (row.bankAccountHolder) {
+        decryptedRow.bankAccountHolder = decrypt(row.bankAccountHolder);
+      }
+
+      return applySecurityHeaders(
+        NextResponse.json({ verification: decryptedRow })
+      );
+    } catch (error) {
+      console.error("Decryption error:", error);
+      // Return data without decryption if error occurs
+      return applySecurityHeaders(NextResponse.json({ verification: row }));
+    }
+  }
+
   return applySecurityHeaders(NextResponse.json({ verification: row }));
 }
