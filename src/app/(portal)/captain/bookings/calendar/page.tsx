@@ -168,6 +168,7 @@ export default async function CalendarPage() {
           charterName={selectedCharter.name}
           bookings={bookings}
           anglerMap={anglerMap}
+          schedule={selectedCharter.schedule}
           unavailability={selectedCharter.unavailability}
         />
 

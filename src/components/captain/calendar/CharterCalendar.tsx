@@ -10,6 +10,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EnrichedMarketBooking } from "@/lib/enrich-booking";
+import { getAvailabilityForRange } from "@/lib/helpers/availability-helpers";
 import { cn } from "@/lib/utils";
 import {
   addMonths,
@@ -29,7 +30,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EnhancedBookingCard } from "../EnhancedBookingCard";
 import { CalendarDay } from "./CalendarDay";
 import { UnavailabilityModal } from "./UnavailabilityModal";
@@ -42,6 +43,10 @@ interface CharterCalendarProps {
     string,
     { id: string; name: string | null; email: string; image: string | null }
   >;
+  schedule: {
+    scheduleType: string;
+    operationalDays: number[];
+  } | null;
   unavailability?: Array<{
     id: string;
     startDate: Date | string;
@@ -64,6 +69,7 @@ export function CharterCalendar({
   charterId,
   bookings,
   anglerMap,
+  schedule,
   unavailability = [],
 }: CharterCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -85,47 +91,39 @@ export function CharterCalendar({
 
   const mobileScrollRef = useRef<HTMLDivElement>(null);
 
-  // Helper function to format date as YYYY-MM-DD (local timezone)
-  const formatDateYMD = (date: Date): string => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  };
+  // Calculate availability data client-side using useMemo
+  const calculatedAvailability = useMemo(() => {
+    setIsLoading(true);
 
-  // Fetch calendar data for current month
+    try {
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
+
+      // Calculate availability using client-side helper
+      const dateAvailability = getAvailabilityForRange(
+        schedule,
+        unavailability,
+        monthStart,
+        monthEnd
+      );
+
+      return {
+        availability: {
+          dateAvailability,
+        },
+      };
+    } catch (error) {
+      console.error("Error calculating availability:", error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [schedule, unavailability, currentMonth]);
+
+  // Update calendarData when calculation changes
   useEffect(() => {
-    const fetchCalendarData = async () => {
-      setIsLoading(true);
-      try {
-        const monthStart = startOfMonth(currentMonth);
-        const monthEnd = endOfMonth(currentMonth);
-
-        // Fetch availability data (use local date format, not ISO)
-        const availabilityRes = await fetch(
-          `/api/public/charters/${charterId}/availability?` +
-            `startDate=${formatDateYMD(monthStart)}&` +
-            `endDate=${formatDateYMD(monthEnd)}`
-        );
-
-        if (!availabilityRes.ok) {
-          throw new Error("Failed to fetch availability");
-        }
-
-        const availabilityData = await availabilityRes.json();
-
-        setCalendarData({
-          availability: availabilityData,
-        });
-      } catch (error) {
-        console.error("Error fetching calendar data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCalendarData();
-  }, [charterId, currentMonth]);
+    setCalendarData(calculatedAvailability);
+  }, [calculatedAvailability]);
 
   // Scroll to today on mobile when calendar data loads or month changes
   useEffect(() => {
@@ -141,31 +139,10 @@ export function CharterCalendar({
     }
   }, [isLoading, calendarData, currentMonth]);
 
-  // Refresh calendar data
+  // Refresh calendar data (now recalculates client-side via useMemo)
   const refreshCalendar = () => {
-    const fetchData = async () => {
-      try {
-        const monthStart = startOfMonth(currentMonth);
-        const monthEnd = endOfMonth(currentMonth);
-
-        const availabilityRes = await fetch(
-          `/api/public/charters/${charterId}/availability?` +
-            `startDate=${formatDateYMD(monthStart)}&` +
-            `endDate=${formatDateYMD(monthEnd)}`
-        );
-
-        if (availabilityRes.ok) {
-          const availabilityData = await availabilityRes.json();
-          setCalendarData({
-            availability: availabilityData,
-          });
-        }
-      } catch (error) {
-        console.error("Error refreshing calendar:", error);
-      }
-    };
-
-    fetchData();
+    // Force recalculation by triggering state update
+    setCalendarData(calculatedAvailability);
   };
 
   // Handle date click
