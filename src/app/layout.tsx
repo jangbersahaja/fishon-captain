@@ -1,6 +1,5 @@
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import { DevPanelProvider } from "@/components/DevPanelProvider";
-import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { NotificationProvider } from "@/components/notifications";
 import OfflineBanner from "@/components/OfflineBanner";
@@ -63,7 +62,6 @@ export default function RootLayout({
               <Navbar />
               <OfflineBanner />
               <main className="flex-1">{children}</main>
-              <Footer />
               <SpeedInsights />
               <Analytics />
             </NotificationProvider>

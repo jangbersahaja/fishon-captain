@@ -5,12 +5,6 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-//TODO: add more staff features
-//TODO: staff can manage captains/charters registrations
-//TODO: staff can view reports
-//TODO: staff can manage medias
-//TODO: add more analytics
-
 export default async function StaffHomePage() {
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;
@@ -62,19 +56,19 @@ export default async function StaffHomePage() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Staff Dashboard</h1>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="p-4 bg-white border rounded-xl border-slate-200">
           <div className="text-sm text-slate-600">Total charters</div>
           <div className="mt-1 text-2xl font-semibold text-slate-900">
             {totalCharters}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="p-4 bg-white border rounded-xl border-slate-200">
           <div className="text-sm text-slate-600">Active</div>
           <div className="mt-1 text-2xl font-semibold text-emerald-700">
             {activeCharters}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="p-4 bg-white border rounded-xl border-slate-200">
           <div className="text-sm text-slate-600">Inactive</div>
           <div className="mt-1 text-2xl font-semibold text-slate-700">
             {inactiveCharters}
@@ -84,7 +78,7 @@ export default async function StaffHomePage() {
       <div className="grid gap-3">
         <Link
           href="/staff/verification"
-          className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 hover:shadow-md"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
         >
           <div>
             <div className="font-medium text-slate-800">Verification queue</div>
@@ -103,7 +97,7 @@ export default async function StaffHomePage() {
         </Link>
         <Link
           href="/staff/charters"
-          className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 hover:shadow-md"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
         >
           <div>
             <div className="font-medium text-slate-800">Charters</div>
@@ -115,7 +109,7 @@ export default async function StaffHomePage() {
         </Link>
         <Link
           href="/staff/media"
-          className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 hover:shadow-md"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
         >
           <div>
             <div className="font-medium text-slate-800">Media pipeline</div>
@@ -127,7 +121,7 @@ export default async function StaffHomePage() {
         </Link>
         <Link
           href="/staff/registrations"
-          className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 hover:shadow-md"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
         >
           <div>
             <div className="font-medium text-slate-800">Registrations</div>
@@ -139,7 +133,7 @@ export default async function StaffHomePage() {
         </Link>
         <Link
           href="/staff/security"
-          className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 hover:shadow-md"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
         >
           <div>
             <div className="font-medium text-slate-800">User Security</div>

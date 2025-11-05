@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ videos });
   }
 
-  // No charterId provided - need ownerId to fetch captain's unlinked videos
+  // No charterId provided - need ownerId to fetch user's unlinked videos
   const parsed = ListQuerySchema.safeParse({ ownerId: userId });
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_query" }, { status: 400 });
@@ -49,20 +49,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "missing_user_id" }, { status: 400 });
   }
 
-  const captainProfile = await prisma.captainProfile.findUnique({
-    where: { userId: parsed.data.ownerId },
-    select: { id: true },
-  });
-
-  if (!captainProfile) {
-    return NextResponse.json({ videos: [] });
-  }
-
+  // Phase 2: Query directly by ownerId (no CaptainProfile needed)
   // Return ONLY unlinked videos (videos not associated with any charter)
   // This is for the gallery/video manager when selecting videos to link
   const videos = await prisma.captainVideo.findMany({
     where: {
-      captainId: captainProfile.id,
+      ownerId: parsed.data.ownerId,
       // Only include videos that have NO CharterVideo junction records
       charters: {
         none: {},
@@ -73,7 +65,7 @@ export async function GET(req: NextRequest) {
   });
 
   console.log("[/api/videos/list] Returning unlinked videos (no charterId):", {
-    captainId: captainProfile.id,
+    ownerId: parsed.data.ownerId,
     count: videos.length,
     videoIds: videos.map((v) => v.id.substring(0, 8)),
   });

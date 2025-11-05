@@ -59,6 +59,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   const trimMetaRef = useRef<{
     didFallback: boolean;
     fallbackReason?: string | null;
+    originalDurationSec?: number;
   } | null>(null);
   const lastAnnouncedPercentRef = useRef<number>(-1);
   const toasts = useToasts();
@@ -79,7 +80,11 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
       startSec: number,
       duration: number,
       probe: { width: number; height: number; codec: string; size: number },
-      meta: { didFallback: boolean; fallbackReason?: string | null }
+      meta: {
+        didFallback: boolean;
+        fallbackReason?: string | null;
+        originalDurationSec?: number;
+      }
     ) => {
       try {
         trimMetaRef.current = meta;
@@ -222,9 +227,19 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         const form = new FormData();
         form.append("videoUrl", videoUrl);
         form.append("startSec", String(startSec));
-        form.append("duration", String(duration));
+        form.append("endSec", String(startSec + duration)); // Calculate endSec from startSec + duration
         form.append("ownerId", ownerId);
         form.append("blobKey", blobKey);
+        // Add probe metadata for FinishFormSchema validation
+        if (probe.width) form.append("width", String(probe.width));
+        if (probe.height) form.append("height", String(probe.height));
+        // Get originalDurationSec from meta (not probe)
+        if (trimMetaRef.current?.originalDurationSec) {
+          form.append(
+            "originalDurationSec",
+            String(trimMetaRef.current.originalDurationSec)
+          );
+        }
         if (trimMetaRef.current) {
           form.append("didFallback", String(trimMetaRef.current.didFallback));
           if (trimMetaRef.current.fallbackReason) {
@@ -237,7 +252,6 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         if (thumbBlob) {
           form.append("thumbnail", thumbBlob, "thumb.jpg");
         }
-        form.append("probe", JSON.stringify(probe));
         const finishAbort = new AbortController();
         setActiveUpload(
           (ctx) => ctx && { ...ctx, abortController: finishAbort }
@@ -330,8 +344,8 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
                   {state.stage === "uploading"
                     ? state.message
                     : state.stage === "finishing"
-                    ? state.message || "Finalizing"
-                    : "Processing"}
+                      ? state.message || "Finalizing"
+                      : "Processing"}
                 </span>
                 {typeof state.progress === "number" &&
                   state.progress > 0 &&

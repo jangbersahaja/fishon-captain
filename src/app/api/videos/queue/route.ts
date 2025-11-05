@@ -10,9 +10,18 @@ export async function POST(req: NextRequest) {
   const { videoId } = await req.json().catch(() => ({}));
   if (!videoId)
     return NextResponse.json({ error: "missing_videoId" }, { status: 400 });
+  // Phase 2: Select fields to avoid nullable captainId issues
   const video = await prisma.captainVideo.findUnique({
     where: { id: videoId },
-    include: { captain: { select: { userId: true } } },
+    select: {
+      id: true,
+      ownerId: true,
+      processStatus: true,
+      originalUrl: true,
+      trimStartSec: true,
+      processedDurationSec: true,
+      blobKey: true,
+    },
   });
   if (!video) return NextResponse.json({ error: "not_found" }, { status: 404 });
   // Auth: allow either owner session or worker secret
@@ -23,7 +32,8 @@ export async function POST(req: NextRequest) {
   if (!authorized) {
     const session = await getServerSession(authOptions);
     const sessionUserId = (session?.user as { id?: string })?.id;
-    if (sessionUserId && sessionUserId === video.captain.userId) authorized = true;
+    // Phase 2: Check ownership via ownerId
+    if (sessionUserId && sessionUserId === video.ownerId) authorized = true;
   }
   if (!authorized)
     return NextResponse.json({ error: "forbidden" }, { status: 403 });

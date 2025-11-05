@@ -97,6 +97,32 @@ export async function loadVideoData(
       where,
       orderBy: { createdAt: "desc" },
       take: fetchLimit,
+      select: {
+        id: true,
+        ownerId: true,
+        captainId: true, // For backward compat lookup
+        originalUrl: true,
+        blobKey: true,
+        thumbnailUrl: true,
+        thumbnailBlobKey: true,
+        trimStartSec: true,
+        ready720pUrl: true,
+        normalizedBlobKey: true,
+        processStatus: true,
+        errorMessage: true,
+        createdAt: true,
+        updatedAt: true,
+        didFallback: true,
+        fallbackReason: true,
+        originalDurationSec: true,
+        processedDurationSec: true,
+        appliedTrimStartSec: true,
+        processedAt: true,
+        originalWidth: true,
+        originalHeight: true,
+        processedWidth: true,
+        processedHeight: true,
+      },
     }),
   ]);
 
@@ -113,15 +139,46 @@ export async function loadVideoData(
     { queued: 0, processing: 0, ready: 0, failed: 0 }
   );
 
-  // Get captain IDs from raw items (CharterMedia uses captainId directly)
-  const captainIdsFromMedia = Array.from(
-    new Set(rawItems.filter((item) => item.captainId).map((item) => item.captainId as string))
+  // Phase 2: Get owner user IDs directly from ownerId field
+  const ownerIds = Array.from(
+    new Set(
+      rawItems
+        .filter((item) => item.ownerId)
+        .map((item) => item.ownerId as string)
+    )
   );
 
-  const [profiles] = await Promise.all([
-    captainIdsFromMedia.length
+  // Also get profiles for backward compat (videos with captainId but no ownerId)
+  const captainIds = Array.from(
+    new Set(
+      rawItems
+        .filter((item) => item.captainId && !item.ownerId)
+        .map((item) => item.captainId as string)
+    )
+  );
+
+  const [users, profiles] = await Promise.all([
+    ownerIds.length
+      ? prisma.user.findMany({
+          where: { id: { in: ownerIds } },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            firstName: true,
+            lastName: true,
+            captainProfile: {
+              select: {
+                id: true,
+                displayName: true,
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    captainIds.length
       ? prisma.captainProfile.findMany({
-          where: { id: { in: captainIdsFromMedia } },
+          where: { id: { in: captainIds } },
           select: {
             id: true,
             displayName: true,
@@ -140,9 +197,8 @@ export async function loadVideoData(
       : Promise.resolve([]),
   ]);
 
-  const profileMap = new Map(
-    profiles.map((profile) => [profile.id, profile])
-  );
+  const userMap = new Map(users.map((user) => [user.id, user]));
+  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
 
   const nowMs = Date.now();
   const staleThresholdMs = STALE_THRESHOLD_MINUTES * 60 * 1000;
@@ -189,20 +245,35 @@ export async function loadVideoData(
   });
 
   const annotated: VideoRow[] = rawItems.map((item) => {
-    // Helper to safely pluck optional post-migration fields without depending on generated types yet
-    const pickField = <T = unknown>(key: string): T | null => {
-      const record = item as unknown as Record<string, unknown>;
-      const val = record[key];
-      return (val === undefined ? null : (val as T)) as T | null;
-    };
-    // For CaptainVideo, get profile info from the captain relation
-    const profile = profileMap.get(item.captainId);
-    const displayName =
-      profile?.displayName ||
-      profile?.user?.name ||
-      [profile?.user?.firstName, profile?.user?.lastName].filter(Boolean).join(" ") ||
-      "(unknown)";
-    const email = profile?.user?.email ?? "-";
+    // Phase 2: Get user info from ownerId first, fallback to captainId lookup
+    let user, displayName, email;
+
+    if (item.ownerId) {
+      // Phase 2: Direct owner lookup
+      user = userMap.get(item.ownerId);
+      displayName =
+        user?.captainProfile?.displayName ||
+        user?.name ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+        "(unknown)";
+      email = user?.email ?? "-";
+    } else if (item.captainId) {
+      // Backward compat: captainId lookup
+      const profile = profileMap.get(item.captainId);
+      displayName =
+        profile?.displayName ||
+        profile?.user?.name ||
+        [profile?.user?.firstName, profile?.user?.lastName]
+          .filter(Boolean)
+          .join(" ") ||
+        "(unknown)";
+      email = profile?.user?.email ?? "-";
+    } else {
+      // No owner info
+      displayName = "(unknown)";
+      email = "-";
+    }
+
     const createdAgoMs = nowMs - item.createdAt.getTime();
     const updatedAgoMs = nowMs - item.updatedAt.getTime();
     const stale =
@@ -217,7 +288,7 @@ export async function loadVideoData(
 
     return {
       id: item.id,
-      ownerId: profile?.userId || item.captainId, // Map to userId for backward compat in UI
+      ownerId: item.ownerId, // Phase 2: Use ownerId directly
       originalUrl: item.originalUrl,
       blobKey: item.blobKey,
       thumbnailUrl: item.thumbnailUrl,
@@ -231,12 +302,11 @@ export async function loadVideoData(
       didFallback: item.didFallback,
       fallbackReason: item.fallbackReason,
       updatedAt: item.updatedAt,
-      // These optional fields may not exist on older generated Prisma client types.
-      // Cast to any to avoid type errors during deployment when the schema migration lags.
-      originalDurationSec: pickField<number>("originalDurationSec"),
-      processedDurationSec: pickField<number>("processedDurationSec"),
-      appliedTrimStartSec: pickField<number>("appliedTrimStartSec"),
-      processedAt: pickField<Date>("processedAt"),
+      // Phase 2: Fields are explicitly selected in the query
+      originalDurationSec: item.originalDurationSec ?? null,
+      processedDurationSec: item.processedDurationSec ?? null,
+      appliedTrimStartSec: item.appliedTrimStartSec ?? null,
+      processedAt: item.processedAt ?? null,
       displayName,
       email,
       createdAgoLabel: formatRelative(createdAgoMs),
@@ -247,13 +317,13 @@ export async function loadVideoData(
       // Video metadata from blob and database
       originalSize: metadata.originalSize,
       originalResolution: formatResolution(
-        pickField<number>("originalWidth"),
-        pickField<number>("originalHeight")
+        item.originalWidth,
+        item.originalHeight
       ),
       normalizedSize: metadata.normalizedSize,
       normalizedResolution: formatResolution(
-        pickField<number>("processedWidth"),
-        pickField<number>("processedHeight")
+        item.processedWidth,
+        item.processedHeight
       ),
     };
   });
@@ -373,8 +443,8 @@ export async function loadStorageData(
       prisma.captainVideo.findMany({
         select: {
           id: true,
-          captainId: true,
-          captain: { select: { userId: true } },
+          ownerId: true, // Phase 2: primary ownership field
+          captainId: true, // Backward compat
           charterId: true,
           originalUrl: true,
           blobKey: true,
@@ -516,29 +586,41 @@ export async function loadStorageData(
     }
   >();
 
-  // Fetch owner profiles for videos
+  // Phase 2: Fetch owner users and profiles for videos
   const videoOwnerIds = Array.from(
-    new Set(captainVideos.map((v) => v.captain.userId))
+    new Set(
+      captainVideos.filter((v) => v.ownerId).map((v) => v.ownerId as string)
+    )
   );
-  const videoOwnerProfiles = await prisma.captainProfile.findMany({
-    where: { userId: { in: videoOwnerIds } },
+
+  const videoOwnerUsers = await prisma.user.findMany({
+    where: { id: { in: videoOwnerIds } },
     select: {
-      userId: true,
-      displayName: true,
-      avatarUrl: true,
-      user: { select: { email: true, name: true } },
+      id: true,
+      email: true,
+      name: true,
+      firstName: true,
+      lastName: true,
+      captainProfile: {
+        select: {
+          displayName: true,
+          avatarUrl: true,
+        },
+      },
     },
   });
+
   const videoOwnerMap = new Map(
-    videoOwnerProfiles.map((p) => [
-      p.userId,
+    videoOwnerUsers.map((user) => [
+      user.id,
       {
         name:
-          p.displayName ||
-          p.user?.name ||
-          p.user?.email?.split("@")[0] ||
+          user.captainProfile?.displayName ||
+          user.name ||
+          [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+          user.email?.split("@")[0] ||
           "Unknown",
-        avatar: p.avatarUrl,
+        avatar: user.captainProfile?.avatarUrl ?? null,
       },
     ])
   );
@@ -547,11 +629,9 @@ export async function loadStorageData(
     const originalKey = extractKeyFromUrl(video.originalUrl);
     const thumbnailKey = extractKeyFromUrl(video.thumbnailUrl);
     const normalizedKey = extractKeyFromUrl(video.ready720pUrl);
-    const owner = videoOwnerMap.get(video.captain.userId) || {
-      name: "Unknown",
-      avatar: null,
-    };
-    const ownerLabel = owner.name;
+    const owner = video.ownerId ? videoOwnerMap.get(video.ownerId) : null;
+    const ownerLabel = owner?.name ?? "Unknown";
+    const ownerAvatar = owner?.avatar ?? null;
 
     // Determine video status label based on linkage
     let statusSuffix = "";
@@ -568,9 +648,9 @@ export async function loadStorageData(
 
     const videoMeta = {
       id: video.id,
-      ownerId: video.captain.userId,
-      ownerName: owner.name,
-      ownerAvatar: owner.avatar,
+      ownerId: video.ownerId ?? "unknown", // Phase 2: use ownerId directly
+      ownerName: ownerLabel,
+      ownerAvatar: ownerAvatar,
       status: video.processStatus,
       originalKey,
       thumbnailKey,

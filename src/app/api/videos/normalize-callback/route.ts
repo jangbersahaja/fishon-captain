@@ -147,8 +147,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "missing_videoId" }, { status: 400 });
   }
 
+  // Phase 2: Select only needed fields to avoid issues with nullable captainId
   const video = await prisma.captainVideo.findUnique({
     where: { id: videoId },
+    select: {
+      id: true,
+      processStatus: true,
+      originalUrl: true,
+      ready720pUrl: true,
+      thumbnailUrl: true,
+      blobKey: true,
+      normalizedBlobKey: true,
+      originalDurationSec: true,
+      processedDurationSec: true,
+      appliedTrimStartSec: true,
+      originalWidth: true,
+      originalHeight: true,
+      processedWidth: true,
+      processedHeight: true,
+    },
   });
   if (!video) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });

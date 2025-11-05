@@ -279,7 +279,7 @@ export default function Navbar() {
       className="flex items-center gap-2"
       aria-label="Fishon.my home"
     >
-      <span className="relative h-12 w-24 sm:h-14 sm:w-28">
+      <span className="relative w-24 h-12 sm:h-14 sm:w-28">
         <Image
           src="/images/logos/fishon-logo-white.png"
           alt="Fishon"
@@ -299,12 +299,12 @@ export default function Navbar() {
 
   return (
     <header
-      className={`${zIndexClasses.navigation} w-full border-t border-white/20 bg-[#ec2227] text-white backdrop-blur`}
+      className={`${zIndexClasses.navigation} w-full border-t border-white/20 bg-[#ec2227] text-white backdrop-blur sticky top-0 left-0 right-0`}
     >
-      <div className="mx-auto flex w-full flex-col gap-3 px-4 py-3 sm:px-6">
-        <div className="flex w-full items-center gap-3 md:hidden">
+      <div className="flex flex-col w-full gap-3 px-4 py-3 mx-auto sm:px-6">
+        <div className="flex items-center w-full gap-3 md:hidden">
           {logo}
-          <div className="ml-auto flex min-w-0 items-center gap-2">
+          <div className="flex items-center min-w-0 gap-2 ml-auto">
             <div className="flex max-w-[65vw] min-w-0 items-center gap-1 overflow-x-auto rounded-full border border-white/30 bg-white/10 px-2 py-1 shadow-sm">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -314,9 +314,9 @@ export default function Navbar() {
                       href={item.href}
                       target={item.external ? "_blank" : undefined}
                       rel={item.external ? "noreferrer" : undefined}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
+                      className="inline-flex items-center justify-center w-8 h-8 text-white transition border rounded-full shrink-0 border-white/10 hover:bg-white/20"
                     >
-                      <Icon className="h-5 w-5" aria-hidden />
+                      <Icon className="w-5 h-5" aria-hidden />
                       <span className="sr-only">{item.label}</span>
                     </Link>
                   </Tooltip>
@@ -327,9 +327,9 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={handleSignOut}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
+                    className="inline-flex items-center justify-center w-8 h-8 text-white transition border rounded-full shrink-0 border-white/10 hover:bg-white/20"
                   >
-                    <LogOut className="h-5 w-5" aria-hidden />
+                    <LogOut className="w-5 h-5" aria-hidden />
                     <span className="sr-only">Sign out</span>
                   </button>
                 </Tooltip>
@@ -337,9 +337,9 @@ export default function Navbar() {
                 <Tooltip content="Sign in">
                   <Link
                     href="/auth?mode=signin"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-white transition hover:bg-white/20"
+                    className="inline-flex items-center justify-center w-8 h-8 text-white transition border rounded-full shrink-0 border-white/10 hover:bg-white/20"
                   >
-                    <LogIn className="h-5 w-5" aria-hidden />
+                    <LogIn className="w-5 h-5" aria-hidden />
                     <span className="sr-only">Sign in</span>
                   </Link>
                 </Tooltip>
@@ -358,7 +358,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        <div className="hidden w-full items-center justify-between gap-3 md:flex">
+        <div className="items-center justify-between hidden w-full gap-3 md:flex">
           {logo}
           <div className="flex items-center gap-3">
             {authenticated && (
@@ -378,9 +378,9 @@ export default function Navbar() {
                 aria-haspopup="true"
                 aria-expanded={desktopMenuOpen}
                 onClick={toggleDesktopMenu}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition hover:bg-white/20"
+                className="inline-flex items-center justify-center w-10 h-10 text-white transition border rounded-full border-white/30 bg-white/10 hover:bg-white/20"
               >
-                <Menu className="h-5 w-5" aria-hidden />
+                <Menu className="w-5 h-5" aria-hidden />
                 <span className="sr-only">Open navigation</span>
               </button>
               {mounted &&
@@ -394,7 +394,7 @@ export default function Navbar() {
                       right: dropdownPosition.right,
                     }}
                   >
-                    <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
                       <ProfileAvatar variant="card" />
                       <div className="flex-1 text-sm">
                         <div className="font-semibold text-slate-900">
@@ -419,9 +419,9 @@ export default function Navbar() {
                             target={item.external ? "_blank" : undefined}
                             rel={item.external ? "noreferrer" : undefined}
                             onClick={closeDesktopMenu}
-                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-100"
+                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium transition rounded-lg text-slate-800 hover:bg-slate-100"
                           >
-                            <Icon className="h-4 w-4" aria-hidden />
+                            <Icon className="w-4 h-4" aria-hidden />
                             <span>{item.label}</span>
                             {item.external ? (
                               <span className="ml-auto text-xs text-slate-400">
@@ -435,18 +435,18 @@ export default function Navbar() {
                         <button
                           type="button"
                           onClick={handleSignOut}
-                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-100"
+                          className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-left transition rounded-lg text-slate-800 hover:bg-slate-100"
                         >
-                          <LogOut className="h-4 w-4" aria-hidden />
+                          <LogOut className="w-4 h-4" aria-hidden />
                           <span>Sign out</span>
                         </button>
                       ) : (
                         <Link
                           href="/auth?mode=signin"
                           onClick={closeDesktopMenu}
-                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+                          className="flex items-center gap-3 px-3 py-2 text-sm font-medium transition rounded-lg text-emerald-700 hover:bg-emerald-50"
                         >
-                          <LogIn className="h-4 w-4" aria-hidden />
+                          <LogIn className="w-4 h-4" aria-hidden />
                           <span>Sign in</span>
                         </Link>
                       )}

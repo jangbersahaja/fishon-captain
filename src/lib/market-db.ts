@@ -3,12 +3,13 @@ export { isMarketDbConfigured };
 import { isMarketDbConfigured, prismaMarket } from "./prisma-market";
 
 /**
- * Read-only database accessors for Booking data from Market DB.
+ * Read-only database accessors for Booking and Review data from Market DB.
  *
- * This module provides safe read access to the Market database's Booking table.
+ * This module provides safe read access to the Market database's Booking and Review tables.
  * The database user (captain_readonly) has SELECT-only permissions.
  *
- * All write operations (approve/reject) should go through Market API endpoints.
+ * All write operations should go through Market API endpoints.
+ * For review data access, use review-service.ts.
  */
 
 // Raw Prisma booking type (with Decimal fields)

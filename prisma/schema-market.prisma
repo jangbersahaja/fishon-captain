@@ -58,10 +58,37 @@ model Booking {
 }
 
 model MarketUser {
-  id    String  @id @default(cuid())
-  email String  @unique
-  name  String? // Display name (was displayName)
-  image String? // Profile image URL
+  id      String   @id @default(cuid())
+  email   String   @unique
+  name    String?  // Display name (was displayName)
+  image   String?  // Profile image URL
+  reviews Review[] // User's reviews
 
   @@map("User")
+}
+
+// Review model (read-only from Market DB)
+model Review {
+  id               String   @id @default(cuid())
+  userId           String
+  bookingId        String   @unique
+  captainCharterId String   // Charter ID in captain database
+  charterName      String
+  overallRating    Int      // 1-5 stars
+  badges           String[] // ReviewBadgeId array
+  comment          String?  @db.Text
+  photos           String[] // Blob URLs
+  videos           String[] // Blob URLs (max 3)
+  approved         Boolean  @default(false)
+  published        Boolean  @default(false)
+  tripDate         DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user MarketUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([captainCharterId])
+  @@index([approved, published])
+  @@index([createdAt])
 }

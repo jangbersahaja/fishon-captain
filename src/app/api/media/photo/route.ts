@@ -52,21 +52,13 @@ export async function POST(req: Request) {
     });
 
     // CharterMedia creation: always create, use null charterId for drafts
-    // Get CaptainProfile for captainId
+    // Phase 2: Use ownerId instead of captainId
+    // Get CaptainProfile for backward compatibility (captainId field)
     const profile = await prisma.captainProfile.findUnique({
       where: { userId },
+      select: { id: true },
     });
-    if (!profile) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "captain_profile_not_found",
-          message:
-            "CaptainProfile not found for user. Please complete onboarding.",
-        },
-        { status: 400 }
-      );
-    }
+
     // Only set charterId if a real charter exists, else null
     const charterIdFinal = charterId || null;
     // Compute next sortOrder (if charterIdFinal is set, else default 0)
@@ -88,7 +80,8 @@ export async function POST(req: Request) {
     // Create CharterMedia record (CharterMedia is now photos only)
     const cm = await prisma.charterMedia.create({
       data: {
-        captainId: profile.id,
+        ownerId: userId, // Phase 2: Set ownerId (new architecture)
+        captainId: profile?.id || null, // Keep for backward compatibility
         charterId: charterIdFinal, // will be null if no real charter
         url: putRes.url,
         storageKey,

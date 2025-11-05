@@ -212,6 +212,13 @@ export const authOptions: NextAuthOptions = {
               where: { id: user.id },
               data: { firstName: givenName, lastName: familyName },
             });
+            console.info("[auth] user.update success", {
+              ...context,
+              action: "userUpdate",
+              firstName: givenName,
+              lastName: familyName,
+              ms: Date.now() - start,
+            });
           } catch (e) {
             console.warn("[auth] user.update skipped", {
               ...context,
@@ -219,31 +226,14 @@ export const authOptions: NextAuthOptions = {
             });
           }
 
-          try {
-            await prisma.captainProfile.upsert({
-              where: { userId: user.id },
-              update: {},
-              create: {
-                userId: user.id,
-                firstName: givenName,
-                lastName: familyName,
-                displayName: fullName || `${givenName} ${familyName}`.trim(),
-                phone: "",
-                bio: "",
-                experienceYrs: 0,
-              },
-            });
-            console.info("[auth] captainProfile ensured", {
-              ...context,
-              action: "captainProfileUpsert",
-              ms: Date.now() - start,
-            });
-          } catch (e) {
-            console.error("[auth] captainProfile upsert failed", {
-              ...context,
-              error: (e as Error).message,
-            });
-          }
+          // Phase 3: CaptainProfile creation removed from OAuth signup
+          // Will be created during charter finalize with real data from form
+          // This prevents creating profiles with default values during login
+          console.info("[auth] captainProfile creation deferred to finalize", {
+            ...context,
+            action: "captainProfileDeferred",
+            ms: Date.now() - start,
+          });
         }
       } catch (err) {
         console.error("[auth] signIn outer error", {
