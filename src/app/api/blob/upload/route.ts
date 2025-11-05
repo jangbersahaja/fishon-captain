@@ -1,6 +1,7 @@
 // app/api/blob/upload/route.ts
 import { MAX_SHORT_VIDEO_BYTES } from "@/config/mediaProcessing";
 import authOptions from "@/lib/auth";
+import { processImageFile } from "@/lib/heicConverter";
 import { counter } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
@@ -47,6 +48,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing file" }, { status: 400 });
     }
 
+    // Convert HEIC to JPEG if it's an image file
+    let processedFile = file;
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp)$/i.test(file.name);
+    if (isImage) {
+      processedFile = await processImageFile(file, 0.92);
+    }
+
     // Sanitize and normalize docType
     const allowed = new Set([
       "idFront",
@@ -64,7 +74,7 @@ export async function POST(req: Request) {
         : "unknown";
 
     // Sanitize filename for blob storage (preserve original name)
-    const originalName = file.name || "file";
+    const originalName = processedFile.name || "file";
     const sanitized = originalName.replace(/[^\w\d.-]/g, "_").slice(0, 200);
     const timestamp = Date.now();
     const charterId = typeof charterIdRaw === "string" ? charterIdRaw : null;
@@ -138,7 +148,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { url } = await put(key, file, {
+    const { url } = await put(key, processedFile, {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
       addRandomSuffix: false,
@@ -174,12 +184,17 @@ export async function POST(req: Request) {
           where: { userId },
           select: { id: true },
         });
-        
+
         if (!captainProfile) {
-          console.error(`[blob-upload] No CaptainProfile found for user ${userId}`);
-          return NextResponse.json({ error: "captain_profile_not_found" }, { status: 404 });
+          console.error(
+            `[blob-upload] No CaptainProfile found for user ${userId}`
+          );
+          return NextResponse.json(
+            { error: "captain_profile_not_found" },
+            { status: 404 }
+          );
         }
-        
+
         const captainVideo = await prisma.captainVideo.create({
           data: {
             captainId: captainProfile.id,
@@ -284,8 +299,8 @@ export async function POST(req: Request) {
           charterId: tempCharterId,
           url,
           storageKey: key,
-          mimeType: file.type,
-          sizeBytes: file.size,
+          mimeType: processedFile.type,
+          sizeBytes: processedFile.size,
           sortOrder: 0, // Will be reordered on finalize
         },
       });
