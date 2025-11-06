@@ -43,7 +43,7 @@ export default function CaptainLayout({
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 bg-slate-50/60 min-h-[calc(100vh-0px)] w-full overflow-hidden pt-14 pb-20 md:pt-0 md:pb-0">
+          <main className="flex-1 bg-slate-50/60 min-h-[calc(100vh-0px)] w-full overflow-hidden pb-20 md:pb-0">
             {children}
           </main>
 

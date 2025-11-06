@@ -1,9 +1,9 @@
 "use client";
 
-import { Bell, Menu } from "lucide-react";
-import Link from "next/link";
+import { Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
+import { NotificationBell } from "../notifications";
 
 interface MobileHeaderProps {
   onMenuClick: () => void;
@@ -66,18 +66,8 @@ export function MobileHeader({
         <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
 
         {/* Notifications */}
-        <Link
-          href="/captain/notifications"
-          className="relative p-2 -mr-2 transition-colors rounded-lg hover:bg-slate-100"
-          aria-label={`Notifications${unreadNotifications > 0 ? ` (${unreadNotifications} unread)` : ""}`}
-        >
-          <Bell className="w-6 h-6 text-slate-700" />
-          {unreadNotifications > 0 && (
-            <span className="absolute flex items-center justify-center w-5 h-5 text-xs font-semibold text-white rounded-full top-1 right-1 bg-[#ec2227]">
-              {unreadNotifications > 9 ? "9+" : unreadNotifications}
-            </span>
-          )}
-        </Link>
+
+        <NotificationBell className="text-slate-700" />
       </div>
     </header>
   );

@@ -49,6 +49,8 @@ export interface UseCharterSubmissionArgs {
     file: File,
     kind: "photo" | "video" | "avatar"
   ) => { name: string; url: string } | null;
+  /** Coordinated form reset to prevent race conditions */
+  coordinatedReset: (values: CharterFormValues, source: string) => void;
 }
 
 export interface UseCharterSubmissionResult {
@@ -78,6 +80,7 @@ export function useCharterSubmission({
   existingVideos = [],
   defaultState,
   clearDraft,
+  coordinatedReset,
   initializeDraftState,
   setLastSavedAt,
   router,
@@ -209,7 +212,7 @@ export function useCharterSubmission({
           saveServerDraftSnapshot,
           setSubmitState: (s) => setSubmitState(s),
           defaultState,
-          formReset: (v) => form.reset(v),
+          formReset: (v) => coordinatedReset(v, "finalize-draft-submission"),
           clearDraft,
           initializeDraftState,
           setLastSavedAt: (iso) => setLastSavedAt(iso),
@@ -264,12 +267,12 @@ export function useCharterSubmission({
       serverVersion,
       saveServerDraftSnapshot,
       defaultState,
-      form,
       clearDraft,
       initializeDraftState,
       setLastSavedAt,
       router,
       getUploadedMediaInfo,
+      coordinatedReset,
       existingImages,
       existingVideos,
       finalizingRef,

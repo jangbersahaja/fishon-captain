@@ -27,10 +27,10 @@ export function NotificationBell({ className }: NotificationBellProps) {
       <Button
         variant="ghost"
         size="icon"
-        className={cn("relative text-white hover:bg-white/10", className)}
+        className={cn("relative", className)}
         aria-label={`Notifications${hasUnread ? ` (${unreadCount} unread)` : ""}`}
       >
-        <Bell className={cn("h-5 w-5", hasUnread && "animate-pulse")} />
+        <Bell className={cn("h-10 w-10", hasUnread && "animate-pulse")} />
 
         {hasUnread && (
           <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-[#ec2227]">

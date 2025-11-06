@@ -1,5 +1,8 @@
 "use client";
-import { sanitizeForDraft } from "@features/charter-onboarding/charterForm.draft";
+import {
+  sanitizeForDraft,
+  type DraftValues,
+} from "@features/charter-onboarding/charterForm.draft";
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import { useCallback, useRef } from "react";
 import type { UseFormReturn } from "react-hook-form";
@@ -187,7 +190,10 @@ export function useDraftSnapshot({
             data: sanitized,
             step: currentStepRef.current,
           });
-          if (lastPayloadRef.current && lastPayloadRef.current === currentSignature) {
+          if (
+            lastPayloadRef.current &&
+            lastPayloadRef.current === currentSignature
+          ) {
             console.log("[draftSnapshot] skip: no changes since last save", {
               step: currentStepRef.current,
             });
@@ -211,12 +217,13 @@ export function useDraftSnapshot({
         const buildAndMaybePatch = async (
           _baseFull: CharterFormValues | null,
           clientVer: number,
-          attempt: number
+          attempt: number,
+          sanitizedData: DraftValues
         ): Promise<number | null> => {
           // DEBUG MODE: Always send full sanitized snapshot (no diff) to guarantee persistence of currentStep.
           const stepBeingSaved = currentStepRef.current; // Capture step at time of PATCH
           const payloadObj = {
-            dataPartial: sanitized as unknown as Record<string, unknown>,
+            dataPartial: sanitizedData as unknown as Record<string, unknown>,
             clientVersion: clientVer,
             currentStep: stepBeingSaved,
           } as const;
@@ -247,8 +254,54 @@ export function useDraftSnapshot({
             });
           }
           if (res.status === 409) {
-            // Version conflict: fetch server, merge, retry once
-            if (attempt > 0) return null; // already retried
+            // Version conflict: fetch server, merge, retry up to 3 times (P1.2)
+            const MAX_RETRY_ATTEMPTS = 3;
+            if (attempt >= MAX_RETRY_ATTEMPTS) {
+              // CRITICAL: Don't silently fail after max retries - notify user
+              console.error(
+                "[draftSnapshot] version conflict persists after max retries",
+                {
+                  clientVer,
+                  attempt,
+                  maxAttempts: MAX_RETRY_ATTEMPTS,
+                  currentStep: currentStepRef.current,
+                }
+              );
+
+              // Store failed payload for recovery
+              try {
+                const failedPayload = {
+                  timestamp: Date.now(),
+                  clientVersion: clientVer,
+                  data: sanitizedData,
+                  step: currentStepRef.current,
+                  error: "version_conflict_retry_failed",
+                };
+                sessionStorage.setItem(
+                  "charter-draft-failed-save",
+                  JSON.stringify(failedPayload)
+                );
+              } catch (e) {
+                console.error(
+                  "[draftSnapshot] failed to store recovery data",
+                  e
+                );
+              }
+
+              // Emit event for UI notification
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent("charter-draft-save-failed", {
+                    detail: {
+                      reason: "version_conflict_retry_failed",
+                      timestamp: Date.now(),
+                    },
+                  })
+                );
+              }
+
+              return null; // already retried
+            }
             interface ConflictResponse {
               server?: { version?: number; data?: CharterFormValues };
             }
@@ -282,7 +335,12 @@ export function useDraftSnapshot({
                 });
               }
               // Use serverVer directly for retry, don't wait for state update
-              return buildAndMaybePatch(null, serverVer, attempt + 1);
+              return buildAndMaybePatch(
+                null,
+                serverVer,
+                attempt + 1,
+                sanitizedData
+              );
             }
             return null;
           }
@@ -299,7 +357,7 @@ export function useDraftSnapshot({
             setLastSavedAt(new Date().toISOString());
             try {
               lastPayloadRef.current = JSON.stringify({
-                data: sanitized,
+                data: sanitizedData,
                 step: stepBeingSaved,
               });
             } catch {
@@ -310,8 +368,53 @@ export function useDraftSnapshot({
           return null;
         };
 
-        return await buildAndMaybePatch(previousFull, effectiveVersion, 0);
-      } catch {
+        return await buildAndMaybePatch(
+          previousFull,
+          effectiveVersion,
+          0,
+          sanitized
+        );
+      } catch (error) {
+        // CRITICAL: Don't silently swallow errors - notify user and store for recovery
+        console.error("[draftSnapshot] save failed", error);
+
+        // Get sanitized data for recovery storage
+        const sanitized = sanitizeForDraft(form.getValues());
+
+        // Store failed payload for recovery
+        try {
+          const failedPayload = {
+            timestamp: Date.now(),
+            clientVersion: effectiveVersion,
+            data: sanitized,
+            step: currentStepRef.current,
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+          sessionStorage.setItem(
+            "charter-draft-failed-save",
+            JSON.stringify(failedPayload)
+          );
+          console.log("[draftSnapshot] stored failed payload for recovery");
+        } catch (storageError) {
+          console.error(
+            "[draftSnapshot] failed to store recovery data",
+            storageError
+          );
+        }
+
+        // Emit event for UI notification
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("charter-draft-save-failed", {
+              detail: {
+                reason: "exception",
+                error: error instanceof Error ? error.message : "Unknown error",
+                timestamp: Date.now(),
+              },
+            })
+          );
+        }
+
         return null;
       } finally {
         if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
