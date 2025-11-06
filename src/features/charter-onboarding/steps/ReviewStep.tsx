@@ -8,6 +8,7 @@ type ReviewStepProps = {
   ownerId: string;
   charterId?: string | null; // For edit mode: fetch from CharterVideo junction
   draftId?: string | null; // For new charter: fetch from temp draft links
+  existingVideos?: { name: string; url: string }[]; // For new charter: videos from form state
 };
 
 interface VideoRecord {
@@ -24,6 +25,7 @@ export function ReviewStep({
   ownerId,
   charterId,
   draftId,
+  existingVideos,
 }: ReviewStepProps) {
   const [videos, setVideos] = useState<
     { url: string; name?: string; thumbnailUrl?: string | null }[]
@@ -33,7 +35,18 @@ export function ReviewStep({
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        // Priority 1: Edit mode - fetch from CharterVideo junction by charterId
+        // Priority 1: Use existing videos from form state (new charter mode)
+        if (!charterId && existingVideos && existingVideos.length > 0) {
+          console.log(
+            "[ReviewStep] Using existing videos from form state:",
+            existingVideos.length
+          );
+          setVideos(existingVideos);
+          setLoading(false);
+          return;
+        }
+
+        // Priority 2: Edit mode - fetch from CharterVideo junction by charterId
         if (charterId) {
           const res = await fetch(`/api/videos/list?charterId=${charterId}`);
           if (res.ok) {
@@ -128,7 +141,7 @@ export function ReviewStep({
     };
 
     fetchVideos();
-  }, [ownerId, charterId, draftId]);
+  }, [ownerId, charterId, draftId, existingVideos]);
 
   if (loading) {
     return (

@@ -12,105 +12,92 @@ import { CheckCircle2, Circle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import React, { useCallback, useEffect, useState } from "react";
 
-interface VideoRecord {
+interface PhotoRecord {
   id: string;
-  originalUrl: string;
-  thumbnailUrl?: string | null;
-  processStatus: string;
+  url: string;
+  storageKey: string;
   charterId?: string | null;
-  ready720pUrl?: string | null;
-  processedDurationSec?: number | null;
 }
 
-interface VideoGalleryModalProps {
+interface PhotoGalleryModalProps {
   open: boolean;
   onClose: () => void;
   charterId: string | null;
-  ownerId: string; // Phase 2: renamed from captainId for clarity
-  onVideosLinked?: () => void;
-  // For new charter creation: pass selected video IDs and callback
-  selectedVideoIds?: string[];
-  onSelectionChange?: (videoIds: string[]) => void;
+  ownerId: string;
+  onPhotosLinked?: () => void;
+  // For new charter creation: pass selected photo IDs and callback
+  selectedPhotoIds?: string[];
+  onSelectionChange?: (photoIds: string[]) => void;
 }
 
-export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
+export const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({
   open,
   onClose,
   charterId,
   ownerId,
-  onVideosLinked,
-  selectedVideoIds: initialSelectedVideoIds,
+  onPhotosLinked,
+  selectedPhotoIds: initialSelectedPhotoIds,
   onSelectionChange,
 }) => {
-  const [videos, setVideos] = useState<VideoRecord[]>([]);
-  const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(
-    new Set(initialSelectedVideoIds || [])
+  const [photos, setPhotos] = useState<PhotoRecord[]>([]);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(
+    new Set(initialSelectedPhotoIds || [])
   );
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Sync selection state when prop changes (for new charters)
   useEffect(() => {
-    if (initialSelectedVideoIds) {
-      setSelectedVideoIds(new Set(initialSelectedVideoIds));
+    if (initialSelectedPhotoIds) {
+      setSelectedPhotoIds(new Set(initialSelectedPhotoIds));
     }
-  }, [initialSelectedVideoIds]);
+  }, [initialSelectedPhotoIds]);
 
-  // Load owner's videos (Phase 2: uses ownerId)
-  const loadVideos = useCallback(async () => {
+  // Load owner's photos
+  const loadPhotos = useCallback(async () => {
     if (!ownerId || !open) return;
 
     setLoading(true);
     try {
-      // Fetch all owner's videos using list-self endpoint
-      // This shows ALL videos (not just unlinked ones) so users can select from their full library
-      const res = await fetch(`/api/videos/list-self`);
+      // Fetch all owner's photos
+      const res = await fetch(`/api/photos/list-self`);
       if (!res.ok) return;
 
       const data = await res.json();
-      const allVideos: VideoRecord[] = data.videos || [];
+      const allPhotos: PhotoRecord[] = data.photos || [];
+      setPhotos(allPhotos);
 
-      // Only show ready videos
-      const readyVideos = allVideos.filter((v) => v.processStatus === "ready");
-      setVideos(readyVideos);
-
-      // Pre-select videos already linked to this charter via junction table
+      // Pre-select photos already linked to this charter
       if (charterId) {
-        const linkedRes = await fetch(
-          `/api/videos/list?ownerId=${ownerId}&charterId=${charterId}`
-        );
-        if (linkedRes.ok) {
-          const linkedData = await linkedRes.json();
-          const linkedVideos: VideoRecord[] = linkedData.videos || [];
-          const linked = new Set(linkedVideos.map((v) => v.id));
-          setSelectedVideoIds(linked);
-        }
+        const linkedPhotos = allPhotos.filter((p) => p.charterId === charterId);
+        const linked = new Set(linkedPhotos.map((p) => p.id));
+        setSelectedPhotoIds(linked);
       }
     } catch (error) {
-      console.error("Failed to load videos:", error);
+      console.error("Failed to load photos:", error);
     } finally {
       setLoading(false);
     }
   }, [ownerId, charterId, open]);
 
   useEffect(() => {
-    loadVideos();
-  }, [loadVideos]);
+    loadPhotos();
+  }, [loadPhotos]);
 
-  // Toggle video selection
-  const toggleVideo = (videoId: string) => {
-    setSelectedVideoIds((prev) => {
+  // Toggle photo selection
+  const togglePhoto = (photoId: string) => {
+    setSelectedPhotoIds((prev) => {
       const next = new Set(prev);
-      if (next.has(videoId)) {
-        next.delete(videoId);
+      if (next.has(photoId)) {
+        next.delete(photoId);
       } else {
-        next.add(videoId);
+        next.add(photoId);
       }
       return next;
     });
   };
 
-  // Save video links
+  // Save photo links
   const handleSave = async () => {
     // Two modes:
     // 1. Edit mode (charterId exists): Save to database via API
@@ -119,29 +106,29 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
       // Edit mode: save to database
       setSaving(true);
       try {
-        const res = await fetch(`/api/charters/${charterId}/videos/link`, {
+        const res = await fetch(`/api/charters/${charterId}/photos/link`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            videoIds: Array.from(selectedVideoIds),
+            photoIds: Array.from(selectedPhotoIds),
           }),
         });
 
         if (res.ok) {
-          onVideosLinked?.();
+          onPhotosLinked?.();
           onClose();
         } else {
           const data = await res.json();
-          console.error("Failed to link videos:", data.error);
+          console.error("Failed to link photos:", data.error);
         }
       } catch (error) {
-        console.error("Failed to save video links:", error);
+        console.error("Failed to save photo links:", error);
       } finally {
         setSaving(false);
       }
     } else {
       // New charter mode: notify parent of selection
-      onSelectionChange?.(Array.from(selectedVideoIds));
+      onSelectionChange?.(Array.from(selectedPhotoIds));
       onClose();
     }
   };
@@ -151,10 +138,10 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] sm:max-h-[85vh] flex flex-col p-4 sm:p-6">
         <DialogHeader className="space-y-2">
           <DialogTitle className="text-lg sm:text-xl">
-            Select Videos for Charter
+            Select Photos for Charter
           </DialogTitle>
           <DialogDescription className="text-sm sm:text-base">
-            Choose from your existing videos to showcase this charter. Videos
+            Choose from your existing photos to showcase this charter. Photos
             can be used across multiple charters.
           </DialogDescription>
         </DialogHeader>
@@ -164,46 +151,41 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
             <div className="flex items-center justify-center h-48">
               <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
             </div>
-          ) : videos.length === 0 ? (
+          ) : photos.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-center text-slate-500">
               <div className="p-4 mb-3 rounded-full bg-slate-100">
                 <Loader2 className="w-8 h-8 text-slate-400" />
               </div>
               <p className="text-sm font-medium sm:text-base">
-                No videos available
+                No photos available
               </p>
               <p className="max-w-xs mt-2 text-xs sm:text-sm text-slate-400">
-                Upload videos from the form above first. They&apos;ll appear
-                here once processing is complete.
+                Upload photos from the form above first. They&apos;ll appear
+                here once uploaded.
               </p>
             </div>
           ) : (
             <>
               <ScrollArea className="flex-1 pr-2 sm:pr-4">
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
-                  {videos.map((video) => {
-                    const isSelected = selectedVideoIds.has(video.id);
-                    const videoUrl = video.ready720pUrl || video.originalUrl;
-                    const thumbnail = video.thumbnailUrl || videoUrl;
-                    const duration = video.processedDurationSec
-                      ? `${Math.round(video.processedDurationSec)}s`
-                      : "";
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+                  {photos.map((photo) => {
+                    const isSelected = selectedPhotoIds.has(photo.id);
 
                     return (
                       <button
-                        key={video.id}
-                        onClick={() => toggleVideo(video.id)}
-                        className={`group relative aspect-video rounded-lg overflow-hidden border-2 transition-all active:scale-95 ${
+                        key={photo.id}
+                        onClick={() => togglePhoto(photo.id)}
+                        className={`group relative aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all active:scale-95 ${
                           isSelected
                             ? "border-blue-500 ring-2 ring-blue-200 shadow-md"
                             : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
                         }`}
-                        aria-label={`${isSelected ? "Deselect" : "Select"} video`}
+                        aria-label={`${isSelected ? "Deselect" : "Select"} photo`}
                       >
-                        {/* Video thumbnail */}
+                        {/* Photo */}
                         <Image
-                          src={thumbnail}
-                          alt="Video thumbnail"
+                          src={photo.url}
+                          alt="Photo"
                           fill
                           className="object-cover transition-transform group-hover:scale-105"
                         />
@@ -219,13 +201,6 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
                             <Circle className="w-5 h-5 transition-all rounded-full shadow-sm sm:w-6 sm:h-6 text-slate-400 bg-white/90 group-hover:bg-white group-hover:text-slate-600" />
                           )}
                         </div>
-
-                        {/* Duration badge */}
-                        {duration && (
-                          <div className="absolute z-10 px-2 py-0.5 sm:py-1 text-xs font-medium text-white rounded shadow-sm bottom-2 right-2 bg-black/75 backdrop-blur-sm">
-                            {duration}
-                          </div>
-                        )}
                       </button>
                     );
                   })}
@@ -237,21 +212,21 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
                 {/* Selection count */}
                 <div className="flex items-center justify-between sm:justify-start">
                   <p className="text-sm font-medium text-slate-700 sm:text-base">
-                    {selectedVideoIds.size === 0 ? (
-                      <span className="text-slate-500">No videos selected</span>
+                    {selectedPhotoIds.size === 0 ? (
+                      <span className="text-slate-500">No photos selected</span>
                     ) : (
                       <span>
                         <span className="text-blue-600">
-                          {selectedVideoIds.size}
+                          {selectedPhotoIds.size}
                         </span>{" "}
-                        video{selectedVideoIds.size !== 1 ? "s" : ""} selected
+                        photo{selectedPhotoIds.size !== 1 ? "s" : ""} selected
                       </span>
                     )}
                   </p>
                   {/* Mobile: Show deselect all button */}
-                  {selectedVideoIds.size > 0 && (
+                  {selectedPhotoIds.size > 0 && (
                     <button
-                      onClick={() => setSelectedVideoIds(new Set())}
+                      onClick={() => setSelectedPhotoIds(new Set())}
                       className="text-xs text-blue-600 sm:hidden hover:text-blue-700"
                     >
                       Deselect all
@@ -260,9 +235,9 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
                 </div>
 
                 {/* Desktop: Deselect all link */}
-                {selectedVideoIds.size > 0 && (
+                {selectedPhotoIds.size > 0 && (
                   <button
-                    onClick={() => setSelectedVideoIds(new Set())}
+                    onClick={() => setSelectedPhotoIds(new Set())}
                     className="hidden text-sm text-blue-600 sm:block hover:text-blue-700"
                   >
                     Deselect all

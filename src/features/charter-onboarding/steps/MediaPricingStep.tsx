@@ -4,6 +4,7 @@ import type { CharterFormValues } from "@features/charter-onboarding/charterForm
 import { PhotoGrid } from "@features/charter-onboarding/components";
 // Enhanced video upload system with queue management, retry, and persistence
 import { EnhancedVideoUploader } from "@/components/captain/EnhancedVideoUploader";
+import { PhotoGalleryModal } from "@/components/captain/PhotoGalleryModal";
 import { VideoGalleryModal } from "@/components/captain/VideoGalleryModal";
 import { VideoManager } from "@/components/captain/VideoManager";
 import { useSession } from "next-auth/react";
@@ -37,6 +38,7 @@ type MediaPricingStepProps = {
   currentCharterId?: string | null;
   onVideoBlockingChangeAction?: (blocking: boolean) => void;
   onReadyVideosChangeAction?: (videos: { name: string; url: string }[]) => void;
+  onReadyPhotosChangeAction?: (photos: { name: string; url: string }[]) => void;
   seedVideos?: { name: string; url: string }[];
   // seedVideos removed: legacy video ingestion path deprecated
 };
@@ -50,6 +52,7 @@ export function MediaPricingStep({
   onReorderPhotosAction,
   currentCharterId,
   onReadyVideosChangeAction,
+  onReadyPhotosChangeAction,
 }: MediaPricingStepProps) {
   const { watch, setValue } = form;
   const [draggingPhotos, setDraggingPhotos] = useState(false);
@@ -145,6 +148,10 @@ export function MediaPricingStep({
   )?.id;
   const [refreshToken, setRefreshToken] = useState(0);
 
+  // Track selected video/photo IDs for new charter creation (when charterId is null)
+  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
+
   const handleVideoSet = useCallback(
     (
       list: {
@@ -171,11 +178,74 @@ export function MediaPricingStep({
     [setValue, onReadyVideosChangeAction]
   );
 
+  // Photo gallery modal state
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+
+  const handlePhotosLinked = useCallback(() => {
+    // Edit mode: photos are linked on the server, refresh will happen automatically
+    // For now, we don't need to do anything here.
+  }, []);
+
+  const handlePhotoSelectionChange = useCallback(
+    async (photoIds: string[]) => {
+      // New charter mode: store selected photo IDs
+      setSelectedPhotoIds(photoIds);
+
+      // Fetch the selected photos to get their URLs
+      if (photoIds.length > 0) {
+        try {
+          const res = await fetch(`/api/photos/list-self`);
+          if (res.ok) {
+            const data = await res.json();
+            const allPhotos: Array<{
+              id: string;
+              url: string;
+              storageKey: string;
+            }> = data.photos || [];
+
+            // Filter to only selected photos
+            const selectedPhotos = allPhotos
+              .filter((p) => photoIds.includes(p.id))
+              .map((p) => ({
+                name: p.storageKey,
+                url: p.url,
+              }));
+
+            // Update form state with selected photos
+            setValue("uploadedPhotos", selectedPhotos, {
+              shouldValidate: false,
+            });
+
+            // Notify parent to update existingImages state
+            onReadyPhotosChangeAction?.(selectedPhotos);
+          }
+        } catch (error) {
+          console.error(
+            "[MediaPricingStep] Failed to fetch selected photos:",
+            error
+          );
+        }
+      } else {
+        // No photos selected, clear the form
+        setValue("uploadedPhotos", [], { shouldValidate: false });
+        onReadyPhotosChangeAction?.([]);
+      }
+    },
+    [setValue, onReadyPhotosChangeAction]
+  );
+
   // Video gallery modal state
   const [showVideoGallery, setShowVideoGallery] = useState(false);
 
   const handleVideosLinked = useCallback(() => {
-    // Refresh video manager to show updated links
+    // Edit mode: refresh video manager to show updated links
+    setRefreshToken((t) => t + 1);
+  }, []);
+
+  const handleVideoSelectionChange = useCallback((videoIds: string[]) => {
+    // New charter mode: store selected video IDs
+    setSelectedVideoIds(videoIds);
+    // Refresh VideoManager to re-fetch with new selection
     setRefreshToken((t) => t + 1);
   }, []);
 
@@ -204,30 +274,57 @@ export function MediaPricingStep({
           onDragLeave={() => handleDragLeave("photo")}
           onPaste={(e) => handlePaste(e, "photo")}
         >
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-sm font-semibold text-slate-800">
               Photos{" "}
               <span className="ml-1 text-xs text-slate-500">
                 ({photoCount}/{PHOTO_MAX})
               </span>
             </h3>
-            <label
-              htmlFor="photo-upload"
-              className="cursor-pointer rounded border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm"
-              aria-disabled={photoCount >= PHOTO_MAX}
-              data-disabled={photoCount >= PHOTO_MAX}
-            >
-              Add photos
-            </label>
-            <input
-              id="photo-upload"
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handlePhotoInputChange}
-              disabled={photoCount >= PHOTO_MAX}
-            />
+            <div className="flex flex-wrap items-start gap-2">
+              {/* Select from Gallery button - show when user has ownerId */}
+              {ownerId && (
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoGallery(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors border border-blue-200 rounded bg-blue-50 hover:bg-blue-100"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    />
+                  </svg>
+                  Select from Gallery
+                </button>
+              )}
+              {/* Add photos button */}
+              <label
+                htmlFor="photo-upload"
+                className="cursor-pointer rounded border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                aria-disabled={photoCount >= PHOTO_MAX}
+                data-disabled={photoCount >= PHOTO_MAX}
+              >
+                Add photos
+              </label>
+              <input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handlePhotoInputChange}
+                disabled={photoCount >= PHOTO_MAX}
+              />
+            </div>
           </div>
 
           <PhotoGrid
@@ -259,30 +356,28 @@ export function MediaPricingStep({
               <div className="flex flex-col gap-3">
                 {/* Video action buttons - unified styling */}
                 <div className="flex flex-wrap items-start gap-3">
-                  {/* Select from existing videos */}
-                  {currentCharterId && (
-                    <button
-                      type="button"
-                      onClick={() => setShowVideoGallery(true)}
-                      className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-blue-600 transition-colors border border-blue-200 rounded-lg w-fit bg-blue-50 hover:bg-blue-100"
+                  {/* Select from existing videos - show for both new and edit mode */}
+                  <button
+                    type="button"
+                    onClick={() => setShowVideoGallery(true)}
+                    className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-blue-600 transition-colors border border-blue-200 rounded-lg w-fit bg-blue-50 hover:bg-blue-100"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                        />
-                      </svg>
-                      Select from Gallery
-                    </button>
-                  )}
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                      />
+                    </svg>
+                    Select from Gallery
+                  </button>
                   {/* Upload new videos */}
                   <EnhancedVideoUploader
                     onUploaded={handleVideosLinked}
@@ -302,10 +397,24 @@ export function MediaPricingStep({
               charterId={currentCharterId || null}
               refreshToken={refreshToken}
               onVideosChange={handleVideoSet}
-              // Do NOT pass onPendingChange here - server-side transcoding should not block
+              selectedVideoIds={currentCharterId ? undefined : selectedVideoIds}
+              // DO NOT pass onPendingChange here - server-side transcoding should not block
             />
           )}
         </div>
+
+        {/* Photo Gallery Modal */}
+        {ownerId && (
+          <PhotoGalleryModal
+            open={showPhotoGallery}
+            onClose={() => setShowPhotoGallery(false)}
+            charterId={currentCharterId || null}
+            ownerId={ownerId}
+            onPhotosLinked={handlePhotosLinked}
+            selectedPhotoIds={selectedPhotoIds}
+            onSelectionChange={handlePhotoSelectionChange}
+          />
+        )}
 
         {/* Video Gallery Modal */}
         {ownerId && (
@@ -315,6 +424,8 @@ export function MediaPricingStep({
             charterId={currentCharterId || null}
             ownerId={ownerId}
             onVideosLinked={handleVideosLinked}
+            selectedVideoIds={selectedVideoIds}
+            onSelectionChange={handleVideoSelectionChange}
           />
         )}
       </div>

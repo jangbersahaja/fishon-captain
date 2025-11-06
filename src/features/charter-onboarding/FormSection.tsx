@@ -712,6 +712,14 @@ export default function FormSection() {
     [setExistingVideos]
   );
 
+  const onReadyPhotosChange = useCallback(
+    (ready: { name: string; url: string }[]) => {
+      // Update existingImages state with selected photos from gallery
+      setExistingImages(ready);
+    },
+    [setExistingImages]
+  );
+
   // Show loading state while draft data is being loaded
   if (isDraftLoading) {
     return (
@@ -871,6 +879,7 @@ export default function FormSection() {
             currentCharterId={currentCharterId}
             onVideoBlockingChange={onVideoBlockingChange}
             onReadyVideosChange={onReadyVideosChange}
+            onReadyPhotosChange={onReadyPhotosChange}
             seedVideos={existingVideos}
           />
           {isReviewStep && (
@@ -882,6 +891,7 @@ export default function FormSection() {
               }
               charterId={currentCharterId}
               draftId={serverDraftId}
+              existingVideos={existingVideos}
             />
           )}
           {submitState?.type === "error" && (

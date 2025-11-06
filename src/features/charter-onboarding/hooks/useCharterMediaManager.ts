@@ -169,11 +169,12 @@ export function useCharterMediaManager({
   );
 
   // Fetch captain's CharterMedia photos as canonical source
-  // ONLY for NEW charters (not edit mode) - edit mode uses form data
+  // ONLY for EDIT mode with currentCharterId - new charters rely on form hydration
   const { data: session } = useSession();
   useEffect(() => {
-    // Skip photo fetch in edit mode - use form data instead
-    if (isEditing) return;
+    // Only fetch photos in edit mode when we have a currentCharterId
+    // For new charters (no charterId), rely on form state hydration instead
+    if (!isEditing || !currentCharterId) return;
 
     let ignore = false;
     const userId = (session?.user as { id?: string })?.id;
@@ -199,7 +200,7 @@ export function useCharterMediaManager({
     return () => {
       ignore = true;
     };
-  }, [session, dlog, isEditing]);
+  }, [session, dlog, isEditing, currentCharterId]);
   useEffect(() => {
     const photos = form.getValues("uploadedPhotos") as
       | Array<{ name: string; url: string }>
@@ -281,10 +282,10 @@ export function useCharterMediaManager({
           next && next !== prev
             ? next
             : next
-            ? next
-            : prev && !next
-            ? null
-            : prev
+              ? next
+              : prev && !next
+                ? null
+                : prev
         );
       }
     });
@@ -357,15 +358,17 @@ export function useCharterMediaManager({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       const deleteKeysArr = Array.from(deleteKeys);
+      // Note: Videos are NOT sent to this endpoint - they're managed separately via CharterVideo junction table
+      // Only send images to avoid 400 "videos_not_supported" error
       fetch(`/api/charters/${currentCharterId}/media`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          media: { images: imagesPayload, videos: videosPayload },
+          media: { images: imagesPayload, videos: [] }, // Always empty array for videos
           deleteKeys: deleteKeysArr,
           order: {
             images: imagesPayload.map((_, i) => i),
-            videos: videosPayload.map((_, i) => i),
+            // videos order is managed separately via /api/charters/[id]/videos/reorder
           },
         }),
       })
@@ -373,7 +376,7 @@ export function useCharterMediaManager({
           if (r.ok)
             dlog("media_order_persist_ok", {
               images: imagesPayload.length,
-              videos: videosPayload.length,
+              videos: videosPayload.length, // Log for debugging but not sent
               deleted: deleteKeysArr.length,
             });
           else dlog("media_order_persist_fail_status", { status: r.status });
