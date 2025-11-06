@@ -54,23 +54,22 @@ export async function POST(
   }
 
   const { videoIds } = parsed.data;
-  const captainId = charter.captainId;
 
   try {
-    // Get all captain's videos
-    const captainVideos = await prisma.captainVideo.findMany({
+    // Phase 2: Get all user's videos by ownerId (not captainId)
+    const userVideos = await prisma.captainVideo.findMany({
       where: {
-        captainId: captainId,
+        ownerId: sessionUserId,
       },
       select: {
         id: true,
       },
     });
 
-    const captainVideoIds = new Set(captainVideos.map((v) => v.id));
+    const userVideoIds = new Set(userVideos.map((v) => v.id));
 
-    // Verify all provided video IDs belong to this captain
-    const invalidIds = videoIds.filter((id) => !captainVideoIds.has(id));
+    // Verify all provided video IDs belong to this user
+    const invalidIds = videoIds.filter((id) => !userVideoIds.has(id));
     if (invalidIds.length > 0) {
       return NextResponse.json(
         { error: "invalid_video_ids", invalidIds },

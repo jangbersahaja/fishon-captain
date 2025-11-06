@@ -277,6 +277,7 @@ interface VideoManagerProps {
   onVideosChange?: (videos: VideoRecord[]) => void;
   onPendingChange?: (pending: boolean) => void;
   refreshToken?: number; // increment to force reload
+  selectedVideoIds?: string[]; // For new charter: only show these video IDs
 }
 
 export const VideoManager: React.FC<VideoManagerProps> = ({
@@ -285,6 +286,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
   onVideosChange,
   onPendingChange,
   refreshToken,
+  selectedVideoIds,
 }) => {
   const [videos, setVideos] = useState<VideoRecord[]>([]);
   const [localThumbs, setLocalThumbs] = useState<Record<string, string>>({});
@@ -313,16 +315,28 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
 
   const load = useCallback(async () => {
     setLoading(true);
-    // Build URL with optional charterId filter
-    let url = `/api/videos/list?ownerId=${ownerId}`;
+
+    // Determine which endpoint to use:
+    // - If charterId exists: fetch videos linked to that charter via junction table
+    // - If charterId is null/undefined (new charter): fetch ALL user's videos, then filter by selectedVideoIds
+    let url: string;
     if (charterId !== undefined && charterId !== null) {
-      url += `&charterId=${charterId}`;
+      // Editing existing charter - fetch only linked videos
+      url = `/api/videos/list?ownerId=${ownerId}&charterId=${charterId}`;
+    } else {
+      // New charter creation - fetch all user's videos using list-self
+      url = `/api/videos/list-self`;
     }
 
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
-      const incoming: VideoRecord[] = data.videos || [];
+      let incoming: VideoRecord[] = data.videos || [];
+
+      // For new charters, filter to only show selected video IDs
+      if (!charterId && selectedVideoIds && selectedVideoIds.length > 0) {
+        incoming = incoming.filter((v) => selectedVideoIds.includes(v.id));
+      }
 
       setVideos((prev) => {
         if (prev.length === incoming.length) {
@@ -355,7 +369,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
       });
     }
     setLoading(false);
-  }, [ownerId, charterId]);
+  }, [ownerId, charterId, selectedVideoIds]);
 
   useEffect(() => {
     load();
@@ -366,7 +380,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
     async (event: DragEndEvent) => {
       const { active, over } = event;
 
-      if (!over || active.id === over.id || !charterId) {
+      if (!over || active.id === over.id) {
         return;
       }
 
@@ -379,33 +393,44 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
       const newVideos = arrayMove(videos, oldIndex, newIndex);
       setVideos(newVideos);
 
-      // Prepare reorder payload
-      const videoOrders = newVideos.map((video, index) => ({
-        videoId: video.id,
-        order: index,
-      }));
+      // Notify parent of the new order immediately (for form state)
+      onVideosChange?.(newVideos);
 
-      setReordering(true);
-      try {
-        const res = await fetch(`/api/charters/${charterId}/videos/reorder`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ videoOrders }),
-        });
+      // If we have a charterId, persist the order to the server
+      // If no charterId (new charter), just update local state for now
+      if (charterId) {
+        // Prepare reorder payload
+        const videoOrders = newVideos.map((video, index) => ({
+          videoId: video.id,
+          order: index,
+        }));
 
-        if (!res.ok) {
-          // Revert on failure
-          console.error("Failed to reorder videos");
+        setReordering(true);
+        try {
+          const res = await fetch(`/api/charters/${charterId}/videos/reorder`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ videoOrders }),
+          });
+
+          if (!res.ok) {
+            // Revert on failure
+            console.error("Failed to reorder videos");
+            setVideos(videos);
+            // Notify parent of revert
+            onVideosChange?.(videos);
+          }
+        } catch (error) {
+          console.error("Failed to reorder videos:", error);
           setVideos(videos);
+          // Notify parent of revert
+          onVideosChange?.(videos);
+        } finally {
+          setReordering(false);
         }
-      } catch (error) {
-        console.error("Failed to reorder videos:", error);
-        setVideos(videos);
-      } finally {
-        setReordering(false);
       }
     },
-    [videos, charterId]
+    [videos, charterId, onVideosChange]
   );
 
   // Page Visibility API: track when user switches tabs
@@ -647,8 +672,8 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
           )}
         </div>
 
-        {/* Reordering hint - show when editing charter */}
-        {charterId && videos.some((v) => v.processStatus === "ready") && (
+        {/* Reordering hint - show when there are ready videos */}
+        {videos.some((v) => v.processStatus === "ready") && (
           <div className="flex items-center gap-2 px-3 py-2 text-xs text-blue-300 border rounded-lg border-blue-700/30">
             <GripVertical className="flex-shrink-0 w-4 h-4" />
             <span>
@@ -674,7 +699,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
                 video={v}
                 localThumb={localThumbs[v.id]}
                 isRetrying={retrying[v.id] || false}
-                canReorder={!!(charterId && v.processStatus === "ready")}
+                canReorder={v.processStatus === "ready"}
                 onRetry={retry}
                 onDeleteClick={handleDeleteClick}
                 statusPill={statusPill}

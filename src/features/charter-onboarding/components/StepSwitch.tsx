@@ -24,6 +24,7 @@ export interface StepSwitchProps {
   currentCharterId: string | null;
   onVideoBlockingChange?: (blocking: boolean) => void;
   onReadyVideosChange?: (videos: { name: string; url: string }[]) => void;
+  onReadyPhotosChange?: (photos: { name: string; url: string }[]) => void;
   seedVideos?: { name: string; url: string; thumbnailUrl?: string }[];
 }
 
@@ -94,6 +95,7 @@ export const StepSwitch: React.FC<StepSwitchProps> = (props) => {
           currentCharterId={props.currentCharterId}
           onVideoBlockingChangeAction={props.onVideoBlockingChange}
           onReadyVideosChangeAction={props.onReadyVideosChange}
+          onReadyPhotosChangeAction={props.onReadyPhotosChange}
           seedVideos={props.seedVideos}
         />
       );
