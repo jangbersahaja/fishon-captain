@@ -347,7 +347,6 @@ export default function Navbar() {
             </div>
             {authenticated && (
               <>
-                <NotificationBell />
                 <Tooltip content={displayName}>
                   <div className="shrink-0">
                     <ProfileAvatar />

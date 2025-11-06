@@ -9,6 +9,7 @@ import {
   type CharterFormValues,
 } from "@features/charter-onboarding/charterForm.schema";
 import { ConfirmDialog } from "@features/charter-onboarding/components/ConfirmDialog";
+import { DraftSaveErrorBanner } from "@features/charter-onboarding/components/DraftSaveErrorBanner";
 import { StepProgress } from "@features/charter-onboarding/components/StepProgress";
 import { CharterFormProvider } from "@features/charter-onboarding/context/CharterFormContext";
 import {
@@ -27,6 +28,7 @@ import {
   usePreviewCharter,
   useStepNavigation,
 } from "@features/charter-onboarding/hooks";
+import { useFormResetCoordinator } from "@features/charter-onboarding/hooks/useFormResetCoordinator";
 // Individual steps now rendered via StepSwitch
 import { getFieldError } from "@features/charter-onboarding/utils/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -78,6 +80,9 @@ export default function FormSection() {
     reset,
     formState: { errors, isSubmitting, isDirty },
   } = form;
+
+  // Coordinate form resets to prevent race conditions
+  const coordinatedReset = useFormResetCoordinator(form);
 
   // Track last server save timestamp (server draft only)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -417,10 +422,61 @@ export default function FormSection() {
             });
           }
         })
-        .catch(() => {});
+        .catch((error) => {
+          // CRITICAL: Don't silently swallow media save errors
+          console.error(
+            "[media-autosave] failed to save draft after media change",
+            error
+          );
+
+          // Event will be emitted from useDraftSnapshot, but log here for context
+          if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+            console.error("[media-autosave] media autosave failed", {
+              images: existingImages.length,
+              videos: existingVideos.length,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        });
     }, 500); // slight debounce to batch rapid additions
     return () => clearTimeout(timer);
   }, [existingImages, existingVideos, isEditing, serverDraftId, draftSnapshot]);
+
+  // P1.1: Continuous Autosave - Save draft every 10 seconds if dirty
+  useEffect(() => {
+    // Only autosave in draft mode (not edit mode)
+    if (isEditing) return;
+    // Only autosave if we have a draft ID
+    if (!serverDraftId) return;
+    // Only autosave if form is dirty
+    if (!isDirty) return;
+
+    const timer = setTimeout(() => {
+      if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+        console.log("[continuous-autosave] triggering 10-second autosave");
+      }
+
+      draftSnapshot
+        .saveServerDraftSnapshot()
+        .then((newVersion) => {
+          if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+            console.log("[continuous-autosave] autosave success", {
+              version: newVersion,
+            });
+          }
+        })
+        .catch((error) => {
+          // Error handling from P0.1 will emit event for DraftSaveErrorBanner
+          if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
+            console.error("[continuous-autosave] autosave failed", {
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        });
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(timer);
+  }, [isEditing, serverDraftId, isDirty, draftSnapshot]);
 
   // (ReviewBar now handles its own enter animation)
 
@@ -450,6 +506,7 @@ export default function FormSection() {
     setLastSavedAt: (iso) => setLastSavedAt(iso),
     router,
     getUploadedMediaInfo,
+    coordinatedReset,
   });
 
   // Derived preview & helpers
@@ -555,7 +612,7 @@ export default function FormSection() {
           media: media,
         }) as unknown as CharterFormValues;
         if (cancelled) return;
-        form.reset(draftValues, { keepDirty: false });
+        coordinatedReset(draftValues, "edit-mode-charter-load");
         // Also prime media manager state & avatar preview
         if (media?.images?.length) {
           setExistingImages(
@@ -610,6 +667,7 @@ export default function FormSection() {
     form,
     setExistingImages,
     setExistingVideos,
+    coordinatedReset,
   ]);
 
   // Listen for diagnostic hydration patch events dispatched by useCharterDataLoad (edit mode)
@@ -817,6 +875,12 @@ export default function FormSection() {
             <p>Sign in to save your progress on the server.</p>
           </div>
         )}
+        <DraftSaveErrorBanner
+          onRetry={async () => {
+            // Retry the draft snapshot save
+            await draftSnapshot.saveServerDraftSnapshot();
+          }}
+        />
         <form onSubmit={handleFormSubmit} className="space-y-6">
           <StepProgress
             steps={STEP_SEQUENCE}
