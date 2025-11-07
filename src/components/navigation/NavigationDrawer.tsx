@@ -11,6 +11,7 @@ import {
   Ship,
   Star,
   User,
+  Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -36,7 +37,9 @@ const navSections: NavSection[] = [
   {
     label: "Business",
     links: [
-      { href: "/captain/charter", label: "Charter", Icon: Ship },
+      { href: "/captain/charters", label: "Charters", Icon: Ship },
+      { href: "/captain/boats", label: "Boats", Icon: Ship },
+      { href: "/captain/trips", label: "Trips", Icon: Calendar },
       { href: "/captain/bookings", label: "Bookings", Icon: Calendar },
       { href: "/captain/bookings/calendar", label: "Calendar", Icon: Calendar },
       { href: "/captain/reviews", label: "Reviews", Icon: Star },
@@ -56,6 +59,13 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    label: "Team",
+    links: [
+      { href: "/captain/profile", label: "Profile", Icon: User },
+      { href: "/captain/crew", label: "Crew", Icon: Users },
+    ],
+  },
+  {
     label: "Account",
     links: [
       { href: "/captain/settings", label: "Settings", Icon: SettingsIcon },
@@ -69,14 +79,16 @@ interface NavigationDrawerProps {
   onClose: () => void;
   captainName?: string;
   captainEmail?: string;
+  captainImage?: string;
 }
-
-export function NavigationDrawer({
-  isOpen,
-  onClose,
-  captainName = "Captain",
-  captainEmail,
-}: NavigationDrawerProps) {
+export function NavigationDrawer(props: NavigationDrawerProps) {
+  const {
+    isOpen,
+    onClose,
+    captainName = "Captain",
+    captainEmail,
+    captainImage,
+  } = props;
   const pathname = usePathname();
   const active = pathname?.replace(/\/$/, "") || "";
 
@@ -143,9 +155,17 @@ export function NavigationDrawer({
           {/* Profile Section */}
           <div className="px-4 py-4 border-b border-slate-200">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-200">
-                <User className="w-6 h-6 text-slate-600" />
-              </div>
+              {captainImage ? (
+                <img
+                  src={captainImage}
+                  alt={captainName}
+                  className="w-12 h-12 rounded-full object-cover bg-slate-200"
+                />
+              ) : (
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-200">
+                  <User className="w-6 h-6 text-slate-600" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-900 truncate">
                   {captainName}

@@ -233,8 +233,8 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
   return (
     <div className="space-y-6">
       {/* Search + Filters */}
-      <div className="flex flex-col items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl sm:flex-row sm:items-center">
-        <div className="relative flex-1 w-full">
+      <div className="flex flex-col items-center justify-between w-full gap-3 p-4 bg-white border border-slate-200 rounded-xl sm:flex-row">
+        <div className="relative w-full">
           <Search className="absolute w-5 h-5 transform -translate-y-1/2 left-3 top-1/2 text-slate-400" />
           <input
             type="text"
@@ -245,7 +245,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
           />
         </div>
 
-        <div className="flex items-center justify-end flex-1 w-full gap-2 sm:flex-none">
+        <div className="flex items-center self-end h-full gap-2 sm:self-center">
           <BookingFilters
             trips={trips}
             selectedTripId={selectedTripId}
@@ -257,7 +257,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
           />
 
           <button
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm transition-colors border rounded-lg border-slate-300 hover:bg-slate-50 text-slate-700"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm transition-colors border rounded-lg border-slate-300 hover:bg-slate-50 text-slate-700"
             onClick={() => {
               // quick reset
               setSearchTerm("");

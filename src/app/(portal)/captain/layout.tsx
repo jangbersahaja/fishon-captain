@@ -19,10 +19,7 @@ export default function CaptainLayout({
     <ToastProvider>
       <div className="flex flex-col min-h-screen">
         {/* Mobile Header */}
-        <MobileHeader
-          onMenuClick={() => setIsDrawerOpen(true)}
-          unreadNotifications={0} // TODO: Get from API
-        />
+        <MobileHeader onMenuClick={() => setIsDrawerOpen(true)} />
 
         {/* Navigation Drawer */}
         <NavigationDrawer

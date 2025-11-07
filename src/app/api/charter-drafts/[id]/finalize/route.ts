@@ -98,13 +98,29 @@ export async function POST(
       charterName = draftData.charterName ?? null;
 
       // Phase 2: Charter ownership architecture
-      // 1. Get user details for email
+      // 1. Get user details for email and role
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { email: true, firstName: true, lastName: true },
+        select: { email: true, firstName: true, lastName: true, role: true },
       });
       if (!user) {
         throw { status: 400, error: "user_not_found" };
+      }
+
+      // 1.5. Check charter limits based on role (Phase 7: OPERATOR role support)
+      // CAPTAIN role can only have 1 charter, OPERATOR can have unlimited
+      if (user.role === "CAPTAIN") {
+        const existingCharterCount = await tx.charter.count({
+          where: { ownerId: userId },
+        });
+        if (existingCharterCount >= 1) {
+          throw {
+            status: 403,
+            error: "charter_limit_reached",
+            message:
+              "Captain accounts can only own 1 charter. Upgrade to Operator to manage multiple charters.",
+          };
+        }
       }
 
       // 2. Get or create CaptainProfile if user will be a captain

@@ -39,8 +39,8 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
       icon: <LayoutDashboard className="w-6 h-6" />,
     },
     {
-      href: "/captain/charter",
-      label: "Charter",
+      href: "/captain/charters",
+      label: "Charters",
       icon: <Ship className="w-6 h-6" />,
     },
     {

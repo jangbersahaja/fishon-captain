@@ -7,12 +7,11 @@ import { NotificationBell } from "../notifications";
 
 interface MobileHeaderProps {
   onMenuClick: () => void;
-  unreadNotifications?: number;
 }
 
 const PAGE_TITLES: Record<string, string> = {
   "/captain": "Overview",
-  "/captain/charter": "Charter",
+  "/captain/charters": "Charters",
   "/captain/bookings": "Bookings",
   "/captain/bookings/calendar": "Calendar",
   "/captain/reviews": "Reviews",
@@ -26,10 +25,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/captain/pricing": "Pricing",
 };
 
-export function MobileHeader({
-  onMenuClick,
-  unreadNotifications = 0,
-}: MobileHeaderProps) {
+export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
   const pathname = usePathname();
   const active = pathname?.replace(/\/$/, "") || "";
 
@@ -51,7 +47,7 @@ export function MobileHeader({
   }, [active]);
 
   return (
-    <header className="sticky left-0 right-0 z-50 bg-white border-b top-16 border-slate-200 md:hidden">
+    <header className="sticky top-0 left-0 right-0 z-50 bg-white border-b border-slate-200 md:hidden">
       <div className="flex items-center justify-between px-4 h-14">
         {/* Hamburger Menu */}
         <button

@@ -28,14 +28,23 @@ export async function POST(request: Request): Promise<NextResponse> {
         // Authorize uploads by the authenticated user.
         // Optionally, validate clientPayload (e.g., docType/charterId) here.
         return {
-          // Restrict to videos; extend if needed
+          // Allow videos and images
           allowedContentTypes: [
+            // Videos
             "video/mp4",
             "video/quicktime",
             "video/webm",
             "video/ogg",
             "video/3gpp",
             "video/x-m4v",
+            // Images
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif",
+            "image/avif",
+            "image/heic",
+            "image/heif",
           ],
           addRandomSuffix: false, // we control the key/pathname from the client
           tokenPayload: JSON.stringify({

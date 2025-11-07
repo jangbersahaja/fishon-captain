@@ -92,3 +92,50 @@ model Review {
   @@index([approved, published])
   @@index([createdAt])
 }
+
+// Analytics & Tracking system
+enum AnalyticsEventType {
+  PROFILE_VIEW      // Captain profile page view
+  CHARTER_VIEW      // Charter detail page view
+  CHARTER_SEARCH    // Charter appeared in search results
+  PHOTO_VIEW        // Photo clicked/viewed in gallery
+  VIDEO_VIEW        // Video played
+  CONTACT_CLICK     // Contact/inquiry button clicked
+  BOOKING_STARTED   // Booking form opened
+  BOOKING_SUBMITTED // Booking request submitted
+  REVIEW_VIEW       // Review section viewed
+  SHARE_CLICKED     // Share button clicked
+}
+
+model AnalyticsEvent {
+  id         String               @id @default(cuid())
+  eventType  AnalyticsEventType
+  
+  // Captain backend references (stored as strings since data is in different DB)
+  charterId  String? // References Charter.id in fishon-captain DB
+  ownerId    String? // References User.id in fishon-captain DB (charter owner)
+  
+  // User context
+  userId     String? // fishon-market User.id for authenticated users
+  sessionId  String? // Browser session for anonymous tracking
+  
+  // Event metadata
+  metadata   Json? // Flexible storage for event-specific data
+  
+  // Referral tracking
+  referrer   String? // HTTP referrer
+  source     String? // Traffic source: 'search', 'direct', 'social', etc.
+  
+  // Technical details
+  userAgent  String? // Browser user agent
+  ipAddress  String? // Hashed IP for privacy
+  
+  createdAt  DateTime @default(now())
+  
+  @@index([charterId, createdAt])
+  @@index([ownerId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([userId, createdAt])
+  @@map("analytics_events")
+}

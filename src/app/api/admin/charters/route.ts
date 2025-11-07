@@ -142,7 +142,7 @@ export async function POST(req: Request) {
             message: isActive
               ? `Your charter "${charter.name}" has been approved and is now live!`
               : `Your charter "${charter.name}" has been rejected. Please review and update it.`,
-            actionUrl: `/captain/charter/${charter.id}`,
+            actionUrl: `/captain/charters/${charter.id}`,
             actionLabel: "View Charter",
             charterId: charter.id,
           })
@@ -176,7 +176,7 @@ export async function POST(req: Request) {
       message: isActive
         ? `Your charter "${charter.name}" has been approved and is now live!`
         : `Your charter "${charter.name}" has been rejected. Please review and update it.`,
-      actionUrl: `/captain/charter/${charter.id}`,
+      actionUrl: `/captain/charters/${charter.id}`,
       actionLabel: "View Charter",
       charterId: charter.id,
     });

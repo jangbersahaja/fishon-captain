@@ -45,6 +45,7 @@ interface PrismaClientInstance {
   booking: any;
   marketUser: any;
   review: any;
+  analyticsEvent: any;
   $disconnect: () => Promise<void>;
 }
 
