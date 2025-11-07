@@ -139,3 +139,68 @@ model AnalyticsEvent {
   @@index([userId, createdAt])
   @@map("analytics_events")
 }
+
+// Messaging system (read-only from Market DB)
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum ConversationStatus {
+  LOCKED       // Before payment
+  ACTIVE       // After payment
+  RESTRICTED   // Trip in progress
+  CLOSING_SOON // 24h review period
+  CLOSED       // After grace period
+  ARCHIVED     // Manually archived
+}
+
+model Conversation {
+  id                 String              @id
+  bookingId          String              @unique
+  anglerId           String
+  charterId          String
+  ownerId            String
+  status             ConversationStatus
+  lastMessageAt      DateTime?
+  lastMessagePreview String?
+  lastMessageBy      String?
+  anglerUnreadCount  Int
+  captainUnreadCount Int
+  closedAt           DateTime?
+  closedBy           String?
+  createdAt          DateTime
+  updatedAt          DateTime
+
+  @@index([ownerId, lastMessageAt])
+  @@index([charterId])
+  @@index([status, lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id              String        @id
+  conversationId  String
+  senderId        String
+  senderType      String        // "angler" | "captain" | "system"
+  senderName      String
+  content         String        @db.Text
+  contentType     String        @default("text") // "text" | "system" | "booking_card"
+  systemType      String?
+  bookingSnapshot Json?
+  isQuickReply    Boolean       @default(false)
+  status          MessageStatus
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  metadata        Json?
+  deletedAt       DateTime?
+  deletedBy       String?
+  createdAt       DateTime
+  updatedAt       DateTime
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+  @@index([senderType])
+  @@map("messages")
+}
