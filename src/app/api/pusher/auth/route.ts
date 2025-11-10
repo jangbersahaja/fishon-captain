@@ -4,7 +4,7 @@
  */
 
 import authOptions from "@/lib/auth";
-import { pusherServer } from "@/lib/pusher/server";
+import { getPusherServer } from "@/lib/pusher/server";
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -40,17 +40,32 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
 
     // Verify user can access this channel
-    // Private channels are prefixed with "private-user-{userId}"
-    if (channelName !== `private-user-${userId}`) {
-      console.warn("⚠️ [Pusher Auth] Forbidden - channel mismatch:", {
+    // Support both private-user.{userId} and private-conversation.{id} channels
+    // Note: Use dot separator (.) not dash (-) per Pusher conventions
+    const isUserChannel = channelName === `private-user.${userId}`;
+    const isConversationChannel = channelName.startsWith(
+      "private-conversation."
+    );
+
+    if (!isUserChannel && !isConversationChannel) {
+      console.warn("⚠️ [Pusher Auth] Forbidden - channel not accessible:", {
         requested: channelName,
-        expected: `private-user-${userId}`,
+        userId,
       });
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Authenticate the user for this channel
-    const authResponse = pusherServer.authorizeChannel(socketId, channelName);
+    const pusher = getPusherServer();
+    if (!pusher) {
+      console.error("❌ [Pusher Auth] Pusher not configured");
+      return NextResponse.json(
+        { error: "Pusher not configured" },
+        { status: 500 }
+      );
+    }
+
+    const authResponse = pusher.authorizeChannel(socketId, channelName);
 
     console.log("✅ [Pusher Auth] Successfully authenticated user for channel");
     return NextResponse.json(authResponse);

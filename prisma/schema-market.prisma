@@ -49,6 +49,9 @@ model Booking {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
+  // Chat relationship
+  conversation       Conversation? @relation("BookingConversation")
+
   @@index([userId])
   @@index([guestEmail])
   @@index([charterId])
@@ -61,6 +64,7 @@ model MarketUser {
   id      String   @id @default(cuid())
   email   String   @unique
   name    String?  // Display name (was displayName)
+  phone   String?  // Contact phone number
   image   String?  // Profile image URL
   reviews Review[] // User's reviews
 
@@ -157,30 +161,37 @@ enum ConversationStatus {
 }
 
 model Conversation {
-  id                 String              @id
+  id                 String              @id @default(cuid())
   bookingId          String              @unique
   anglerId           String
   charterId          String
   ownerId            String
-  status             ConversationStatus
+  status             ConversationStatus  @default(LOCKED)
   lastMessageAt      DateTime?
-  lastMessagePreview String?
+  lastMessagePreview String?             @db.VarChar(200)
   lastMessageBy      String?
-  anglerUnreadCount  Int
-  captainUnreadCount Int
+  anglerUnreadCount  Int                 @default(0)
+  captainUnreadCount Int                 @default(0)
   closedAt           DateTime?
   closedBy           String?
-  createdAt          DateTime
-  updatedAt          DateTime
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
+  // Relations (for queries)
+  booking   Booking?  @relation("BookingConversation", fields: [bookingId], references: [id], onDelete: Cascade)
+  messages  Message[] // 1:many relationship
+
+  @@index([anglerId, lastMessageAt])
   @@index([ownerId, lastMessageAt])
   @@index([charterId])
   @@index([status, lastMessageAt])
   @@map("conversations")
 }
 
+
+
 model Message {
-  id              String        @id
+  id              String        @id @default(cuid())
   conversationId  String
   senderId        String
   senderType      String        // "angler" | "captain" | "system"
@@ -190,14 +201,17 @@ model Message {
   systemType      String?
   bookingSnapshot Json?
   isQuickReply    Boolean       @default(false)
-  status          MessageStatus
+  status          MessageStatus @default(SENT)
   deliveredAt     DateTime?
   readAt          DateTime?
   metadata        Json?
   deletedAt       DateTime?
   deletedBy       String?
-  createdAt       DateTime
-  updatedAt       DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
   @@index([senderId, createdAt])

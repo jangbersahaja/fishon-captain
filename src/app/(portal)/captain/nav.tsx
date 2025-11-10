@@ -1,11 +1,13 @@
 "use client";
 import {
+  BarChart3,
   Bell,
   Calendar,
   IdCard,
   Image as ImageIcon,
   LayoutDashboard,
   LifeBuoy,
+  MessageCircle,
   Settings as SettingsIcon,
   Ship,
   Star,
@@ -46,7 +48,14 @@ const navSections: NavSection[] = [
   {
     label: "Communication",
     links: [
+      { href: "/captain/messages", label: "Messages", Icon: MessageCircle },
       { href: "/captain/notifications", label: "Notifications", Icon: Bell },
+    ],
+  },
+  {
+    label: "Analytics",
+    links: [
+      { href: "/captain/analytics", label: "Analytics", Icon: BarChart3 },
     ],
   },
   {

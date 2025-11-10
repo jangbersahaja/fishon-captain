@@ -57,10 +57,25 @@ const globalForPrismaMarket = globalThis as unknown as {
 
 export const prismaMarket: PrismaClientInstance =
   globalForPrismaMarket.prismaMarket ??
-  new PrismaClient({
-    datasources: { db: { url: process.env.MARKET_DATABASE_URL } },
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
+  (() => {
+    const url = process.env.MARKET_DATABASE_URL;
+    const msg =
+      "MARKET_DATABASE_URL is not set. The captain app requires read-only access to fishon-market DB. Please configure MARKET_DATABASE_URL in your environment.";
+    if (!url) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error(msg);
+      } else {
+        // Warn in development to aid setup without crashing the dev server
+        // eslint-disable-next-line no-console
+        console.warn(msg);
+      }
+    }
+    return new PrismaClient({
+      datasources: { db: { url } },
+      log:
+        process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    });
+  })();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrismaMarket.prismaMarket = prismaMarket;

@@ -54,7 +54,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="flex flex-col min-h-screen font-sans">
+      <body className="flex flex-col font-sans">
         <DevPanelProvider>
           <AuthSessionProvider>
             <NotificationProvider>

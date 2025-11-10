@@ -299,9 +299,9 @@ export default function Navbar() {
 
   return (
     <header
-      className={`${zIndexClasses.navigation} w-full border-t border-white/20 bg-[#ec2227] text-white backdrop-blur`}
+      className={`${zIndexClasses.navigation} w-full border-t border-white/20 bg-[#ec2227] text-white backdrop-blur h-16 flex items-center`}
     >
-      <div className="flex flex-col w-full gap-3 px-4 py-3 mx-auto sm:px-6">
+      <div className="flex flex-col w-full gap-3 px-4 mx-auto sm:px-6">
         <div className="flex items-center w-full gap-3 md:hidden">
           {logo}
           <div className="flex items-center min-w-0 gap-2 ml-auto">

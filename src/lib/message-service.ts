@@ -76,6 +76,81 @@ export async function getCaptainConversations(
 }
 
 /**
+ * Get enriched conversations with angler names, booking details, and latest message
+ * Used for captain conversations list page
+ */
+export async function getCaptainConversationsEnriched(charterIds: string[]) {
+  if (!charterIds || charterIds.length === 0) {
+    return [];
+  }
+
+  // Get conversations for these charters
+  const conversations = await prismaMarket.conversation.findMany({
+    where: {
+      charterId: { in: charterIds },
+    },
+    include: {
+      booking: {
+        select: {
+          id: true,
+          status: true,
+          userId: true,
+          guestFirstName: true,
+          guestLastName: true,
+          guestEmail: true,
+        },
+      },
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          senderType: true,
+        },
+      },
+    },
+    orderBy: { lastMessageAt: "desc" },
+    take: 50,
+  });
+
+  // Enrich with angler names
+  const enrichedConversations = await Promise.all(
+    conversations.map(async (conversation: (typeof conversations)[number]) => {
+      let anglerName = "Angler";
+      let anglerAvatar: string | null = null;
+
+      if (conversation.booking) {
+        if (conversation.booking.userId) {
+          // Registered user - fetch from User table
+          const user = await prismaMarket.marketUser.findUnique({
+            where: { id: conversation.booking.userId },
+            select: { name: true, image: true },
+          });
+          anglerName = user?.name || "Angler";
+          anglerAvatar = user?.image || null;
+        } else {
+          // Guest booking - use guest name fields
+          anglerName =
+            `${conversation.booking.guestFirstName || ""} ${conversation.booking.guestLastName || ""}`.trim() ||
+            "Angler";
+          anglerAvatar = null;
+        }
+      }
+
+      return {
+        ...conversation,
+        anglerName,
+        anglerAvatar,
+      };
+    })
+  );
+
+  return enrichedConversations;
+}
+
+/**
  * Get a single conversation (read-only)
  */
 export async function getConversation(conversationId: string) {
@@ -105,6 +180,150 @@ export async function getConversation(conversationId: string) {
   }
 
   return conversation;
+}
+
+/**
+ * Get enriched conversation with angler details, booking info, and messages
+ * Used for captain conversation detail page
+ */
+export async function getConversationEnriched(conversationId: string) {
+  const conversation = await prismaMarket.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      booking: {
+        select: {
+          id: true,
+          status: true,
+          charterId: true,
+          date: true,
+          days: true,
+          finalPrice: true,
+          note: true,
+          startTime: true,
+          guests: true,
+          userId: true,
+          guestFirstName: true,
+          guestLastName: true,
+          guestEmail: true,
+          guestPhone: true,
+        },
+      },
+      messages: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          senderId: true,
+          senderType: true,
+          senderName: true,
+          content: true,
+          contentType: true,
+          systemType: true,
+          status: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  if (!conversation) {
+    return null;
+  }
+
+  // Get charter name from captain's database
+  let charterName = "Charter";
+  if (conversation.charterId) {
+    const { prisma } = await import("@/lib/prisma");
+    const charter = await prisma.charter.findUnique({
+      where: { id: conversation.charterId },
+      select: { name: true },
+    });
+    charterName = charter?.name || "Charter";
+  }
+
+  // Get angler info
+  let anglerName = "Angler";
+  let anglerEmail = "";
+  let anglerPhone = "";
+  let anglerAvatar: string | null = null;
+
+  if (conversation.booking) {
+    if (conversation.booking.userId) {
+      // Registered user
+      const user = await prismaMarket.marketUser.findUnique({
+        where: { id: conversation.booking.userId },
+        select: { name: true, email: true, image: true, phone: true },
+      });
+      anglerName = user?.name || "Angler";
+      anglerEmail = user?.email || "";
+      anglerPhone = user?.phone || "";
+      anglerAvatar = user?.image || null;
+    } else {
+      // Guest booking
+      anglerName =
+        `${conversation.booking.guestFirstName || ""} ${conversation.booking.guestLastName || ""}`.trim() ||
+        "Angler";
+      anglerEmail = conversation.booking.guestEmail || "";
+      anglerPhone = conversation.booking.guestPhone || "";
+      anglerAvatar = null;
+    }
+  }
+
+  // Parse guests JSON
+  let adults = 0;
+  let children = 0;
+  if (conversation.booking?.guests) {
+    try {
+      const guestsData =
+        typeof conversation.booking.guests === "string"
+          ? JSON.parse(conversation.booking.guests)
+          : conversation.booking.guests;
+      adults = guestsData?.adults || 0;
+      children = guestsData?.children || 0;
+    } catch (error) {
+      console.error("Error parsing guests JSON:", error);
+    }
+  }
+
+  return {
+    id: conversation.id,
+    anglerId: conversation.anglerId,
+    charterId: conversation.charterId,
+    ownerId: conversation.ownerId,
+    status: conversation.status,
+    angler: {
+      name: anglerName,
+      email: anglerEmail,
+      phone: anglerPhone,
+      avatar: anglerAvatar,
+    },
+    booking: conversation.booking
+      ? {
+          id: conversation.booking.id,
+          status: conversation.booking.status,
+          charterName,
+          note: conversation.booking.note || undefined,
+          date: conversation.booking.date.toISOString(),
+          days: conversation.booking.days,
+          adults,
+          children,
+          totalPrice: Number(conversation.booking.finalPrice),
+          startTime: conversation.booking.startTime || undefined,
+        }
+      : null,
+    messages: conversation.messages.map(
+      (msg: (typeof conversation.messages)[number]) => ({
+        id: msg.id,
+        senderId: msg.senderId,
+        senderType: msg.senderType,
+        senderName: msg.senderName || "User",
+        content: msg.content,
+        contentType: msg.contentType,
+        systemType: msg.systemType || undefined,
+        status: (msg.status || "SENT") as "SENT" | "DELIVERED" | "READ",
+        createdAt: msg.createdAt.toISOString(),
+      })
+    ),
+  };
 }
 
 // ============================================================================

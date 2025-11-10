@@ -232,17 +232,19 @@ export default async function BookingDetailsPage({
                         year: "numeric",
                       })}
                     </span>
-                    <span>
-                      {" - "}
-                      {new Date(
-                        new Date(booking.date).getTime() +
-                          booking.days * 24 * 60 * 60 * 1000
-                      ).toLocaleDateString("en-MY", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
+                    {booking.days > 1 && (
+                      <span>
+                        {" - "}
+                        {new Date(
+                          new Date(booking.date).getTime() +
+                            booking.days * 24 * 60 * 60 * 1000
+                        ).toLocaleDateString("en-MY", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    )}
                   </p>
                   <p className="text-sm text-slate-900"></p>
                   {booking.days && (
