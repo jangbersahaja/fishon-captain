@@ -49,6 +49,7 @@ model User {
   crewProfile              CrewMember?
   notificationPreferences  NotificationPreferences?
   notifications            Notification[]
+  payouts                  Payout[]                 @relation("OwnerPayouts")
 }
 
 model CaptainProfile {
@@ -635,4 +636,60 @@ enum CrewRole {
   GUIDE
   CLEANER
   OTHER
+}
+
+enum PayoutStatus {
+  PENDING      // Created, awaiting approval
+  APPROVED     // Approved, awaiting processing
+  PROCESSING   // Bank transfer initiated
+  COMPLETED    // Funds transferred successfully
+  FAILED       // Transfer failed
+  CANCELLED    // Cancelled by admin
+}
+
+model Payout {
+  id                String        @id @default(cuid())
+  batchId           String        @unique  // e.g., "2025-W46-abc123"
+
+  // Owner (captain who receives payment)
+  ownerId           String
+  owner             User          @relation("OwnerPayouts", fields: [ownerId], references: [id])
+
+  // Period
+  periodStart       DateTime
+  periodEnd         DateTime
+
+  // Amounts
+  totalEarnings     Decimal       @db.Decimal(10, 2)  // Sum of captainEarnings
+  deductions        Decimal       @db.Decimal(10, 2)  @default(0)  // Chargebacks, fees
+  netPayout         Decimal       @db.Decimal(10, 2)  // totalEarnings - deductions
+
+  // Bookings included
+  bookingIds        String[]      // Array of booking IDs from fishon-market
+  bookingCount      Int
+
+  // Bank details (snapshot at creation)
+  bankName          String
+  accountNumber     String
+  accountHolder     String
+
+  // Status
+  status            PayoutStatus  @default(PENDING)
+
+  // Processing
+  scheduledAt       DateTime?
+  processedAt       DateTime?
+  completedAt       DateTime?
+  failureReason     String?
+  transferReference String?       // Bank transaction ID
+
+  // Audit
+  createdBy         String        // Staff user ID
+  approvedBy        String?       // Admin user ID
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([ownerId, status])
+  @@index([batchId])
+  @@index([status, scheduledAt])
 }

@@ -41,41 +41,62 @@ export async function getRevenueStats(
 ): Promise<RevenueStats> {
   const dateFilter = getPeriodFilter(period);
 
-  const result = await prismaMarket.booking.aggregate({
+  // Fetch all PAID bookings with financial fields for the period
+  const bookings = await prismaMarket.booking.findMany({
     where: {
       status: "PAID",
-      paidAt: dateFilter,
+      ...(dateFilter && { createdAt: dateFilter }),
     },
-    _sum: {
+    select: {
       finalPrice: true,
       platformFee: true,
       captainEarnings: true,
       refundAmount: true,
-    },
-    _count: true,
-    _avg: {
-      finalPrice: true,
+      payoutStatus: true,
     },
   });
 
-  const pendingPayouts = await prismaMarket.booking.aggregate({
-    where: {
-      status: "PAID",
-      payoutStatus: "PENDING",
-    },
-    _sum: {
-      captainEarnings: true,
-    },
-  });
+  type BookingFinancial = (typeof bookings)[0];
+
+  // Calculate revenue metrics
+  const totalRevenue = bookings.reduce(
+    (sum: number, b: BookingFinancial) => sum + Number(b.finalPrice || 0),
+    0
+  );
+  const bookingCount = bookings.length;
+  const avgBookingValue = bookingCount > 0 ? totalRevenue / bookingCount : 0;
+
+  const platformRevenue = bookings.reduce(
+    (sum: number, b: BookingFinancial) => sum + Number(b.platformFee || 0),
+    0
+  );
+
+  const captainRevenue = bookings.reduce(
+    (sum: number, b: BookingFinancial) => sum + Number(b.captainEarnings || 0),
+    0
+  );
+
+  const refundsIssued = bookings.reduce(
+    (sum: number, b: BookingFinancial) => sum + Number(b.refundAmount || 0),
+    0
+  );
+
+  const pendingPayouts = bookings
+    .filter((b: BookingFinancial) => b.payoutStatus === "PENDING")
+    .reduce(
+      (sum: number, b: BookingFinancial) =>
+        sum + Number(b.captainEarnings || 0),
+      0
+    );
 
   return {
-    totalRevenue: Number(result._sum.finalPrice || 0),
-    platformRevenue: Number(result._sum.platformFee || 0),
-    captainRevenue: Number(result._sum.captainEarnings || 0),
-    bookingCount: result._count,
-    avgBookingValue: Number(result._avg.finalPrice || 0),
-    refundsIssued: Number(result._sum.refundAmount || 0),
-    pendingPayouts: Number(pendingPayouts._sum.captainEarnings || 0),
+    totalRevenue,
+    platformRevenue,
+    captainRevenue,
+    bookingCount,
+    avgBookingValue,
+    refundsIssued,
+    pendingPayouts,
   };
 }
 
@@ -239,4 +260,344 @@ function getPeriodFilter(period: TimePeriod): any {
   const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
   return { gte: startDate };
+}
+
+/**
+ * =======================================
+ * PAYOUT MANAGEMENT (Phase 2)
+ * =======================================
+ */
+
+export interface PayoutCalculation {
+  ownerId: string;
+  ownerName: string;
+  ownerEmail: string;
+  totalEarnings: number;
+  bookingCount: number;
+  bookingIds: string[];
+  bankName: string | null;
+  accountNumber: string | null;
+  accountHolder: string | null;
+}
+
+/**
+ * Calculate pending payouts for all captains with PAID bookings
+ */
+export async function calculatePendingPayouts(): Promise<PayoutCalculation[]> {
+  // Fetch all PAID bookings with PENDING payout status
+  const bookings = await prismaMarket.booking.findMany({
+    where: {
+      status: "PAID",
+      payoutStatus: "PENDING",
+      captainEarnings: { not: null },
+    },
+    select: {
+      id: true,
+      charterId: true,
+      captainEarnings: true,
+    },
+  });
+
+  if (bookings.length === 0) return [];
+
+  type PendingBooking = (typeof bookings)[0];
+
+  // Extract unique charter IDs
+  const charterIds = [
+    ...new Set(bookings.map((b: PendingBooking) => b.charterId)),
+  ] as string[];
+
+  // Fetch charter owners from captain DB
+  const charters = await prisma.charter.findMany({
+    where: { id: { in: charterIds } },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          verification: {
+            select: {
+              bankName: true,
+              bankAccountNumber: true,
+              bankAccountHolder: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Build owner lookup
+  const ownerMap = new Map(charters.map((c) => [c.id, c.owner]));
+
+  // Group bookings by owner
+  const ownerBookings = new Map<string, PendingBooking[]>();
+
+  for (const booking of bookings) {
+    const owner = ownerMap.get(booking.charterId);
+    if (!owner) continue;
+
+    if (!ownerBookings.has(owner.id)) {
+      ownerBookings.set(owner.id, []);
+    }
+    ownerBookings.get(owner.id)!.push(booking);
+  }
+
+  // Calculate payouts
+  const payouts: PayoutCalculation[] = [];
+
+  for (const [ownerId, ownerBookingList] of ownerBookings) {
+    const owner = charters.find((c) => c.owner?.id === ownerId)?.owner;
+    if (!owner) continue;
+
+    const totalEarnings = ownerBookingList.reduce(
+      (sum: number, b: PendingBooking) => sum + Number(b.captainEarnings || 0),
+      0
+    );
+
+    payouts.push({
+      ownerId,
+      ownerName: owner.name || "Unknown",
+      ownerEmail: owner.email,
+      totalEarnings,
+      bookingCount: ownerBookingList.length,
+      bookingIds: ownerBookingList.map((b: PendingBooking) => b.id),
+      bankName: owner.verification?.bankName || null,
+      accountNumber: owner.verification?.bankAccountNumber || null,
+      accountHolder: owner.verification?.bankAccountHolder || null,
+    });
+  }
+
+  // Sort by total earnings (highest first)
+  return payouts.sort((a, b) => b.totalEarnings - a.totalEarnings);
+}
+
+/**
+ * Create payout batch from calculations
+ */
+export async function createPayoutBatch(
+  calculations: PayoutCalculation[],
+  createdBy: string,
+  periodStart: Date,
+  periodEnd: Date
+): Promise<{ batchId: string; payouts: any[] }> {
+  const batchId = generateBatchId(periodStart);
+  const payouts = [];
+
+  for (const calc of calculations) {
+    // Validate bank details
+    if (!calc.bankName || !calc.accountNumber || !calc.accountHolder) {
+      throw new Error(`Missing bank details for owner ${calc.ownerId}`);
+    }
+
+    // Create payout record
+    const payout = await prisma.payout.create({
+      data: {
+        batchId: `${batchId}-${calc.ownerId.substring(0, 8)}`,
+        ownerId: calc.ownerId,
+        periodStart,
+        periodEnd,
+        totalEarnings: calc.totalEarnings,
+        deductions: 0,
+        netPayout: calc.totalEarnings,
+        bookingIds: calc.bookingIds,
+        bookingCount: calc.bookingCount,
+        bankName: calc.bankName,
+        accountNumber: calc.accountNumber,
+        accountHolder: calc.accountHolder,
+        status: "PENDING",
+        createdBy,
+      },
+    });
+
+    // Update bookings to reference batch
+    await prismaMarket.booking.updateMany({
+      where: { id: { in: calc.bookingIds } },
+      data: {
+        payoutStatus: "SCHEDULED",
+        payoutBatchId: payout.batchId,
+      },
+    });
+
+    // Audit log
+    const { writeAuditLog } = await import("@/server/audit");
+    await writeAuditLog({
+      actorUserId: createdBy,
+      entityType: "payout",
+      entityId: payout.id,
+      action: "payout_created",
+      after: payout,
+    });
+
+    payouts.push(payout);
+  }
+
+  return { batchId, payouts };
+}
+
+/**
+ * Approve payout (ADMIN only)
+ */
+export async function approvePayout(payoutId: string, approvedBy: string) {
+  const payout = await prisma.payout.findUnique({
+    where: { id: payoutId },
+  });
+
+  if (!payout) {
+    throw new Error("Payout not found");
+  }
+
+  if (payout.status !== "PENDING") {
+    throw new Error(`Cannot approve payout with status ${payout.status}`);
+  }
+
+  // Update payout
+  const updated = await prisma.payout.update({
+    where: { id: payoutId },
+    data: {
+      status: "APPROVED",
+      approvedBy,
+      scheduledAt: new Date(),
+    },
+  });
+
+  // Audit log
+  const { writeAuditLog } = await import("@/server/audit");
+  await writeAuditLog({
+    actorUserId: approvedBy,
+    entityType: "payout",
+    entityId: payoutId,
+    action: "payout_approved",
+    before: payout,
+    after: updated,
+  });
+
+  return updated;
+}
+
+/**
+ * Mark payout as completed
+ */
+export async function markPayoutCompleted(
+  payoutId: string,
+  transferReference: string,
+  completedBy: string
+) {
+  const payout = await prisma.payout.findUnique({
+    where: { id: payoutId },
+  });
+
+  if (!payout) {
+    throw new Error("Payout not found");
+  }
+
+  if (payout.status !== "APPROVED" && payout.status !== "PROCESSING") {
+    throw new Error(`Cannot complete payout with status ${payout.status}`);
+  }
+
+  // Update payout
+  const updated = await prisma.payout.update({
+    where: { id: payoutId },
+    data: {
+      status: "COMPLETED",
+      transferReference,
+      processedAt:
+        payout.status === "APPROVED" ? new Date() : payout.processedAt,
+      completedAt: new Date(),
+    },
+  });
+
+  // Update bookings
+  await prismaMarket.booking.updateMany({
+    where: { id: { in: payout.bookingIds } },
+    data: { payoutStatus: "COMPLETED" },
+  });
+
+  // Audit log
+  const { writeAuditLog } = await import("@/server/audit");
+  await writeAuditLog({
+    actorUserId: completedBy,
+    entityType: "payout",
+    entityId: payoutId,
+    action: "payout_completed",
+    before: payout,
+    after: updated,
+  });
+
+  return updated;
+}
+
+/**
+ * Get all payouts with filters
+ */
+export async function getPayouts(filters?: {
+  status?: string;
+  ownerId?: string;
+  limit?: number;
+}) {
+  const where: any = {};
+
+  if (filters?.status) {
+    where.status = filters.status;
+  }
+
+  if (filters?.ownerId) {
+    where.ownerId = filters.ownerId;
+  }
+
+  return await prisma.payout.findMany({
+    where,
+    include: {
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: filters?.limit,
+  });
+}
+
+/**
+ * Get single payout by ID
+ */
+export async function getPayoutById(id: string) {
+  return await prisma.payout.findUnique({
+    where: { id },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Helper function to generate batch ID from date
+ */
+function generateBatchId(date: Date): string {
+  const year = date.getFullYear();
+  const week = getWeekNumber(date);
+  return `${year}-W${week.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Get ISO week number
+ */
+function getWeekNumber(date: Date): number {
+  const d = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  );
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }

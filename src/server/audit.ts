@@ -17,7 +17,8 @@ export type AuditEntityType =
   | "captainProfile"
   | "policies"
   | "pickup"
-  | "media";
+  | "media"
+  | "payout";
 
 export interface AuditLogInput {
   actorUserId: string;

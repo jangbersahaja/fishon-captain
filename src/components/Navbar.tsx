@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/notifications";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { zIndexClasses } from "@/config/zIndex";
@@ -305,6 +306,7 @@ export default function Navbar() {
         <div className="flex items-center w-full gap-3 md:hidden">
           {logo}
           <div className="flex items-center min-w-0 gap-2 ml-auto">
+            <LanguageSwitcher />
             <div className="flex max-w-[65vw] min-w-0 items-center gap-1 overflow-x-auto rounded-full border border-white/30 bg-white/10 px-2 py-1 shadow-sm">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -345,21 +347,13 @@ export default function Navbar() {
                 </Tooltip>
               )}
             </div>
-            {authenticated && (
-              <>
-                <Tooltip content={displayName}>
-                  <div className="shrink-0">
-                    <ProfileAvatar />
-                  </div>
-                </Tooltip>
-              </>
-            )}
           </div>
         </div>
 
         <div className="items-center justify-between hidden w-full gap-3 md:flex">
           {logo}
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             {authenticated && (
               <>
                 <NotificationBell />

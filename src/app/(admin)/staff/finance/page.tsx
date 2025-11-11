@@ -85,7 +85,7 @@ export default async function StaffFinancePage() {
         >
           <h3 className="font-semibold text-slate-900">Payout Queue</h3>
           <p className="mt-1 text-sm text-slate-600">
-            Process captain earnings (Coming Soon)
+            Process captain earnings and manage payouts
           </p>
         </Link>
 
