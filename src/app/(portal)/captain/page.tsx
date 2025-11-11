@@ -1,13 +1,7 @@
 import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  BarChart3,
-  Edit3,
-  Image as ImageIcon,
-  Ship,
-  Video,
-} from "lucide-react";
+import { Ship } from "lucide-react";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -375,7 +369,7 @@ export default async function CaptainDashboardPage({
 
         {/* Upgrade to Operator Banner */}
         {userRole === "CAPTAIN" && charters.length === 1 && (
-          <div className="p-5 border-2 border-blue-200 shadow-sm rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="hidden p-5 border-2 border-blue-200 shadow-sm rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
               <div className="flex-1">
                 <h3 className="mb-1 text-lg font-semibold text-slate-900">
@@ -466,148 +460,8 @@ export default async function CaptainDashboardPage({
         </div>
       </div>
 
-      <div className="grid gap-6 mt-20 md:grid-cols-2">
-        <div className="flex flex-col p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 font-medium text-slate-700">
-              <Ship className="w-4 h-4" />{" "}
-              {charters.length > 1 ? "Charters" : "Charter"}
-            </h2>
-            <Link
-              href={`/captain/form${charters.length === 1 ? `?editCharterId=${charter.id}` : ""}${
-                adminUserId
-                  ? `${charters.length === 1 ? "&" : "?"}adminUserId=${adminUserId}`
-                  : ""
-              }`}
-              prefetch={false}
-              className="inline-flex items-center gap-1 rounded-full bg-[#ec2227] px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-[#d81e23]"
-            >
-              <Edit3 className="h-3.5 w-3.5" />{" "}
-              {charters.length > 1 ? "Manage" : "Edit"}
-            </Link>
-          </div>
-          {charters.length === 1 ? (
-            <>
-              <p className="mt-2 text-sm font-semibold truncate text-slate-900">
-                {charter.name}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {charter.city}, {charter.state}
-              </p>
-              <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-400">
-                Updated {new Date(charter.updatedAt).toLocaleDateString()}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="mt-2 text-sm font-semibold text-slate-900">
-                {charters.length} Active Charters
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Managing multiple fishing operations
-              </p>
-              <div className="mt-3 space-y-1">
-                {charters.slice(0, 3).map((c) => (
-                  <p key={c.id} className="text-xs truncate text-slate-600">
-                    • {c.name}
-                  </p>
-                ))}
-                {charters.length > 3 && (
-                  <p className="text-xs text-slate-400">
-                    +{charters.length - 3} more
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-        <div className="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-          <h2 className="flex items-center gap-2 font-medium text-slate-700">
-            <ImageIcon className="w-4 h-4" /> Media
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {photoCount} photos · {videoCount} videos
-          </p>
-          {charters.length > 1 && (
-            <p className="mt-1 text-xs text-slate-500">Across all charters</p>
-          )}
-          <Link
-            href={`/captain/form${charters.length === 1 ? `?editCharterId=${charter.id}` : ""}${
-              adminUserId
-                ? `${charters.length === 1 ? "&" : "?"}adminUserId=${adminUserId}`
-                : ""
-            }${charters.length === 1 ? "#media" : ""}`}
-            prefetch={false}
-            className="mt-3 inline-flex text-xs font-semibold text-[#ec2227] hover:underline"
-          >
-            Manage media
-          </Link>
-        </div>
-        <div className="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-          <h2 className="flex items-center gap-2 font-medium text-slate-700">
-            <Video className="w-4 h-4" /> Trips
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {allTrips.length} active trip{allTrips.length !== 1 ? "s" : ""}
-          </p>
-          {charters.length > 1 && (
-            <p className="mt-1 text-xs text-slate-500">
-              Across {charters.length} charters
-            </p>
-          )}
-          <Link
-            href={`/captain/form${charters.length === 1 ? `?editCharterId=${charter.id}` : ""}${
-              adminUserId
-                ? `${charters.length === 1 ? "&" : "?"}adminUserId=${adminUserId}`
-                : ""
-            }${charters.length === 1 ? "#trips" : ""}`}
-            prefetch={false}
-            className="mt-3 inline-flex text-xs font-semibold text-[#ec2227] hover:underline"
-          >
-            {charters.length === 1 ? "Edit trips" : "Manage trips"}
-          </Link>
-        </div>
-        <div className="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-          <h2 className="flex items-center gap-2 font-medium text-slate-700">
-            <BarChart3 className="w-4 h-4" /> Performance
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {totalHours} total trip hours
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Avg base price RM {avgPrice.toFixed(0)}
-          </p>
-        </div>
-      </div>
-
-      {/* NotificationCenter already shown at top; legacy reminders removed */}
-
-      <div className="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-        <h2 className="text-sm font-semibold text-slate-700">
-          Upcoming features
-        </h2>
-        <ul className="grid gap-3 mt-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            "Bookings",
-            "Calendar",
-            "Reviews",
-            "Analytics",
-            "Pricing",
-            "Messages",
-            "Angler media",
-          ].map((label) => (
-            <li
-              key={label}
-              className="flex items-center gap-2 px-3 py-2 border border-dashed rounded-lg border-slate-300 text-slate-500"
-            >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#ec2227]" />
-              {label}
-              <span className="ml-auto text-[10px] uppercase tracking-wide text-slate-400">
-                Soon
-              </span>
-            </li>
-          ))}
-        </ul>
+      <div className="flex items-center justify-center p-5 mt-20 text-gray-500 bg-gray-100 border-2 border-gray-200 border-dashed rounded-2xl h-100">
+        <span className="">Captain Dashboard</span>
       </div>
     </div>
   );
