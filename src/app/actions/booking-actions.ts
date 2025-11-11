@@ -57,13 +57,12 @@ export async function approveBooking(bookingId: string) {
       };
     }
 
-    // Update booking status
+    // Update booking status to APPROVED
     const updatedBooking = await prismaMarket.booking.update({
       where: { id: bookingId },
       data: {
-        status: "PAID",
-        approvedAt: new Date(),
-        approvedByUserId: userId,
+        status: "APPROVED",
+        captainDecisionAt: new Date(),
       },
     });
 

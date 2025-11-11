@@ -737,7 +737,7 @@ export default async function StaffRegistrationDetailPage({
                           </div>
                           <div>
                             <span className="text-slate-500">Price:</span>{" "}
-                            {trip.price !== undefined ? (
+                            {trip.price ? (
                               <span className="font-medium text-emerald-700">
                                 RM {trip.price.toFixed(2)}
                               </span>

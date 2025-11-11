@@ -8,6 +8,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  CreditCard,
   Mail,
   MapPin,
   Phone,
@@ -481,6 +482,46 @@ export default async function BookingDetailsPage({
               )}
             </div>
           </div>
+
+          {/* Payment Information */}
+          {(booking.status === "PAID" || booking.status === "COMPLETED") &&
+            booking.paymentTransactionId && (
+              <div className="p-6 border border-green-200 rounded-2xl bg-green-50">
+                <h2 className="mb-4 text-base font-semibold text-green-900">
+                  Payment Verified
+                </h2>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <CreditCard className="w-4 h-4 mt-1 text-green-600" />
+                    <div className="flex-1">
+                      <p className="font-medium text-green-800">
+                        Payment Method
+                      </p>
+                      <p className="text-green-700">
+                        {booking.paymentMethod || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 mt-1 text-green-600" />
+                    <div className="flex-1">
+                      <p className="font-medium text-green-800">
+                        Transaction ID
+                      </p>
+                      <p className="font-mono text-xs text-green-700 break-all">
+                        {booking.paymentTransactionId}
+                      </p>
+                    </div>
+                  </div>
+                  {booking.paymentNote && (
+                    <div className="pt-2 border-t border-green-200">
+                      <p className="font-medium text-green-800">Payment Note</p>
+                      <p className="text-green-700">{booking.paymentNote}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
         </div>
       </div>
     </div>
