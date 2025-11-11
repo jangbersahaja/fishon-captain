@@ -96,7 +96,7 @@ export default function ConversationsClient({
       console.log("[Pusher] Successfully subscribed to", channelName);
     });
 
-    channel.bind("pusher:subscription_error", (error: any) => {
+    channel.bind("pusher:subscription_error", (error: unknown) => {
       console.error("[Pusher] Subscription error:", error);
     });
 
