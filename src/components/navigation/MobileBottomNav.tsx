@@ -3,9 +3,9 @@
 import {
   Calendar,
   LayoutDashboard,
+  MessageCircle,
   MoreHorizontal,
   Ship,
-  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,8 +39,8 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
       icon: <LayoutDashboard className="w-6 h-6" />,
     },
     {
-      href: "/captain/charter",
-      label: "Charter",
+      href: "/captain/charters",
+      label: "Charters",
       icon: <Ship className="w-6 h-6" />,
     },
     {
@@ -49,9 +49,9 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
       icon: <Calendar className="w-6 h-6" />,
     },
     {
-      href: "/captain/reviews",
-      label: "Reviews",
-      icon: <Star className="w-6 h-6" />,
+      href: "/captain/messages",
+      label: "Messages",
+      icon: <MessageCircle className="w-6 h-6" />,
     },
     {
       label: "More",

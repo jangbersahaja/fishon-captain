@@ -37,7 +37,7 @@ function NotificationsContent() {
       : notifications;
 
   return (
-    <div className="px-4 py-8 mx-auto space-y-8 sm:px-6 max-w-7xl">
+    <div className="px-4 py-8 mx-auto space-y-8 sm:px-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold" id="notifications-heading">

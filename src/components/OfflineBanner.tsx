@@ -28,14 +28,9 @@ export default function OfflineBanner() {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed inset-x-0 top-0 ${zIndexClasses.offlineBanner} flex items-center justify-between gap-4 px-4 py-2 text-xs font-medium shadow-md ${feedbackTokens.warning.solid}`}
+      className={`fixed inset-x-0 top-0 ${zIndexClasses.offlineBanner} flex items-center justify-center gap-4 px-4 py-2 text-xs font-medium shadow-md ${feedbackTokens.warning.solid}`}
     >
-      <span className="truncate">
-        Offline.{" "}
-        {queued > 0
-          ? `${queued} pending action${queued === 1 ? "" : "s"}.`
-          : "Changes queued."}
-      </span>
+      <span className="truncate">You are offline.</span>
       <div className="flex items-center gap-2">
         {queued > 0 && (
           <button

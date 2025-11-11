@@ -1,13 +1,7 @@
 import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  BarChart3,
-  Edit3,
-  Image as ImageIcon,
-  Ship,
-  Video,
-} from "lucide-react";
+import { Ship } from "lucide-react";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -42,7 +36,6 @@ async function getCharter(adminUserId?: string) {
       id: true,
       displayName: true,
       charters: {
-        take: 1,
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -60,15 +53,17 @@ async function getCharter(adminUserId?: string) {
   if (!typed || !typed.charters || !typed.charters.length) {
     redirect("/auth?next=/captain/form");
   }
-  const charter = typed.charters[0];
-  // All charter.media are photos now - no need to filter
-  const photoCount = charter.media.length;
-  const videoCount = profile ? await prisma.captainVideo.count({
-    where: { captainId: profile.id },
-  }) : 0;
+  const charters = typed.charters;
+  // Calculate total media across all charters
+  const photoCount = charters.reduce((sum, c) => sum + c.media.length, 0);
+  const videoCount = profile
+    ? await prisma.captainVideo.count({
+        where: { captainId: profile.id },
+      })
+    : 0;
   return {
     profile: typed,
-    charter,
+    charters,
     userId: effectiveUserId,
     photoCount,
     videoCount,
@@ -134,17 +129,24 @@ export default async function CaptainDashboardPage({
     redirect("/staff");
   }
 
-  const { profile, charter, userId, photoCount, videoCount } = await getCharter(
-    adminUserId
-  );
+  const { profile, charters, userId, photoCount, videoCount } =
+    await getCharter(adminUserId);
   const verification = await getVerification(userId);
+  const charter = charters[0]; // Primary charter for now (can add selector later)
+
+  // Get user's role for upgrade banner
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  const userRole = user?.role;
 
   // Get target user info for admin banner
   let targetUserInfo = null;
   if (adminUserId && role === "ADMIN") {
     targetUserInfo = await prisma.user.findUnique({
       where: { id: adminUserId },
-      select: { id: true, email: true, name: true },
+      select: { id: true, email: true, name: true, role: true },
     });
   }
   const govFront = !!verification?.idFront;
@@ -176,20 +178,20 @@ export default async function CaptainDashboardPage({
             badgeStatus(verification?.idBack) === "validated"
             ? "validated"
             : badgeStatus(verification?.idFront) === "processing" ||
-              badgeStatus(verification?.idBack) === "processing"
-            ? "processing"
-            : "processing"
+                badgeStatus(verification?.idBack) === "processing"
+              ? "processing"
+              : "processing"
           : govFront || govBack
-          ? "partial"
-          : "missing",
+            ? "partial"
+            : "missing",
       detail:
         !govFront && !govBack
           ? "Both sides required"
           : govFront && !govBack
-          ? "Back side missing"
-          : !govFront && govBack
-          ? "Front side missing"
-          : undefined,
+            ? "Back side missing"
+            : !govFront && govBack
+              ? "Front side missing"
+              : undefined,
       href: "/captain/verification",
     },
   ];
@@ -215,8 +217,10 @@ export default async function CaptainDashboardPage({
       href: "/captain/verification",
     },
   ];
+  // Calculate stats across all charters
+  const allTrips = charters.flatMap((c) => c.trips);
   const { totalHours, avgPrice } = computeTripStats(
-    charter.trips.map((t: { durationHours: number; price: unknown }) => ({
+    allTrips.map((t: { durationHours: number; price: unknown }) => ({
       durationHours: t.durationHours,
       price: t.price,
     }))
@@ -236,7 +240,7 @@ export default async function CaptainDashboardPage({
     const missingList = missingDocs.map((d) => d.label).join(", ");
     const processingList = processingDocs.map((d) => d.label).join(", ");
     return (
-      <div className="mt-2 mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+      <div className="p-4 mt-2 mb-4 text-sm text-red-800 border border-red-200 rounded-2xl bg-red-50">
         <p className="font-semibold text-red-900">
           Your charter is currently offline.
         </p>
@@ -272,7 +276,7 @@ export default async function CaptainDashboardPage({
   return (
     <div className="px-6 py-8 space-y-8">
       {targetUserInfo && (
-        <div className="rounded-lg border-2 border-orange-200 bg-orange-50 p-4">
+        <div className="p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-orange-800">
@@ -286,7 +290,7 @@ export default async function CaptainDashboardPage({
             </div>
             <a
               href="/staff"
-              className="rounded-full bg-orange-600 px-3 py-1 text-xs font-semibold text-white hover:bg-orange-700"
+              className="px-3 py-1 text-xs font-semibold text-white bg-orange-600 rounded-full hover:bg-orange-700"
             >
               Exit Admin Mode
             </a>
@@ -306,6 +310,97 @@ export default async function CaptainDashboardPage({
               : "Manage your charter and documents here."}
           </p>
         </div>
+
+        {/* Multiple Charters Support */}
+        {charters.length > 1 && (
+          <div className="p-4 bg-white border shadow-sm rounded-2xl border-slate-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Your Charters ({charters.length})
+              </h3>
+              <Link
+                href="/captain/form"
+                className="inline-flex items-center gap-1 rounded-full bg-[#ec2227] px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-[#d81e23]"
+              >
+                <Ship className="w-3 h-3" /> Add Charter
+              </Link>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {charters.map((c, idx) => (
+                <div
+                  key={c.id}
+                  className={`rounded-xl border p-3 ${
+                    idx === 0
+                      ? "border-[#ec2227] bg-red-50"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate text-slate-900">
+                        {c.name}
+                      </p>
+                      <p className="text-xs truncate text-slate-500">
+                        {c.city}, {c.state}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {c.trips.length} trips · {c.media.length} media
+                      </p>
+                    </div>
+                    {idx === 0 && (
+                      <span className="text-[10px] font-semibold text-[#ec2227] uppercase">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <Link
+                    href={`/captain/form?editCharterId=${c.id}${
+                      adminUserId ? `&adminUserId=${adminUserId}` : ""
+                    }`}
+                    className="mt-2 inline-flex text-xs font-medium text-slate-600 hover:text-[#ec2227]"
+                  >
+                    Manage →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade to Operator Banner */}
+        {userRole === "CAPTAIN" && charters.length === 1 && (
+          <div className="hidden p-5 border-2 border-blue-200 shadow-sm rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+              <div className="flex-1">
+                <h3 className="mb-1 text-lg font-semibold text-slate-900">
+                  🚀 Upgrade to Operator
+                </h3>
+                <p className="mb-2 text-sm text-slate-600">
+                  Manage multiple charters, add crew members, and scale your
+                  fishing business.
+                </p>
+                <ul className="space-y-1 text-xs text-slate-600">
+                  <li>✓ Unlimited charter listings</li>
+                  <li>✓ Crew management system</li>
+                  <li>✓ Advanced analytics & reporting</li>
+                  <li>✓ Priority support</li>
+                </ul>
+              </div>
+              <div className="sm:text-right">
+                <Link
+                  href="/captain/upgrade"
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:from-blue-700 hover:to-indigo-700"
+                >
+                  Upgrade Now
+                </Link>
+                <p className="mt-2 text-xs text-slate-500">
+                  Contact support for details
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2">
           {renderOfflineBanner()}
           {/* Optional documents section */}
@@ -321,34 +416,34 @@ export default async function CaptainDashboardPage({
                     item.status === "validated"
                       ? "border-slate-200 bg-white text-slate-400"
                       : item.status === "processing"
-                      ? "border-amber-200 bg-amber-50 text-amber-700"
-                      : "border-slate-200 bg-white text-slate-500"
+                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                        : "border-slate-200 bg-white text-slate-500"
                   }`}
                 >
                   <span
-                    className="inline-block h-2 w-2 rounded-full mr-2"
+                    className="inline-block w-2 h-2 mr-2 rounded-full"
                     style={{
                       backgroundColor:
                         item.status === "validated"
                           ? "#22c55e"
                           : item.status === "processing"
-                          ? "#fbbf24"
-                          : "#cbd5e1",
+                            ? "#fbbf24"
+                            : "#cbd5e1",
                     }}
                   />
                   <span className="flex-1 truncate">{item.label}</span>
                   {item.status === "validated" && (
-                    <span className="text-xs text-green-500 font-medium ml-2">
+                    <span className="ml-2 text-xs font-medium text-green-500">
                       Validated
                     </span>
                   )}
                   {item.status === "processing" && (
-                    <span className="text-xs text-amber-600 font-medium ml-2">
+                    <span className="ml-2 text-xs font-medium text-amber-600">
                       Processing
                     </span>
                   )}
                   {(item.status === "missing" || item.status === "partial") && (
-                    <span className="text-xs text-slate-400 ml-2">
+                    <span className="ml-2 text-xs text-slate-400">
                       Not uploaded
                     </span>
                   )}
@@ -365,107 +460,8 @@ export default async function CaptainDashboardPage({
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 mt-20">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-medium text-slate-700 flex items-center gap-2">
-              <Ship className="h-4 w-4" /> Charter
-            </h2>
-            <Link
-              href={`/captain/form?editCharterId=${charter.id}${
-                adminUserId ? `&adminUserId=${adminUserId}` : ""
-              }`}
-              prefetch={false}
-              className="inline-flex items-center gap-1 rounded-full bg-[#ec2227] px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-[#d81e23]"
-            >
-              <Edit3 className="h-3.5 w-3.5" /> Edit
-            </Link>
-          </div>
-          <p className="mt-2 text-sm font-semibold text-slate-900 truncate">
-            {charter.name}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {charter.city}, {charter.state}
-          </p>
-          <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-400">
-            Updated {new Date(charter.updatedAt).toLocaleDateString()}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="font-medium text-slate-700 flex items-center gap-2">
-            <ImageIcon className="h-4 w-4" /> Media
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {photoCount} photos · {videoCount} videos
-          </p>
-          <Link
-            href={`/captain/form?editCharterId=${charter.id}${
-              adminUserId ? `&adminUserId=${adminUserId}` : ""
-            }#media`}
-            prefetch={false}
-            className="mt-3 inline-flex text-xs font-semibold text-[#ec2227] hover:underline"
-          >
-            Manage media
-          </Link>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="font-medium text-slate-700 flex items-center gap-2">
-            <Video className="h-4 w-4" /> Trips
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {charter.trips.length} active trip(s)
-          </p>
-          <Link
-            href={`/captain/form?editCharterId=${charter.id}${
-              adminUserId ? `&adminUserId=${adminUserId}` : ""
-            }#trips`}
-            prefetch={false}
-            className="mt-3 inline-flex text-xs font-semibold text-[#ec2227] hover:underline"
-          >
-            Edit trips
-          </Link>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="font-medium text-slate-700 flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" /> Performance
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {totalHours} total trip hours
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Avg base price RM {avgPrice.toFixed(0)}
-          </p>
-        </div>
-      </div>
-
-      {/* NotificationCenter already shown at top; legacy reminders removed */}
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700">
-          Upcoming features
-        </h2>
-        <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          {[
-            "Bookings",
-            "Calendar",
-            "Reviews",
-            "Analytics",
-            "Pricing",
-            "Messages",
-            "Angler media",
-          ].map((label) => (
-            <li
-              key={label}
-              className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-slate-500"
-            >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#ec2227]" />
-              {label}
-              <span className="ml-auto text-[10px] uppercase tracking-wide text-slate-400">
-                Soon
-              </span>
-            </li>
-          ))}
-        </ul>
+      <div className="flex items-center justify-center p-5 mt-20 text-gray-500 bg-gray-100 border-2 border-gray-200 border-dashed rounded-2xl h-100">
+        <span className="">Captain Dashboard</span>
       </div>
     </div>
   );

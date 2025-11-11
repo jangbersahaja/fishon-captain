@@ -1,14 +1,18 @@
 "use client";
 import {
+  BarChart3,
   Bell,
   Calendar,
   IdCard,
   Image as ImageIcon,
   LayoutDashboard,
   LifeBuoy,
+  MessageCircle,
   Settings as SettingsIcon,
   Ship,
   Star,
+  User,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -33,7 +37,9 @@ const navSections: NavSection[] = [
   {
     label: "Business",
     links: [
-      { href: "/captain/charter", label: "Charter", Icon: Ship },
+      { href: "/captain/charters", label: "Charters", Icon: Ship },
+      { href: "/captain/boats", label: "Boats", Icon: Ship },
+      { href: "/captain/trips", label: "Trips", Icon: Calendar },
       { href: "/captain/bookings", label: "Bookings", Icon: Calendar },
       { href: "/captain/bookings/calendar", label: "Calendar", Icon: Calendar },
       { href: "/captain/reviews", label: "Reviews", Icon: Star },
@@ -42,7 +48,14 @@ const navSections: NavSection[] = [
   {
     label: "Communication",
     links: [
+      { href: "/captain/messages", label: "Messages", Icon: MessageCircle },
       { href: "/captain/notifications", label: "Notifications", Icon: Bell },
+    ],
+  },
+  {
+    label: "Analytics",
+    links: [
+      { href: "/captain/analytics", label: "Analytics", Icon: BarChart3 },
     ],
   },
   {
@@ -50,6 +63,13 @@ const navSections: NavSection[] = [
     links: [
       { href: "/captain/media", label: "Media", Icon: ImageIcon },
       { href: "/captain/documents", label: "Documents", Icon: IdCard },
+    ],
+  },
+  {
+    label: "Team",
+    links: [
+      { href: "/captain/profile", label: "Profile", Icon: User },
+      { href: "/captain/crew", label: "Crew", Icon: Users },
     ],
   },
   {

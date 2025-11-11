@@ -257,7 +257,7 @@ export default function CaptainDocumentsPage() {
   }
 
   return (
-    <div className="px-6 py-8 pb-20 mx-auto max-w-7xl">
+    <div className="px-6 py-8 pb-20 mx-auto">
       {/* Header Section */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">

@@ -819,28 +819,44 @@ ALTER TABLE "CaptainVideo" DROP COLUMN "captainId";
 
 **Future Phases** (Deferred - UI Development):
 
-### Phase 5: Captain Profile Management UI
+### Phase 5: Captain Profile Management UI ✅ COMPLETE
 
-- [ ] Create `/captain/profile` page
-- [ ] Add profile edit form (displayName, bio, phone, experience)
-- [ ] Add avatar upload
-- [ ] Add certifications/licenses section
-- [ ] Create API: `PATCH /api/captain/profile`
+- [x] Create `/captain/profile` page
+- [x] Add profile edit form (displayName, bio, phone, experience, firstName, lastName)
+- [x] Add avatar upload
+- [x] Create API: `PATCH /api/captain/profile`
+- [ ] Add certifications/licenses section (future enhancement)
 
-### Phase 6: Crew Management UI
+### Phase 6: Crew Management UI ✅ COMPLETE
 
-- [ ] Create `/captain/crew` page
-- [ ] Build crew list table with sorting/filtering
-- [ ] Create "Add Crew" modal/form
-- [ ] Create APIs for crew CRUD operations
-- [ ] Add crew assignment to charter flow
+- [x] Create `/captain/crew` page
+- [x] Build crew list cards with sorting/display
+- [x] Create "Add Crew" dialog/form
+- [x] Create APIs for crew CRUD operations (POST, PATCH, DELETE)
+- [x] Add crew assignment to charter flow
+- [x] Add avatar upload for crew members
 
-### Phase 7: OPERATOR Role Support
+### Phase 7: OPERATOR Role Support ✅ COMPLETE
 
-- [ ] Update dashboard for multiple charters
-- [ ] Add charter switcher in navbar
-- [ ] Create "Upgrade to Operator" flow
-- [ ] Update onboarding to choose role
+- [x] Update dashboard for multiple charters (shows all charters, aggregate stats)
+- [x] Add charter switcher in dashboard (card grid for multiple charters)
+- [x] Create "Upgrade to Operator" flow (`/captain/upgrade` page)
+- [x] Add charter limit validation (CAPTAIN: 1, OPERATOR: unlimited)
+- [x] Add upgrade banner for CAPTAIN users with 1 charter
+- [ ] Update onboarding to choose role (future enhancement)
+
+### Phase 7.5: Boat & Trip Management UI ✅ COMPLETE
+
+- [x] Create `/captain/boats` page
+- [x] Build boat list/management interface
+- [x] Create "Add/Edit Boat" form (BoatDialog)
+- [x] Create APIs for boat CRUD operations (POST /api/captain/boats, PATCH/DELETE /api/captain/boats/:id)
+- [x] Create `/captain/trips` page
+- [x] Build trip list/management interface
+- [x] Create "Add/Edit Trip" form (TripDialog with species, techniques, start times)
+- [x] Create APIs for trip CRUD operations (POST /api/captain/trips, PATCH/DELETE /api/captain/trips/:id)
+- [x] Link boats to charters (via boatId in Charter model)
+- [x] Link trips to charters (via charterId in Trip model)
 
 ### Phase 8: fishon-market Integration
 

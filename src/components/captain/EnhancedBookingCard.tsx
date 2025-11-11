@@ -199,17 +199,19 @@ export function EnhancedBookingCard({
                         year: "numeric",
                       })}
                     </span>
-                    <span>
-                      {" - "}
-                      {new Date(
-                        new Date(booking.date).getTime() +
-                          booking.days * 24 * 60 * 60 * 1000
-                      ).toLocaleDateString("en-MY", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
+                    {booking.days > 1 && (
+                      <span>
+                        {" - "}
+                        {new Date(
+                          new Date(booking.date).getTime() +
+                            booking.days * 24 * 60 * 60 * 1000
+                        ).toLocaleDateString("en-MY", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    )}
                   </div>
                   <div
                     className={`text-slate-600 ${isCompact ? "text-[10px]" : "text-xs"}`}

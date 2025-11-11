@@ -96,7 +96,7 @@ export default async function CaptainBookingsPage() {
   const priorityBookings = getPriorityBookings(bookings);
 
   return (
-    <div className="px-4 py-8 mx-auto space-y-8 sm:px-6 max-w-7xl">
+    <div className="px-4 py-8 mx-auto space-y-8 sm:px-6">
       <BookingPageRefresher />
 
       {/* Header */}

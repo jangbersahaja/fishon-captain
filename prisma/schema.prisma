@@ -8,120 +8,120 @@ datasource db {
 }
 
 model User {
-  id                       String               @id @default(cuid())
-  email                    String               @unique
+  id                       String                   @id @default(cuid())
+  email                    String                   @unique
   name                     String?
-  firstName                String?              @map("firstName")
-  lastName                 String?              @map("lastName")
+  firstName                String?                  @map("firstName")
+  lastName                 String?                  @map("lastName")
   image                    String?
   passwordHash             String?
   emailVerified            DateTime?
-  createdAt                DateTime             @default(now())
-  updatedAt                DateTime             @updatedAt
-  role                     Role                 @default(CAPTAIN)
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  role                     Role                     @default(CAPTAIN)
   emailVerificationExpires DateTime?
-  emailVerificationToken   String?              @unique
+  emailVerificationToken   String?                  @unique
   lockedUntil              DateTime?
-  loginAttempts            Int                  @default(0)
+  loginAttempts            Int                      @default(0)
   resetPasswordExpires     DateTime?
-  resetPasswordToken       String?              @unique
+  resetPasswordToken       String?                  @unique
   lastOtpSentAt            DateTime?
-  otpAttempts              Int                  @default(0)
+  otpAttempts              Int                      @default(0)
   otpCode                  String?
   otpExpires               DateTime?
   otpPurpose               String?
-  forcePasswordReset       Boolean              @default(false)
-  passwordMfaBackupCodes   String[]             @default([])
-  passwordMfaEnabled       Boolean              @default(false)
+  forcePasswordReset       Boolean                  @default(false)
+  passwordMfaBackupCodes   String[]                 @default([])
+  passwordMfaEnabled       Boolean                  @default(false)
   passwordMfaMethod        MfaMethod?
   passwordMfaSecret        String?
   passwordMfaVerifiedAt    DateTime?
   accounts                 Account[]
   captainProfile           CaptainProfile?
   verification             CaptainVerification?
+  ownedVideos              CaptainVideo[]           @relation("OwnedVideos")
+  ownedCharters            Charter[]                @relation("CharterOwner")
   drafts                   CharterDraft[]
-  notesAuthored            DraftNote[]          @relation("UserDraftNotes")
+  ownedMedia               CharterMedia[]           @relation("OwnedMedia")
+  notesAuthored            DraftNote[]              @relation("UserDraftNotes")
   PasswordHistory          PasswordHistory[]
   sessions                 Session[]
-  notifications            Notification[]
-  notificationPreferences  NotificationPreferences?
-  // New ownership relations
-  ownedCharters            Charter[]            @relation("CharterOwner")
-  ownedMedia               CharterMedia[]       @relation("OwnedMedia")
-  ownedVideos              CaptainVideo[]       @relation("OwnedVideos")
   crewProfile              CrewMember?
+  notificationPreferences  NotificationPreferences?
+  notifications            Notification[]
 }
 
 model CaptainProfile {
-  id            String         @id @default(cuid())
-  userId        String         @unique
-  firstName     String
-  lastName      String
-  displayName   String
-  phone         String
-  bio           String
-  experienceYrs Int            @default(0)
-  avatarUrl     String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  user          User           @relation(fields: [userId], references: [id])
-  charters      Charter[]
-  media         CharterMedia[]
-  videos        CaptainVideo[]
+  id                 String           @id @default(cuid())
+  userId             String           @unique
+  firstName          String
+  lastName           String
+  displayName        String
+  phone              String
+  bio                String
+  experienceYrs      Int              @default(0)
+  avatarUrl          String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  backupPhone        String?
+  user               User             @relation(fields: [userId], references: [id])
+  videos             CaptainVideo[]
+  charters           Charter[]
+  media              CharterMedia[]
   charterAssignments CharterCaptain[]
 }
 
 model Charter {
-  id            String             @id @default(cuid())
-  ownerId       String?            // NEW: User who owns this charter
-  captainId     String             // DEPRECATED: Keep for migration
-  charterType   String
-  name          String
-  state         String
-  city          String
-  startingPoint String
-  postcode      String
-  latitude      Decimal?           @db.Decimal(10, 7)
-  longitude     Decimal?           @db.Decimal(10, 7)
-  description   String
-  pricingPlan   CharterPricingPlan @default(BASIC)
-  boatId        String?            // Boat used for this charter (1:many - multiple charters can share same boat)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  isActive      Boolean            @default(true)
-  backupPhone   String?
-  owner         User?              @relation("CharterOwner", fields: [ownerId], references: [id])
-  boat          Boat?              @relation(fields: [boatId], references: [id])
-  captain       CaptainProfile     @relation(fields: [captainId], references: [id])
-  amenities     CharterAmenity[]
-  draft         CharterDraft?
-  features      CharterFeature[]
-  media         CharterMedia[]
-  pickup        Pickup?
-  policies      Policies?
-  trips         Trip[]
-  // Deprecated: Use charterVideos junction table
-  videos        CaptainVideo[]     @relation(name: "LegacyCharterVideos")
-  // New many-to-many relationship
-  charterVideos CharterVideo[]
-  schedule      CharterSchedule?
-  unavailability CharterUnavailability[]
-  // NEW: Staff assignments
+  id                 String                  @id @default(cuid())
+  captainId          String
+  charterType        String
+  name               String
+  state              String
+  city               String
+  startingPoint      String
+  postcode           String
+  latitude           Decimal?                @db.Decimal(10, 7)
+  longitude          Decimal?                @db.Decimal(10, 7)
+  description        String
+  pricingPlan        CharterPricingPlan      @default(BASIC)
+  boatId             String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  isActive           Boolean                 @default(true)
+  backupPhone        String?
+  ownerId            String?
+  videos             CaptainVideo[]          @relation("LegacyCharterVideos")
+  boat               Boat?                   @relation(fields: [boatId], references: [id])
+  captain            CaptainProfile          @relation(fields: [captainId], references: [id])
+  owner              User?                   @relation("CharterOwner", fields: [ownerId], references: [id])
+  amenities          CharterAmenity[]
+  draft              CharterDraft?
+  features           CharterFeature[]
+  media              CharterMedia[]
+  charterVideos      CharterVideo[]
+  pickup             Pickup?
+  policies           Policies?
+  trips              Trip[]
   captainAssignments CharterCaptain[]
   crewAssignments    CharterCrew[]
+  schedule           CharterSchedule?
+  unavailability     CharterUnavailability[]
 
   @@index([ownerId])
 }
 
 model Boat {
-  id        String    @id @default(cuid())
+  id        String      @id @default(cuid())
   name      String
   type      String
   lengthFt  Int
   capacity  Int
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  charters  Charter[] // One boat can be used by multiple charters
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  imageUrl  String?
+  features  String[]    @default([])
+  BoatImage BoatImage[]
+  charters  Charter[]
 }
 
 model Pickup {
@@ -168,45 +168,30 @@ model CharterFeature {
   charter   Charter @relation(fields: [charterId], references: [id])
 }
 
-// Charter operational schedule configuration
 model CharterSchedule {
-  id        String       @id @default(cuid())
-  charterId String       @unique
-  charter   Charter      @relation(fields: [charterId], references: [id], onDelete: Cascade)
-  
-  // Operational pattern
-  scheduleType ScheduleType @default(EVERYDAY)
-  
-  // Custom days (used when scheduleType = CUSTOM)
-  // Array of day indexes: 0=Sunday, 1=Monday, ..., 6=Saturday
-  operationalDays Int[] @default([])
-  
-  // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+  id              String       @id @default(cuid())
+  charterId       String       @unique
+  scheduleType    ScheduleType @default(EVERYDAY)
+  operationalDays Int[]        @default([])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  charter         Charter      @relation(fields: [charterId], references: [id], onDelete: Cascade)
+
   @@index([charterId])
   @@map("charter_schedules")
 }
 
-// Unavailable date ranges
 model CharterUnavailability {
   id        String   @id @default(cuid())
   charterId String
-  charter   Charter  @relation(fields: [charterId], references: [id], onDelete: Cascade)
-  
-  // Date range
   startDate DateTime
   endDate   DateTime
-  
-  // Optional reason
   reason    String?
-  
-  // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String
-  
+  charter   Charter  @relation(fields: [charterId], references: [id], onDelete: Cascade)
+
   @@index([charterId, startDate, endDate])
   @@index([charterId])
   @@map("charter_unavailability")
@@ -215,7 +200,6 @@ model CharterUnavailability {
 model CharterMedia {
   id         String          @id @default(cuid())
   charterId  String?
-  ownerId    String?         // NEW: User who uploaded
   url        String
   storageKey String
   mimeType   String?
@@ -224,10 +208,11 @@ model CharterMedia {
   height     Int?
   sortOrder  Int             @default(0)
   createdAt  DateTime        @default(now())
-  captainId  String?         // DEPRECATED: Keep for migration
-  owner      User?           @relation("OwnedMedia", fields: [ownerId], references: [id])
+  captainId  String?
+  ownerId    String?
   captain    CaptainProfile? @relation(fields: [captainId], references: [id])
   charter    Charter?        @relation(fields: [charterId], references: [id])
+  owner      User?           @relation("OwnedMedia", fields: [ownerId], references: [id])
 
   @@index([ownerId, createdAt])
   @@index([captainId, createdAt])
@@ -328,25 +313,24 @@ model TripTechnique {
 }
 
 model CaptainVerification {
-  id               String             @id @default(cuid())
-  userId           String             @unique
-  status           VerificationStatus @default(PENDING)
-  idFront          Json?
-  idBack           Json?
-  captainLicense   Json?
-  boatRegistration Json?
-  fishingLicense   Json?
-  additional       Json               @default("[]")
-  // Banking information
-  bankName          String?
-  bankAccountNumber String?
+  id                String             @id @default(cuid())
+  userId            String             @unique
+  status            VerificationStatus @default(PENDING)
+  idFront           Json?
+  idBack            Json?
+  captainLicense    Json?
+  boatRegistration  Json?
+  fishingLicense    Json?
+  additional        Json               @default("[]")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   bankAccountHolder String?
-  bankSwiftCode     String?
+  bankAccountNumber String?
   bankBranch        String?
+  bankName          String?
   bankStatement     Json?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  user             User               @relation(fields: [userId], references: [id])
+  bankSwiftCode     String?
+  user              User               @relation(fields: [userId], references: [id])
 }
 
 model DraftNote {
@@ -385,10 +369,6 @@ model AuditLog {
 /// --------------------------------------------------
 model CaptainVideo {
   id                   String          @id @default(cuid())
-  ownerId              String?         // NEW: User who uploaded
-  captainId            String?         // DEPRECATED: Keep for backward compatibility (Phase 2: now optional)
-  owner                User?           @relation("OwnedVideos", fields: [ownerId], references: [id])
-  captain              CaptainProfile? @relation(fields: [captainId], references: [id])
   originalUrl          String
   thumbnailUrl         String?
   trimStartSec         Float           @default(0)
@@ -411,10 +391,12 @@ model CaptainVideo {
   originalWidth        Int?
   processedHeight      Int?
   processedWidth       Int?
-  // Deprecated: Use CharterVideo junction table for many-to-many relationship
   charterId            String?
-  charter              Charter?        @relation(name: "LegacyCharterVideos", fields: [charterId], references: [id], onDelete: SetNull)
-  // New many-to-many relationship
+  captainId            String?
+  ownerId              String?
+  captain              CaptainProfile? @relation(fields: [captainId], references: [id])
+  charter              Charter?        @relation("LegacyCharterVideos", fields: [charterId], references: [id])
+  owner                User?           @relation("OwnedVideos", fields: [ownerId], references: [id])
   charters             CharterVideo[]
 
   @@index([ownerId, processStatus])
@@ -423,20 +405,20 @@ model CaptainVideo {
   @@index([charterId])
 }
 
-// Junction table for many-to-many Charter <-> CaptainVideo relationship with ordering
 model CharterVideo {
   id        String       @id @default(cuid())
   charterId String
   videoId   String
   order     Int          @default(0)
-  charter   Charter      @relation(fields: [charterId], references: [id], onDelete: Cascade)
-  video     CaptainVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+  charter   Charter      @relation(fields: [charterId], references: [id], onDelete: Cascade)
+  video     CaptainVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([charterId, videoId])
   @@index([charterId, order])
   @@index([videoId])
+  @@index([charterId, order], map: "idx_charter_video_charter_order")
 }
 
 model PasswordHistory {
@@ -447,6 +429,133 @@ model PasswordHistory {
   User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+model Notification {
+  id          String             @id @default(cuid())
+  userId      String
+  type        NotificationType
+  status      NotificationStatus @default(UNREAD)
+  title       String
+  message     String
+  actionUrl   String?
+  actionLabel String?
+  bookingId   String?
+  charterId   String?
+  metadata    Json?
+  createdAt   DateTime           @default(now())
+  readAt      DateTime?
+  archivedAt  DateTime?
+  expiresAt   DateTime?
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("notifications")
+}
+
+model NotificationPreferences {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  inAppEnabled   Boolean  @default(true)
+  emailEnabled   Boolean  @default(true)
+  bookingUpdates Boolean  @default(true)
+  charterUpdates Boolean  @default(true)
+  systemUpdates  Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+/// Crew member profile - can work for multiple charters
+model CrewMember {
+  id                 String        @id @default(cuid())
+  userId             String?       @unique
+  firstName          String
+  lastName           String
+  email              String?
+  phone              String
+  avatarUrl          String?
+  displayName        String
+  primaryRole        CrewRole
+  bio                String?
+  experienceYrs      Int           @default(0)
+  skills             String[]
+  certifications     String[]
+  licenses           String[]
+  emergencyName      String?
+  emergencyPhone     String?
+  emergencyRelation  String?
+  isActive           Boolean       @default(true)
+  internalNotes      String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  charterAssignments CharterCrew[]
+  user               User?         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("crew_members")
+}
+
+/// Junction table: Which captains work for which charters
+model CharterCaptain {
+  id           String         @id @default(cuid())
+  charterId    String
+  captainId    String
+  isPrimary    Boolean        @default(false)
+  isActive     Boolean        @default(true)
+  schedule     String?
+  compensation Json?
+  notes        String?
+  startDate    DateTime       @default(now())
+  endDate      DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  captain      CaptainProfile @relation(fields: [captainId], references: [id], onDelete: Cascade)
+  charter      Charter        @relation(fields: [charterId], references: [id], onDelete: Cascade)
+
+  @@unique([charterId, captainId])
+  @@index([charterId])
+  @@index([captainId])
+  @@index([isActive])
+  @@map("charter_captains")
+}
+
+/// Junction table: Which crew work for which charters
+model CharterCrew {
+  id           String     @id @default(cuid())
+  charterId    String
+  crewId       String
+  role         CrewRole
+  isActive     Boolean    @default(true)
+  schedule     String?
+  compensation Json?
+  notes        String?
+  startDate    DateTime   @default(now())
+  endDate      DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  charter      Charter    @relation(fields: [charterId], references: [id], onDelete: Cascade)
+  crew         CrewMember @relation(fields: [crewId], references: [id], onDelete: Cascade)
+
+  @@unique([charterId, crewId])
+  @@index([charterId])
+  @@index([crewId])
+  @@index([isActive])
+  @@map("charter_crew")
+}
+
+model BoatImage {
+  id        String   @id
+  boatId    String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  Boat      Boat     @relation(fields: [boatId], references: [id], onDelete: Cascade)
 }
 
 enum DraftStatus {
@@ -480,11 +589,11 @@ enum MediaKind {
 }
 
 enum Role {
-  CAPTAIN   // Can own 1 charter
-  OPERATOR  // Can own multiple charters
-  CREW      // Works for others, no ownership
-  STAFF     // Platform staff
-  ADMIN     // Platform admin
+  CAPTAIN
+  STAFF
+  ADMIN
+  OPERATOR
+  CREW
 }
 
 enum VerificationStatus {
@@ -500,25 +609,16 @@ enum MfaMethod {
 }
 
 enum NotificationType {
-  // Booking lifecycle
-  BOOKING_RECEIVED      // Captain: New booking request
-  BOOKING_PAID          // Captain: Booking payment confirmed
-  BOOKING_CANCELLED     // Captain: Angler cancelled booking
-  
-  // Review system
-  REVIEW_RECEIVED       // Captain: New review posted for your charter
-  
-  // Charter events
-  CHARTER_APPROVED      // Captain: Charter approved by admin
-  CHARTER_REJECTED      // Captain: Charter rejected by admin
-  CHARTER_UPDATED       // Captain: Charter details updated
-  
-  // Account events
-  ACCOUNT_VERIFIED      // Captain: Email verified
-  PROFILE_INCOMPLETE    // Captain: Complete your profile
-  
-  // System
-  SYSTEM_ANNOUNCEMENT   // Platform updates
+  BOOKING_RECEIVED
+  BOOKING_PAID
+  BOOKING_CANCELLED
+  CHARTER_APPROVED
+  CHARTER_REJECTED
+  CHARTER_UPDATED
+  ACCOUNT_VERIFIED
+  PROFILE_INCOMPLETE
+  SYSTEM_ANNOUNCEMENT
+  REVIEW_RECEIVED
 }
 
 enum NotificationStatus {
@@ -527,181 +627,12 @@ enum NotificationStatus {
   ARCHIVED
 }
 
-// Notification system
-model Notification {
-  id          String             @id @default(cuid())
-  userId      String
-  type        NotificationType
-  status      NotificationStatus @default(UNREAD)
-  
-  title       String
-  message     String
-  actionUrl   String?
-  actionLabel String?
-  
-  // Related entities
-  bookingId   String?
-  charterId   String?
-  
-  // Metadata
-  metadata    Json?
-  
-  // Timestamps
-  createdAt   DateTime           @default(now())
-  readAt      DateTime?
-  archivedAt  DateTime?
-  expiresAt   DateTime?
-  
-  // Relations
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId, status])
-  @@index([userId, createdAt])
-  @@index([expiresAt])
-  @@map("notifications")
-}
-
-model NotificationPreferences {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  
-  // Channel preferences
-  inAppEnabled    Boolean  @default(true)
-  emailEnabled    Boolean  @default(true)
-  
-  // Type preferences
-  bookingUpdates  Boolean  @default(true)
-  charterUpdates  Boolean  @default(true)
-  systemUpdates   Boolean  @default(true)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("notification_preferences")
-}
-
-// ============================================================================
-// CREW MANAGEMENT SYSTEM
-// ============================================================================
-
-/// Crew member profile - can work for multiple charters
-model CrewMember {
-  id             String   @id @default(cuid())
-  userId         String?  @unique // Optional - crew might not have account
-  user           User?    @relation(fields: [userId], references: [id])
-  
-  // Basic info (required even for non-user crew)
-  firstName      String
-  lastName       String
-  email          String?
-  phone          String
-  avatarUrl      String?
-  
-  // Professional info
-  displayName    String   // Preferred name or nickname
-  primaryRole    CrewRole // Default role
-  bio            String?
-  experienceYrs  Int      @default(0)
-  
-  // Qualifications
-  skills         String[] // e.g., ["Filleting", "Navigation", "First Aid"]
-  certifications String[] // e.g., ["STCW Basic Safety", "Food Handler"]
-  licenses       String[] // e.g., ["Commercial Fishing License"]
-  
-  // Emergency contact
-  emergencyName     String?
-  emergencyPhone    String?
-  emergencyRelation String?
-  
-  // Status
-  isActive       Boolean  @default(true)
-  
-  // Charter assignments
-  charterAssignments CharterCrew[]
-  
-  // Notes (internal, for charter owner only)
-  internalNotes  String?  @db.Text
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  @@index([userId])
-  @@index([isActive])
-  @@map("crew_members")
-}
-
 enum CrewRole {
-  FIRST_MATE    // Second in command
-  DECKHAND      // General deck duties
-  COOK          // Meal preparation
-  ENGINEER      // Boat maintenance
-  GUIDE         // Fishing guide/instructor
-  CLEANER       // Cleaning duties
-  OTHER         // Custom role
-}
-
-/// Junction table: Which captains work for which charters
-model CharterCaptain {
-  id          String         @id @default(cuid())
-  charterId   String
-  captainId   String         // CaptainProfile.id
-  
-  charter     Charter        @relation(fields: [charterId], references: [id], onDelete: Cascade)
-  captain     CaptainProfile @relation(fields: [captainId], references: [id], onDelete: Cascade)
-  
-  // Assignment details
-  isPrimary   Boolean        @default(false) // Primary captain for this charter
-  isActive    Boolean        @default(true)
-  
-  // Work arrangement
-  schedule    String?        // e.g., "Weekends only", "Full-time"
-  compensation Json?         // Private: { type: "salary|hourly|commission", amount: 1000 }
-  notes       String?        @db.Text
-  
-  // Dates
-  startDate   DateTime       @default(now())
-  endDate     DateTime?
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  
-  @@unique([charterId, captainId])
-  @@index([charterId])
-  @@index([captainId])
-  @@index([isActive])
-  @@map("charter_captains")
-}
-
-/// Junction table: Which crew work for which charters
-model CharterCrew {
-  id          String      @id @default(cuid())
-  charterId   String
-  crewId      String      // CrewMember.id
-  
-  charter     Charter     @relation(fields: [charterId], references: [id], onDelete: Cascade)
-  crew        CrewMember  @relation(fields: [crewId], references: [id], onDelete: Cascade)
-  
-  // Assignment details
-  role        CrewRole    // Role for this specific charter (can override primaryRole)
-  isActive    Boolean     @default(true)
-  
-  // Work arrangement
-  schedule    String?     // e.g., "Part-time", "Seasonal"
-  compensation Json?      // Private: { type: "salary|hourly|per-trip", amount: 500 }
-  notes       String?     @db.Text
-  
-  // Dates
-  startDate   DateTime    @default(now())
-  endDate     DateTime?
-  
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
-  @@unique([charterId, crewId])
-  @@index([charterId])
-  @@index([crewId])
-  @@index([isActive])
-  @@map("charter_crew")
+  FIRST_MATE
+  DECKHAND
+  COOK
+  ENGINEER
+  GUIDE
+  CLEANER
+  OTHER
 }

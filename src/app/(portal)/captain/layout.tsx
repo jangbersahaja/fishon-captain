@@ -17,12 +17,9 @@ export default function CaptainLayout({
 
   return (
     <ToastProvider>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col max-h-[calc(100vh-64px)] h-[calc(100vh-64px)]">
         {/* Mobile Header */}
-        <MobileHeader
-          onMenuClick={() => setIsDrawerOpen(true)}
-          unreadNotifications={0} // TODO: Get from API
-        />
+        <MobileHeader onMenuClick={() => setIsDrawerOpen(true)} />
 
         {/* Navigation Drawer */}
         <NavigationDrawer
@@ -35,7 +32,7 @@ export default function CaptainLayout({
         <div className="flex flex-col flex-1 md:flex-row">
           {/* Desktop Sidebar */}
           <aside
-            className={`hidden md:block md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 ${zIndexClasses.content}`}
+            className={`hidden max-h-[calc(100vh-64px)] overflow-y-auto md:block md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 ${zIndexClasses.content}`}
           >
             <Suspense fallback={<div className="p-4">Loading...</div>}>
               <DashboardNav />
@@ -43,14 +40,11 @@ export default function CaptainLayout({
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 bg-slate-50/60 min-h-[calc(100vh-0px)] w-full overflow-hidden pb-20 md:pb-0">
+          <main className="flex-1 w-full max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-64px)] overflow-y-auto pb-20 overflow-hidden bg-slate-50/60 md:pb-0">
             {children}
           </main>
-
-          {/* Right Sidebar (Desktop) */}
-          <aside
-            className={`hidden 2xl:flex md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/60 ${zIndexClasses.content}`}
-          />
+          {/* Mobile Spacer */}
+          <div className="hidden h-20 md:block" aria-hidden="true"></div>
         </div>
 
         {/* Mobile Bottom Navigation */}
