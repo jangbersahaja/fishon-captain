@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AdminBypassLink } from "@/components/admin";
 import { DestructiveActions } from "./_components/DestructiveActions";
 import { CollapsibleDraftCard } from "./CollapsibleDraftCard";
-import { RegistrationsFilter } from "./RegistrationsFilter";
+import { TabFilter } from "./TabFilter";
 import { useDummyDraftsFilter } from "./useDummyDraftsFilter";
 // Admin actions
 async function markAbandoned(draftId: string) {
@@ -57,6 +57,14 @@ export type RegistrationsClientProps = {
   role: string;
   q: string;
   status: string;
+  step?: number;
+  counts: {
+    all: number;
+    draft: number;
+    submitted: number;
+    abandonedDeleted: number;
+    draftSteps: Record<number, number>;
+  };
   page: number;
   totalPages: number;
 };
@@ -69,6 +77,8 @@ export function RegistrationsClient({
   role,
   q,
   status,
+  step,
+  counts,
   page,
   totalPages,
 }: RegistrationsClientProps) {
@@ -99,7 +109,7 @@ export function RegistrationsClient({
           Monitor in-progress captain & charter registrations
         </div>
       </div>
-      <RegistrationsFilter q={q} status={status} />
+      <TabFilter q={q} status={status} step={step} counts={counts} />
       <div className="bg-white border rounded-xl border-slate-200">
         {filteredDrafts.length === 0 ? (
           <div className="p-8 text-center text-slate-600">No drafts found.</div>
@@ -114,10 +124,10 @@ export function RegistrationsClient({
                   d.status === "SUBMITTED"
                     ? "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
                     : d.status === "ABANDONED"
-                    ? "inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
-                    : d.status === "DELETED"
-                    ? "inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800"
-                    : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
+                      ? "inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                      : d.status === "DELETED"
+                        ? "inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800"
+                        : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
                 }
               >
                 {d.status}
@@ -157,8 +167,8 @@ export function RegistrationsClient({
                   <div className="text-xs text-slate-500">
                     <span className="font-medium">Step:</span>{" "}
                     {d.status === "SUBMITTED"
-                      ? "5 / 5"
-                      : `${(d.currentStep ?? 0) + 1} / 5`}
+                      ? "6 / 6"
+                      : `${(d.currentStep ?? 0) + 1} / 6`}
                   </div>
                   <div className="text-xs text-right text-slate-500">
                     <span>Created at</span>
@@ -194,35 +204,7 @@ export function RegistrationsClient({
                         View
                       </span>
                     </Link>
-                    {user?.email && (
-                      <a
-                        href={`mailto:${
-                          user.email
-                        }?subject=${encodeURIComponent(
-                          "Continue your Fishon charter registration"
-                        )}&body=${encodeURIComponent(
-                          "Hi there, we noticed you haven't completed your charter registration. You can resume here: https://www.fishon.my/captain/form"
-                        )}`}
-                        className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span className="hidden text-xs font-medium sm:inline">
-                          Email
-                        </span>
-                      </a>
-                    )}
+
                     {/* Open Draft (impersonate) button */}
                     <AdminBypassLink
                       href={`/captain/form?adminUserId=${d.userId}`}
@@ -234,7 +216,7 @@ export function RegistrationsClient({
                       }\n\nThis will allow you to view and edit their draft. Please enter your admin password to confirm.`}
                       variant="outline"
                       size="sm"
-                      className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                      className="text-orange-700 border-orange-300 bg-orange-50 hover:bg-orange-100"
                     >
                       🛡️ Open Form
                     </AdminBypassLink>

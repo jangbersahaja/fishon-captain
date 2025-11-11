@@ -23,7 +23,8 @@ export default async function StaffRegistrationsPage({
   const params = (await searchParams) || {};
   const page = Math.max(1, parseInt(String(params.page || "1"), 10) || 1);
   const q = (params.q as string | undefined)?.trim() || "";
-  const status = (params.status as string | undefined) || ""; // DRAFT/SUBMITTED/ABANDONED/DELETED
+  const status = (params.status as string | undefined) || "DRAFT"; // Default to DRAFT
+  const step = params.step ? parseInt(String(params.step), 10) : undefined;
   const staleOnly = (params.stale as string | undefined) === "1";
 
   const where: Prisma.CharterDraftWhereInput = {};
@@ -43,20 +44,52 @@ export default async function StaffRegistrationsPage({
     ];
   }
   // Status filter
-  if (
+  if (status === "ABANDONED_DELETED") {
+    where.status = { in: ["ABANDONED", "DELETED"] };
+  } else if (
     status &&
     ["DRAFT", "SUBMITTED", "ABANDONED", "DELETED"].includes(status)
   ) {
     where.status = status as DraftStatus;
+  }
+  // Step filter (only applies to DRAFT status)
+  if (status === "DRAFT" && step !== undefined && step >= 1 && step <= 6) {
+    where.currentStep = step - 1; // Convert UI step (1-6) to DB step (0-5)
   }
   // Stale filter (if ever re-enabled)
   if (staleOnly) {
     const cutoff = new Date(Date.now() - 24 * 3600 * 1000);
     where.lastTouchedAt = { lt: cutoff };
   }
-  // If no status selected ("All"), show all drafts (no restrictive charterId/status filter)
 
-  const [total, drafts] = await Promise.all([
+  // Calculate counts for tabs
+  const searchWhere: Prisma.CharterDraftWhereInput = q
+    ? {
+        OR: [
+          { id: { contains: q, mode: "insensitive" } },
+          { userId: { contains: q, mode: "insensitive" } },
+          {
+            user: {
+              OR: [
+                { name: { contains: q, mode: "insensitive" } },
+                { email: { contains: q, mode: "insensitive" } },
+              ],
+            },
+          },
+        ],
+      }
+    : {};
+
+  const [
+    total,
+    drafts,
+    allCount,
+    draftCount,
+    submittedCount,
+    abandonedCount,
+    deletedCount,
+    draftStepCounts,
+  ] = await Promise.all([
     prisma.charterDraft.count({ where }),
     prisma.charterDraft.findMany({
       where,
@@ -74,7 +107,51 @@ export default async function StaffRegistrationsPage({
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
+    prisma.charterDraft.count({ where: searchWhere }),
+    prisma.charterDraft.count({ where: { ...searchWhere, status: "DRAFT" } }),
+    prisma.charterDraft.count({
+      where: { ...searchWhere, status: "SUBMITTED" },
+    }),
+    prisma.charterDraft.count({
+      where: { ...searchWhere, status: "ABANDONED" },
+    }),
+    prisma.charterDraft.count({ where: { ...searchWhere, status: "DELETED" } }),
+    Promise.all([
+      prisma.charterDraft.count({
+        where: { ...searchWhere, status: "DRAFT", currentStep: 0 },
+      }),
+      prisma.charterDraft.count({
+        where: { ...searchWhere, status: "DRAFT", currentStep: 1 },
+      }),
+      prisma.charterDraft.count({
+        where: { ...searchWhere, status: "DRAFT", currentStep: 2 },
+      }),
+      prisma.charterDraft.count({
+        where: { ...searchWhere, status: "DRAFT", currentStep: 3 },
+      }),
+      prisma.charterDraft.count({
+        where: { ...searchWhere, status: "DRAFT", currentStep: 4 },
+      }),
+      prisma.charterDraft.count({
+        where: { ...searchWhere, status: "DRAFT", currentStep: 5 },
+      }),
+    ]),
   ]);
+
+  const counts = {
+    all: allCount,
+    draft: draftCount,
+    submitted: submittedCount,
+    abandonedDeleted: abandonedCount + deletedCount,
+    draftSteps: {
+      1: draftStepCounts[0],
+      2: draftStepCounts[1],
+      3: draftStepCounts[2],
+      4: draftStepCounts[3],
+      5: draftStepCounts[4],
+      6: draftStepCounts[5],
+    },
+  };
 
   type UserData = NonNullable<(typeof drafts)[0]["user"]>;
 
@@ -170,6 +247,8 @@ export default async function StaffRegistrationsPage({
       role={role}
       q={q}
       status={status}
+      step={step}
+      counts={counts}
       page={page}
       totalPages={totalPages}
     />

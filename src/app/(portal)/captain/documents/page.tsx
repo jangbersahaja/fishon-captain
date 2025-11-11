@@ -23,6 +23,17 @@ import {
   useDocumentUpload,
 } from "@features/captain-documents";
 
+// TODO: add upload limits, e.g. max file size, allowed types, etc.
+
+/**
+ * Captain Documents Page
+ *
+ * Page for managing captain verification documents
+ * Sections for banking info, government ID, licenses, additional docs
+ * Tracks upload state, validation errors, unsaved changes
+ * Shows completion progress indicator
+ */
+
 export default function CaptainDocumentsPage() {
   // Banking information state
   const [bankName, setBankName] = useState<string>("");
@@ -85,6 +96,8 @@ export default function CaptainDocumentsPage() {
     setMessage,
     openConfirm,
   });
+
+  //TODO: add SSM license upload
 
   const captainLicenseUpload = useDocumentUpload({
     fieldName: "captainLicense",
