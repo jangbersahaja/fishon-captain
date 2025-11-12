@@ -61,7 +61,7 @@ export function CharterList({
           </p>
         </div>
 
-        <div className="flex flex-col items-center gap-1 p-5 px-5 py-3 border-2 border-blue-200 shadow-sm rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="flex-col items-center hidden gap-1 p-5 px-5 py-3 border-2 border-blue-200 shadow-sm rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50">
           <Button
             onClick={handleAddCharter}
             className="font-semibold text-white shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
@@ -99,7 +99,7 @@ export function CharterList({
         <div className="grid gap-4 lg:grid-cols-2">
           {charters.map((charter) => {
             const editQuery = adminUserId ? `?adminUserId=${adminUserId}` : "";
-            const editHref = `/captain/charters/${charter.id}${editQuery}`;
+            const editHref = `/captain/form?editCharterId=${charter.id}${editQuery}`;
 
             return (
               <div

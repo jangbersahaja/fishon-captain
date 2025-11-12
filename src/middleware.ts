@@ -2,15 +2,49 @@ import { env } from "@/lib/env"; // early env validation
 import { applySecurityHeaders } from "@/lib/headers";
 import { logger } from "@/lib/logger";
 import { getToken } from "next-auth/jwt";
+import createIntlMiddleware from "next-intl/middleware";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 // Paths that require authentication
 const PROTECTED_PREFIXES = ["/captain", "/staff"];
 
+// Paths that should skip i18n (API routes, auth, protected routes)
+const SKIP_I18N_PREFIXES = [
+  "/api",
+  "/auth",
+  "/captain",
+  "/staff",
+  "/_next",
+  "/images",
+  "/favicon",
+];
+
+// Create i18n middleware for marketing pages only
+const intlMiddleware = createIntlMiddleware({
+  locales: ["ms", "en"],
+  defaultLocale: "ms",
+  localePrefix: "as-needed", // / for default (ms), /en for English
+  localeDetection: true,
+});
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const requestId = crypto.randomUUID();
+
+  // Check if this is a marketing/public route (should use i18n)
+  const shouldUseI18n = !SKIP_I18N_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix)
+  );
+
+  // Apply i18n middleware for marketing pages
+  if (shouldUseI18n) {
+    const intlResponse = intlMiddleware(req);
+    // intlMiddleware always returns a response, don't check if truthy
+    intlResponse.headers.set("x-request-id", requestId);
+    return applySecurityHeaders(intlResponse);
+  }
+
   const protectedMatch = PROTECTED_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
@@ -50,5 +84,14 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/captain/:path*", "/staff/:path*", "/staff"],
+  matcher: [
+    // Root and marketing pages (with and without locale prefix)
+
+    "/list-your-business",
+    "/(ms|en)/:path*",
+    // Protected routes
+    "/captain/:path*",
+    "/staff/:path*",
+    "/staff",
+  ],
 };

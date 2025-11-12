@@ -2,7 +2,9 @@ import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import FormSection from "@features/charter-onboarding/FormSection";
+import { MessageCircle } from "lucide-react";
 import { getServerSession } from "next-auth";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic"; // ensure fresh session check
@@ -88,9 +90,18 @@ export default async function CaptainFormPage({
   }
 
   return (
-    <div className="mx-auto px-3 sm:px-4 lg:px-5 py-12">
+    <div className="px-6 py-8">
+      <Link
+        href={`https://wa.me/60165304304?text=Perlu%20bantuan%20daftar%20Fishon%20Captain`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed z-10 flex items-center gap-2 px-4 py-2 text-white border rounded-lg shadow-md top-37 md:top-23 right-6 bg-gradient-to-tr from-[#075E54] to-[#25D366] hover:shadow-lg hover:opacity-95 transition-opacity duration-500 ease-in-out hover:scale-102"
+      >
+        <MessageCircle className="w-6 h-6" />
+        <span className="font-semibold">Chat Admin</span>
+      </Link>
       {targetUserInfo && (
-        <div className="mb-6 rounded-lg border-2 border-orange-200 bg-orange-50 p-4">
+        <div className="p-4 mb-6 border-2 border-orange-200 rounded-lg bg-orange-50">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-orange-800">
@@ -103,7 +114,7 @@ export default async function CaptainFormPage({
             </div>
             <a
               href="/staff"
-              className="rounded-full bg-orange-600 px-3 py-1 text-xs font-semibold text-white hover:bg-orange-700"
+              className="px-3 py-1 text-xs font-semibold text-white bg-orange-600 rounded-full hover:bg-orange-700"
             >
               Exit Admin Mode
             </a>
@@ -112,8 +123,8 @@ export default async function CaptainFormPage({
       )}
       <h1 className="text-2xl font-semibold">
         {targetUserInfo
-          ? `Captain Form - ${targetUserInfo.name || targetUserInfo.email}`
-          : "Captain & Charter Form"}
+          ? `Charter Form - ${targetUserInfo.name || targetUserInfo.email}`
+          : "Charter Form"}
       </h1>
       <FormSection />
     </div>

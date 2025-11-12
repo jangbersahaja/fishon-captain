@@ -90,9 +90,9 @@ export function SpeciesSelector({
   const reachedLimit = value.length >= maxSelected;
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-xl border border-neutral-200 p-3">
+      <div className="">
         <div
-          className="flex items-stretch gap-0 rounded-t-lg border border-neutral-200 bg-neutral-50 p-1"
+          className="flex items-stretch gap-0 p-1 border-t border-x rounded-t-md border-neutral-200 bg-slate-50 w-fit"
           role="tablist"
           aria-label="Species categories"
         >
@@ -114,43 +114,36 @@ export function SpeciesSelector({
                   }
                 }}
                 className={clsx(
-                  "relative flex min-w-[90px] flex-col items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                  "flex min-w-[90px] flex-col items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition",
                   active
-                    ? "bg-white text-slate-900 shadow-sm"
+                    ? "bg-[#ec2227] text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-800"
                 )}
               >
-                <span className="pointer-events-none flex items-center gap-1">
+                <span className="flex items-center gap-1 pointer-events-none">
                   {TAB_LABEL[tab]}
                   {counts[tab] ? (
                     <span
                       className={clsx(
                         "inline-flex items-center justify-center rounded-full bg-slate-200 px-1.5 text-[10px] font-bold text-slate-600 transition",
-                        active && "bg-slate-900 text-white"
+                        active && "bg-white text-[#ec2227]"
                       )}
                     >
                       {counts[tab]}
                     </span>
                   ) : null}
                 </span>
-                <span
-                  aria-hidden
-                  className={clsx(
-                    "absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-slate-900 transition-opacity",
-                    active ? "opacity-100" : "opacity-0"
-                  )}
-                />
               </button>
             );
           })}
         </div>
-        <div className="mb-3 flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-3">
           <input
             type="text"
             value={query}
             onChange={(e) => setQueryFor(activeTab, e.target.value)}
             placeholder="Search species..."
-            className="w-full rounded-b-lg border border-neutral-200 px-3 py-2 text-xs focus:border-slate-400 focus:outline-none"
+            className="w-full p-3 text-xs border rounded-bl-md rounded-r-md border-neutral-200 focus:border-slate-400 focus:outline-none"
           />
           {query && (
             <button
@@ -162,7 +155,7 @@ export function SpeciesSelector({
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
           {filtered.map((species) => {
             const active = value.includes(species.id);
             const disabled = !active && reachedLimit;
@@ -172,12 +165,12 @@ export function SpeciesSelector({
                 type="button"
                 onClick={() => !disabled && toggle(species.id)}
                 className={clsx(
-                  "group relative flex flex-col items-start gap-0 rounded-xl border px-3 py-1.5 text-[12px] font-semibold leading-tight transition min-w-[84px]",
+                  "group relative flex flex-col items-center gap-0 rounded-md border px-3 py-1.5 text-[12px] font-semibold leading-tight transition min-w-[84px]",
                   active
                     ? "text-white"
                     : disabled
-                    ? "border-neutral-100 bg-neutral-50 text-slate-400 cursor-not-allowed"
-                    : "border-neutral-200 bg-white text-slate-700 hover:border-slate-300"
+                      ? "border-neutral-100 bg-neutral-50 text-slate-400 cursor-not-allowed"
+                      : "border-neutral-200 bg-white text-slate-700 hover:border-slate-300"
                 )}
                 style={
                   active
@@ -196,8 +189,8 @@ export function SpeciesSelector({
                   {species.local_name}
                 </span>
                 {"image" in species && species.image ? (
-                  <span className="pointer-events-none absolute left-1/2 top-full z-10 hidden -translate-x-1/2 translate-y-2 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg group-hover:inline-block">
-                    <div className="relative h-12 w-20">
+                  <span className="absolute z-10 hidden p-2 -translate-x-1/2 translate-y-2 bg-white border rounded-lg shadow-lg pointer-events-none left-1/2 top-full border-neutral-200 group-hover:inline-block">
+                    <div className="relative w-20 h-12">
                       <Image
                         src={
                           typeof species.image === "object" &&
@@ -220,7 +213,7 @@ export function SpeciesSelector({
           })}
         </div>
         {filtered.length === 0 && (
-          <p className="p-4 text-center text-xs text-slate-500">
+          <p className="p-4 text-xs text-center text-slate-500">
             No species in this category.
           </p>
         )}

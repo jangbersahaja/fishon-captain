@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
 import { Anchor } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import CaptainCard from "./CaptainCard";
 
 export default async function CaptainShowcase() {
+  const t = await getTranslations("marketing.showcase");
   // Fetch captains and filter for full data, not ADMIN, not [Dummy]
   const captains = await prisma.captainProfile.findMany({
     orderBy: { createdAt: "desc" },
@@ -105,16 +107,14 @@ export default async function CaptainShowcase() {
           <div className="inline-flex items-center gap-2 rounded-full bg-[#EC2227]/10 px-4 py-2 mb-4">
             <Anchor className="h-4 w-4 text-[#EC2227]" />
             <span className="text-sm font-semibold text-[#EC2227]">
-              OUR CAPTAINS
+              {t("badge")}
             </span>
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl lg:text-5xl text-neutral-900">
-            Meet Our Trusted Captains
+            {t("title")}
           </h2>
           <p className="max-w-2xl mx-auto mt-4 text-lg text-neutral-600">
-            Experienced fishing professionals from across Malaysia, ready to
-            deliver unforgettable adventures. Join them and grow your business
-            on Fishon.my.
+            {t("subtitle")}
           </p>
         </div>
 
@@ -128,18 +128,15 @@ export default async function CaptainShowcase() {
         {/* CTA at bottom */}
         <div className="flex flex-col items-center justify-center gap-4 mt-16 text-center">
           <h3 className="text-2xl font-bold text-neutral-900">
-            Ready to become a captain?
+            {t("cta.title")}
           </h3>
-          <p className="max-w-lg text-neutral-600">
-            Join our growing community of successful fishing charter operators.
-            List your trips for free and start receiving bookings today.
-          </p>
+          <p className="max-w-lg text-neutral-600">{t("cta.subtitle")}</p>
           <Link
             href="/auth?next=/captain/form"
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#EC2227] px-6 py-3 font-semibold text-white hover:bg-[#EC2227]/90 transition-colors shadow-lg hover:shadow-xl"
           >
             <Anchor className="w-5 h-5" />
-            Get Started Now
+            {t("cta.button")}
           </Link>
         </div>
       </div>

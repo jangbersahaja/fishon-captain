@@ -7,6 +7,7 @@ import { EnhancedVideoUploader } from "@/components/captain/EnhancedVideoUploade
 import { PhotoGalleryModal } from "@/components/captain/PhotoGalleryModal";
 import { VideoGalleryModal } from "@/components/captain/VideoGalleryModal";
 import { VideoManager } from "@/components/captain/VideoManager";
+import { GripVertical } from "lucide-react";
 import { useSession } from "next-auth/react";
 import React, { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import type { UseFormReturn } from "react-hook-form";
@@ -250,21 +251,23 @@ export function MediaPricingStep({
   }, []);
 
   return (
-    <section className="p-6 bg-white border shadow-sm rounded-3xl border-neutral-200">
-      <header className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold text-slate-900">
-          Photos & videos
-        </h2>
-        <p className="text-sm text-slate-500">
-          Clear visuals help anglers trust your charter. Aim for bright shots of
-          the boat, crew, and catches.
-        </p>
-      </header>
+    <>
+      <section className="p-6 bg-white border shadow-sm rounded-3xl border-neutral-200">
+        <header className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-slate-900">Photos</h2>
+            <h3 className="text-lg text-slate-600">[Foto]</h3>
+          </div>
+          <p className="text-sm text-slate-500">
+            Clear visuals help anglers trust your charter. Aim for bright shots
+            of the boat, crew, and catches.
+          </p>
+        </header>
 
-      <hr className="my-6 border-t border-neutral-200" />
-      <div className="space-y-6">
+        <hr className="my-6 border-t border-neutral-200" />
+
         <div
-          className={`rounded-2xl border p-4 ${
+          className={`${
             draggingPhotos
               ? "border-slate-400 bg-slate-50"
               : "border-neutral-200"
@@ -274,24 +277,18 @@ export function MediaPricingStep({
           onDragLeave={() => handleDragLeave("photo")}
           onPaste={(e) => handlePaste(e, "photo")}
         >
-          <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Photos{" "}
-              <span className="ml-1 text-xs text-slate-500">
-                ({photoCount}/{PHOTO_MAX})
-              </span>
-            </h3>
-            <div className="flex flex-wrap items-start gap-2">
+          <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col items-start gap-2">
               {/* Select from Gallery button - show when user has ownerId */}
               {ownerId && (
                 <button
                   type="button"
                   onClick={() => setShowPhotoGallery(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors border border-blue-200 rounded bg-blue-50 hover:bg-blue-100"
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#ec2227] transition-colors border border-[#ec2227]/60 rounded-md shadow-sm bg-[#ec2227]/10 hover:bg-[#ec2227]/20 "
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4"
+                    className="w-5 h-5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -309,11 +306,25 @@ export function MediaPricingStep({
               {/* Add photos button */}
               <label
                 htmlFor="photo-upload"
-                className="cursor-pointer rounded border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#ec2227] transition-colors border border-[#ec2227]/60 rounded-md shadow-sm bg-[#ec2227]/10 hover:bg-[#ec2227]/20 "
                 aria-disabled={photoCount >= PHOTO_MAX}
                 data-disabled={photoCount >= PHOTO_MAX}
               >
-                Add photos
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                Upload photos ({photoCount}/{PHOTO_MAX})
               </label>
               <input
                 id="photo-upload"
@@ -326,27 +337,48 @@ export function MediaPricingStep({
               />
             </div>
           </div>
+          <div className="p-3 border rounded-lg border-blue-700/30">
+            <div className="flex items-center gap-2 mb-3 text-xs text-blue-300 ">
+              <GripVertical className="flex-shrink-0 w-4 h-4" />
+              <span>
+                <strong className="font-semibold">Tip:</strong> Drag videos by
+                the handle to change their display order
+              </span>
+            </div>
 
-          <PhotoGrid
-            items={photoItems}
-            emptyLabel="No photos uploaded"
-            onRemove={handleRemovePhoto}
-            onUpdateAlt={(i, alt) => {
-              const next = [...photosAlt];
-              next[i] = alt;
-              setValue("photosAlt" as keyof CharterFormValues, next, {
-                shouldValidate: false,
-              });
-            }}
-            onMove={handleMovePhoto}
-          />
+            <PhotoGrid
+              items={photoItems}
+              emptyLabel="No photos uploaded"
+              onRemove={handleRemovePhoto}
+              onUpdateAlt={(i, alt) => {
+                const next = [...photosAlt];
+                next[i] = alt;
+                setValue("photosAlt" as keyof CharterFormValues, next, {
+                  shouldValidate: false,
+                });
+              }}
+              onMove={handleMovePhoto}
+            />
+          </div>
         </div>
+      </section>
 
-        <div className="p-4 space-y-6 border rounded-2xl border-neutral-200">
+      <section className="p-6 bg-white border shadow-sm rounded-3xl border-neutral-200">
+        <header className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-slate-900">Videos</h2>
+            <h3 className="text-lg text-slate-600">[Video]</h3>
+          </div>
+          <p className="text-sm text-slate-500">
+            Clear visuals help anglers trust your charter. Aim for bright shots
+            of the boat, crew, and catches.
+          </p>
+        </header>
+
+        <hr className="my-6 border-t border-neutral-200" />
+
+        <div className="space-y-6 ">
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Short videos
-            </h3>
             {!ownerId && (
               <div className="text-xs text-amber-600">
                 Save earlier steps to unlock video uploads.
@@ -360,7 +392,7 @@ export function MediaPricingStep({
                   <button
                     type="button"
                     onClick={() => setShowVideoGallery(true)}
-                    className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-blue-600 transition-colors border border-blue-200 rounded-lg w-fit bg-blue-50 hover:bg-blue-100"
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#ec2227] transition-colors border border-[#ec2227]/60 rounded-md shadow-sm bg-[#ec2227]/10 hover:bg-[#ec2227]/20 "
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -428,7 +460,7 @@ export function MediaPricingStep({
             onSelectionChange={handleVideoSelectionChange}
           />
         )}
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

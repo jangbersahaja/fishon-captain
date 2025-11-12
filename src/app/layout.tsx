@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 
 //TODO: Check offline banner implementation
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -40,8 +40,9 @@ export default function RootLayout({
     // Initialize once (safe because component is a Server Component; guard keeps static evaluation harmless)
     enableCharterFormConsoleLogging();
   }
+
   return (
-    <html lang="en">
+    <html lang="ms">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

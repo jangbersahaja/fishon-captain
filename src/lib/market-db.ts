@@ -76,6 +76,10 @@ export type MarketBooking = {
   guestEmail: string | null;
   guestPhone: string | null;
   emailVerified: boolean;
+  // Payment tracking fields (Senang Pay integration)
+  paymentTransactionId: string | null;
+  paymentMethod: string | null;
+  paymentNote: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

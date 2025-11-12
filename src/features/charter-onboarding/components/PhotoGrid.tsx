@@ -1,4 +1,5 @@
 import type { MediaPreview as BasePreview } from "@features/charter-onboarding/types";
+import { GripVertical } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -42,14 +43,14 @@ export function PhotoGrid({
 
   if (!items.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-slate-500">
+      <div className="px-4 py-10 text-sm text-center border border-dashed rounded-2xl border-neutral-200 text-slate-500">
         {emptyLabel}
       </div>
     );
   }
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {items.map((item, index) => {
           const disabled =
             typeof item.progress === "number" &&
@@ -59,7 +60,7 @@ export function PhotoGrid({
           return (
             <div
               key={`${item.url}-${index}`}
-              className={`group relative overflow-hidden rounded-2xl border bg-white shadow-sm ${
+              className={`group relative overflow-hidden rounded-lg border bg-black shadow-sm ${
                 dragOver === index
                   ? "border-slate-400 ring-2 ring-slate-300"
                   : "border-neutral-200"
@@ -96,24 +97,40 @@ export function PhotoGrid({
                 setDragOver(null);
               }}
             >
+              <div className="items-center justify-center hidden gap-2 px-3 py-2 text-xs lg:flex text-slate-100">
+                <GripVertical className="w-5 h-5 transition-colors text-neutral-400 group-hover/drag:text-blue-400" />
+                <span className="text-[10px] font-medium text-neutral-400 group-hover/drag:text-blue-400 transition-colors uppercase tracking-wider">
+                  Drag to Reorder
+                </span>
+                <GripVertical className="w-5 h-5 transition-colors text-neutral-400 group-hover/drag:text-blue-400" />
+              </div>
               {item.isCover && (
-                <span className="absolute left-2 top-2 z-10 rounded bg-slate-900/80 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">
+                <span className="absolute left-2 top-2 lg:top-11 z-10 rounded bg-slate-900/80 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">
                   Cover
                 </span>
               )}
-              <div className="h-36 relative">
-                <Image
-                  src={item.url}
-                  fill
-                  className="object-cover"
-                  sizes="300px"
-                  alt={toDisplayName(item.name)}
-                />
+              <div className="flex">
+                <div className="relative w-full h-36 lg:h-full aspect-square">
+                  <Image
+                    src={item.url}
+                    fill
+                    className="object-cover"
+                    sizes="300px"
+                    alt={toDisplayName(item.name)}
+                  />
+                </div>
+                <div className="flex items-center justify-center px-3 py-2 text-xs lg:hidden text-slate-100">
+                  <GripVertical className="w-5 h-5 transition-colors text-neutral-400 group-hover/drag:text-blue-400" />
+                  <span className="text-[10px] font-medium text-neutral-400 group-hover/drag:text-blue-400 text-center transition-colors uppercase tracking-wider">
+                    Drag to Reorder
+                  </span>
+                  <GripVertical className="w-5 h-5 transition-colors text-neutral-400 group-hover/drag:text-blue-400" />
+                </div>
               </div>
               {typeof item.progress === "number" &&
                 item.progress < 100 &&
                 item.progress >= 0 && (
-                  <div className="absolute inset-0 bg-white/60 flex items-end">
+                  <div className="absolute inset-0 flex items-end bg-white/60">
                     <div className="w-full h-1.5 bg-slate-200">
                       <div
                         className="h-1.5 bg-slate-700 transition-all"
@@ -128,8 +145,8 @@ export function PhotoGrid({
                   </div>
                 )}
               {typeof item.progress === "number" && item.progress < 0 && (
-                <div className="absolute inset-0 bg-red-50/90 flex flex-col items-center justify-center gap-2 text-xs text-red-700 p-3 text-center">
-                  <span className="font-medium flex items-center gap-1">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-xs text-center text-red-700 bg-red-50/90">
+                  <span className="flex items-center gap-1 font-medium">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
@@ -146,7 +163,7 @@ export function PhotoGrid({
                 </div>
               )}
 
-              <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-600">
+              <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-100">
                 <span className="truncate" title={item.name}>
                   {toDisplayName(item.name)}
                 </span>
@@ -166,7 +183,7 @@ export function PhotoGrid({
                     disabled={disabled}
                     aria-label="Remove photo"
                     title="Remove photo"
-                    className="text-slate-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed p-1 rounded transition-colors"
+                    className="p-1 transition-colors rounded text-slate-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -193,10 +210,10 @@ export function PhotoGrid({
       </div>
       {/* Delete Confirmation Dialog */}
       {deleteConfirm !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="w-full max-w-md p-6 space-y-4 bg-white rounded-2xl">
             <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
                 <svg
                   className="w-6 h-6 text-red-600"
                   fill="none"
@@ -211,10 +228,10 @@ export function PhotoGrid({
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">
                 Delete Photo?
               </h3>
-              <p className="text-sm text-gray-600 mb-1">
+              <p className="mb-1 text-sm text-gray-600">
                 This will permanently delete the photo and cannot be undone.
               </p>
               <p className="text-xs text-gray-500">
@@ -228,7 +245,7 @@ export function PhotoGrid({
               <button
                 type="button"
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -238,7 +255,7 @@ export function PhotoGrid({
                   if (deleteConfirm !== null) onRemove(deleteConfirm);
                   setDeleteConfirm(null);
                 }}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                className="flex-1 px-4 py-2 font-medium text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
               >
                 Delete Photo
               </button>

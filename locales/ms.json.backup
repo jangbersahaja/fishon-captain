@@ -1,0 +1,165 @@
+{
+  "common": {
+    "nav": {
+      "marketplace": "Marketplace",
+      "captainPortal": "Portal Kapten",
+      "staffPortal": "Portal Staff",
+      "signIn": "Log Masuk",
+      "signOut": "Log Keluar",
+      "menu": "Buka navigasi"
+    },
+    "footer": {
+      "companyInfo": "Platform tempahan memancing & charter pertama di Malaysia. Menghubungkan kapten dengan peminat memancing untuk pengembaraan laut yang tidak dapat dilupakan.",
+      "quickLinks": "Pautan Pantas",
+      "home": "Laman Utama",
+      "captainPortal": "Portal Kapten",
+      "marketplace": "Marketplace",
+      "support": "Sokongan",
+      "helpCenter": "Pusat Bantuan",
+      "contactUs": "Hubungi Kami",
+      "termsOfService": "Terma Perkhidmatan",
+      "privacyPolicy": "Dasar Privasi",
+      "refundPolicy": "Bayaran Balik & Pembatalan",
+      "copyright": "© {year} Fishon. Hak cipta terpelihara.",
+      "madeInMalaysia": "Dibuat dengan ❤️ di Malaysia"
+    }
+  },
+  "marketing": {
+    "hero": {
+      "badge": "Platform tempahan charter memancing dalam talian #1 di Malaysia",
+      "title": "Senaraikan",
+      "titleHighlight": "charter",
+      "titleEnd": "anda di Fishon.my",
+      "subtitle": "Paparkan trip, harga dan butiran bot. Jangkau pemancing yang menyemak imbas mengikut negeri, tasik/sungai, destinasi inshore dan offshore di seluruh Malaysia.",
+      "ctaPrimary": "Daftar charter anda",
+      "ctaSecondary": "Chat di WhatsApp",
+      "stats": [
+        {
+          "value": "Khusus Malaysia",
+          "label": "Penonton"
+        },
+        {
+          "value": "RM0",
+          "label": "Percuma untuk list"
+        },
+        {
+          "value": "Disahkan",
+          "label": "Kepercayaan & keselamatan"
+        }
+      ]
+    },
+    "valueProps": {
+      "title": "Mengapa Sertai Fishon?",
+      "cards": [
+        {
+          "title": "Jangkau Pemancing Sebenar",
+          "description": "Dapatkan pendedahan kepada pemancing yang sedang mencari charter di Malaysia. Platform kami menghubungkan anda dengan pelanggan yang berkualiti."
+        },
+        {
+          "title": "Percuma untuk List",
+          "description": "Tiada bayaran pendahuluan. Senaraikan charter anda secara percuma dan mula menerima pertanyaan daripada pemancing yang berminat."
+        },
+        {
+          "title": "Mudah untuk Urus",
+          "description": "Dashboard yang mudah untuk mengurus charter, tempahan, dan berkomunikasi dengan pelanggan. Semua dalam satu tempat."
+        },
+        {
+          "title": "Dipercayai oleh Komuniti",
+          "description": "Sistem pengesahan dan ulasan membantu membina kepercayaan dengan pelanggan dan meningkatkan kredibiliti charter anda."
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "Bagaimana Ia Berfungsi",
+      "steps": [
+        {
+          "title": "Daftar Charter",
+          "description": "Isi maklumat charter anda, bot, dan trip yang ditawarkan. Proses pendaftaran mudah dan pantas."
+        },
+        {
+          "title": "Terima Tempahan",
+          "description": "Pemancing akan menemui charter anda dan menghubungi anda untuk tempahan. Urus tempahan melalui dashboard anda."
+        },
+        {
+          "title": "Berkembang Bersama",
+          "description": "Kembangkan perniagaan anda dengan pendedahan lebih dan alat untuk mengurus operasi charter anda dengan lebih baik."
+        }
+      ]
+    },
+    "showcase": {
+      "title": "Sertai Kapten-Kapten Lain",
+      "subtitle": "Kapten di seluruh Malaysia sudah menggunakan Fishon untuk mengembangkan perniagaan charter mereka."
+    },
+    "pricing": {
+      "title": "Harga yang Mudah",
+      "subtitle": "Percuma untuk list. Tiada kos tersembunyi.",
+      "free": {
+        "title": "Percuma",
+        "price": "RM0",
+        "period": "/bulan",
+        "features": [
+          "List charter percuma",
+          "Paparan di marketplace",
+          "Dashboard asas",
+          "Sokongan komuniti"
+        ],
+        "cta": "Mulakan Sekarang"
+      },
+      "premium": {
+        "title": "Premium",
+        "price": "Akan Datang",
+        "features": [
+          "Semua ciri percuma",
+          "Pendedahan premium",
+          "Analitik terperinci",
+          "Sokongan keutamaan"
+        ],
+        "cta": "Akan Datang"
+      }
+    },
+    "safety": {
+      "title": "Kepercayaan & Keselamatan",
+      "subtitle": "Kami memprioritaskan kepercayaan dan keselamatan untuk semua pengguna kami.",
+      "badges": [
+        {
+          "title": "Pengesahan",
+          "description": "Charter disahkan untuk memastikan kualiti dan keselamatan."
+        },
+        {
+          "title": "Ulasan",
+          "description": "Sistem ulasan yang telus untuk membina kepercayaan."
+        },
+        {
+          "title": "Sokongan",
+          "description": "Pasukan sokongan bersedia membantu anda bila-bila masa."
+        }
+      ]
+    },
+    "faq": {
+      "title": "Soalan Lazim",
+      "items": [
+        {
+          "question": "Berapakah kos untuk list charter saya?",
+          "answer": "Percuma 100%! Tiada bayaran pendahuluan atau kos tersembunyi untuk menyenaraikan charter anda di Fishon."
+        },
+        {
+          "question": "Berapa lama proses pendaftaran?",
+          "answer": "Pendaftaran mengambil masa 10-15 minit. Setelah anda hantar, pasukan kami akan mengkaji semula dan mengesahkan charter anda dalam masa 1-2 hari."
+        },
+        {
+          "question": "Apakah yang saya perlukan untuk daftar?",
+          "answer": "Anda memerlukan maklumat asas charter, butiran bot, foto, dan maklumat trip yang anda tawarkan."
+        },
+        {
+          "question": "Bagaimana saya menerima tempahan?",
+          "answer": "Apabila pemancing berminat dengan charter anda, mereka akan menghubungi anda melalui platform. Anda boleh mengurus semua tempahan melalui dashboard kapten."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Bersedia untuk Mula?",
+      "subtitle": "Sertai Fishon hari ini dan mulakan perjalanan untuk mengembangkan perniagaan charter anda.",
+      "cta": "Daftar Charter Anda"
+    }
+  }
+}

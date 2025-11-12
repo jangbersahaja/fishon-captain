@@ -1,0 +1,203 @@
+{
+  "common": {
+    "nav": {
+      "marketplace": "Marketplace",
+      "captainPortal": "Captain Portal",
+      "staffPortal": "Staff Portal",
+      "signIn": "Sign In",
+      "signOut": "Sign Out",
+      "menu": "Open navigation"
+    },
+    "footer": {
+      "companyInfo": "Malaysia's first fishing & charter booking platform. Connecting captains with fishing enthusiasts for unforgettable marine adventures.",
+      "quickLinks": "Quick Links",
+      "home": "Home",
+      "captainPortal": "Captain Portal",
+      "marketplace": "Marketplace",
+      "support": "Support",
+      "helpCenter": "Help Center",
+      "contactUs": "Contact Us",
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy",
+      "refundPolicy": "Refund & Cancellation",
+      "copyright": "© {year} Fishon. All rights reserved.",
+      "madeInMalaysia": "Made with ❤️ in Malaysia"
+    }
+  },
+  "marketing": {
+    "hero": {
+      "badge": "Malaysia's #1 online fishing charter booking platform",
+      "title": "List your",
+      "titleHighlight": "charter",
+      "titleEnd": "on Fishon.my",
+      "subtitle": "Showcase trips, pricing and boat details. Reach anglers browsing by state, lake/river, inshore and offshore destinations across Malaysia.",
+      "ctaPrimary": "Register your charter",
+      "ctaSecondary": "Book Charter Trips",
+      "stats": [
+        {
+          "value": "Malaysia-first",
+          "label": "Audience"
+        },
+        {
+          "value": "RM0",
+          "label": "Free to list"
+        },
+        {
+          "value": "Verified",
+          "label": "Trust & safety"
+        }
+      ]
+    },
+    "valueProps": {
+      "title": "What You Get",
+      "cards": [
+        {
+          "title": "Reach Real Anglers",
+          "description": "Get exposure to anglers actively looking for charters in Malaysia. Our platform connects you with quality customers."
+        },
+        {
+          "title": "Free to List",
+          "description": "No upfront costs. List your charter for free and start receiving inquiries from interested anglers."
+        },
+        {
+          "title": "Easy to Manage",
+          "description": "Simple dashboard to manage your charters, bookings, and communicate with customers. All in one place."
+        },
+        {
+          "title": "Trusted by Community",
+          "description": "Verification system and reviews help build trust with customers and increase your charter's credibility."
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "steps": [
+        {
+          "title": "Register Charter",
+          "description": "Fill in your charter information, boat details, and trips offered. Registration process is simple and quick."
+        },
+        {
+          "title": "Receive Bookings",
+          "description": "Anglers will discover your charter and contact you for bookings. Manage bookings through your dashboard."
+        },
+        {
+          "title": "Grow Together",
+          "description": "Expand your business with more exposure and tools to better manage your charter operations."
+        }
+      ]
+    },
+    "showcase": {
+      "badge": "OUR CAPTAINS",
+      "title": "Meet Our Trusted Captains",
+      "subtitle": "Experienced fishing professionals from across Malaysia, ready to deliver unforgettable adventures. Join them and grow your business on Fishon.my.",
+      "cta": {
+        "title": "Ready to become a captain?",
+        "subtitle": "Join our growing community of successful fishing charter operators. List your trips for free and start receiving bookings today.",
+        "button": "Get Started Now"
+      }
+    },
+    "pricing": {
+      "title": "Pricing",
+      "subtitle": "Free to list. 10% commission on successful bookings.",
+      "comingSoon": "More tiers coming soon.",
+      "plan": {
+        "percent": "10%",
+        "name": "Basic",
+        "features": [
+          "Google and Facebook Ads",
+          "Dedicated account manager",
+          "Listing charter",
+          "24/7 support team",
+          "Reviews to build online reputation",
+          "Calendar to track booking",
+          "Direct communication with client",
+          "Tools to monitor performance",
+          "Apps to manage business on the go (coming soon)"
+        ]
+      }
+    },
+    "safety": {
+      "badges": {
+        "title": "Trusted & Verified",
+        "items": [
+          {
+            "title": "Angler's Choice Badge",
+            "desc": "Captains earning high ratings from verified angler reviews"
+          },
+          {
+            "title": "Verified Captain Status",
+            "desc": "Passed comprehensive safety checks and documentation verification"
+          },
+          {
+            "title": "Top Responder Recognition",
+            "desc": "Fast, professional communication with customers gets featured placement"
+          }
+        ]
+      },
+      "compliance": {
+        "title": "Safety & Compliance",
+        "description": "Your safety and data protection are paramount. Fishon.my operates under strict compliance standards.",
+        "verification": {
+          "title": "Captain Verification",
+          "items": [
+            "Identification Card / Company Registration (SSM)",
+            "Seafarer ID / Maritime License (where applicable)",
+            "Boat Registration Certificate",
+            "Vessel & Public Liability Insurance",
+            "First Aid Certification & Safety Briefing"
+          ]
+        },
+        "legal": [
+          "PDPA Compliant (Malaysian Data Protection Act)",
+          "Made by Malaysians, for Malaysian anglers and captains."
+        ],
+        "learnMore": "Learn more:"
+      }
+    },
+    "faq": {
+      "title": "FAQs",
+      "items": [
+        {
+          "q": "Do I need to pay to join?",
+          "a": "No. It's 100% free to list your charter. We only take a commission 10% of the trip price on successful bookings."
+        },
+        {
+          "q": "What verification do I need?",
+          "a": "We verify captains to build trust. You'll need: Maritime license/Seafarer ID (where applicable), boat registration certificate, vessel/public liability insurance, and first aid certification. This typically takes 3-5 business days."
+        },
+        {
+          "q": "How will customers contact me?",
+          "a": "Customers reach you directly via chat, phone, or email—your choice. You manage communications directly without platform intermediaries. Full details on booking and cancellation policies are available in our Refund & Cancellation Policy."
+        },
+        {
+          "q": "Can I manage my availability and bookings?",
+          "a": "Yes. Our platform lets you manage your availability and bookings. For detailed information on rescheduling and cancellations, check our Refund & Cancellation Policy and Terms of Service."
+        },
+        {
+          "q": "How do you protect my data?",
+          "a": "We take data security seriously. All personal information is protected under Malaysia's Personal Data Protection Act (PDPA). See our Privacy Policy for complete details on how we collect, use, and safeguard your data."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Ready to reach more anglers?",
+      "subtitle": "Create your listing in minutes. It's free to start.",
+      "ctaPrimary": "Register your charter",
+      "ctaSecondary": "Talk to us on WhatsApp",
+      "stats": [
+        {
+          "value": "Malaysia-first",
+          "label": "Audience"
+        },
+        {
+          "value": "RM0",
+          "label": "Free to list"
+        },
+        {
+          "value": "Verified",
+          "label": "Trust & safety"
+        }
+      ]
+    }
+  }
+}

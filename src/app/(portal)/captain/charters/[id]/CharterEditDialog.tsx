@@ -216,7 +216,7 @@ export function CharterEditDialog({
         </DialogHeader>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-slate-200 mb-4">
+        <div className="flex gap-2 mb-4 border-b border-slate-200">
           {[
             { id: "details", label: "Details" },
             { id: "amenities", label: "Amenities" },
@@ -381,16 +381,16 @@ export function CharterEditDialog({
             <div className="grid grid-cols-2 gap-3">
               {AMENITIES_OPTIONS.map((amenity) => (
                 <button
-                  key={amenity}
+                  key={amenity.key}
                   type="button"
-                  onClick={() => toggleAmenity(amenity)}
+                  onClick={() => toggleAmenity(amenity.label)}
                   className={`px-4 py-3 text-sm font-medium rounded-lg border-2 transition-colors ${
-                    selectedAmenities.includes(amenity)
+                    selectedAmenities.includes(amenity.label)
                       ? "border-[#ec2227] bg-red-50 text-[#ec2227]"
                       : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                   }`}
                 >
-                  {amenity}
+                  {amenity.label}
                 </button>
               ))}
             </div>
@@ -407,7 +407,7 @@ export function CharterEditDialog({
               {POLICY_OPTIONS.map((policy) => (
                 <label
                   key={policy.value}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                  className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer border-slate-200 hover:bg-slate-50"
                 >
                   <input
                     type="checkbox"
@@ -427,7 +427,7 @@ export function CharterEditDialog({
         {/* Pickup Tab */}
         {activeTab === "pickup" && (
           <div className="space-y-4">
-            <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+            <label className="flex items-center gap-3 p-3 border rounded-lg border-slate-200 bg-slate-50">
               <input
                 type="checkbox"
                 checked={pickupData.enabled}
@@ -455,7 +455,7 @@ export function CharterEditDialog({
                     }
                     placeholder="Leave empty for complimentary"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="mt-1 text-xs text-slate-500">
                     Leave empty if pickup is complimentary
                   </p>
                 </div>
@@ -470,7 +470,7 @@ export function CharterEditDialog({
                     }
                     placeholder="e.g., Langkawi Airport, Kuah Town, Cenang Beach"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="mt-1 text-xs text-slate-500">
                     Separate multiple areas with commas
                   </p>
                 </div>
@@ -507,7 +507,7 @@ export function CharterEditDialog({
                 rows={10}
                 className="resize-none"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="mt-1 text-xs text-slate-500">
                 This description will be shown to potential customers
               </p>
             </div>

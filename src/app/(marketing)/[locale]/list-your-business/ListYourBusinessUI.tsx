@@ -21,10 +21,10 @@ export function Feature({
   desc: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 transition-all hover:border-[#EC2227]/50 hover:shadow-lg">
+    <div className="group relative overflow-hidden rounded-2xl border shadow border-neutral-200 bg-white p-5 transition-all hover:border-[#EC2227]/50 hover:shadow-xl hover:scale-[1.02]">
       <div className="absolute inset-0 bg-gradient-to-br from-[#EC2227]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="relative flex items-center gap-3">
-        <Icon className="text-2xl text-[#ec2227] flex-shrink-0" />
+      <div className="relative flex items-center gap-3 pb-3 mb-3 border-b border-gray-200">
+        <Icon className="h-10 w-10 text-[#ec2227] flex-shrink-0" />
         <h3 className="text-base font-semibold md:text-lg">{title}</h3>
       </div>
       <p className="relative mt-1 text-sm md:text-base text-neutral-700">
@@ -44,7 +44,7 @@ export function Step({
   desc: string;
 }) {
   return (
-    <li className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 md:p-7 lg:p-8 transition-all hover:border-[#EC2227]/50 hover:shadow-lg">
+    <li className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 md:p-7 lg:p-8 transition-all hover:border-[#EC2227]/50 hover:shadow-lg  hover:scale-[1.02]">
       <div className="absolute inset-0 bg-gradient-to-br from-[#EC2227]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       <div className="relative inline-flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full bg-[#EC2227]/10 text-sm md:text-base font-semibold text-[#EC2227]">
         {n}
@@ -128,14 +128,14 @@ export function Award({
   return (
     <div
       className={[
-        "group relative overflow-hidden rounded-2xl border p-5 md:p-7 transition-all",
+        "group relative overflow-hidden rounded-2xl border p-5 transition-all",
         accent
           ? "border-white/20 bg-white/10 hover:border-white/40 hover:shadow-lg"
           : "border-neutral-200 bg-white hover:border-[#EC2227]/50 hover:shadow-lg",
       ].join(" ")}
     >
       <div className="absolute inset-0 transition-opacity opacity-0 bg-gradient-to-br from-white/10 to-transparent group-hover:opacity-100" />
-      <div className="relative flex items-center gap-2">
+      <div className="relative flex items-center gap-2 pb-3 mb-3 border-b border-neutral-200">
         <Icon
           className={
             "h-5 w-5 md:h-6 md:w-6 flex-shrink-0" +

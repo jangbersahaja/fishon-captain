@@ -16,6 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -165,10 +166,12 @@ export function NavigationDrawer(props: NavigationDrawerProps) {
           <div className="px-4 py-4 border-b border-slate-200">
             <div className="flex items-center gap-3">
               {captainImage ? (
-                <img
+                <Image
                   src={captainImage}
                   alt={captainName}
-                  className="w-12 h-12 rounded-full object-cover bg-slate-200"
+                  className="object-cover w-12 h-12 rounded-full bg-slate-200"
+                  width={48}
+                  height={48}
                 />
               ) : (
                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-200">
@@ -176,11 +179,11 @@ export function NavigationDrawer(props: NavigationDrawerProps) {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-900 truncate">
+                <p className="font-semibold truncate text-slate-900">
                   {captainName}
                 </p>
                 {captainEmail && (
-                  <p className="text-sm text-slate-600 truncate">
+                  <p className="text-sm truncate text-slate-600">
                     {captainEmail}
                   </p>
                 )}
