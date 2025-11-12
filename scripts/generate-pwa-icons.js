@@ -18,7 +18,7 @@ const path = require("path");
 // Configuration
 const SOURCE_LOGO = path.join(
   __dirname,
-  "../public/images/logos/fishon-logo-bgred.png"
+  "../public/images/logos/captain-vector-512x512.svg"
 );
 const ICONS_DIR = path.join(__dirname, "../public/icons");
 const APPLE_ICON_PATH = path.join(__dirname, "../public/apple-touch-icon.png");
@@ -37,7 +37,7 @@ if (!fs.existsSync(ICONS_DIR)) {
 if (!fs.existsSync(SOURCE_LOGO)) {
   console.error("✗ Source logo not found:", SOURCE_LOGO);
   console.error(
-    "  Please ensure fishon-logo-bgred.png exists in public/images/logos/"
+    "  Please ensure captain-vector-512x512.svg exists in public/images/logos/"
   );
   process.exit(1);
 }
