@@ -63,7 +63,7 @@ export default async function PayoutsQueuePage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="p-4 border border-slate-200 rounded-lg bg-white">
+        <div className="p-4 bg-white border rounded-lg border-slate-200">
           <p className="text-sm text-slate-600">Pending Payout</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">
             RM {totalPending.toLocaleString()}
@@ -73,7 +73,7 @@ export default async function PayoutsQueuePage() {
           </p>
         </div>
 
-        <div className="p-4 border border-slate-200 rounded-lg bg-white">
+        <div className="p-4 bg-white border rounded-lg border-slate-200">
           <p className="text-sm text-slate-600">Ready for Payout</p>
           <p className="mt-1 text-2xl font-semibold text-green-600">
             {readyForPayout.length}
@@ -83,7 +83,7 @@ export default async function PayoutsQueuePage() {
           </p>
         </div>
 
-        <div className="p-4 border border-slate-200 rounded-lg bg-white">
+        <div className="p-4 bg-white border rounded-lg border-slate-200">
           <p className="text-sm text-slate-600">Incomplete Profiles</p>
           <p className="mt-1 text-2xl font-semibold text-amber-600">
             {totalCaptains - readyForPayout.length}
@@ -134,9 +134,15 @@ export default async function PayoutsQueuePage() {
               ownerEmail: p.owner?.email || "",
               bookingCount: p.bookingCount,
               netPayout: Number(p.netPayout),
-              status: p.status as any,
-              bankName: p.bankName,
-              accountNumber: p.accountNumber,
+              status: (p.status || "PENDING").toUpperCase() as
+                | "PENDING"
+                | "APPROVED"
+                | "PROCESSING"
+                | "COMPLETED"
+                | "FAILED"
+                | "CANCELLED",
+              bankName: p.bankName ?? null,
+              accountNumber: p.accountNumber ?? null,
               scheduledAt: p.scheduledAt,
               createdAt: p.createdAt,
             }))}

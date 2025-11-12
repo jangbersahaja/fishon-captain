@@ -469,17 +469,17 @@ export function TripDialog({
             </p>
             <div className="flex flex-wrap gap-2">
               {TECHNIQUE_OPTIONS.map((technique) => {
-                const active = formData.techniques.includes(technique);
+                const active = formData.techniques.includes(technique.label);
                 return (
                   <button
-                    key={technique}
+                    key={technique.key}
                     type="button"
                     onClick={() => {
                       setFormData((prev) => ({
                         ...prev,
                         techniques: active
-                          ? prev.techniques.filter((t) => t !== technique)
-                          : [...prev.techniques, technique],
+                          ? prev.techniques.filter((t) => t !== technique.label)
+                          : [...prev.techniques, technique.label],
                       }));
                     }}
                     className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
@@ -488,7 +488,7 @@ export function TripDialog({
                         : "border-neutral-200 bg-white text-slate-700 hover:border-slate-300"
                     }`}
                   >
-                    {technique}
+                    {technique.label}
                   </button>
                 );
               })}

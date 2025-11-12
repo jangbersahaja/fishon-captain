@@ -24,7 +24,7 @@ const providerIcon = (id: string) => {
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 488 512"
-          className="h-4 w-4"
+          className="w-4 h-4"
           aria-hidden
         >
           <path
@@ -38,7 +38,7 @@ const providerIcon = (id: string) => {
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 320 512"
-          className="h-4 w-4"
+          className="w-4 h-4"
           aria-hidden
         >
           <path
@@ -52,7 +52,7 @@ const providerIcon = (id: string) => {
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 384 512"
-          className="h-4 w-4"
+          className="w-4 h-4"
           aria-hidden
         >
           <path
@@ -66,7 +66,7 @@ const providerIcon = (id: string) => {
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
-          className="h-4 w-4"
+          className="w-4 h-4"
           aria-hidden
         >
           <path
@@ -246,7 +246,7 @@ export default function SignInForm({
         </div>
       )}
       {accountExists === false && email && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+        <div className="px-4 py-3 text-xs font-medium border rounded-2xl border-amber-200 bg-amber-50 text-amber-800">
           No account found with this email.{" "}
           <span
             className="underline cursor-pointer"
@@ -257,11 +257,11 @@ export default function SignInForm({
         </div>
       )}
       <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.25em] text-slate-400">
-        <span className="h-px flex-1 bg-slate-200" />
+        <span className="flex-1 h-px bg-slate-200" />
         <span>Or use email</span>
-        <span className="h-px flex-1 bg-slate-200" />
+        <span className="flex-1 h-px bg-slate-200" />
       </div>
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="p-5 space-y-4 bg-white border shadow-sm rounded-2xl border-slate-200">
         {error && (
           <div
             className={`rounded-md px-3 py-2 text-xs ${feedbackTokens.error.subtle}`}
@@ -312,7 +312,7 @@ export default function SignInForm({
         )}
       </div>
       {/* Reserve space for status message to prevent layout shift */}
-      <div className="h-4 flex items-center justify-center">
+      <div className="flex items-center justify-center h-4">
         {checking && (
           <p className="text-center text-[11px] text-slate-400">
             Checking account…

@@ -8,8 +8,6 @@ import { enableCharterFormConsoleLogging } from "@features/charter-onboarding/an
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
-import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,21 +33,16 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({
   children,
-  params,
 }: Readonly<{
   children: React.ReactNode;
-  params: Promise<{ locale?: string }>;
 }>) {
   if (process.env.NODE_ENV === "development") {
     // Initialize once (safe because component is a Server Component; guard keeps static evaluation harmless)
     enableCharterFormConsoleLogging();
   }
 
-  const { locale = "ms" } = await params;
-  const messages = await getMessages();
-
   return (
-    <html lang={locale}>
+    <html lang="ms">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -63,20 +56,18 @@ export default async function RootLayout({
         />
       </head>
       <body className="flex flex-col font-sans">
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <DevPanelProvider>
-            <AuthSessionProvider>
-              <NotificationProvider>
-                <Toaster />
-                <Navbar />
-                <OfflineBanner />
-                <main className="flex-1">{children}</main>
-                <SpeedInsights />
-                <Analytics />
-              </NotificationProvider>
-            </AuthSessionProvider>
-          </DevPanelProvider>
-        </NextIntlClientProvider>
+        <DevPanelProvider>
+          <AuthSessionProvider>
+            <NotificationProvider>
+              <Toaster />
+              <Navbar />
+              <OfflineBanner />
+              <main className="flex-1">{children}</main>
+              <SpeedInsights />
+              <Analytics />
+            </NotificationProvider>
+          </AuthSessionProvider>
+        </DevPanelProvider>
       </body>
     </html>
   );

@@ -7,7 +7,6 @@ import { notFound, redirect } from "next/navigation";
 import { PayoutApproveButton } from "../../../_components/PayoutApproveButton";
 import { PayoutCompleteButton } from "../../../_components/PayoutCompleteButton";
 import { PayoutStatusBadge } from "../../../_components/PayoutStatusBadge";
-
 export const dynamic = "force-dynamic";
 
 interface PayoutDetailPageProps {
@@ -15,6 +14,13 @@ interface PayoutDetailPageProps {
     id: string;
   }>;
 }
+//TODO(@fishon/packages): Move this to shared package if used in multiple apps
+type PayoutStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED";
 
 export default async function PayoutDetailPage({
   params,
@@ -43,7 +49,7 @@ export default async function PayoutDetailPage({
           <h1 className="text-2xl font-semibold text-slate-900">
             Payout Details
           </h1>
-          <p className="mt-1 text-sm text-slate-600 font-mono">
+          <p className="mt-1 font-mono text-sm text-slate-600">
             Batch ID: {payout.batchId}
           </p>
         </div>
@@ -58,7 +64,7 @@ export default async function PayoutDetailPage({
       {/* Status & Actions */}
       <div className="flex items-start gap-4">
         <div className="flex-1">
-          <PayoutStatusBadge status={payout.status as any} />
+          <PayoutStatusBadge status={payout.status as PayoutStatus} />
         </div>
         {role === "ADMIN" && (
           <div className="space-y-2">
@@ -71,7 +77,7 @@ export default async function PayoutDetailPage({
       {/* Payout Information */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Captain Details */}
-        <div className="p-6 border border-slate-200 rounded-lg bg-white">
+        <div className="p-6 bg-white border rounded-lg border-slate-200">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">
             Captain Details
           </h2>
@@ -90,7 +96,7 @@ export default async function PayoutDetailPage({
             </div>
             <div>
               <dt className="text-sm text-slate-600">Owner ID</dt>
-              <dd className="mt-1 text-sm font-mono text-slate-900">
+              <dd className="mt-1 font-mono text-sm text-slate-900">
                 {payout.ownerId}
               </dd>
             </div>
@@ -98,7 +104,7 @@ export default async function PayoutDetailPage({
         </div>
 
         {/* Bank Details */}
-        <div className="p-6 border border-slate-200 rounded-lg bg-white">
+        <div className="p-6 bg-white border rounded-lg border-slate-200">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">
             Bank Details
           </h2>
@@ -111,7 +117,7 @@ export default async function PayoutDetailPage({
             </div>
             <div>
               <dt className="text-sm text-slate-600">Account Number</dt>
-              <dd className="mt-1 text-sm font-mono text-slate-900">
+              <dd className="mt-1 font-mono text-sm text-slate-900">
                 {payout.accountNumber}
               </dd>
             </div>
@@ -125,7 +131,7 @@ export default async function PayoutDetailPage({
         </div>
 
         {/* Financial Details */}
-        <div className="p-6 border border-slate-200 rounded-lg bg-white">
+        <div className="p-6 bg-white border rounded-lg border-slate-200">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">
             Financial Details
           </h2>
@@ -158,7 +164,7 @@ export default async function PayoutDetailPage({
         </div>
 
         {/* Timeline */}
-        <div className="p-6 border border-slate-200 rounded-lg bg-white">
+        <div className="p-6 bg-white border rounded-lg border-slate-200">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">
             Timeline
           </h2>
@@ -227,7 +233,7 @@ export default async function PayoutDetailPage({
       )}
 
       {/* Booking IDs */}
-      <div className="p-6 border border-slate-200 rounded-lg bg-white">
+      <div className="p-6 bg-white border rounded-lg border-slate-200">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">
           Included Bookings
         </h2>
@@ -235,12 +241,12 @@ export default async function PayoutDetailPage({
           {payout.bookingIds.map((bookingId: string, index: number) => (
             <div
               key={bookingId}
-              className="flex items-center justify-between p-3 border border-slate-100 rounded-lg hover:bg-slate-50"
+              className="flex items-center justify-between p-3 border rounded-lg border-slate-100 hover:bg-slate-50"
             >
               <span className="text-sm text-slate-600">
                 Booking #{index + 1}
               </span>
-              <span className="text-sm font-mono text-slate-900">
+              <span className="font-mono text-sm text-slate-900">
                 {bookingId}
               </span>
             </div>

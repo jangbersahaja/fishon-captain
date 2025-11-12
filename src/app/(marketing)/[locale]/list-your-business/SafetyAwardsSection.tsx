@@ -1,8 +1,12 @@
+"use client";
+
 import { Lock, Star, Trophy, Users, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Award } from "./ListYourBusinessUI";
 
 export default function SafetyAwardsSection() {
+  const t = useTranslations("marketing.safety");
   return (
     <section className="bg-gradient-to-b from-[#EC2227] to-[#C41A1F]">
       <div className="w-full px-4 py-12 mx-auto text-white max-w-7xl md:py-16 lg:py-20 sm:px-6 lg:px-8">
@@ -10,25 +14,25 @@ export default function SafetyAwardsSection() {
           {/* Left: Badges & Recognition */}
           <div className="flex-1">
             <h2 className="mb-8 text-2xl font-extrabold tracking-tight text-right md:text-3xl lg:text-4xl">
-              Trusted & Verified
+              {t("badges.title")}
             </h2>
             <div className="grid gap-4 md:grid-cols-1">
               <Award
                 Icon={Trophy}
-                title="Angler's Choice Badge"
-                desc="Captains earning high ratings from verified angler reviews"
+                title={t("badges.items.0.title")}
+                desc={t("badges.items.0.desc")}
                 accent
               />
               <Award
                 Icon={Star}
-                title="Verified Captain Status"
-                desc="Passed comprehensive safety checks and documentation verification"
+                title={t("badges.items.1.title")}
+                desc={t("badges.items.1.desc")}
                 accent
               />
               <Award
                 Icon={Zap}
-                title="Top Responder Recognition"
-                desc="Fast, professional communication with customers gets featured placement"
+                title={t("badges.items.2.title")}
+                desc={t("badges.items.2.desc")}
                 accent
               />
             </div>
@@ -39,42 +43,47 @@ export default function SafetyAwardsSection() {
           {/* Right: Safety & Legal Compliance */}
           <div className="flex-1">
             <h2 className="mb-4 text-2xl font-extrabold tracking-tight md:text-3xl lg:text-4xl">
-              Safety & Compliance
+              {t("compliance.title")}
             </h2>
             <p className="mb-6 text-base leading-relaxed text-white/95">
-              Your safety and data protection are paramount. Fishon.my operates
-              under strict compliance standards.
+              {t("compliance.description")}
             </p>
 
             {/* Verification Checklist */}
             <div className="mb-8">
               <h3 className="mb-4 text-sm font-semibold tracking-wide uppercase text-white/80">
-                Captain Verification
+                {t("compliance.verification.title")}
               </h3>
               <ul className="space-y-3 text-sm">
-                <li className="flex items-start gap-3">
+                <li className="flex items-end gap-3">
                   <span className="mt-0.5 h-5 w-5 flex-shrink-0">
                     <Lock />
                   </span>
-                  <span>Seafarer ID / Maritime License (where applicable)</span>
+                  <span>{t("compliance.verification.items.0")}</span>
                 </li>
-                <li className="flex items-start gap-3">
+                <li className="flex items-end gap-3">
                   <span className="mt-0.5 h-5 w-5 flex-shrink-0">
                     <Lock />
                   </span>
-                  <span>Boat Registration Certificate</span>
+                  <span>{t("compliance.verification.items.1")}</span>
                 </li>
-                <li className="flex items-start gap-3">
+                <li className="flex items-end gap-3">
                   <span className="mt-0.5 h-5 w-5 flex-shrink-0">
                     <Lock />
                   </span>
-                  <span>Vessel & Public Liability Insurance</span>
+                  <span>{t("compliance.verification.items.2")}</span>
                 </li>
-                <li className="flex items-start gap-3">
+                <li className="flex items-end gap-3">
                   <span className="mt-0.5 h-5 w-5 flex-shrink-0">
                     <Lock />
                   </span>
-                  <span>First Aid Certification & Safety Briefing</span>
+                  <span>{t("compliance.verification.items.3")}</span>
+                </li>
+                <li className="flex items-end gap-3">
+                  <span className="mt-0.5 h-5 w-5 flex-shrink-0">
+                    <Lock />
+                  </span>
+                  <span>{t("compliance.verification.items.4")}</span>
                 </li>
               </ul>
             </div>
@@ -83,18 +92,14 @@ export default function SafetyAwardsSection() {
             <div className="pt-6 space-y-3 text-sm border-t border-white/20">
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4" />
-                <span className="font-medium">
-                  PDPA Compliant (Malaysian Data Protection Act)
-                </span>
+                <span className="font-medium">{t("compliance.legal.0")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                <span className="font-medium">
-                  Made by Malaysians, for Malaysian anglers and captains.
-                </span>
+                <span className="font-medium">{t("compliance.legal.1")}</span>
               </div>
               <div className="mt-4 text-xs text-white/70">
-                <p className="mb-2">Learn more:</p>
+                <p className="mb-2">{t("compliance.learnMore")}</p>
                 <div className="space-y-1">
                   <Link href="/terms" className="block hover:underline">
                     → Terms of Service

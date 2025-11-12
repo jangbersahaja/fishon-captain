@@ -8,10 +8,10 @@ export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "ms";
 
 export default getRequestConfig(async ({ requestLocale }) => {
-  // This typically corresponds to the `[locale]` segment
+  // This gets the locale from the middleware
   let locale = await requestLocale;
 
-  // Ensure that a valid locale is used
+  // Validate that the incoming `locale` parameter is valid
   if (!locale || !locales.includes(locale as Locale)) {
     locale = defaultLocale;
   }

@@ -1,0 +1,165 @@
+{
+  "common": {
+    "nav": {
+      "marketplace": "Marketplace",
+      "captainPortal": "Captain Portal",
+      "staffPortal": "Staff Portal",
+      "signIn": "Sign In",
+      "signOut": "Sign Out",
+      "menu": "Open navigation"
+    },
+    "footer": {
+      "companyInfo": "Malaysia's first fishing & charter booking platform. Connecting captains with fishing enthusiasts for unforgettable marine adventures.",
+      "quickLinks": "Quick Links",
+      "home": "Home",
+      "captainPortal": "Captain Portal",
+      "marketplace": "Marketplace",
+      "support": "Support",
+      "helpCenter": "Help Center",
+      "contactUs": "Contact Us",
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy",
+      "refundPolicy": "Refund & Cancellation",
+      "copyright": "© {year} Fishon. All rights reserved.",
+      "madeInMalaysia": "Made with ❤️ in Malaysia"
+    }
+  },
+  "marketing": {
+    "hero": {
+      "badge": "Malaysia's #1 online fishing charter booking platform",
+      "title": "List your",
+      "titleHighlight": "charter",
+      "titleEnd": "on Fishon.my",
+      "subtitle": "Showcase trips, pricing and boat details. Reach anglers browsing by state, lake/river, inshore and offshore destinations across Malaysia.",
+      "ctaPrimary": "Register your charter",
+      "ctaSecondary": "Chat on WhatsApp",
+      "stats": [
+        {
+          "value": "Malaysia-first",
+          "label": "Audience"
+        },
+        {
+          "value": "RM0",
+          "label": "Free to list"
+        },
+        {
+          "value": "Verified",
+          "label": "Trust & safety"
+        }
+      ]
+    },
+    "valueProps": {
+      "title": "Why Join Fishon?",
+      "cards": [
+        {
+          "title": "Reach Real Anglers",
+          "description": "Get exposure to anglers actively looking for charters in Malaysia. Our platform connects you with quality customers."
+        },
+        {
+          "title": "Free to List",
+          "description": "No upfront costs. List your charter for free and start receiving inquiries from interested anglers."
+        },
+        {
+          "title": "Easy to Manage",
+          "description": "Simple dashboard to manage your charters, bookings, and communicate with customers. All in one place."
+        },
+        {
+          "title": "Trusted by Community",
+          "description": "Verification system and reviews help build trust with customers and increase your charter's credibility."
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "steps": [
+        {
+          "title": "Register Charter",
+          "description": "Fill in your charter information, boat details, and trips offered. Registration process is simple and quick."
+        },
+        {
+          "title": "Receive Bookings",
+          "description": "Anglers will discover your charter and contact you for bookings. Manage bookings through your dashboard."
+        },
+        {
+          "title": "Grow Together",
+          "description": "Expand your business with more exposure and tools to better manage your charter operations."
+        }
+      ]
+    },
+    "showcase": {
+      "title": "Join Other Captains",
+      "subtitle": "Captains across Malaysia are already using Fishon to grow their charter business."
+    },
+    "pricing": {
+      "title": "Simple Pricing",
+      "subtitle": "Free to list. No hidden costs.",
+      "free": {
+        "title": "Free",
+        "price": "RM0",
+        "period": "/month",
+        "features": [
+          "List charter for free",
+          "Marketplace visibility",
+          "Basic dashboard",
+          "Community support"
+        ],
+        "cta": "Get Started"
+      },
+      "premium": {
+        "title": "Premium",
+        "price": "Coming Soon",
+        "features": [
+          "All free features",
+          "Premium exposure",
+          "Detailed analytics",
+          "Priority support"
+        ],
+        "cta": "Coming Soon"
+      }
+    },
+    "safety": {
+      "title": "Trust & Safety",
+      "subtitle": "We prioritize trust and safety for all our users.",
+      "badges": [
+        {
+          "title": "Verification",
+          "description": "Charters are verified to ensure quality and safety."
+        },
+        {
+          "title": "Reviews",
+          "description": "Transparent review system to build trust."
+        },
+        {
+          "title": "Support",
+          "description": "Support team ready to help you anytime."
+        }
+      ]
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "items": [
+        {
+          "question": "How much does it cost to list my charter?",
+          "answer": "It's 100% free! No upfront fees or hidden costs to list your charter on Fishon."
+        },
+        {
+          "question": "How long does registration take?",
+          "answer": "Registration takes 10-15 minutes. Once you submit, our team will review and verify your charter within 1-2 days."
+        },
+        {
+          "question": "What do I need to register?",
+          "answer": "You'll need basic charter information, boat details, photos, and information about the trips you offer."
+        },
+        {
+          "question": "How do I receive bookings?",
+          "answer": "When anglers are interested in your charter, they'll contact you through the platform. You can manage all bookings through the captain dashboard."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Ready to Get Started?",
+      "subtitle": "Join Fishon today and start your journey to grow your charter business.",
+      "cta": "Register Your Charter"
+    }
+  }
+}

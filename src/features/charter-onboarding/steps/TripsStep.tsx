@@ -101,17 +101,20 @@ export function TripsStep({ form }: TripsStepProps) {
   );
 
   return (
-    <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
-      <header className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold text-slate-900">
-          Trips & pricing
-        </h2>
-        <p className="text-sm text-slate-500">
-          Outline each package you offer. We&apos;ll show these to anglers.
-        </p>
-      </header>
-
-      <hr className="border-t my-6 border-neutral-200" />
+    <>
+      <section className="p-6 bg-white border shadow-sm rounded-3xl border-neutral-200">
+        <header className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-slate-900">
+              Trip & Pricing
+            </h2>
+            <h3 className="text-lg text-slate-600">[Trip & Harga]</h3>
+          </div>
+          <p className="text-sm text-slate-500">
+            Outline each package you offer. We&apos;ll show these to anglers.
+          </p>
+        </header>
+      </section>
 
       <div className="mt-6 space-y-6">
         {fields.map((field, index) => {
@@ -120,18 +123,19 @@ export function TripsStep({ form }: TripsStepProps) {
           return (
             <div
               key={field.id}
-              className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
+              className="p-5 bg-white border shadow-sm rounded-2xl border-neutral-200"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-md font-semibold text-slate-900">
+                  <h2 className="text-lg font-semibold text-slate-900">
                     Trip {index + 1}
-                  </h3>
+                  </h2>
                   <p className="text-xs text-slate-500">
                     Fill in the details below. Anglers will see this as a
                     package.
                   </p>
                 </div>
+
                 {fields.length > 1 && (
                   <button
                     type="button"
@@ -143,8 +147,14 @@ export function TripsStep({ form }: TripsStepProps) {
                 )}
               </div>
 
-              <div className="mt-4 grid gap-5 sm:grid-cols-2">
-                <Field label="Trip type" error={tripErrors?.tripType?.message}>
+              <hr className="my-6 border-t border-neutral-200" />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  label="Trip type"
+                  labelMy="Jenis Trip"
+                  error={tripErrors?.tripType?.message}
+                >
                   <select
                     {...register(`trips.${index}.tripType` as const)}
                     className={inputClass}
@@ -161,9 +171,9 @@ export function TripsStep({ form }: TripsStepProps) {
                           !isNaN(current.maxAnglers)
                             ? current.maxAnglers
                             : typeof boatCapacity === "number" &&
-                              Number.isFinite(boatCapacity)
-                            ? boatCapacity
-                            : 1, // fallback to 1 if undefined
+                                Number.isFinite(boatCapacity)
+                              ? boatCapacity
+                              : 1, // fallback to 1 if undefined
                       });
                     }}
                   >
@@ -175,7 +185,11 @@ export function TripsStep({ form }: TripsStepProps) {
                     ))}
                   </select>
                 </Field>
-                <Field label="Trip name" error={tripErrors?.name?.message}>
+                <Field
+                  label="Trip name"
+                  labelMy="Nama Trip"
+                  error={tripErrors?.name?.message}
+                >
                   <input
                     {...register(`trips.${index}.name` as const)}
                     className={inputClass}
@@ -184,8 +198,8 @@ export function TripsStep({ form }: TripsStepProps) {
                     style={{
                       backgroundColor:
                         trips?.[index]?.tripType !== "Custom"
-                          ? "#f8f9fa"
-                          : "white",
+                          ? "white"
+                          : "#f8f9fa",
                       cursor:
                         trips?.[index]?.tripType !== "Custom"
                           ? "not-allowed"
@@ -193,7 +207,11 @@ export function TripsStep({ form }: TripsStepProps) {
                     }}
                   />
                 </Field>
-                <Field label="Price (MYR)" error={tripErrors?.price?.message}>
+                <Field
+                  label="Normal Price (MYR)"
+                  labelMy="Harga Biasa (MYR)"
+                  error={tripErrors?.price?.message}
+                >
                   <input
                     type="number"
                     min={0}
@@ -206,7 +224,8 @@ export function TripsStep({ form }: TripsStepProps) {
                   />
                 </Field>
                 <Field
-                  label="Promotional/Low season price (MYR)"
+                  label="Promo price (MYR)"
+                  labelMy="Harga Promosi"
                   error={tripErrors?.promoPrice?.message}
                 >
                   <input
@@ -222,6 +241,7 @@ export function TripsStep({ form }: TripsStepProps) {
                 </Field>
                 <Field
                   label="Max anglers"
+                  labelMy="Maksimum Pemancing"
                   error={tripErrors?.maxAnglers?.message}
                   hint={
                     Number.isFinite(boatCapacity)
@@ -251,6 +271,7 @@ export function TripsStep({ form }: TripsStepProps) {
 
                 <Field
                   label="Duration (Hour)"
+                  labelMy="Tempoh (Jam)"
                   error={tripErrors?.durationHours?.message}
                 >
                   <input
@@ -266,9 +287,12 @@ export function TripsStep({ form }: TripsStepProps) {
                 </Field>
               </div>
 
+              <hr className="my-6 border-t border-neutral-200" />
+
               <Field
-                className="mt-4"
+                className=""
                 label="Departure times"
+                labelMy="Masa Bertolak"
                 error={tripErrors?.startTimes?.message}
                 hint="Add as many start times as you offer"
               >
@@ -279,9 +303,12 @@ export function TripsStep({ form }: TripsStepProps) {
                 />
               </Field>
 
+              <hr className="my-6 border-t border-neutral-200" />
+
               <Field
-                className="mt-4"
-                label="Trip description (optional)"
+                className=""
+                label="Additional notes (optional)"
+                labelMy="Nota Tambahan"
                 error={tripErrors?.description?.message}
               >
                 <AutoResizeTextarea
@@ -291,7 +318,13 @@ export function TripsStep({ form }: TripsStepProps) {
                 />
               </Field>
 
-              <Field className="mt-8" label="Fishing techniques">
+              <hr className="my-6 border-t border-neutral-200" />
+
+              <Field
+                className=""
+                label="Fishing techniques"
+                labelMy="Teknik Memancing"
+              >
                 <ChipGrid
                   options={TECHNIQUE_OPTIONS}
                   selected={trips?.[index]?.techniques}
@@ -301,7 +334,9 @@ export function TripsStep({ form }: TripsStepProps) {
                 />
               </Field>
 
-              <Field className="mt-8" label="Target species">
+              <hr className="my-6 border-t border-neutral-200" />
+
+              <Field className="" label="Target species" labelMy="Specis Ikan">
                 <SpeciesSelector
                   value={trips?.[index]?.species}
                   activeTab={
@@ -321,11 +356,11 @@ export function TripsStep({ form }: TripsStepProps) {
         <button
           type="button"
           onClick={() => append(defaultTrip())}
-          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition bg-white border rounded-full shadow-sm border-neutral-200 text-slate-700 hover:border-slate-300"
         >
           + Add another trip
         </button>
       </div>
-    </section>
+    </>
   );
 }

@@ -118,11 +118,11 @@ export async function getBookingsFinancial(filters?: {
   const where: any = {};
 
   if (filters?.status) {
-    where.status = filters.status as any;
+    where.status = filters.status as string;
   }
 
   if (filters?.payoutStatus) {
-    where.payoutStatus = filters.payoutStatus as any;
+    where.payoutStatus = filters.payoutStatus as string;
   }
 
   if (filters?.startDate || filters?.endDate) {
@@ -140,14 +140,18 @@ export async function getBookingsFinancial(filters?: {
 
   // Extract unique charterIds and userIds
   const charterIds = [
-    ...new Set(bookings.map((b: any) => b.charterId)),
+    ...new Set((bookings as BookingRaw[]).map((b: BookingRaw) => b.charterId)),
   ] as string[];
   const userIds = [
-    ...new Set(bookings.map((b: any) => b.userId).filter(Boolean) as string[]),
+    ...new Set(
+      (bookings as BookingRaw[])
+        .map((b: BookingRaw) => b.userId)
+        .filter(Boolean) as string[]
+    ),
   ];
 
   // Fetch charter data from captain DB
-  const charters = await prisma.charter.findMany({
+  const chartersRaw = await prisma.charter.findMany({
     where: { id: { in: charterIds } },
     select: {
       id: true,
@@ -161,6 +165,14 @@ export async function getBookingsFinancial(filters?: {
     },
   });
 
+  // Map to CharterInfo with ownerId as string
+  const charters = chartersRaw.map((c) => ({
+    id: c.id,
+    name: c.name,
+    ownerId: c.ownerId ?? "",
+    captain: c.captain,
+  }));
+
   // Fetch angler data from market DB
   const anglers = await prismaMarket.marketUser.findMany({
     where: { id: { in: userIds } },
@@ -169,48 +181,97 @@ export async function getBookingsFinancial(filters?: {
 
   // Build lookup maps
   const charterMap = new Map(charters.map((c) => [c.id, c]));
-  const anglerMap = new Map(anglers.map((a: any) => [a.id, a]));
+  const anglerMap = new Map(
+    anglers.map((a: { id: string; name: string; email: string }) => [a.id, a])
+  );
 
   // Enrich bookings
-  const enriched = bookings.map((booking: any) => {
-    const charter = charterMap.get(booking.charterId);
-    const angler = booking.userId ? anglerMap.get(booking.userId) : null;
-
-    return {
-      id: booking.id,
-      charterId: booking.charterId,
-      charterName: charter?.name || "Unknown Charter",
-      ownerId: charter?.ownerId || "",
-      ownerName: charter?.captain?.user?.name || "Unknown Owner",
-      anglerName:
-        (angler as any)?.name ||
-        (booking.guestFirstName
-          ? `${booking.guestFirstName} ${booking.guestLastName}`.trim()
-          : "Guest"),
-      tripDate: booking.date,
-      finalPrice: Number(booking.finalPrice),
-      platformFee: Number(booking.platformFee || 0),
-      captainEarnings: Number(booking.captainEarnings || 0),
-      paymentMethod: booking.paymentMethod,
-      paymentTransactionId: booking.paymentTransactionId,
-      paidAt: booking.paidAt,
-      payoutStatus: booking.payoutStatus,
-      refundAmount: booking.refundAmount ? Number(booking.refundAmount) : null,
-      createdAt: booking.createdAt,
-      status: booking.status,
+  interface CharterInfo {
+    id: string;
+    name: string;
+    ownerId: string;
+    captain?: {
+      user?: {
+        name?: string | null;
+        email?: string;
+      };
     };
-  });
+  }
+
+  interface AnglerInfo {
+    id: string;
+    name: string;
+    email: string;
+  }
+
+  interface BookingRaw {
+    id: string;
+    charterId: string;
+    userId?: string | null;
+    guestFirstName?: string | null;
+    guestLastName?: string | null;
+    date: Date;
+    finalPrice: number;
+    platformFee?: number | null;
+    captainEarnings?: number | null;
+    paymentMethod?: string | null;
+    paymentTransactionId?: string | null;
+    paidAt?: Date | null;
+    payoutStatus?: string | null;
+    refundAmount?: number | null;
+    createdAt: Date;
+    status: string;
+  }
+
+  const enriched: BookingFinancial[] = (bookings as BookingRaw[]).map(
+    (booking: BookingRaw) => {
+      const charter: CharterInfo | undefined = charterMap.get(
+        booking.charterId
+      );
+      const angler: AnglerInfo | undefined = booking.userId
+        ? (anglerMap.get(booking.userId) as AnglerInfo | undefined)
+        : undefined;
+
+      return {
+        id: booking.id,
+        charterId: booking.charterId,
+        charterName: charter?.name || "Unknown Charter",
+        ownerId: charter?.ownerId || "",
+        ownerName: charter?.captain?.user?.name || "Unknown Owner",
+        anglerName:
+          (angler?.name as string | undefined) ||
+          (booking.guestFirstName
+            ? `${booking.guestFirstName} ${booking.guestLastName}`.trim()
+            : "Guest"),
+        tripDate: booking.date,
+        finalPrice: Number(booking.finalPrice),
+        platformFee: Number(booking.platformFee || 0),
+        captainEarnings: Number(booking.captainEarnings || 0),
+        paymentMethod: booking.paymentMethod ?? null,
+        paymentTransactionId: booking.paymentTransactionId ?? null,
+        paidAt: booking.paidAt ?? null,
+        payoutStatus: booking.payoutStatus ?? null,
+        refundAmount: booking.refundAmount
+          ? Number(booking.refundAmount)
+          : null,
+        createdAt: booking.createdAt,
+        status: booking.status,
+      };
+    }
+  );
 
   // Filter by ownerId if specified (after enrichment)
   if (filters?.ownerId) {
-    return enriched.filter((b: any) => b.ownerId === filters.ownerId);
+    return enriched.filter(
+      (b: BookingFinancial) => b.ownerId === filters.ownerId
+    );
   }
 
   // Filter by search query (charter name or angler name)
   if (filters?.search) {
     const searchLower = filters.search.toLowerCase();
     return enriched.filter(
-      (b: any) =>
+      (b: BookingFinancial) =>
         b.charterName.toLowerCase().includes(searchLower) ||
         b.anglerName.toLowerCase().includes(searchLower)
     );
@@ -381,9 +442,9 @@ export async function createPayoutBatch(
   createdBy: string,
   periodStart: Date,
   periodEnd: Date
-): Promise<{ batchId: string; payouts: any[] }> {
+): Promise<{ batchId: string; payouts: Payout[] }> {
   const batchId = generateBatchId(periodStart);
-  const payouts = [];
+  const payouts: Payout[] = [];
 
   for (const calc of calculations) {
     // Validate bank details
@@ -430,7 +491,7 @@ export async function createPayoutBatch(
       after: payout,
     });
 
-    payouts.push(payout);
+    payouts.push(payout as Payout);
   }
 
   return { batchId, payouts };
@@ -439,6 +500,10 @@ export async function createPayoutBatch(
 /**
  * Approve payout (ADMIN only)
  */
+
+// TODO(@fishon/packages): Move this to shared package if used in multiple apps
+type Payout = Awaited<ReturnType<typeof prisma.payout.create>>;
+
 export async function approvePayout(payoutId: string, approvedBy: string) {
   const payout = await prisma.payout.findUnique({
     where: { id: payoutId },
@@ -536,10 +601,11 @@ export async function getPayouts(filters?: {
   ownerId?: string;
   limit?: number;
 }) {
-  const where: any = {};
+  // Use Prisma.PayoutWhereInput for type safety
+  const where: import("@prisma/client").Prisma.PayoutWhereInput = {};
 
   if (filters?.status) {
-    where.status = filters.status;
+    where.status = filters.status as import("@prisma/client").PayoutStatus;
   }
 
   if (filters?.ownerId) {

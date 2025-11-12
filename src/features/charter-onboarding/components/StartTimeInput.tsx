@@ -1,3 +1,4 @@
+import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
 import { inputClass } from "@features/charter-onboarding/constants";
 import { useState } from "react";
 
@@ -15,7 +16,7 @@ export function StartTimeInput({
   const [draft, setDraft] = useState("");
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div className="flex w-full gap-2 lg:w-1/3">
         <input
           type="time"
           value={draft}
@@ -29,7 +30,7 @@ export function StartTimeInput({
             onAdd(draft);
             setDraft("");
           }}
-          className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300"
+          className="px-4 py-2 text-sm font-semibold transition bg-[#ec2227] border rounded-lg border-neutral-200 text-white hover:border-slate-300"
         >
           Add
         </button>
@@ -38,13 +39,13 @@ export function StartTimeInput({
         {times.map((time) => (
           <span
             key={time}
-            className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
+            className="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold bg-[#ec2227] border rounded-sm border-neutral-200 text-white"
           >
-            {time}
+            {convert24to12Hour(time)}
             <button
               type="button"
               onClick={() => onRemove(time)}
-              className="text-slate-400 transition hover:text-slate-700"
+              className="font-bold text-white transition hover:text-white/90"
             >
               ×
             </button>

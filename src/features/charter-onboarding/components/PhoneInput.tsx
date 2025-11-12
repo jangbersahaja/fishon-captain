@@ -73,7 +73,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
     return (
       <div
         className={clsx(
-          "flex items-center overflow-hidden rounded-xl border bg-white shadow-sm focus-within:ring-2 transition",
+          "flex items-center overflow-hidden rounded-lg border bg-white focus-within:ring-2 transition",
           borderClass,
           disabled ? "bg-slate-50" : ""
         )}
@@ -84,7 +84,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
           onChange={handleDialChange}
           onBlur={onBlur}
           disabled={disabled}
-          className="h-12 min-w-[96px] border-r border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none"
+          className=" min-w-[96px] border-r border-slate-200 bg-white p-3 text-sm font-medium text-slate-700 outline-none"
         >
           {PHONE_COUNTRIES.map((country) => (
             <option key={country.code} value={country.code}>
@@ -100,7 +100,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
           onChange={handleNumberChange}
           onBlur={onBlur}
           disabled={disabled}
-          className="h-12 flex-1 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+          className="flex-1 p-3 text-sm outline-none bg-slate-50 text-slate-900 placeholder:text-slate-400"
           placeholder="123-456-7890"
         />
       </div>

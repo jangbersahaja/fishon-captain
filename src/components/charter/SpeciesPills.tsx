@@ -51,7 +51,7 @@ export function SpeciesPills({
         const local = item.local;
         const hasBoth = Boolean(local && local !== english);
         const pillClasses = clsx(
-          "group inline-flex items-center rounded-full border border-neutral-200 bg-white font-medium text-slate-700 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-slate-400/30",
+          "group inline-flex items-center rounded-md bg-slate-50 border border-neutral-200 bg-white font-medium text-slate-700 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-slate-400/30 relative",
           current.pad,
           current.text,
           !readOnly &&
@@ -77,7 +77,7 @@ export function SpeciesPills({
               : {})}
           >
             {showImage && item.imageSrc ? (
-              <span className="mr-2 relative inline-flex h-15 w-20 items-center justify-center overflow-hidden rounded-l-full bg-white/50 ">
+              <span className="relative inline-flex items-center justify-center w-20 mr-2 overflow-hidden h-15">
                 <Image
                   src={item.imageSrc}
                   alt={english}
@@ -109,7 +109,7 @@ export function SpeciesPills({
                   e.stopPropagation();
                   onRemoveAction(item);
                 }}
-                className="ml-1 rounded-full px-1 text-[10px] font-bold text-red-400 transition-colors hover:bg-red-100 hover:text-red-600"
+                className="ml-1 rounded-full px-1 text-[10px] font-bold text-red-400 transition-colors hover:bg-red-100 hover:text-red-600 absolute top-1 right-1"
               >
                 ×
               </button>

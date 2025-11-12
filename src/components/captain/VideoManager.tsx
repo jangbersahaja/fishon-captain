@@ -692,7 +692,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
           items={videos.map((v) => v.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 ">
             {videos.map((v) => (
               <SortableVideoItem
                 key={v.id}

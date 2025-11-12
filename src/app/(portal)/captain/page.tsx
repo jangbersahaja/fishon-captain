@@ -91,19 +91,6 @@ async function getVerification(
   return row as VerificationRow | null;
 }
 
-function computeTripStats(trips: { durationHours: number; price: unknown }[]) {
-  if (!trips.length) return { totalHours: 0, avgPrice: 0 };
-  const totalHours = trips.reduce(
-    (acc, t) => acc + (Number.isFinite(t.durationHours) ? t.durationHours : 0),
-    0
-  );
-  const totalPrice = trips.reduce((acc, t) => {
-    const num = Number(t.price);
-    return acc + (Number.isFinite(num) ? num : 0);
-  }, 0);
-  return { totalHours, avgPrice: totalPrice / trips.length };
-}
-
 export default async function CaptainDashboardPage({
   searchParams,
 }: {
@@ -129,10 +116,8 @@ export default async function CaptainDashboardPage({
     redirect("/staff");
   }
 
-  const { profile, charters, userId, photoCount, videoCount } =
-    await getCharter(adminUserId);
+  const { profile, charters, userId } = await getCharter(adminUserId);
   const verification = await getVerification(userId);
-  const charter = charters[0]; // Primary charter for now (can add selector later)
 
   // Get user's role for upgrade banner
   const user = await prisma.user.findUnique({
@@ -217,14 +202,6 @@ export default async function CaptainDashboardPage({
       href: "/captain/verification",
     },
   ];
-  // Calculate stats across all charters
-  const allTrips = charters.flatMap((c) => c.trips);
-  const { totalHours, avgPrice } = computeTripStats(
-    allTrips.map((t: { durationHours: number; price: unknown }) => ({
-      durationHours: t.durationHours,
-      price: t.price,
-    }))
-  );
 
   // Grouped status summary for consolidated offline banner
   const missingDocs = requiredItems.filter(

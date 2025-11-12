@@ -24,7 +24,8 @@ const SKIP_I18N_PREFIXES = [
 const intlMiddleware = createIntlMiddleware({
   locales: ["ms", "en"],
   defaultLocale: "ms",
-  localePrefix: "as-needed", // Only add /en prefix, not /ms
+  localePrefix: "as-needed", // / for default (ms), /en for English
+  localeDetection: true,
 });
 
 export async function middleware(req: NextRequest) {
@@ -39,10 +40,9 @@ export async function middleware(req: NextRequest) {
   // Apply i18n middleware for marketing pages
   if (shouldUseI18n) {
     const intlResponse = intlMiddleware(req);
-    if (intlResponse) {
-      intlResponse.headers.set("x-request-id", requestId);
-      return applySecurityHeaders(intlResponse);
-    }
+    // intlMiddleware always returns a response, don't check if truthy
+    intlResponse.headers.set("x-request-id", requestId);
+    return applySecurityHeaders(intlResponse);
   }
 
   const protectedMatch = PROTECTED_PREFIXES.some(
@@ -85,8 +85,9 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // I18n routes (public/marketing pages)
-    "/",
+    // Root and marketing pages (with and without locale prefix)
+
+    "/list-your-business",
     "/(ms|en)/:path*",
     // Protected routes
     "/captain/:path*",

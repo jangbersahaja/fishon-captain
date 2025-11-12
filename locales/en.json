@@ -26,31 +26,30 @@
   },
   "marketing": {
     "hero": {
-      "tagline": "Malaysia's #1 online fishing charter booking platform",
-      "title": "List your charter on Fishon.my",
+      "badge": "Malaysia's #1 online fishing charter booking platform",
+      "title": "List your",
       "titleHighlight": "charter",
+      "titleEnd": "on Fishon.my",
       "subtitle": "Showcase trips, pricing and boat details. Reach anglers browsing by state, lake/river, inshore and offshore destinations across Malaysia.",
-      "cta": {
-        "register": "Register your charter",
-        "whatsapp": "Chat on WhatsApp"
-      },
-      "stats": {
-        "audience": {
+      "ctaPrimary": "Register your charter",
+      "ctaSecondary": "Book Charter Trips",
+      "stats": [
+        {
           "value": "Malaysia-first",
           "label": "Audience"
         },
-        "pricing": {
+        {
           "value": "RM0",
           "label": "Free to list"
         },
-        "trust": {
+        {
           "value": "Verified",
           "label": "Trust & safety"
         }
-      }
+      ]
     },
     "valueProps": {
-      "title": "Why Join Fishon?",
+      "title": "What You Get",
       "cards": [
         {
           "title": "Reach Real Anglers",
@@ -88,79 +87,117 @@
       ]
     },
     "showcase": {
-      "title": "Join Other Captains",
-      "subtitle": "Captains across Malaysia are already using Fishon to grow their charter business."
+      "badge": "OUR CAPTAINS",
+      "title": "Meet Our Trusted Captains",
+      "subtitle": "Experienced fishing professionals from across Malaysia, ready to deliver unforgettable adventures. Join them and grow your business on Fishon.my.",
+      "cta": {
+        "title": "Ready to become a captain?",
+        "subtitle": "Join our growing community of successful fishing charter operators. List your trips for free and start receiving bookings today.",
+        "button": "Get Started Now"
+      }
     },
     "pricing": {
-      "title": "Simple Pricing",
-      "subtitle": "Free to list. No hidden costs.",
-      "free": {
-        "title": "Free",
-        "price": "RM0",
-        "period": "/month",
+      "title": "Pricing",
+      "subtitle": "Free to list. 10% commission on successful bookings.",
+      "comingSoon": "More tiers coming soon.",
+      "plan": {
+        "percent": "10%",
+        "name": "Basic",
         "features": [
-          "List charter for free",
-          "Marketplace visibility",
-          "Basic dashboard",
-          "Community support"
-        ],
-        "cta": "Get Started"
-      },
-      "premium": {
-        "title": "Premium",
-        "price": "Coming Soon",
-        "features": [
-          "All free features",
-          "Premium exposure",
-          "Detailed analytics",
-          "Priority support"
-        ],
-        "cta": "Coming Soon"
+          "Google and Facebook Ads",
+          "Dedicated account manager",
+          "Listing charter",
+          "24/7 support team",
+          "Reviews to build online reputation",
+          "Calendar to track booking",
+          "Direct communication with client",
+          "Tools to monitor performance",
+          "Apps to manage business on the go (coming soon)"
+        ]
       }
     },
     "safety": {
-      "title": "Trust & Safety",
-      "subtitle": "We prioritize trust and safety for all our users.",
-      "badges": [
-        {
-          "title": "Verification",
-          "description": "Charters are verified to ensure quality and safety."
+      "badges": {
+        "title": "Trusted & Verified",
+        "items": [
+          {
+            "title": "Angler's Choice Badge",
+            "desc": "Captains earning high ratings from verified angler reviews"
+          },
+          {
+            "title": "Verified Captain Status",
+            "desc": "Passed comprehensive safety checks and documentation verification"
+          },
+          {
+            "title": "Top Responder Recognition",
+            "desc": "Fast, professional communication with customers gets featured placement"
+          }
+        ]
+      },
+      "compliance": {
+        "title": "Safety & Compliance",
+        "description": "Your safety and data protection are paramount. Fishon.my operates under strict compliance standards.",
+        "verification": {
+          "title": "Captain Verification",
+          "items": [
+            "Identification Card / Company Registration (SSM)",
+            "Seafarer ID / Maritime License (where applicable)",
+            "Boat Registration Certificate",
+            "Vessel & Public Liability Insurance",
+            "First Aid Certification & Safety Briefing"
+          ]
         },
-        {
-          "title": "Reviews",
-          "description": "Transparent review system to build trust."
-        },
-        {
-          "title": "Support",
-          "description": "Support team ready to help you anytime."
-        }
-      ]
+        "legal": [
+          "PDPA Compliant (Malaysian Data Protection Act)",
+          "Made by Malaysians, for Malaysian anglers and captains."
+        ],
+        "learnMore": "Learn more:"
+      }
     },
     "faq": {
-      "title": "Frequently Asked Questions",
+      "title": "FAQs",
       "items": [
         {
-          "question": "How much does it cost to list my charter?",
-          "answer": "It's 100% free! No upfront fees or hidden costs to list your charter on Fishon."
+          "q": "Do I need to pay to join?",
+          "a": "No. It's 100% free to list your charter. We only take a commission 10% of the trip price on successful bookings."
         },
         {
-          "question": "How long does registration take?",
-          "answer": "Registration takes 10-15 minutes. Once you submit, our team will review and verify your charter within 1-2 days."
+          "q": "What verification do I need?",
+          "a": "We verify captains to build trust. You'll need: Maritime license/Seafarer ID (where applicable), boat registration certificate, vessel/public liability insurance, and first aid certification. This typically takes 3-5 business days."
         },
         {
-          "question": "What do I need to register?",
-          "answer": "You'll need basic charter information, boat details, photos, and information about the trips you offer."
+          "q": "How will customers contact me?",
+          "a": "Customers reach you directly via chat, phone, or email—your choice. You manage communications directly without platform intermediaries. Full details on booking and cancellation policies are available in our Refund & Cancellation Policy."
         },
         {
-          "question": "How do I receive bookings?",
-          "answer": "When anglers are interested in your charter, they'll contact you through the platform. You can manage all bookings through the captain dashboard."
+          "q": "Can I manage my availability and bookings?",
+          "a": "Yes. Our platform lets you manage your availability and bookings. For detailed information on rescheduling and cancellations, check our Refund & Cancellation Policy and Terms of Service."
+        },
+        {
+          "q": "How do you protect my data?",
+          "a": "We take data security seriously. All personal information is protected under Malaysia's Personal Data Protection Act (PDPA). See our Privacy Policy for complete details on how we collect, use, and safeguard your data."
         }
       ]
     },
     "finalCta": {
-      "title": "Ready to Get Started?",
-      "subtitle": "Join Fishon today and start your journey to grow your charter business.",
-      "cta": "Register Your Charter"
+      "title": "Ready to reach more anglers?",
+      "subtitle": "Create your listing in minutes. It's free to start.",
+      "ctaPrimary": "Register your charter",
+      "ctaSecondary": "Talk to us on WhatsApp",
+      "stats": [
+        {
+          "value": "Malaysia-first",
+          "label": "Audience"
+        },
+        {
+          "value": "RM0",
+          "label": "Free to list"
+        },
+        {
+          "value": "Verified",
+          "label": "Trust & safety"
+        }
+      ]
     }
   }
 }

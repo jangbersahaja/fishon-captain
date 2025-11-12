@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       batchId: result.batchId,
       payoutCount: result.payouts.length,
       totalAmount: calculations.reduce(
-        (sum: number, c: any) => sum + c.totalEarnings,
+        (sum: number, c: { totalEarnings: number }) => sum + c.totalEarnings,
         0
       ),
       createdBy: userId,

@@ -6,9 +6,19 @@ export type MalaysiaStateOption = {
 
 export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
-    state: "Wilayah Persekutuan",
+    state: "Kuala Lumpur",
     coast: true,
-    city: ["Kuala Lumpur", "Putrajaya", "Labuan"],
+    city: ["Kuala Lumpur"],
+  },
+  {
+    state: "Putrajaya",
+    coast: true,
+    city: ["Putrajaya"],
+  },
+  {
+    state: "Labuan",
+    coast: true,
+    city: ["Labuan"],
   },
   {
     state: "Johor",
@@ -198,65 +208,58 @@ export const CHARTER_TYPES = [
   { value: "jungle", label: "Jungle / Waterfall" },
 ];
 
-export const SPECIES_OPTIONS = [
-  "Barramundi",
-  "Mangrove Jack",
-  "Grouper",
-  "Trevally",
-  "Queenfish",
-  "Cobia",
-  "Snapper",
-  "Squid",
-  "Peacock Bass",
-  "Toman (Giant Snakehead)",
-  "Sebarau",
-  "Sailfish",
-  "Patin",
-  "Catfish",
-  "Rohu",
-  "Tilapia",
-  "Mud Crab",
-  "Barracuda",
-  "Spanish Mackerel",
-  "Giant Grouper",
-];
-
 export const TECHNIQUE_OPTIONS = [
-  "Bottom",
-  "Casting",
-  "Deep Sea Fishing",
-  "Drift Fishing",
-  "Jigging",
-  "Eging",
-  "Fly Fishing",
-  "Prawn Fishing",
-  "Trolling",
-  "Apollo",
+  { key: "bottom_fishing", label: "Bottom Fishing" },
+  { key: "casting", label: "Casting" },
+  { key: "deep_sea_fishing", label: "Deep Sea Fishing" },
+  { key: "drift_fishing", label: "Drift Fishing" },
+  { key: "jigging", label: "Jigging" },
+  { key: "eging", label: "Eging" },
+  { key: "fly_fishing", label: "Fly Fishing" },
+  { key: "prawn_fishing", label: "Prawn Fishing" },
+  { key: "trolling", label: "Trolling" },
+  { key: "apollo", label: "Apollo" },
 ];
 
 export const AMENITIES_OPTIONS = [
-  "Live bait",
-  "Lures",
-  "Rod & reel",
-  "Terminal tackle",
-  "Snacks",
-  "Drinks",
-  "Meals",
-  "Life jackets",
+  { key: "live_bait", label: "Live bait", labelMy: "Umpan Hidup" },
+  { key: "lures", label: "Lures", labelMy: "Umpan Tiruan" },
+  { key: "rod_reel", label: "Rod & reel", labelMy: "Rod & Reel" },
+  {
+    key: "terminal_tackle",
+    label: "Terminal Tackle",
+    labelMy: "Terminal Tackle",
+  },
+  { key: "snacks", label: "Snacks", labelMy: "Makanan Ringan" },
+  { key: "drinks", label: "Drinks", labelMy: "Minuman" },
+  { key: "meals", label: "Meals", labelMy: "Lunch/Dinner" },
+  { key: "life_jackets", label: "Life jackets", labelMy: "Jaket Keselamatan" },
 ];
 
 export const BOAT_FEATURE_OPTIONS = [
-  "GPS",
-  "Fishfinder",
-  "Toilet",
-  "Ice box",
-  "Trolling motor",
-  "Sound system",
-  "Thruster/Trolling motor",
-  "Kitchen",
-  "Dorm",
-  "Rod holders",
-  "Air conditioning",
+  { key: "gps", label: "GPS", labelMy: "GPS" },
+  { key: "fishfinder", label: "Fishfinder", labelMy: "Fishfinder" },
+  { key: "toilet", label: "Toilet", labelMy: "Tandas" },
+  { key: "ice_box", label: "Ice Box", labelMy: "Kotak Ais" },
+  {
+    key: "trolling_motor",
+    label: "Trolling Motor",
+    labelMy: "Throlling Motor",
+  },
+  { key: "sound_system", label: "Sound System", labelMy: "Sistem Bunyi" },
+  {
+    key: "thruster",
+    label: "Thruster",
+    labelMy: "Thruster",
+  },
+  { key: "kitchen", label: "Kitchen", labelMy: "Dapur" },
+  { key: "dorm", label: "Dorm", labelMy: "Dorm" },
+  { key: "rod_holders", label: "Rod Holders", labelMy: "Pemegang Rod" },
+  {
+    key: "air_conditioning",
+    label: "Air Conditioning",
+    labelMy: "Penyaman Udara",
+  },
 ];
 
 export const BOAT_TYPES = [

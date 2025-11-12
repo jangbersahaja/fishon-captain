@@ -2,20 +2,33 @@ import { type ReactNode } from "react";
 
 export type FieldProps = {
   label: string;
+  labelMy?: string;
   error?: string;
   hint?: string;
   className?: string;
   children: ReactNode;
 };
 
-export function Field({ label, error, hint, className, children }: FieldProps) {
+export function Field({
+  label,
+  labelMy,
+  error,
+  hint,
+  className,
+  children,
+}: FieldProps) {
   return (
     <label
       className={`block text-sm font-semibold text-slate-800 ${
         className ?? ""
       }`}
     >
-      <span>{label}</span>
+      <div className="flex gap-1">
+        <span>{label}</span>
+        {labelMy && (
+          <span className="font-normal text-slate-600">[{labelMy}]</span>
+        )}
+      </div>
       <div className="mt-2 space-y-1">
         {children}
         {hint && !error ? (

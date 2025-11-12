@@ -20,6 +20,7 @@ import {
 import { BOAT_FEATURE_OPTIONS, BOAT_TYPES } from "@/utils/captainFormData";
 import { upload } from "@vercel/blob/client";
 import { Loader2, Plus, Save, X } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 type Boat = {
@@ -235,25 +236,26 @@ export function BoatDialog({
             <h3 className="text-sm font-semibold text-slate-900">Boat Image</h3>
 
             {imagePreview ? (
-              <div className="relative w-full aspect-video bg-slate-100 rounded-lg overflow-hidden">
-                <img
+              <div className="relative w-full overflow-hidden rounded-lg aspect-video bg-slate-100">
+                <Image
                   src={imagePreview}
                   alt="Boat preview"
-                  className="w-full h-full object-cover"
+                  className="object-cover w-full h-full"
+                  fill
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 bg-white hover:bg-red-50"
+                  className="absolute bg-white top-2 right-2 hover:bg-red-50"
                 >
                   <X className="w-4 h-4 mr-1" />
                   Remove
                 </Button>
               </div>
             ) : (
-              <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
+              <div className="p-6 text-center border-2 border-dashed rounded-lg border-slate-300">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -269,7 +271,7 @@ export function BoatDialog({
                   <Plus className="w-4 h-4 mr-2" />
                   Upload Boat Image
                 </Button>
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="mt-2 text-xs text-slate-500">
                   Max 5MB • JPG, PNG, or WebP
                 </p>
               </div>
@@ -365,22 +367,22 @@ export function BoatDialog({
               <div className="grid grid-cols-2 gap-2">
                 {BOAT_FEATURE_OPTIONS.map((feature) => (
                   <button
-                    key={feature}
+                    key={feature.key}
                     type="button"
                     onClick={() => {
                       setSelectedFeatures((prev) =>
-                        prev.includes(feature)
-                          ? prev.filter((f) => f !== feature)
-                          : [...prev, feature]
+                        prev.includes(feature.label)
+                          ? prev.filter((f) => f !== feature.label)
+                          : [...prev, feature.label]
                       );
                     }}
                     className={`px-3 py-2 text-sm rounded-lg border transition-colors text-left ${
-                      selectedFeatures.includes(feature)
+                      selectedFeatures.includes(feature.label)
                         ? "bg-[#ec2227] text-white border-[#ec2227]"
                         : "bg-white text-slate-700 border-slate-300 hover:border-slate-400"
                     }`}
                   >
-                    {feature}
+                    {feature.label}
                   </button>
                 ))}
               </div>
@@ -431,10 +433,10 @@ export function BoatDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploadingImage}
               className="bg-[#ec2227] hover:bg-[#d81e23]"
             >
-              {isSubmitting ? (
+              {isSubmitting || isUploadingImage ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Saving...
