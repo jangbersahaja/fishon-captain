@@ -41,8 +41,8 @@ export async function POST(req: Request) {
       }
     }
     const session = await getServerSession(authOptions);
-    const url = new URL(req.url);
-    const adminUserId = url.searchParams.get("adminUserId") || undefined;
+    const requestUrl = new URL(req.url);
+    const adminUserId = requestUrl.searchParams.get("adminUserId") || undefined;
     const userId = getEffectiveUserId({ session, query: { adminUserId } });
     if (!userId) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
