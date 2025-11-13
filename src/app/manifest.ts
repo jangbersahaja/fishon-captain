@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Manage your fishing charters across Malaysia",
     start_url: "/captain",
     display: "standalone",
-    background_color: "#ffffff",
+    background_color: "#ec2227",
     theme_color: "#ec2227",
     orientation: "portrait-primary",
     scope: "/",
