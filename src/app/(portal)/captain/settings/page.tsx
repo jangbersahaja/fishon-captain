@@ -1,4 +1,5 @@
 import NotificationSettings from "@/components/captain/NotificationSettings";
+import { PWASettings } from "@/components/pwa";
 import { Separator } from "@/components/ui/separator";
 import authOptions from "@/lib/auth";
 import { getServerSession } from "next-auth";
@@ -32,6 +33,21 @@ export default async function CaptainSettingsPage() {
           </p>
         </div>
         <NotificationSettings />
+      </div>
+
+      <Separator />
+
+      {/* PWA Settings Section */}
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Progressive Web App
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Install the app and manage offline features
+          </p>
+        </div>
+        <PWASettings />
       </div>
 
       <Separator />
