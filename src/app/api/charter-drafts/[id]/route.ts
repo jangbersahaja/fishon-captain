@@ -1,5 +1,5 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
-// import { getEffectiveUserId } from "@/lib/adminBypass"; // removed unused import
 import { applySecurityHeaders } from "@/lib/headers";
 import { counter } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
@@ -64,9 +64,14 @@ export async function PATCH(
   const requestId = getRequestId(req);
   const { id: draftId } = await ctx.params;
   const session = await getServerSession(authOptions);
-  const userId = getUserId(session);
+  const url = new URL(req.url);
+  const adminUserId = url.searchParams.get("adminUserId") || undefined;
   const userRole = getUserRole(session);
-  if (!userId || !session)
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+  if (!effectiveUserId || !session)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
     );
@@ -82,10 +87,10 @@ export async function PATCH(
       NextResponse.json({ error: "not_found", requestId }, { status: 404 })
     );
 
-  // Use the draft's owner for operations, but allow admin to edit
-  // Removed unused effectiveUserId after refactor
-
-  if (userRole !== "ADMIN" && draft.userId !== userId)
+  // Allow if draft belongs to effective user OR if admin is editing
+  const isOwner = draft.userId === effectiveUserId;
+  const isAdminBypass = userRole === "ADMIN" && adminUserId;
+  if (!isOwner && !isAdminBypass)
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found", requestId }, { status: 404 })
     );
@@ -135,7 +140,7 @@ export async function PATCH(
     const result = await withTiming("patchDraft", () =>
       patchDraft({
         id: draftId,
-        userId: session.user.id,
+        userId: draft.userId, // Use draft owner's ID, not session user ID
         clientVersion: validClientVersion,
         dataPartial,
         currentStep,

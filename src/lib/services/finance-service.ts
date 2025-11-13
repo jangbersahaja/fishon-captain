@@ -667,3 +667,122 @@ function getWeekNumber(date: Date): number {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
+
+/**
+ * =======================================
+ * CAPTAIN PAYOUT VIEW (Phase 3)
+ * =======================================
+ */
+
+export interface CaptainEarningsSummary {
+  totalEarnings: number; // All-time captain earnings
+  totalEarningsThisMonth: number; // Current month
+  totalEarningsLastMonth: number; // Previous month
+  pendingPayout: number; // Earnings awaiting payout
+  completedPayouts: number; // Total paid out
+  nextPayoutDate: Date | null; // Estimated next payout
+  bookingCount: number; // Total PAID bookings
+  commissionRate: number; // Current commission rate (based on pricing plan)
+}
+
+/**
+ * Get earnings summary for a specific captain/owner
+ */
+export async function getCaptainEarningsSummary(
+  ownerId: string
+): Promise<CaptainEarningsSummary> {
+  // Fetch captain's charters to determine pricing plan
+  const charters = await prisma.charter.findMany({
+    where: { ownerId },
+    select: { pricingPlan: true },
+  });
+
+  // Determine lowest commission rate from all charters
+  const commissionRate = charters.some((c) => c.pricingPlan === "GOLD")
+    ? 0.05
+    : charters.some((c) => c.pricingPlan === "SILVER")
+      ? 0.08
+      : 0.1; // BASIC
+
+  // Fetch all bookings for this owner's charters
+  const bookings = await getBookingsFinancial({
+    ownerId,
+    status: "PAID",
+  });
+
+  // Calculate current month boundaries
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  // Calculate metrics
+  const totalEarnings = bookings.reduce((sum, b) => sum + b.captainEarnings, 0);
+
+  const totalEarningsThisMonth = bookings
+    .filter((b) => b.createdAt >= currentMonthStart)
+    .reduce((sum, b) => sum + b.captainEarnings, 0);
+
+  const totalEarningsLastMonth = bookings
+    .filter((b) => b.createdAt >= lastMonthStart && b.createdAt <= lastMonthEnd)
+    .reduce((sum, b) => sum + b.captainEarnings, 0);
+
+  const pendingPayout = bookings
+    .filter((b) => b.payoutStatus === "PENDING")
+    .reduce((sum, b) => sum + b.captainEarnings, 0);
+
+  // Fetch completed payouts
+  const payouts = await prisma.payout.findMany({
+    where: {
+      ownerId,
+      status: "COMPLETED",
+    },
+  });
+
+  const completedPayouts = payouts.reduce(
+    (sum, p) => sum + Number(p.netPayout),
+    0
+  );
+
+  // Estimate next payout date (e.g., 1st of next month)
+  const nextPayoutDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  return {
+    totalEarnings,
+    totalEarningsThisMonth,
+    totalEarningsLastMonth,
+    pendingPayout,
+    completedPayouts,
+    nextPayoutDate: pendingPayout > 0 ? nextPayoutDate : null,
+    bookingCount: bookings.length,
+    commissionRate,
+  };
+}
+
+/**
+ * Get payout history for a captain
+ */
+export async function getCaptainPayoutHistory(ownerId: string) {
+  return await prisma.payout.findMany({
+    where: { ownerId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * Get bookings for a specific captain with earnings data
+ */
+export async function getCaptainBookings(
+  ownerId: string,
+  filters?: {
+    payoutStatus?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }
+) {
+  return await getBookingsFinancial({
+    ownerId,
+    status: "PAID",
+    ...filters,
+  });
+}

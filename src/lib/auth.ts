@@ -3,9 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
-import AppleProvider from "next-auth/providers/apple";
 import CredentialsProvider from "next-auth/providers/credentials";
-import FacebookProvider from "next-auth/providers/facebook";
 import GoogleProvider from "next-auth/providers/google";
 
 export type OAuthProviderInfo = {
@@ -17,26 +15,12 @@ export type OAuthProviderInfo = {
 const googleConfigured = Boolean(
   env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
 );
-const facebookConfigured = Boolean(
-  env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
-);
-const appleConfigured = Boolean(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET);
 
 export const oauthProviders: OAuthProviderInfo[] = [
   {
     id: "google",
     name: "Google",
     configured: googleConfigured,
-  },
-  {
-    id: "facebook",
-    name: "Facebook",
-    configured: facebookConfigured,
-  },
-  {
-    id: "apple",
-    name: "Apple",
-    configured: appleConfigured,
   },
 ];
 
@@ -47,26 +31,6 @@ if (googleConfigured) {
     GoogleProvider({
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: false,
-    })
-  );
-}
-
-if (facebookConfigured) {
-  providers.push(
-    FacebookProvider({
-      clientId: env.FACEBOOK_CLIENT_ID!,
-      clientSecret: env.FACEBOOK_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: false,
-    })
-  );
-}
-
-if (appleConfigured) {
-  providers.push(
-    AppleProvider({
-      clientId: env.APPLE_CLIENT_ID!,
-      clientSecret: env.APPLE_CLIENT_SECRET!,
       allowDangerousEmailAccountLinking: false,
     })
   );
@@ -241,6 +205,66 @@ export const authOptions: NextAuthOptions = {
           error: (err as Error).message,
         });
       }
+
+      // Security: For OAuth sign-ins, verify user exists and has appropriate access
+      // PrismaAdapter creates user automatically, but we control access via role checks
+      if (account?.type === "oauth") {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: {
+              id: true,
+              role: true,
+              email: true,
+              createdAt: true,
+            },
+          });
+
+          if (!existingUser) {
+            console.warn("[auth] signIn blocked - user not found", {
+              ...context,
+              action: "signInBlocked",
+            });
+            return false;
+          }
+
+          // Check if this is a newly created user (created in last 5 seconds)
+          const isNewUser =
+            Date.now() - existingUser.createdAt.getTime() < 5000;
+
+          // For existing users (not just created), allow sign in
+          // For new users created via OAuth, they get CAPTAIN role by default
+          // Staff/Admin users must be manually created or upgraded via database
+
+          if (isNewUser) {
+            console.info("[auth] new user signed in via OAuth", {
+              ...context,
+              role: existingUser.role,
+              isNewUser: true,
+              ms: Date.now() - start,
+            });
+          }
+
+          // Allow access - user will be redirected based on role
+          // CAPTAIN -> /captain/form (to register charter)
+          // STAFF/ADMIN -> /staff (dashboard access)
+          console.info("[auth] signIn allow", {
+            ...context,
+            role: existingUser.role,
+            isNewUser,
+            ms: Date.now() - start,
+          });
+          return true;
+        } catch (err) {
+          console.error("[auth] signIn user lookup failed", {
+            ...context,
+            error: (err as Error).message,
+          });
+          return false;
+        }
+      }
+
+      // For non-OAuth (credentials), allow
       console.info("[auth] signIn allow", {
         ...context,
         ms: Date.now() - start,

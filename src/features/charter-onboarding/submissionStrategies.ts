@@ -131,6 +131,7 @@ export interface FinalizeArgs {
   initializeDraftState: (v: CharterFormValues, draftId: string | null) => void;
   setLastSavedAt: (iso: string | null) => void;
   router: { push: (href: string) => void };
+  adminUserId?: string | null;
   /** Lookup for already uploaded media (create flow pre-upload on step advance) */
   getUploadedMediaInfo?: (
     file: File,
@@ -161,6 +162,7 @@ export async function finalizeDraftSubmission(args: FinalizeArgs): Promise<{
     initializeDraftState,
     setLastSavedAt,
     router,
+    adminUserId,
     getUploadedMediaInfo,
     existingImages = [],
     existingVideos = [],
@@ -311,8 +313,11 @@ export async function finalizeDraftSubmission(args: FinalizeArgs): Promise<{
   };
   if (versionForFinalize !== null)
     headers["x-draft-version"] = String(versionForFinalize);
+  const adminParam = adminUserId
+    ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+    : "";
   const finalizeRes = await fetch(
-    `/api/charter-drafts/${serverDraftId}/finalize`,
+    `/api/charter-drafts/${serverDraftId}/finalize${adminParam}`,
     {
       method: "POST",
       headers,

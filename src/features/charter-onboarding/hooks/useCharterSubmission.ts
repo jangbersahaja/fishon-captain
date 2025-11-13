@@ -217,6 +217,7 @@ export function useCharterSubmission({
           initializeDraftState,
           setLastSavedAt: (iso) => setLastSavedAt(iso),
           router,
+          adminUserId,
           getUploadedMediaInfo,
           existingImages,
           existingVideos,
