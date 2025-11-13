@@ -22,6 +22,7 @@ export interface UseCharterMediaManagerArgs {
   form: UseFormReturn<CharterFormValues>;
   isEditing: boolean;
   currentCharterId: string | null;
+  adminUserId?: string | null;
   onAvatarUploaded?: (url: string) => void;
 }
 
@@ -72,6 +73,7 @@ export function useCharterMediaManager({
   form,
   isEditing,
   currentCharterId,
+  adminUserId,
   onAvatarUploaded,
 }: UseCharterMediaManagerArgs): UseCharterMediaManagerResult {
   const debugEnabled = useCallback(
@@ -403,7 +405,13 @@ export function useCharterMediaManager({
       const fd = new FormData();
       fd.set("file", file);
       if (charterId) fd.set("charterId", charterId);
-      const res = await fetch("/api/media/photo", { method: "POST", body: fd });
+      const adminParam = adminUserId
+        ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+        : "";
+      const res = await fetch(`/api/media/photo${adminParam}`, {
+        method: "POST",
+        body: fd,
+      });
       if (!res.ok) throw new Error("photo_upload_failed");
       const json = (await res.json()) as {
         url: string;
@@ -416,7 +424,7 @@ export function useCharterMediaManager({
       });
       return json;
     },
-    [dlog]
+    [dlog, adminUserId]
   );
 
   // Video uploads are handled by EnhancedVideoUploader; this hook does not upload videos directly anymore.
@@ -516,7 +524,10 @@ export function useCharterMediaManager({
           const fd = new FormData();
           fd.set("file", resized);
           fd.set("docType", "charter_avatar");
-          const resp = await fetch("/api/blob/upload", {
+          const adminParam = adminUserId
+            ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+            : "";
+          const resp = await fetch(`/api/blob/upload${adminParam}`, {
             method: "POST",
             body: fd,
           });
@@ -546,7 +557,7 @@ export function useCharterMediaManager({
         e.target.value = "";
       }
     },
-    [isEditing, onAvatarUploaded, setValue]
+    [isEditing, onAvatarUploaded, setValue, adminUserId]
   );
 
   const clearAvatar = useCallback(() => {

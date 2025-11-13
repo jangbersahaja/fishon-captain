@@ -1,5 +1,6 @@
 // app/api/blob/upload/route.ts
 import { MAX_SHORT_VIDEO_BYTES } from "@/config/mediaProcessing";
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { processImageFile } from "@/lib/heicConverter";
 import { counter } from "@/lib/metrics";
@@ -40,7 +41,9 @@ export async function POST(req: Request) {
       }
     }
     const session = await getServerSession(authOptions);
-    const userId = getUserId(session);
+    const requestUrl = new URL(req.url);
+    const adminUserId = requestUrl.searchParams.get("adminUserId") || undefined;
+    const userId = getEffectiveUserId({ session, query: { adminUserId } });
     if (!userId) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }

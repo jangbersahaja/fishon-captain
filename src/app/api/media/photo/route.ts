@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { processImageFile } from "@/lib/heicConverter";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +22,9 @@ function getUserId(session: unknown): string | null {
 // Simple direct photo upload (resized client-side already). Creates CharterMedia immediately if charterId provided.
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  const userId = getUserId(session);
+  const requestUrl = new URL(req.url);
+  const adminUserId = requestUrl.searchParams.get("adminUserId") || undefined;
+  const userId = getEffectiveUserId({ session, query: { adminUserId } });
   if (!userId)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   try {
