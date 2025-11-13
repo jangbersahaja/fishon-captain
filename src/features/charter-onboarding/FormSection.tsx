@@ -145,6 +145,7 @@ export default function FormSection() {
     form,
     isEditing,
     currentCharterId,
+    adminUserId,
     onAvatarUploaded: (url) => {
       console.log("[form] avatar uploaded, saving draft", { url });
       // Immediately save draft when avatar is uploaded to persist avatarUrl

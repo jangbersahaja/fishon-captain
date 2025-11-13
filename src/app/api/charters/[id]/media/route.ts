@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
@@ -31,7 +32,10 @@ export async function PUT(
 ) {
   const { id: charterId } = await ctx.params;
   const session = await getServerSession(authOptions);
-  const userId = getUserId(session);
+  const url = new URL(req.url);
+  const adminUserId = url.searchParams.get("adminUserId") || undefined;
+  const userRole = (session?.user as { role?: string })?.role;
+  const userId = getEffectiveUserId({ session, query: { adminUserId } });
   if (!userId)
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized" }, { status: 401 })
@@ -45,7 +49,15 @@ export async function PUT(
       id: true,
     },
   });
-  if (!charter || charter.captain.userId !== userId)
+  if (!charter)
+    return applySecurityHeaders(
+      NextResponse.json({ error: "not_found" }, { status: 404 })
+    );
+
+  // Allow access if: user owns the charter OR user is admin with adminUserId parameter
+  const isOwner = charter.captain.userId === userId;
+  const isAdminBypass = userRole === "ADMIN" && adminUserId;
+  if (!isOwner && !isAdminBypass)
     return applySecurityHeaders(
       NextResponse.json({ error: "not_found" }, { status: 404 })
     );
