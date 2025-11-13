@@ -6,8 +6,15 @@ import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+interface MockBeforeInstallPromptEvent {
+  preventDefault: ReturnType<typeof vi.fn>;
+  prompt: ReturnType<typeof vi.fn>;
+  userChoice: Promise<{ outcome: string; platform: string }>;
+  platforms: string[];
+}
+
 describe("usePWAInstall Hook", () => {
-  let mockBeforeInstallPromptEvent: any;
+  let mockBeforeInstallPromptEvent: MockBeforeInstallPromptEvent;
   let eventListeners: { [key: string]: EventListener[] };
 
   beforeEach(() => {
@@ -124,7 +131,7 @@ describe("usePWAInstall Hook", () => {
       act(() => {
         const handler = eventListeners["beforeinstallprompt"]?.[0];
         if (handler) {
-          handler(mockBeforeInstallPromptEvent as any);
+          handler(mockBeforeInstallPromptEvent as unknown as Event);
         }
       });
 
@@ -143,7 +150,7 @@ describe("usePWAInstall Hook", () => {
       act(() => {
         const handler = eventListeners["beforeinstallprompt"]?.[0];
         if (handler) {
-          handler(mockBeforeInstallPromptEvent as any);
+          handler(mockBeforeInstallPromptEvent as unknown as Event);
         }
       });
 
@@ -175,7 +182,7 @@ describe("usePWAInstall Hook", () => {
       act(() => {
         const handler = eventListeners["beforeinstallprompt"]?.[0];
         if (handler) {
-          handler(mockBeforeInstallPromptEvent as any);
+          handler(mockBeforeInstallPromptEvent as unknown as Event);
         }
       });
 
@@ -207,7 +214,7 @@ describe("usePWAInstall Hook", () => {
       act(() => {
         const handler = eventListeners["beforeinstallprompt"]?.[0];
         if (handler) {
-          handler(mockBeforeInstallPromptEvent as any);
+          handler(mockBeforeInstallPromptEvent as unknown as Event);
         }
       });
 
@@ -249,7 +256,7 @@ describe("usePWAInstall Hook", () => {
       act(() => {
         const handler = eventListeners["beforeinstallprompt"]?.[0];
         if (handler) {
-          handler(mockBeforeInstallPromptEvent as any);
+          handler(mockBeforeInstallPromptEvent as unknown as Event);
         }
       });
 

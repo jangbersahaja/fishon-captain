@@ -145,7 +145,7 @@ export function InstallPrompt({
                 </li>
                 <li className="flex gap-2">
                   <span className="font-semibold">3.</span>
-                  <span>Tap "Add" to install the app</span>
+                  <span>Tap &quot;Add&quot; to install the app</span>
                 </li>
               </ol>
             </div>
