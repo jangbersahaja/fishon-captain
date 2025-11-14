@@ -59,7 +59,7 @@ export default async function PayoutDetailPage({ params }: PageProps) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
-    redirect(`/auth?mode=signin&next=/captain/payouts/${id}`);
+    redirect(`/auth?mode=signin&next=/captain/earnings/${id}`);
   }
 
   // Fetch payout details
@@ -71,7 +71,7 @@ export default async function PayoutDetailPage({ params }: PageProps) {
 
   // Verify ownership
   if (payout.ownerId !== session.user.id) {
-    redirect("/captain/payouts");
+    redirect("/captain/earnings");
   }
 
   // Fetch bookings included in this payout
@@ -88,13 +88,13 @@ export default async function PayoutDetailPage({ params }: PageProps) {
       {/* Header */}
       <div>
         <Link
-          href="/captain/payouts"
+          href="/captain/earnings"
           className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700"
         >
-          ← Back to Payouts
+          ← Back to Earnings
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">
-          Payout Details
+          Payment Details
         </h1>
         <p className="mt-1 font-mono text-sm text-slate-600">
           {payout.batchId}
@@ -105,7 +105,7 @@ export default async function PayoutDetailPage({ params }: PageProps) {
       <div className="p-6 bg-white border rounded-lg shadow-sm border-slate-200">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <p className="text-sm text-slate-600">Payout Amount</p>
+            <p className="text-sm text-slate-600">Payment Amount</p>
             <p className="mt-1 text-3xl font-semibold text-slate-900">
               RM {Number(payout.netPayout).toLocaleString()}
             </p>

@@ -11,7 +11,7 @@ export default async function PendingBookingsPage() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
-    redirect("/auth?mode=signin&next=/captain/payouts/pending");
+    redirect("/auth?mode=signin&next=/captain/earnings/pending");
   }
 
   // Fetch pending bookings
@@ -29,10 +29,10 @@ export default async function PendingBookingsPage() {
       {/* Header */}
       <div>
         <Link
-          href="/captain/payouts"
+          href="/captain/earnings"
           className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700"
         >
-          ← Back to Payouts
+          ← Back to Earnings
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">
           Pending Earnings
@@ -59,7 +59,7 @@ export default async function PendingBookingsPage() {
           </div>
           <div className="text-sm text-amber-800">
             <p>
-              <strong>Next payout:</strong> Estimated 1st of next month
+              <strong>Next payment:</strong> Estimated 1st of next month
             </p>
             <p className="mt-1">
               Payouts are typically processed within 7-14 business days.
@@ -80,11 +80,9 @@ export default async function PendingBookingsPage() {
           <ul className="mt-2 space-y-1 text-sm text-slate-600 list-disc list-inside">
             <li>
               Earnings from completed and paid bookings are held until the next
-              payout cycle
+              payment cycle
             </li>
-            <li>
-              Payouts are typically processed monthly on the 1st business day
-            </li>
+            <li>Payments are typically processed within 7-14 business days.</li>
             <li>
               Make sure your{" "}
               <Link
@@ -96,7 +94,7 @@ export default async function PendingBookingsPage() {
               are up to date to avoid delays
             </li>
             <li>
-              You'll receive an email notification when your payout is approved
+              You'll receive an email notification when your payment is approved
               and completed
             </li>
           </ul>

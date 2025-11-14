@@ -77,7 +77,7 @@ export async function BankInfoCard({ userId }: BankInfoCardProps) {
           ) : (
             <>
               <p className="mt-1 text-sm text-red-700">
-                You need to add your bank account details to receive payouts.
+                You need to add your bank account details to receive payments.
               </p>
               <Link
                 href="/captain/documents"

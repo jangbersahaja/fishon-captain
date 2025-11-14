@@ -43,7 +43,7 @@ const navSections: NavSection[] = [
       { href: "/captain/trips", label: "Trips", Icon: Calendar },
       { href: "/captain/bookings", label: "Bookings", Icon: Calendar },
       { href: "/captain/bookings/calendar", label: "Calendar", Icon: Calendar },
-      { href: "/captain/payouts", label: "Payouts", Icon: DollarSign },
+      { href: "/captain/earnings", label: "Earnings", Icon: DollarSign },
       { href: "/captain/reviews", label: "Reviews", Icon: Star },
     ],
   },

@@ -10,9 +10,10 @@ export function PayoutHistoryList({ payouts }: PayoutHistoryListProps) {
   if (payouts.length === 0) {
     return (
       <div className="p-6 text-center bg-white border rounded-lg border-slate-200">
-        <p className="text-slate-600">No payout history yet</p>
+        <p className="text-slate-600">No completed payouts yet</p>
         <p className="mt-1 text-sm text-slate-500">
-          Your completed payouts will appear here
+          Payment batches will appear here once your pending earnings are
+          processed and transferred to your bank account
         </p>
       </div>
     );
@@ -20,7 +21,14 @@ export function PayoutHistoryList({ payouts }: PayoutHistoryListProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-slate-900">Payout History</h2>
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">
+          Payment Batches
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Completed payout batches transferred to your bank account
+        </p>
+      </div>
       <div className="overflow-hidden bg-white border rounded-lg border-slate-200">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -67,7 +75,7 @@ export function PayoutHistoryList({ payouts }: PayoutHistoryListProps) {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
-                      href={`/captain/payouts/${payout.id}`}
+                      href={`/captain/earnings/${payout.id}`}
                       className="text-sm text-blue-600 hover:text-blue-700"
                     >
                       View
