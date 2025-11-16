@@ -203,7 +203,7 @@ export function ChatDetail({
             isChatLocked
               ? conversation.booking?.status === "PENDING"
                 ? "Chat unlocks when you approve and angler pays"
-                : conversation.booking?.status === "APPROVED"
+                : conversation.booking?.status === "AWAITING_PAYMENT"
                   ? "Chat unlocks when angler completes payment"
                   : "This conversation is closed"
               : "Type a message..."

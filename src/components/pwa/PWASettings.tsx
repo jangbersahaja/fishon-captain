@@ -49,6 +49,18 @@ export function PWASettings() {
   } | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [appVersion, setAppVersion] = useState<string>("");
+  const [hasCachesSupport, setHasCachesSupport] = useState(false);
+  const [hasServiceWorkerSupport, setHasServiceWorkerSupport] = useState(false);
+
+  /**
+   * Check browser API support
+   */
+  useEffect(() => {
+    setHasCachesSupport(typeof window !== "undefined" && "caches" in window);
+    setHasServiceWorkerSupport(
+      typeof window !== "undefined" && "serviceWorker" in navigator
+    );
+  }, []);
 
   /**
    * Get storage usage information
@@ -119,14 +131,14 @@ export function PWASettings() {
       case "installed":
         return (
           <Badge className="bg-green-500">
-            <Check className="mr-1 h-3 w-3" />
+            <Check className="w-3 h-3 mr-1" />
             Installed
           </Badge>
         );
       case "installable":
         return (
           <Badge variant="secondary">
-            <Download className="mr-1 h-3 w-3" />
+            <Download className="w-3 h-3 mr-1" />
             Ready to Install
           </Badge>
         );
@@ -154,7 +166,24 @@ export function PWASettings() {
 
     return (
       <Badge variant="outline">
-        <Smartphone className="mr-1 h-3 w-3" />
+        {platformLabels[platform] === "desktop" || "unknown" ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-3 h-3 mr-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
+          </svg>
+        ) : (
+          <Smartphone className="w-3 h-3 mr-1" />
+        )}
         {platformLabels[platform]}
       </Badge>
     );
@@ -166,7 +195,7 @@ export function PWASettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
+            <Download className="w-5 h-5" />
             Installation Status
           </CardTitle>
           <CardDescription>
@@ -189,12 +218,12 @@ export function PWASettings() {
           </div>
 
           {isInstalled && (
-            <div className="rounded-lg border bg-muted/50 p-4">
+            <div className="p-4 border rounded-lg bg-muted/50">
               <div className="flex items-start gap-3">
                 <Check className="mt-0.5 h-5 w-5 text-green-500" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium">App Installed</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     You&apos;re running Fishon Captain as a Progressive Web App.
                     Enjoy offline access and faster load times!
                   </p>
@@ -204,7 +233,7 @@ export function PWASettings() {
           )}
 
           {installState === "unsupported" && (
-            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+            <div className="p-4 border border-yellow-200 rounded-lg bg-yellow-50">
               <div className="flex items-start gap-3">
                 <Info className="mt-0.5 h-5 w-5 text-yellow-600" />
                 <div className="space-y-1">
@@ -226,7 +255,7 @@ export function PWASettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <HardDrive className="h-5 w-5" />
+            <HardDrive className="w-5 h-5" />
             Storage Usage
           </CardTitle>
           <CardDescription>
@@ -262,7 +291,7 @@ export function PWASettings() {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium">Clear Cache</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     Remove all cached data and reload the app
                   </p>
                 </div>
@@ -274,12 +303,12 @@ export function PWASettings() {
                 >
                   {isClearing ? (
                     <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                       Clearing...
                     </>
                   ) : (
                     <>
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="w-4 h-4 mr-2" />
                       Clear Cache
                     </>
                   )}
@@ -287,7 +316,7 @@ export function PWASettings() {
               </div>
             </>
           ) : (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Storage information not available
             </p>
           )}
@@ -298,7 +327,7 @@ export function PWASettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
+            <Info className="w-5 h-5" />
             App Information
           </CardTitle>
           <CardDescription>Version and technical details</CardDescription>
@@ -317,13 +346,13 @@ export function PWASettings() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Service Worker</span>
             <span className="font-medium">
-              {"serviceWorker" in navigator ? "Supported" : "Not Supported"}
+              {hasServiceWorkerSupport ? "Supported" : "Not Supported"}
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Offline Support</span>
             <span className="font-medium">
-              {"caches" in window ? "Enabled" : "Disabled"}
+              {hasCachesSupport ? "Enabled" : "Disabled"}
             </span>
           </div>
         </CardContent>

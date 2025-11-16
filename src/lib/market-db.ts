@@ -12,10 +12,25 @@ import { isMarketDbConfigured, prismaMarket } from "./prisma-market";
  * For review data access, use review-service.ts.
  */
 
+// Participant in a booking
+export type BookingParticipant = {
+  name: string;
+  phone: string;
+  isBooker: boolean;
+};
+
+// Time slot for a booking day
+export type BookingTimeSlot = {
+  day: number;
+  date: string;
+  startDateTime: string;
+  endDateTime: string;
+};
+
 // Raw Prisma booking type (with Decimal fields)
 type PrismaMarketBooking = {
   id: string;
-  userId: string | null;
+  userId: string;
   charterId: string;
   tripId: string;
   guests: unknown;
@@ -26,60 +41,91 @@ type PrismaMarketBooking = {
   finalPrice: { toNumber: () => number } | number;
   status:
     | "PENDING"
-    | "APPROVED"
-    | "REJECTED"
-    | "EXPIRED"
+    | "AWAITING_PAYMENT"
+    | "PAYMENT_AUTHORIZED"
     | "PAID"
+    | "UNDER_REVIEW"
+    | "COMPLETED"
+    | "REJECTED"
     | "CANCELLED"
-    | "COMPLETED";
+    | "EXPIRED";
   expiresAt: Date;
   captainDecisionAt: Date | null;
   note: string | null;
   rejectionReason: string | null;
   cancellationReason: string | null;
-  guestFirstName: string | null;
-  guestLastName: string | null;
-  guestEmail: string | null;
-  guestPhone: string | null;
-  emailVerified: boolean;
+  captainResponse: string | null;
+  timeSlots: unknown;
+  paymentTransactionId: string | null;
+  paymentMethod: string | null;
+  paymentFlow: string | null;
+  paymentNote: string | null;
+  paymentIntentId: string | null;
+  paymentAuthorizedAt: Date | null;
+  paymentCapturedAt: Date | null;
+  paymentReleasedAt: Date | null;
+  bookingFlowType: "MANUAL" | "AUTO";
+  platformFee: { toNumber: () => number } | number | null;
+  serviceFee: { toNumber: () => number } | number | null;
+  captainEarnings: { toNumber: () => number } | number | null;
+  refundStatus: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | null;
+  refundAmount: { toNumber: () => number } | number | null;
+  refundedAt: Date | null;
+  refundReason: string | null;
+  chatId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
 export type MarketBooking = {
   id: string;
-  userId: string | null; // Nullable for guest bookings
-  charterId: string; // Updated from captainCharterId
-  tripId: string; // Trip reference
-  guests: { adults: number; children: number } | null; // JSON field, typed as guest count object
-  tripPrice: number; // Unit price at booking time
+  userId: string;
+  charterId: string;
+  tripId: string;
+  guests: {
+    adults: number;
+    children: number;
+    participants?: BookingParticipant[];
+  } | null;
+  tripPrice: number;
   startTime: string | null;
   date: Date;
   days: number;
-  finalPrice: number; // Total calculated price
+  finalPrice: number;
   status:
     | "PENDING"
-    | "APPROVED"
-    | "REJECTED"
-    | "EXPIRED"
+    | "AWAITING_PAYMENT"
+    | "PAYMENT_AUTHORIZED"
     | "PAID"
+    | "UNDER_REVIEW"
+    | "COMPLETED"
+    | "REJECTED"
     | "CANCELLED"
-    | "COMPLETED";
+    | "EXPIRED";
   expiresAt: Date;
   captainDecisionAt: Date | null;
   note: string | null;
   rejectionReason: string | null;
   cancellationReason: string | null;
-  // Guest booking fields
-  guestFirstName: string | null;
-  guestLastName: string | null;
-  guestEmail: string | null;
-  guestPhone: string | null;
-  emailVerified: boolean;
-  // Payment tracking fields (Senang Pay integration)
+  captainResponse: string | null;
+  timeSlots: BookingTimeSlot[] | null;
   paymentTransactionId: string | null;
   paymentMethod: string | null;
+  paymentFlow: string | null;
   paymentNote: string | null;
+  paymentIntentId: string | null;
+  paymentAuthorizedAt: Date | null;
+  paymentCapturedAt: Date | null;
+  paymentReleasedAt: Date | null;
+  bookingFlowType: "MANUAL" | "AUTO";
+  platformFee: number | null;
+  serviceFee: number | null;
+  captainEarnings: number | null;
+  refundStatus: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | null;
+  refundAmount: number | null;
+  refundedAt: Date | null;
+  refundReason: string | null;
+  chatId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -152,12 +198,19 @@ export async function fetchBookingById(
       return null;
     }
 
-    // Convert Decimal to number and cast guests
+    // Convert Decimal to number and cast JSON fields
     return {
       ...booking,
       tripPrice: Number(booking.tripPrice),
       finalPrice: Number(booking.finalPrice),
-      guests: booking.guests as { adults: number; children: number } | null,
+      platformFee: booking.platformFee ? Number(booking.platformFee) : null,
+      serviceFee: booking.serviceFee ? Number(booking.serviceFee) : null,
+      captainEarnings: booking.captainEarnings
+        ? Number(booking.captainEarnings)
+        : null,
+      refundAmount: booking.refundAmount ? Number(booking.refundAmount) : null,
+      guests: booking.guests as MarketBooking["guests"],
+      timeSlots: booking.timeSlots as BookingTimeSlot[] | null,
     } as MarketBooking;
   } catch (error) {
     console.error(`Error fetching booking ${bookingId} from Market DB:`, error);
@@ -200,12 +253,17 @@ export async function fetchBookingsByStatus(
       },
     });
 
-    // Convert Decimal to number and cast guests
+    // Convert Decimal to number and cast JSON fields
     return bookings.map((b: PrismaMarketBooking) => ({
       ...b,
       tripPrice: Number(b.tripPrice),
       finalPrice: Number(b.finalPrice),
-      guests: b.guests as { adults: number; children: number } | null,
+      platformFee: b.platformFee ? Number(b.platformFee) : null,
+      serviceFee: b.serviceFee ? Number(b.serviceFee) : null,
+      captainEarnings: b.captainEarnings ? Number(b.captainEarnings) : null,
+      refundAmount: b.refundAmount ? Number(b.refundAmount) : null,
+      guests: b.guests as MarketBooking["guests"],
+      timeSlots: b.timeSlots as BookingTimeSlot[] | null,
     })) as MarketBooking[];
   } catch (error) {
     console.error(`Error fetching ${status} bookings from Market DB:`, error);
@@ -229,52 +287,71 @@ export async function countBookingsByStatus(
     );
   }
 
-  if (!charterIds.length) {
+  if (!isMarketDbConfigured()) {
     return {
       PENDING: 0,
-      APPROVED: 0,
-      REJECTED: 0,
-      EXPIRED: 0,
+      AWAITING_PAYMENT: 0,
+      PAYMENT_AUTHORIZED: 0,
       PAID: 0,
-      CANCELLED: 0,
+      UNDER_REVIEW: 0,
       COMPLETED: 0,
+      REJECTED: 0,
+      CANCELLED: 0,
+      EXPIRED: 0,
     };
   }
 
   try {
-    const [pending, approved, rejected, expired, paid, cancelled, completed] =
-      await Promise.all([
-        prismaMarket.booking.count({
-          where: { charterId: { in: charterIds }, status: "PENDING" },
-        }),
-        prismaMarket.booking.count({
-          where: { charterId: { in: charterIds }, status: "APPROVED" },
-        }),
-        prismaMarket.booking.count({
-          where: { charterId: { in: charterIds }, status: "REJECTED" },
-        }),
-        prismaMarket.booking.count({
-          where: { charterId: { in: charterIds }, status: "EXPIRED" },
-        }),
-        prismaMarket.booking.count({
-          where: { charterId: { in: charterIds }, status: "PAID" },
-        }),
-        prismaMarket.booking.count({
-          where: { charterId: { in: charterIds }, status: "CANCELLED" },
-        }),
-        prismaMarket.booking.count({
-          where: { charterId: { in: charterIds }, status: "COMPLETED" },
-        }),
-      ]);
+    const [
+      pending,
+      awaitingPayment,
+      paymentAuthorized,
+      paid,
+      underReview,
+      completed,
+      rejected,
+      cancelled,
+      expired,
+    ] = await Promise.all([
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "PENDING" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "AWAITING_PAYMENT" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "PAYMENT_AUTHORIZED" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "PAID" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "UNDER_REVIEW" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "COMPLETED" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "REJECTED" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "CANCELLED" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "EXPIRED" },
+      }),
+    ]);
 
     return {
       PENDING: pending,
-      APPROVED: approved,
-      REJECTED: rejected,
-      EXPIRED: expired,
+      AWAITING_PAYMENT: awaitingPayment,
+      PAYMENT_AUTHORIZED: paymentAuthorized,
       PAID: paid,
-      CANCELLED: cancelled,
+      UNDER_REVIEW: underReview,
       COMPLETED: completed,
+      REJECTED: rejected,
+      CANCELLED: cancelled,
+      EXPIRED: expired,
     };
   } catch (error) {
     console.error("Error counting bookings from Market DB:", error);

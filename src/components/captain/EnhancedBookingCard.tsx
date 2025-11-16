@@ -36,7 +36,9 @@ function getStatusColor(
   switch (status) {
     case "PENDING":
       return "outline";
-    case "APPROVED":
+    case "PAYMENT_AUTHORIZED":
+      return "default"; // Blue badge for paid bookings awaiting approval
+    case "AWAITING_PAYMENT":
       return "secondary";
     case "PAID":
       return "default";
@@ -52,6 +54,7 @@ function getStatus(
   status: string
 ):
   | "New Request"
+  | "Payment Received"
   | "Awaiting Payment"
   | "Confirmed"
   | "Cancelled"
@@ -60,7 +63,9 @@ function getStatus(
   switch (status) {
     case "PENDING":
       return "New Request";
-    case "APPROVED":
+    case "PAYMENT_AUTHORIZED":
+      return "Payment Received"; // Auto flow: paid, awaiting approval
+    case "AWAITING_PAYMENT":
       return "Awaiting Payment";
     case "PAID":
       return "Confirmed";
@@ -76,18 +81,21 @@ function getStatus(
 export function EnhancedBookingCard({
   booking,
   anglerInfo,
-  showTimeline = true,
+  showTimeline = false,
   priority,
   viewDensity = "comfortable",
 }: EnhancedBookingCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isGuest = !booking.userId;
+
+  // Get guest name from new structure (primaryBooker)
   const anglerName =
     anglerInfo?.name ||
-    (booking.guestFirstName && booking.guestLastName
-      ? `${booking.guestFirstName} ${booking.guestLastName}`
-      : null);
-  const anglerEmail = anglerInfo?.email || booking.guestEmail || null;
+    (booking.primaryBooker ? booking.primaryBooker.name : null);
+
+  // Get email from angler info (guest email not stored in booking anymore)
+  const anglerEmail = anglerInfo?.email || null;
+
   const isCompact = viewDensity === "compact";
 
   return (
@@ -124,6 +132,27 @@ export function EnhancedBookingCard({
                   >
                     {getStatus(booking.status)}
                   </Badge>
+                  {/* Payment Flow Badge */}
+                  {(booking.status === "PAYMENT_AUTHORIZED" ||
+                    booking.status === "PAID") &&
+                    booking.paymentFlow && (
+                      <Badge
+                        variant={
+                          booking.paymentFlow === "TOKENIZED"
+                            ? "outline"
+                            : "default"
+                        }
+                        className={`py-0.5 ${isCompact ? "text-xs" : "text-xs"} ${
+                          booking.paymentFlow === "TOKENIZED"
+                            ? "border-blue-300 text-blue-700 bg-blue-50"
+                            : "border-green-300 text-green-700 bg-green-50"
+                        }`}
+                      >
+                        {booking.paymentFlow === "TOKENIZED"
+                          ? "💳 Card Held"
+                          : "✅ Already Paid"}
+                      </Badge>
+                    )}
                   {priority && (
                     <Badge
                       variant={
@@ -336,11 +365,17 @@ export function EnhancedBookingCard({
                 View Details
               </Link>
 
-              {booking.status === "PENDING" && (
-                <BookingActions bookingId={booking.id} />
+              {(booking.status === "PENDING" ||
+                booking.status === "PAYMENT_AUTHORIZED") && (
+                <BookingActions
+                  bookingId={booking.id}
+                  status={booking.status}
+                  flowType={booking.bookingFlowType}
+                />
               )}
 
-              {(booking.status === "APPROVED" || booking.status === "PAID") && (
+              {(booking.status === "AWAITING_PAYMENT" ||
+                booking.status === "PAID") && (
                 <button
                   className={`inline-flex items-center justify-center px-4 font-medium transition-colors border rounded-lg text-slate-700 bg-white border-slate-300 hover:bg-slate-50 hover:border-slate-400 flex-1 ${isCompact ? "py-1.5 text-xs" : "py-1.5 text-sm"}`}
                   onClick={() => {
@@ -501,11 +536,17 @@ export function EnhancedBookingCard({
             View Full Details
           </Link>
 
-          {booking.status === "PENDING" && (
-            <BookingActions bookingId={booking.id} />
+          {(booking.status === "PENDING" ||
+            booking.status === "PAYMENT_AUTHORIZED") && (
+            <BookingActions
+              bookingId={booking.id}
+              status={booking.status}
+              flowType={booking.bookingFlowType}
+            />
           )}
 
-          {(booking.status === "APPROVED" || booking.status === "PAID") && (
+          {(booking.status === "AWAITING_PAYMENT" ||
+            booking.status === "PAID") && (
             <button
               className="inline-flex items-center justify-center flex-1 px-4 py-2 text-sm font-medium transition-colors bg-white border rounded-lg text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400"
               onClick={() => {

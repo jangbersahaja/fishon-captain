@@ -14,6 +14,7 @@ export interface UseDraftSnapshotArgs {
   serverVersion: number | null;
   /** initial step (optional) */
   initialStep?: number;
+  adminUserId?: string | null;
   setServerVersion: (v: number | null) => void;
   setLastSavedAt: (iso: string | null) => void;
   setServerSaving: (b: boolean) => void;
@@ -27,6 +28,7 @@ export function useDraftSnapshot({
   serverDraftId,
   serverVersion,
   initialStep = 0,
+  adminUserId,
   setServerVersion,
   setLastSavedAt,
   setServerSaving,
@@ -234,17 +236,24 @@ export function useDraftSnapshot({
               keys: Object.keys(sanitized || {}),
             });
           }
-          const res = await fetch(`/api/charter-drafts/${serverDraftId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payloadObj),
-          });
+          const adminParam = adminUserId
+            ? `?adminUserId=${encodeURIComponent(adminUserId)}`
+            : "";
+          const res = await fetch(
+            `/api/charter-drafts/${serverDraftId}${adminParam}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payloadObj),
+            }
+          );
           // Always log PATCH requests with currentStep regardless of debug flag to troubleshoot step persistence
           console.log("[draftSnapshot] PATCH REQUEST", {
             method: "PATCH",
-            url: `/api/charter-drafts/${serverDraftId}`,
+            url: `/api/charter-drafts/${serverDraftId}${adminParam}`,
             currentStep: payloadObj.currentStep,
             clientVersion: payloadObj.clientVersion,
+            adminUserId: adminUserId || null,
             status: res.status,
           });
           if (process.env.NEXT_PUBLIC_CHARTER_FORM_DEBUG === "1") {
@@ -442,6 +451,7 @@ export function useDraftSnapshot({
     serverVersion,
     form,
     currentStepRef,
+    adminUserId,
     setServerVersion,
     setLastSavedAt,
     setServerSaving,

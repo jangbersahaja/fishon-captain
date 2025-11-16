@@ -1,4 +1,8 @@
-import type { MarketBooking } from "./market-db";
+import type {
+  BookingParticipant,
+  BookingTimeSlot,
+  MarketBooking,
+} from "./market-db";
 import { prisma } from "./prisma";
 
 /**
@@ -26,7 +30,55 @@ export type EnrichedMarketBooking = MarketBooking & {
       location: string;
     };
   };
+  // Helper fields for participants and time slots
+  primaryBooker?: BookingParticipant; // First participant with isBooker: true
+  allParticipants: BookingParticipant[]; // All participants from guests.participants
+  formattedTimeSlots?: string[]; // Human-readable time slot strings
 };
+
+/**
+ * Parse participants from guests JSON
+ */
+function parseParticipants(guests: unknown): BookingParticipant[] {
+  if (!guests || typeof guests !== "object") return [];
+  const guestsObj = guests as { participants?: BookingParticipant[] };
+  return Array.isArray(guestsObj.participants) ? guestsObj.participants : [];
+}
+
+/**
+ * Format time slots for display
+ * Example: "Day 1: Fri, Nov 15 • 8:00 AM - 12:00 PM"
+ */
+function formatTimeSlots(
+  timeSlots: BookingTimeSlot[] | null | undefined
+): string[] {
+  if (!timeSlots || !Array.isArray(timeSlots)) return [];
+
+  return timeSlots.map((slot) => {
+    const date = new Date(slot.startDateTime);
+    const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+    const dateStr = date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+
+    const startTime = new Date(slot.startDateTime).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const endTime = new Date(slot.endDateTime).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    return `Day ${slot.day}: ${dayName}, ${dateStr} • ${startTime} - ${endTime}`;
+  });
+}
+
+/**
+ * Enrich a single booking with trip and charter details
 
 /**
  * Enrich a single booking with trip and charter data from Captain DB
@@ -68,6 +120,10 @@ export async function enrichBooking(
       );
       // Return booking with fallback values
       const guests = booking.guests ?? { adults: 1, children: 0 };
+      const allParticipants = parseParticipants(booking.guests);
+      const primaryBooker = allParticipants.find((p) => p.isBooker);
+      const formattedTimeSlots = formatTimeSlots(booking.timeSlots);
+
       return {
         ...booking,
         charterName: "Unknown Charter",
@@ -78,14 +134,23 @@ export async function enrichBooking(
         totalPrice: Number(booking.finalPrice),
         location: "Unknown Location",
         durationHour: 0,
+        allParticipants,
+        primaryBooker,
+        formattedTimeSlots:
+          formattedTimeSlots.length > 0 ? formattedTimeSlots : undefined,
       };
     }
 
     // Parse guests JSON
     const guests = booking.guests ?? { adults: 1, children: 0 };
+    const allParticipants = parseParticipants(booking.guests);
+    const primaryBooker = allParticipants.find((p) => p.isBooker);
 
     // Format location from charter details
     const location = `${trip.charter.city}, ${trip.charter.state}`;
+
+    // Format time slots for display
+    const formattedTimeSlots = formatTimeSlots(booking.timeSlots);
 
     return {
       ...booking,
@@ -97,6 +162,10 @@ export async function enrichBooking(
       totalPrice: Number(booking.finalPrice),
       location,
       durationHour: trip.durationHours,
+      allParticipants,
+      primaryBooker,
+      formattedTimeSlots:
+        formattedTimeSlots.length > 0 ? formattedTimeSlots : undefined,
       trip: {
         id: trip.id,
         name: trip.name,
@@ -113,6 +182,10 @@ export async function enrichBooking(
     console.error(`Error enriching booking ${booking.id}:`, error);
     // Return booking with fallback values on error
     const guests = booking.guests ?? { adults: 1, children: 0 };
+    const allParticipants = parseParticipants(booking.guests);
+    const primaryBooker = allParticipants.find((p) => p.isBooker);
+    const formattedTimeSlots = formatTimeSlots(booking.timeSlots);
+
     return {
       ...booking,
       charterName: "Unknown Charter",
@@ -123,6 +196,10 @@ export async function enrichBooking(
       totalPrice: Number(booking.finalPrice),
       location: "Unknown Location",
       durationHour: 0,
+      allParticipants,
+      primaryBooker,
+      formattedTimeSlots:
+        formattedTimeSlots.length > 0 ? formattedTimeSlots : undefined,
     };
   }
 }

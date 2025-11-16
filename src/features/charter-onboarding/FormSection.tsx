@@ -183,6 +183,7 @@ export default function FormSection() {
     serverDraftId,
     serverVersion,
     initialStep: 0,
+    adminUserId,
     setServerVersion,
     setServerSaving,
     setLastSavedAt: (iso) => setLastSavedAt(iso),

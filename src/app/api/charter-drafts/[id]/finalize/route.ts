@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { logger } from "@/lib/logger";
@@ -22,15 +23,21 @@ export async function POST(
   const params = await context.params;
   const draftId = params.id;
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+  const url = new URL(request.url);
+  const adminUserId = url.searchParams.get("adminUserId") || undefined;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+  if (!effectiveUserId) {
     logger.warn("finalize_unauthorized", { requestId, draftId });
     counter("finalize.validation_failed").inc();
     return applySecurityHeaders(
       NextResponse.json({ error: "unauthorized", requestId }, { status: 401 })
     );
   }
-  const userId = session.user.id;
-  // Rate limit: 5 finalize attempts per minute per user
+  const userId = effectiveUserId;
+  // Rate limit: 5 finalize attempts per minute per user (use effective user for rate limiting)
   const rl = await rateLimit({
     key: `finalize:${userId}`,
     windowMs: 60_000,

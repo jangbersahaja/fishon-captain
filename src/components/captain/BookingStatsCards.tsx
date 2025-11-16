@@ -39,9 +39,9 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
     .map(([tripName, count]) => ({ tripName, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Upcoming (APPROVED + PAID with future dates) - breakdown by trip
+  // Upcoming (AWAITING_PAYMENT + PAID with future dates) - breakdown by trip
   const upcomingBookings = bookings.filter((b) => {
-    if (b.status !== "APPROVED" && b.status !== "PAID") return false;
+    if (b.status !== "AWAITING_PAYMENT" && b.status !== "PAID") return false;
     const tripDate = new Date(b.date);
     return tripDate >= now;
   });
