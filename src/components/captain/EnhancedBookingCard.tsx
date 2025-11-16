@@ -76,18 +76,21 @@ function getStatus(
 export function EnhancedBookingCard({
   booking,
   anglerInfo,
-  showTimeline = true,
+  showTimeline = false,
   priority,
   viewDensity = "comfortable",
 }: EnhancedBookingCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isGuest = !booking.userId;
+
+  // Get guest name from new structure (primaryBooker)
   const anglerName =
     anglerInfo?.name ||
-    (booking.guestFirstName && booking.guestLastName
-      ? `${booking.guestFirstName} ${booking.guestLastName}`
-      : null);
-  const anglerEmail = anglerInfo?.email || booking.guestEmail || null;
+    (booking.primaryBooker ? booking.primaryBooker.name : null);
+
+  // Get email from angler info (guest email not stored in booking anymore)
+  const anglerEmail = anglerInfo?.email || null;
+
   const isCompact = viewDensity === "compact";
 
   return (
@@ -124,6 +127,27 @@ export function EnhancedBookingCard({
                   >
                     {getStatus(booking.status)}
                   </Badge>
+                  {/* Payment Flow Badge */}
+                  {(booking.status === "PENDING" ||
+                    booking.status === "PAID") &&
+                    booking.paymentFlow && (
+                      <Badge
+                        variant={
+                          booking.paymentFlow === "TOKENIZED"
+                            ? "outline"
+                            : "default"
+                        }
+                        className={`py-0.5 ${isCompact ? "text-xs" : "text-xs"} ${
+                          booking.paymentFlow === "TOKENIZED"
+                            ? "border-blue-300 text-blue-700 bg-blue-50"
+                            : "border-green-300 text-green-700 bg-green-50"
+                        }`}
+                      >
+                        {booking.paymentFlow === "TOKENIZED"
+                          ? "💳 Card Held"
+                          : "✅ Already Paid"}
+                      </Badge>
+                    )}
                   {priority && (
                     <Badge
                       variant={

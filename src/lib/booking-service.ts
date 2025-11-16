@@ -89,6 +89,7 @@ export async function getBookingStats(
   if (!isMarketDbConfigured()) {
     return {
       PENDING: 0,
+      PAYMENT_PENDING: 0,
       APPROVED: 0,
       REJECTED: 0,
       EXPIRED: 0,

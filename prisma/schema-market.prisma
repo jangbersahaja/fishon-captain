@@ -14,13 +14,14 @@ datasource db {
 
 // Booking model (read-only from Market DB)
 enum BookingStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  EXPIRED
-  PAID
-  CANCELLED
-  COMPLETED
+  PENDING         // OLD FLOW: awaiting captain approval (kept for historical data)
+  APPROVED        // OLD FLOW: captain approved, awaiting payment (kept for historical data)
+  PAYMENT_PENDING // NEW FLOW: payment authorized, awaiting captain approval
+  REJECTED        // captain rejected
+  EXPIRED         // hold expired
+  PAID            // payment completed, confirmed
+  CANCELLED       // cancelled by angler
+  COMPLETED       // trip completed
 }
 
 enum PayoutStatus {
@@ -32,69 +33,157 @@ enum PayoutStatus {
   ON_HOLD      // Flagged for review
 }
 
+enum RefundStatus {
+  PENDING      // Refund requested
+  PROCESSING   // Refund being processed
+  COMPLETED    // Refund completed
+  FAILED       // Refund failed (requires manual intervention)
+}
+
 model Booking {
-  id                 String        @id @default(cuid())
-  userId             String?       // Nullable for guest bookings
-  charterId          String        // Charter ID (was captainCharterId)
-  tripId             String        // Trip ID reference
-  guests             Json?         // { adults: number, children: number }
-  tripPrice          Decimal       @db.Decimal(10, 2) // Unit price at booking time
-  startTime          String?
-  date               DateTime
-  days               Int
-  finalPrice         Decimal       @db.Decimal(10, 2) // Total calculated price
+  // === MAIN DETAIL ===
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime // hold expires at (e.g., now + 12h)
+
+  // === ANGLER'S DETAIL ===
+  userId String // Required - references User with role ANGLER or GUEST
+  // NOTE: Guest booking fields (guestFirstName, guestLastName, etc.) REMOVED
+  // All guest details now stored in MarketUser model with role GUEST
+
+  // === BOOKING DETAIL ===
+  tripId    String // References Trip.id in fishon-captain DB
+  charterId String // References Charter.id in fishon-captain DB
+
+  date      DateTime
+  days      Int      // Number of days booked (not trip duration)
+  startTime String? // e.g., "07:00" when trip has multiple start times
+  
+  // Time-based scheduling (Phase 2: Multi-trip support)
+  // Stores array of individual trip instances with their exact time ranges
+  // Example: 3-day booking of 4-hour trip starting at 8AM:
+  // [
+  //   { day: 1, date: "2025-11-13", startDateTime: "2025-11-13T08:00:00Z", endDateTime: "2025-11-13T12:00:00Z" },
+  //   { day: 2, date: "2025-11-14", startDateTime: "2025-11-14T08:00:00Z", endDateTime: "2025-11-14T12:00:00Z" },
+  //   { day: 3, date: "2025-11-15", startDateTime: "2025-11-15T08:00:00Z", endDateTime: "2025-11-15T12:00:00Z" }
+  // ]
+  // This allows:
+  // - Accurate overlap detection (only blocks 8AM-12PM, not full days)
+  // - Clear UI display of each trip slot
+  // - Support for multi-day trips that span multiple calendar days (e.g., 48h trip)
+  timeSlots Json? // Array of { day: number, date: string, startDateTime: string, endDateTime: string }
+  
+  // Guest counts stored as JSON for flexibility
+  // NEW: Expanded to include participant details and emergency contact
+  // Structure: { 
+  //   "adults": 2, 
+  //   "children": 1, 
+  //   "participants": [
+  //     { "name": "John Doe", "phone": "+60123456789", "isBooker": true },
+  //     { "name": "Jane Doe", "phone": "+60123456788", "isBooker": false }
+  //   ]
+  // }
+  guests Json // { "adults": 2, "children": 1, "participants": [{name, phone, isBooker}] }
+
+  // === PRICING BREAKDOWN ===
+  tripPrice  Decimal @db.Decimal(10, 2) // Base trip price PER DAY at booking time (normal or promo)
+  discount   Json? // { "code": "SUMMER10", "percentage": "10%", "amount": 50.00 }
+  tax        Json? // { "name": "SST", "percentage": "6%", "amount": 30.00 } (future)
+  finalPrice Decimal @db.Decimal(10, 2) // Total amount angler pays (includes platform fee, gateway fee, tax, minus discount)
+
+  // === BOOKING STATUS ===
   status             BookingStatus @default(PENDING)
-  expiresAt          DateTime
-  captainDecisionAt  DateTime?
-  note               String?       @db.Text
-  rejectionReason    String?       @db.Text
   cancellationReason String?
+  rejectionReason    String?
+  captainDecisionAt  DateTime?
+  paidAt             DateTime?
+
+  // === PAYMENT TRACKING ===
+  paymentTransactionId String? @db.VarChar(255) // Senang Pay transaction ID (legacy) OR Stripe charge ID
+  paymentMethod        String? @db.VarChar(50)  // Payment method: "CARD", "FPX", "EWALLET", "MOCK"
+  paymentFlow          String? @db.VarChar(50)  // Payment flow: "TOKENIZED" (card), "DIRECT" (FPX/ewallet)
+  paymentNote          String? @db.Text         // Payment status/error messages
   
-  // Payment tracking
-  paidAt                   DateTime?
-  paymentTransactionId     String?       @db.VarChar(255)
-  paymentMethod            String?       @db.VarChar(50)
-  paymentNote              String?       @db.Text
-  
-  // Financial tracking (Phase 1: Admin Finance Dashboard)
-  platformFee      Decimal?      @db.Decimal(10, 2) // Fishon commission
-  captainEarnings  Decimal?      @db.Decimal(10, 2) // Captain net earnings
+  // === HYBRID PAYMENT FLOW (Dual-Flow Support) ===
+  paymentIntentId      String?   @db.VarChar(255) // Token ID (TOKENIZED) or booking ID (DIRECT)
+  paymentAuthorizedAt  DateTime? // When card token was created (TOKENIZED only)
+  paymentCapturedAt    DateTime? // When token was charged (TOKENIZED) or FPX/ewallet payment completed (DIRECT)
+  paymentReleasedAt    DateTime? // When token was released without charge (TOKENIZED only)
+
+  // === FINANCIAL TRACKING (Phase 1: Admin Finance Dashboard) ===
+  platformFee      Decimal?      @db.Decimal(10, 2) // Fishon commission (10% of subtotal, where subtotal = tripPrice * days)
+  serviceFee       Decimal?      @db.Decimal(10, 2) // Payment gateway charge (1.5% of subtotal + platformFee - discount)
+  captainEarnings  Decimal?      @db.Decimal(10, 2) // Captain net earnings (subtotal - platformFee = tripPrice * days - platformFee)
   payoutStatus     PayoutStatus? @default(PENDING)
   payoutBatchId    String?                          // References Payout.batchId in fishon-captain DB
   
-  // Refund tracking (Phase 1: Admin Finance Dashboard)
-  refundAmount     Decimal?  @db.Decimal(10, 2)
-  refundedAt       DateTime?
-  refundReason     String?   @db.Text
-  refundedBy       String?   // Staff user ID who processed refund
-  
-  // Guest booking fields
-  guestFirstName     String?
-  guestLastName      String?
-  guestEmail         String?
-  guestPhone         String?
-  emailVerified      Boolean       @default(false)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  // === REFUND TRACKING (Enhanced for Hybrid Flow) ===
+  refundStatus         RefundStatus? // Refund processing status
+  refundAmount         Decimal?      @db.Decimal(10, 2)
+  refundedAt           DateTime?
+  refundReason         String?       @db.Text
+  refundedBy           String?       // Staff user ID who processed refund
+  refundTransactionId  String?       @db.VarChar(255) // Gateway refund transaction ID
+  cancellationPolicy   Json?         // Snapshot of policy at booking time
 
-  // Chat relationship
-  conversation       Conversation? @relation("BookingConversation")
+  // === CONVERSATION ===
+  note            String? // Angler's initial note
+  captainResponse String? // Captain's response (acceptance message, instructions, etc.)
+  chatId          String? // Future: Link to chat conversation
+  
+  // Relations
+  conversation    Conversation? @relation("BookingConversation")
 
   @@index([userId])
-  @@index([guestEmail])
-  @@index([charterId])
   @@index([tripId])
+  @@index([charterId])
   @@index([status])
+  @@index([date])
   @@index([createdAt])
+  @@index([paymentIntentId])
+  @@index([charterId, date, status])
+  // Note: Partial unique constraint (only for PAID/PAYMENT_PENDING) not supported in Prisma
+  // Race condition protection relies on:
+  // 1. Serializable transaction isolation
+  // 2. Conflict detection in application logic  
+  // 3. Payment authorization acting as soft lock
+}
+
+enum UserRole {
+  ANGLER
+  GUEST
+  ADMIN
 }
 
 model MarketUser {
-  id      String   @id @default(cuid())
-  email   String   @unique
-  name    String?  // Display name (was displayName)
-  phone   String?  // Contact phone number
-  image   String?  // Profile image URL
-  reviews Review[] // User's reviews
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?   // Display name (NextAuth standard)
+  firstName     String?   // First name
+  lastName      String?   // Last name
+  phone         String?   // Phone number with country code
+  bio           String?
+  image         String?   // Avatar URL (NextAuth standard)
+  emailVerified DateTime? // NextAuth standard field
+  role          UserRole  @default(ANGLER)
+
+  // Address fields (Phase 2)
+  streetAddress String?
+  city          String?
+  state         String?
+  postcode      String?
+  country       String? @default("Malaysia")
+
+  // Emergency contact (Phase 2)
+  emergencyName     String?
+  emergencyPhone    String?
+  emergencyRelation String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  reviews   Review[] // User's reviews
 
   @@map("User")
 }
@@ -127,16 +216,20 @@ model Review {
 
 // Analytics & Tracking system
 enum AnalyticsEventType {
-  PROFILE_VIEW      // Captain profile page view
-  CHARTER_VIEW      // Charter detail page view
-  CHARTER_SEARCH    // Charter appeared in search results
-  PHOTO_VIEW        // Photo clicked/viewed in gallery
-  VIDEO_VIEW        // Video played
-  CONTACT_CLICK     // Contact/inquiry button clicked
-  BOOKING_STARTED   // Booking form opened
-  BOOKING_SUBMITTED // Booking request submitted
-  REVIEW_VIEW       // Review section viewed
-  SHARE_CLICKED     // Share button clicked
+  PROFILE_VIEW       // Captain profile page view
+  CHARTER_VIEW       // Charter detail page view
+  CHARTER_SEARCH     // Charter appeared in search results
+  PHOTO_VIEW         // Photo clicked/viewed in gallery
+  VIDEO_VIEW         // Video played
+  CONTACT_CLICK      // Contact/inquiry button clicked
+  BOOKING_STARTED    // Booking form opened
+  BOOKING_SUBMITTED  // Booking request submitted
+  REVIEW_VIEW        // Review section viewed
+  SHARE_CLICKED      // Share button clicked
+  PAYMENT_AUTHORIZED // Payment pre-authorized (TOKENIZED flow)
+  PAYMENT_CAPTURED   // Payment captured (TOKENIZED flow)
+  PAYMENT_RELEASED   // Payment token released without charge (TOKENIZED flow)
+  PAYMENT_REFUNDED   // Payment refunded (DIRECT flow or post-capture)
 }
 
 model AnalyticsEvent {

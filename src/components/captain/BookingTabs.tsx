@@ -95,16 +95,14 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
       const angler = booking.userId ? anglerMap[booking.userId] : null;
       const anglerName =
         angler?.name ||
-        (booking.guestFirstName && booking.guestLastName
-          ? `${booking.guestFirstName} ${booking.guestLastName}`
-          : "");
+        (booking.primaryBooker ? booking.primaryBooker.name : "");
 
       return (
         booking.charterName?.toLowerCase().includes(term) ||
         booking.tripName?.toLowerCase().includes(term) ||
         anglerName.toLowerCase().includes(term) ||
         booking.id.toLowerCase().includes(term) ||
-        (angler?.email || booking.guestEmail || "").toLowerCase().includes(term)
+        (angler?.email || "").toLowerCase().includes(term)
       );
     });
   }, [prefiltered, searchTerm, anglerMap]);
@@ -149,7 +147,10 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
   const now = useMemo(() => new Date(), []);
 
   const requests = useMemo(
-    () => sorted.filter((b) => b.status === "PENDING"),
+    () =>
+      sorted.filter(
+        (b) => b.status === "PENDING" || b.status === "PAYMENT_PENDING"
+      ),
     [sorted]
   );
 
@@ -157,9 +158,9 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
     return sorted.filter((b) => {
       const dt = parseBookingDate(b);
       if (!dt) return false;
-      // Consider upcoming any APPROVED / PAID where trip is today or in future
+      // Consider upcoming any APPROVED / PAID / PAYMENT_PENDING where trip is today or in future
       if (
-        ["APPROVED", "PAID"].includes(b.status) &&
+        ["APPROVED", "PAID", "PAYMENT_PENDING"].includes(b.status) &&
         dt.getTime() >= now.getTime()
       ) {
         return true;

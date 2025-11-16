@@ -610,8 +610,10 @@ enum MfaMethod {
 }
 
 enum NotificationType {
-  BOOKING_RECEIVED
-  BOOKING_PAID
+  BOOKING_RECEIVED      // Legacy: old flow booking request
+  PAYMENT_PENDING       // NEW: Hybrid flow - paid booking awaiting approval
+  BOOKING_CONFIRMED     // NEW: Hybrid flow - booking confirmed after approval
+  BOOKING_PAID          // Legacy: old flow payment completed
   BOOKING_CANCELLED
   CHARTER_APPROVED
   CHARTER_REJECTED

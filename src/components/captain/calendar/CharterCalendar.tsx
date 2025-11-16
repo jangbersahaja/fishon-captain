@@ -323,10 +323,10 @@ export function CharterCalendar({
                         id: booking.id,
                         tripName: booking.tripName,
                         status: booking.status,
-                        anglerName: booking.guestFirstName
-                          ? `${booking.guestFirstName} ${booking.guestLastName || ""}`
+                        anglerName: booking.primaryBooker
+                          ? booking.primaryBooker.name
                           : undefined,
-                        anglerEmail: booking.guestEmail || undefined,
+                        anglerEmail: undefined, // Email not available in booking anymore
                       }));
 
                     return (
@@ -372,10 +372,10 @@ export function CharterCalendar({
                           id: booking.id,
                           tripName: booking.tripName,
                           status: booking.status,
-                          anglerName: booking.guestFirstName
-                            ? `${booking.guestFirstName} ${booking.guestLastName || ""}`
+                          anglerName: booking.primaryBooker
+                            ? booking.primaryBooker.name
                             : undefined,
-                          anglerEmail: booking.guestEmail || undefined,
+                          anglerEmail: undefined, // Email not available in booking anymore
                         }));
 
                       const available = dayAvailability?.available ?? true;

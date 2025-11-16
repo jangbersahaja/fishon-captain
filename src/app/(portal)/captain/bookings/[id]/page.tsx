@@ -107,10 +107,8 @@ export default async function BookingDetailsPage({
   // Get customer info - either from user account or guest details
   const customerName =
     angler?.name ||
-    (booking.guestFirstName && booking.guestLastName
-      ? `${booking.guestFirstName} ${booking.guestLastName}`
-      : null);
-  const customerEmail = angler?.email || booking.guestEmail || null;
+    (booking.primaryBooker ? booking.primaryBooker.name : null);
+  const customerEmail = angler?.email || null; // Email not stored in booking anymore
   const isGuest = !booking.userId;
 
   const StatusIcon = getStatusIcon(booking.status);
@@ -141,13 +139,66 @@ export default async function BookingDetailsPage({
             <Badge variant={getStatusColor(booking.status)}>
               {booking.status}
             </Badge>
+            {/* Payment Flow Badge */}
+            {(booking.status === "PENDING" || booking.status === "PAID") &&
+              booking.paymentFlow && (
+                <Badge
+                  variant="outline"
+                  className={
+                    booking.paymentFlow === "TOKENIZED"
+                      ? "border-blue-300 text-blue-700 bg-blue-50"
+                      : "border-green-300 text-green-700 bg-green-50"
+                  }
+                >
+                  {booking.paymentFlow === "TOKENIZED"
+                    ? "💳 Card Held"
+                    : "✅ Already Paid"}
+                </Badge>
+              )}
           </div>
           <p className="mt-1 text-sm text-slate-600">
             Booking ID: {booking.id}
           </p>
+          {/* Payment Flow Info */}
+          {(booking.status === "PENDING" || booking.status === "PAID") &&
+            booking.paymentFlow && (
+              <div
+                className={`mt-3 p-3 rounded-lg text-sm ${
+                  booking.paymentFlow === "TOKENIZED"
+                    ? "bg-blue-50 text-blue-800"
+                    : "bg-green-50 text-green-800"
+                }`}
+              >
+                {booking.paymentFlow === "TOKENIZED" ? (
+                  <>
+                    <p className="font-medium">Card Authorization Hold</p>
+                    <p className="mt-1 text-xs">
+                      Customer&apos;s card is authorized but not charged yet. If
+                      you approve, their card will be charged automatically. If
+                      you decline or don&apos;t respond within 12 hours, the
+                      authorization will be released with no charge.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium">Payment Received</p>
+                    <p className="mt-1 text-xs">
+                      Customer has already paid via{" "}
+                      {booking.paymentMethod === "FPX"
+                        ? "FPX (Online Banking)"
+                        : "E-Wallet"}
+                      . If you approve, the booking is confirmed. If you decline
+                      or don&apos;t respond within 12 hours, a full refund will
+                      be processed automatically.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
         </div>
         <div className="col-span-1">
-          {booking.status === "PENDING" && (
+          {(booking.status === "PENDING" ||
+            booking.status === "PAYMENT_PENDING") && (
             <BookingActions bookingId={booking.id} />
           )}
         </div>
@@ -396,7 +447,7 @@ export default async function BookingDetailsPage({
                       </a>
                     </div>
                   </div>
-                  {booking.guestPhone && (
+                  {booking.primaryBooker?.phone && (
                     <div className="flex items-start gap-2">
                       <Phone className="w-4 h-4 mt-1 text-slate-400" />
                       <div>
@@ -404,10 +455,10 @@ export default async function BookingDetailsPage({
                           Phone
                         </p>
                         <a
-                          href={`tel:${booking.guestPhone}`}
+                          href={`tel:${booking.primaryBooker.phone}`}
                           className="text-sm text-blue-600 hover:text-blue-700"
                         >
-                          {booking.guestPhone}
+                          {booking.primaryBooker.phone}
                         </a>
                       </div>
                     </div>
