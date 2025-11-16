@@ -31,11 +31,11 @@ export function BookingTimeline({
   const isTripCompleted = tripDate.getTime() < now.getTime();
 
   // Define the booking journey steps based on flow type
-  // PAYMENT_PENDING = Hybrid flow (payment received, awaiting approval)
-  // PENDING → APPROVED → PAID = Legacy flow (approve first, pay later)
-  const isHybridFlow = status === "PAYMENT_PENDING";
+  // PAYMENT_AUTHORIZED = Auto flow (payment received, awaiting acknowledgment)
+  // PENDING → AWAITING_PAYMENT → PAID = Manual flow (approve first, pay later)
+  const isAutoFlow = status === "PAYMENT_AUTHORIZED";
 
-  const steps: TimelineStep[] = isHybridFlow
+  const steps: TimelineStep[] = isAutoFlow
     ? [
         {
           label: "Requested",
@@ -71,10 +71,12 @@ export function BookingTimeline({
         },
         {
           label: "Approved",
-          completed: ["APPROVED", "PAID", "COMPLETED"].includes(status),
-          current: status === "APPROVED",
+          completed: ["AWAITING_PAYMENT", "PAID", "COMPLETED"].includes(status),
+          current: status === "AWAITING_PAYMENT",
           timestamp:
-            status === "APPROVED" || status === "PAID" || status === "COMPLETED"
+            status === "AWAITING_PAYMENT" ||
+            status === "PAID" ||
+            status === "COMPLETED"
               ? updatedAt || undefined
               : undefined,
         },
