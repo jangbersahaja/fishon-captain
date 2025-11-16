@@ -1,6 +1,6 @@
 /**
  * Charter Service - Enhanced charter configuration data fetching
- * 
+ *
  * Provides comprehensive charter data including:
  * - Basic charter info
  * - Booking flow settings
@@ -22,12 +22,12 @@ export interface EnhancedCharterConfig {
   state: string;
   startingPoint: string;
   isActive: boolean;
-  
+
   // Booking flow settings
   bookingFlowType: "MANUAL" | "AUTO";
   approvalTimeHours: number;
   instantBookingEnabled: boolean;
-  
+
   // Configuration
   boat: {
     id: string;
@@ -37,14 +37,14 @@ export interface EnhancedCharterConfig {
     capacity: number;
     imageUrl: string | null;
   } | null;
-  
+
   captain: {
     id: string;
     userId: string;
     name: string;
     email: string | null;
   };
-  
+
   crew: {
     count: number;
     members: Array<{
@@ -53,7 +53,7 @@ export interface EnhancedCharterConfig {
       role: string;
     }>;
   };
-  
+
   trips: {
     count: number;
     active: Array<{
@@ -65,11 +65,11 @@ export interface EnhancedCharterConfig {
       maxPax: number;
     }>;
   };
-  
+
   media: {
     count: number;
   };
-  
+
   // Booking activity (from fishon-market DB)
   lastBooking: {
     id: string;
@@ -84,7 +84,7 @@ export interface EnhancedCharterConfig {
     tripType: string;
     createdAt: Date;
   } | null;
-  
+
   bookingStats: {
     total: number;
     thisMonth: number;
@@ -267,8 +267,9 @@ export async function getEnhancedCharterConfig(
       })),
     },
     trips: {
-        count: charter.trips?.length || 0,
-        active: charter.trips?.map((t) => ({
+      count: charter.trips?.length || 0,
+      active:
+        charter.trips?.map((t) => ({
           id: t.id,
           name: t.name,
           type: t.tripType,
@@ -276,7 +277,7 @@ export async function getEnhancedCharterConfig(
           duration: t.durationHours,
           maxPax: t.maxAnglers,
         })) || [],
-      },
+    },
     media: {
       count: charter._count.media,
     },

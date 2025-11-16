@@ -3,10 +3,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { EnhancedCharterConfig } from "@/lib/charter-service";
+import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ChevronUp, Edit2, Eye, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
 import { CharterConfiguration } from "./components/CharterConfiguration";
 
 interface CharterConfigCardProps {

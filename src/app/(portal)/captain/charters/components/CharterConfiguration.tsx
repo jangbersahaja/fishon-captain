@@ -2,10 +2,10 @@
 
 import { Badge } from "@/components/ui/badge";
 import type { EnhancedCharterConfig } from "@/lib/charter-service";
-import { Anchor, Clock, DollarSign, Settings, Users } from "lucide-react";
-import Link from "next/link";
 import { formatCurrency } from "@/lib/helpers/booking-helpers";
 import { format } from "date-fns";
+import { Anchor, Clock, DollarSign, Settings, Users } from "lucide-react";
+import Link from "next/link";
 
 interface CharterConfigurationProps {
   charter: EnhancedCharterConfig;
@@ -74,7 +74,9 @@ export function CharterConfiguration({
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-slate-600">Type:</span>
-              <span className="text-sm text-slate-700">{charter.boat.type}</span>
+              <span className="text-sm text-slate-700">
+                {charter.boat.type}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-slate-600">Length:</span>
@@ -148,7 +150,9 @@ export function CharterConfiguration({
             </div>
           ) : (
             <div className="pt-2">
-              <p className="text-xs text-slate-500">No crew members assigned.</p>
+              <p className="text-xs text-slate-500">
+                No crew members assigned.
+              </p>
             </div>
           )}
         </div>

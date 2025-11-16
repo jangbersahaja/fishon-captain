@@ -29,6 +29,7 @@ Phase 1 has successfully implemented the enhanced data layer and basic configura
 ### 1. Enhanced Data Layer (`charter-service.ts`)
 
 Created a robust service layer that:
+
 - Fetches charter data from captain DB (boat, captain, crew via junction tables, trips)
 - Fetches booking data from market DB (last booking, total bookings, this month's bookings)
 - Gracefully handles market DB connection failures
@@ -36,6 +37,7 @@ Created a robust service layer that:
 - Uses parallel fetching with `Promise.all()` for multiple charters
 
 Key data relationships handled:
+
 - Charter → Boat (1:1)
 - Charter → CaptainProfile → User (for captain name/email)
 - Charter → CharterCrew → CrewMember (junction table, filtered by isActive)
@@ -52,6 +54,7 @@ Key data relationships handled:
 ### 3. Charter Config List (`CharterConfigList.tsx`)
 
 Client component features:
+
 - Maps enhanced charter data to `CharterConfigCard` components
 - Grid layout (2 columns on desktop, 1 on mobile)
 - Empty state with "Add Your First Charter" CTA
@@ -60,6 +63,7 @@ Client component features:
 ### 4. Charter Config Card (`CharterConfigCard.tsx`)
 
 Expandable card features:
+
 - **Collapsed state**: Shows charter name, status, location, quick summary (boat, trips, media count), booking flow type, last booking time
 - **Expanded state**: Shows full `CharterConfiguration` component
 - **Actions**: Expand/Collapse, View (opens fishon-market link), Edit (opens form)
@@ -69,6 +73,7 @@ Expandable card features:
 ### 5. Charter Configuration (`CharterConfiguration.tsx`)
 
 Detailed configuration sections:
+
 - **Booking Settings**: Flow type (MANUAL/AUTO), approval window, instant booking toggle
 - **Boat Information**: Name, type, length, capacity (with empty state + add link)
 - **Captain & Crew**: Captain details, crew member list with roles (shows "No crew members assigned" when empty)
@@ -79,12 +84,14 @@ Detailed configuration sections:
 ### 6. TypeScript & Data Integrity
 
 All components are:
+
 - Fully type-safe with TypeScript strict mode
 - Using correct Prisma relationships and field names
 - Handling nullable fields appropriately
 - Using junction tables correctly (CharterCrew, CharterCaptain)
 
 Fixed schema alignment issues:
+
 - Removed non-existent `phone` field from User
 - Changed `Trip.type` to `Trip.tripType` (correct schema field)
 - Used `CrewMember.displayName` instead of `name` (correct schema field)
