@@ -3,6 +3,7 @@ import { DevPanelProvider } from "@/components/DevPanelProvider";
 import Navbar from "@/components/Navbar";
 import { NotificationProvider } from "@/components/notifications";
 import OfflineBanner from "@/components/OfflineBanner";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { enableCharterFormConsoleLogging } from "@features/charter-onboarding/analytics";
 import { Analytics } from "@vercel/analytics/next";
@@ -108,14 +109,16 @@ export default async function RootLayout({
       <body className="flex flex-col font-sans">
         <DevPanelProvider>
           <AuthSessionProvider>
-            <NotificationProvider>
-              <Toaster />
-              <Navbar />
-              <OfflineBanner />
-              <main className="flex-1">{children}</main>
-              <SpeedInsights />
-              <Analytics />
-            </NotificationProvider>
+            <QueryProvider>
+              <NotificationProvider>
+                <Toaster />
+                <Navbar />
+                <OfflineBanner />
+                <main className="flex-1">{children}</main>
+                <SpeedInsights />
+                <Analytics />
+              </NotificationProvider>
+            </QueryProvider>
           </AuthSessionProvider>
         </DevPanelProvider>
       </body>

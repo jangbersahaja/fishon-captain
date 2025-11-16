@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import type { EnhancedCharterConfig } from "@/lib/charter-service";
 import { formatCurrency } from "@/lib/helpers/booking-helpers";
 import { format } from "date-fns";
-import { Anchor, Clock, DollarSign, Settings, Users } from "lucide-react";
+import { Anchor, Clock, DollarSign, Users } from "lucide-react";
 import Link from "next/link";
+import { BookingFlowSettings } from "./BookingFlowSettings";
 
 interface CharterConfigurationProps {
   charter: EnhancedCharterConfig;
@@ -20,43 +21,8 @@ export function CharterConfiguration({
 
   return (
     <div className="space-y-4">
-      {/* Booking Flow Settings */}
-      <div className="p-3 border rounded-lg bg-slate-50 border-slate-200">
-        <div className="flex items-center gap-2 mb-2">
-          <Settings className="w-4 h-4 text-slate-600" />
-          <h4 className="text-sm font-semibold text-slate-900">
-            Booking Settings
-          </h4>
-        </div>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-600">Booking Flow:</span>
-            <Badge variant="outline" className="text-xs">
-              {charter.bookingFlowType === "MANUAL" ? "Manual" : "Auto"}
-            </Badge>
-          </div>
-          {charter.bookingFlowType === "MANUAL" && (
-            <div className="flex justify-between">
-              <span className="text-slate-600">Approval Window:</span>
-              <span className="font-medium text-slate-900">
-                {charter.approvalTimeHours}h
-              </span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-slate-600">Instant Booking:</span>
-            <span
-              className={
-                charter.instantBookingEnabled
-                  ? "text-green-600 font-medium"
-                  : "text-slate-500"
-              }
-            >
-              {charter.instantBookingEnabled ? "Enabled" : "Disabled"}
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* Booking Flow Settings - Interactive */}
+      <BookingFlowSettings charter={charter} adminUserId={adminUserId} />
 
       {/* Boat Information */}
       <div>

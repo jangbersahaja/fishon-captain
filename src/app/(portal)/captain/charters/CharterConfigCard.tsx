@@ -2,12 +2,22 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import type { EnhancedCharterConfig } from "@/lib/charter-service";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDown, ChevronUp, Edit2, Eye, MapPin } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Edit2,
+  Eye,
+  Loader2,
+  MapPin,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CharterConfiguration } from "./components/CharterConfiguration";
+import { useToggleCharterStatus } from "./hooks/useToggleCharterStatus";
 
 interface CharterConfigCardProps {
   charter: EnhancedCharterConfig;
@@ -18,9 +28,20 @@ export function CharterConfigCard({
   charter,
   adminUserId,
 }: CharterConfigCardProps) {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
+  const toggleStatusMutation = useToggleCharterStatus();
   const editQuery = adminUserId ? `?adminUserId=${adminUserId}` : "";
   const editHref = `/captain/form?editCharterId=${charter.id}${editQuery}`;
+
+  const handleStatusToggle = async (checked: boolean) => {
+    await toggleStatusMutation.mutateAsync({
+      charterId: charter.id,
+      isActive: checked,
+      adminUserId,
+    });
+    router.refresh();
+  };
 
   return (
     <div className="p-5 transition-shadow bg-white border shadow-sm rounded-2xl border-slate-200 hover:shadow-md">
@@ -44,6 +65,29 @@ export function CharterConfigCard({
           <p className="text-xs tracking-wide uppercase text-slate-500">
             {charter.charterType}
           </p>
+        </div>
+
+        {/* Status Toggle */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-col items-end">
+            <label
+              htmlFor={`status-${charter.id}`}
+              className="text-xs font-medium text-slate-700"
+            >
+              {toggleStatusMutation.isPending ? "Updating..." : "Status"}
+            </label>
+            <div className="flex items-center gap-2 mt-1">
+              {toggleStatusMutation.isPending && (
+                <Loader2 className="w-3 h-3 animate-spin text-slate-400" />
+              )}
+              <Switch
+                id={`status-${charter.id}`}
+                checked={charter.isActive}
+                onCheckedChange={handleStatusToggle}
+                disabled={toggleStatusMutation.isPending}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
