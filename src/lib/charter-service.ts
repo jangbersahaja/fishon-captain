@@ -85,6 +85,19 @@ export interface EnhancedCharterConfig {
     createdAt: Date;
   } | null;
 
+  recentBookings: Array<{
+    id: string;
+    guestName: string;
+    totalPrice: number;
+    tripDate: Date;
+    tripTime: string;
+    status: string;
+    adults: number;
+    children: number;
+    tripName: string;
+    createdAt: Date;
+  }>;
+
   bookingStats: {
     total: number;
     thisMonth: number;
@@ -169,14 +182,27 @@ export async function getEnhancedCharterConfig(
 
   // Fetch booking data from market DB (if configured)
   let lastBooking = null;
+  let recentBookings: Array<{
+    id: string;
+    guestName: string;
+    totalPrice: number;
+    tripDate: Date;
+    tripTime: string;
+    status: string;
+    adults: number;
+    children: number;
+    tripName: string;
+    createdAt: Date;
+  }> = [];
   let bookingTotal = 0;
   let thisMonthCount = 0;
 
   try {
-    // Try to fetch last booking
-    const lastBookingData = await prismaMarket.booking.findFirst({
+    // Fetch recent bookings (last 5)
+    const recentBookingsData = await prismaMarket.booking.findMany({
       where: { charterId },
       orderBy: { createdAt: "desc" },
+      take: 5,
       select: {
         id: true,
         primaryBooker: true,
@@ -196,7 +222,24 @@ export async function getEnhancedCharterConfig(
       },
     });
 
-    if (lastBookingData) {
+    recentBookings = recentBookingsData.map(
+      (booking: (typeof recentBookingsData)[0]) => ({
+        id: booking.id,
+        guestName: booking.primaryBooker?.name || "Guest",
+        totalPrice: Number(booking.finalPrice),
+        tripDate: new Date(booking.date),
+        tripTime: booking.time,
+        status: booking.status,
+        adults: booking.adults,
+        children: booking.children,
+        tripName: booking.trip?.name || "Trip",
+        createdAt: booking.createdAt,
+      })
+    );
+
+    // Set last booking as the first one
+    if (recentBookingsData.length > 0) {
+      const lastBookingData = recentBookingsData[0];
       lastBooking = {
         id: lastBookingData.id,
         guestName: lastBookingData.primaryBooker?.name || "Guest",
@@ -282,6 +325,7 @@ export async function getEnhancedCharterConfig(
       count: charter._count.media,
     },
     lastBooking,
+    recentBookings,
     bookingStats: {
       total: bookingTotal,
       thisMonth: thisMonthCount,

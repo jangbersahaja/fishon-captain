@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import type { EnhancedCharterConfig } from "@/lib/charter-service";
 import { formatCurrency } from "@/lib/helpers/booking-helpers";
 import { format } from "date-fns";
-import { Anchor, Clock, DollarSign, Users } from "lucide-react";
+import { Anchor, Calendar, Clock, DollarSign, Users } from "lucide-react";
 import Link from "next/link";
 import { BookingFlowSettings } from "./BookingFlowSettings";
+import { RecentBookings } from "./RecentBookings";
 
 interface CharterConfigurationProps {
   charter: EnhancedCharterConfig;
@@ -222,6 +223,17 @@ export function CharterConfiguration({
           </p>
           <p className="text-xs text-blue-700">This Month</p>
         </div>
+      </div>
+
+      {/* Recent Bookings */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar className="w-4 h-4 text-slate-600" />
+          <h4 className="text-sm font-semibold text-slate-900">
+            Recent Bookings
+          </h4>
+        </div>
+        <RecentBookings bookings={charter.recentBookings} />
       </div>
     </div>
   );
