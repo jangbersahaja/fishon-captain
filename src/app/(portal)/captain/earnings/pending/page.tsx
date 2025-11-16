@@ -43,7 +43,7 @@ export default async function PendingBookingsPage() {
       </div>
 
       {/* Summary Card */}
-      <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="p-6 border rounded-lg bg-amber-50 border-amber-200">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
             <p className="text-sm font-medium text-amber-900">
@@ -77,7 +77,7 @@ export default async function PendingBookingsPage() {
           <h3 className="text-sm font-medium text-slate-900">
             About Pending Earnings
           </h3>
-          <ul className="mt-2 space-y-1 text-sm text-slate-600 list-disc list-inside">
+          <ul className="mt-2 space-y-1 text-sm list-disc list-inside text-slate-600">
             <li>
               Earnings from completed and paid bookings are held until the next
               payment cycle
@@ -94,8 +94,8 @@ export default async function PendingBookingsPage() {
               are up to date to avoid delays
             </li>
             <li>
-              You'll receive an email notification when your payment is approved
-              and completed
+              You&apos;ll receive an email notification when your payment is
+              approved and completed
             </li>
           </ul>
         </div>
