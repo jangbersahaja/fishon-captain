@@ -82,9 +82,10 @@ export async function getPendingBookings(
   ]);
 
   // Combine and sort by creation date (newest first)
-  const allPendingBookings = [...pendingBookings, ...paymentPendingBookings].sort(
-    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-  );
+  const allPendingBookings = [
+    ...pendingBookings,
+    ...paymentPendingBookings,
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   return enrichBookings(allPendingBookings);
 }
