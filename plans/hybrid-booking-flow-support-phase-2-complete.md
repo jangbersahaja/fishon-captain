@@ -3,6 +3,7 @@
 Updated all TypeScript types to reflect the new booking schema with hybrid payment flow, time-based bookings, and participant tracking.
 
 **Files created/changed:**
+
 - `src/lib/market-db.ts`
 - `src/lib/enrich-booking.ts`
 - `src/lib/booking-service.ts`
@@ -12,12 +13,14 @@ Updated all TypeScript types to reflect the new booking schema with hybrid payme
 - `src/app/(portal)/captain/bookings/[id]/page.tsx`
 
 **Functions created/changed:**
+
 - `parseParticipants()` - Parse participants from guests JSON
 - `formatTimeSlots()` - Format time slots for display (e.g., "Day 1: Fri, Nov 15 • 8:00 AM - 12:00 PM")
 - `enrichBooking()` - Updated to use primaryBooker and format time slots
 - `getBookingStats()` - Added PAYMENT_PENDING: 0 to fallback return
 
 **Tests created/changed:**
+
 - None (no automated tests exist yet)
 
 **Review Status:** APPROVED

@@ -106,8 +106,7 @@ export default async function BookingDetailsPage({
 
   // Get customer info - either from user account or guest details
   const customerName =
-    angler?.name ||
-    (booking.primaryBooker ? booking.primaryBooker.name : null);
+    angler?.name || (booking.primaryBooker ? booking.primaryBooker.name : null);
   const customerEmail = angler?.email || null; // Email not stored in booking anymore
   const isGuest = !booking.userId;
 
