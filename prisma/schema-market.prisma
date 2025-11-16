@@ -14,14 +14,25 @@ datasource db {
 
 // Booking model (read-only from Market DB)
 enum BookingStatus {
-  PENDING         // OLD FLOW: awaiting captain approval (kept for historical data)
-  APPROVED        // OLD FLOW: captain approved, awaiting payment (kept for historical data)
-  PAYMENT_PENDING // NEW FLOW: payment authorized, awaiting captain approval
-  REJECTED        // captain rejected
-  EXPIRED         // hold expired
-  PAID            // payment completed, confirmed
-  CANCELLED       // cancelled by angler
-  COMPLETED       // trip completed
+  // Manual flow (Request & Approve)
+  PENDING                // Awaiting captain approval (no payment yet)
+  AWAITING_PAYMENT       // Approved, awaiting payment (48h deadline)
+  
+  // Auto flow (Instant Booking)
+  PAYMENT_AUTHORIZED     // Payment secured, awaiting captain acknowledgment (12h deadline)
+  
+  // Common statuses
+  PAID                   // Payment confirmed, trip confirmed
+  UNDER_REVIEW           // Admin reviewing captain's request (manual dispute handling)
+  COMPLETED              // Trip completed
+  REJECTED               // Captain rejected
+  CANCELLED              // Angler cancelled
+  EXPIRED                // Deadline expired
+}
+
+enum BookingFlowType {
+  MANUAL      // Request → Approval → Payment → Paid
+  AUTO        // Payment → Acknowledgment → Paid
 }
 
 enum PayoutStatus {
@@ -98,6 +109,21 @@ model Booking {
   rejectionReason    String?
   captainDecisionAt  DateTime?
   paidAt             DateTime?
+
+  // === BOOKING FLOW (Dual-Flow System) ===
+  bookingFlowType        BookingFlowType  // Which flow was used: MANUAL or AUTO
+  
+  // Deadlines (computed at booking creation based on flow)
+  approvalDeadline       DateTime?        // MANUAL: Captain must approve by this time (PENDING status)
+  paymentDeadline        DateTime?        // MANUAL: Angler must pay by this time (AWAITING_PAYMENT status)
+  acknowledgmentDeadline DateTime?        // AUTO: Captain must acknowledge by this time (PAYMENT_AUTHORIZED status)
+  
+  // Admin review tracking (for manual dispute handling)
+  reviewRequestedBy      String?          // User ID of captain who requested review
+  reviewRequestedAt      DateTime?        // When review was requested
+  reviewedBy             String?          // Staff user ID who resolved the review
+  reviewedAt             DateTime?        // When review was completed
+  reviewNotes            String?          @db.Text // Admin decision notes and reasoning
 
   // === PAYMENT TRACKING ===
   paymentTransactionId String? @db.VarChar(255) // Senang Pay transaction ID (legacy) OR Stripe charge ID

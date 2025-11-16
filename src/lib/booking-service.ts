@@ -64,7 +64,9 @@ export async function getBooking(
 
 /**
  * Get pending bookings for a captain (requires action)
- * Includes both PENDING (not yet approved) and PAYMENT_PENDING (payment received/authorized, awaiting approval)
+ * Includes:
+ * - PENDING: Manual flow bookings awaiting captain approval
+ * - PAYMENT_AUTHORIZED: Auto flow bookings with payment held, awaiting acknowledgment
  * @param charterIds - Array of charter IDs owned by the captain
  * @returns Array of enriched pending bookings
  */
@@ -75,19 +77,19 @@ export async function getPendingBookings(
     return [];
   }
 
-  // Fetch both PENDING and PAYMENT_PENDING statuses
-  const [pendingBookings, paymentPendingBookings] = await Promise.all([
+  // Fetch both PENDING (manual flow) and PAYMENT_AUTHORIZED (auto flow)
+  const [pendingBookings, paymentAuthorizedBookings] = await Promise.all([
     fetchBookingsByStatus(charterIds, "PENDING"),
-    fetchBookingsByStatus(charterIds, "PAYMENT_PENDING"),
+    fetchBookingsByStatus(charterIds, "PAYMENT_AUTHORIZED"),
   ]);
 
   // Combine and sort by creation date (newest first)
-  const allPendingBookings = [
-    ...pendingBookings,
-    ...paymentPendingBookings,
-  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const allPendingBookings = [...pendingBookings, ...paymentAuthorizedBookings];
+  const sortedBookings = allPendingBookings.sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+  );
 
-  return enrichBookings(allPendingBookings);
+  return enrichBookings(sortedBookings);
 }
 
 /**
@@ -101,13 +103,14 @@ export async function getBookingStats(
   if (!isMarketDbConfigured()) {
     return {
       PENDING: 0,
-      PAYMENT_PENDING: 0,
-      APPROVED: 0,
-      REJECTED: 0,
-      EXPIRED: 0,
+      AWAITING_PAYMENT: 0,
+      PAYMENT_AUTHORIZED: 0,
       PAID: 0,
-      CANCELLED: 0,
+      UNDER_REVIEW: 0,
       COMPLETED: 0,
+      REJECTED: 0,
+      CANCELLED: 0,
+      EXPIRED: 0,
     };
   }
 

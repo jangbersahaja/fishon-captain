@@ -74,19 +74,26 @@ function getTimeUntil(date: Date): string {
 }
 
 /**
- * Check if booking is a new request (PENDING or PAYMENT_PENDING < 24h old)
- * PAYMENT_PENDING = payment received/authorized, awaiting captain approval
+ * Check if booking is a new request requiring captain action
+ * - PENDING: Manual flow bookings awaiting approval (< 24h old)
+ * - PAYMENT_AUTHORIZED: Auto flow bookings with payment held (< 12h old)
  */
 function isNewRequest(booking: EnrichedMarketBooking): boolean {
-  // Include both PENDING and PAYMENT_PENDING as they both need captain action
-  if (booking.status !== "PENDING" && booking.status !== "PAYMENT_PENDING") {
-    return false;
-  }
-
   const now = new Date();
   const hoursAgo =
     (now.getTime() - booking.createdAt.getTime()) / (1000 * 60 * 60);
-  return hoursAgo < 24;
+
+  // PENDING (manual flow) - 24h deadline
+  if (booking.status === "PENDING") {
+    return hoursAgo < 24;
+  }
+
+  // PAYMENT_AUTHORIZED (auto flow) - 12h deadline
+  if (booking.status === "PAYMENT_AUTHORIZED") {
+    return hoursAgo < 12;
+  }
+
+  return false;
 }
 
 /**
@@ -104,10 +111,11 @@ function isUpcomingTrip(booking: EnrichedMarketBooking): boolean {
 }
 
 /**
- * Check if payment is pending (APPROVED > 48h, no payment)
+ * Check if payment is pending (AWAITING_PAYMENT > 48h, no payment)
+ * AWAITING_PAYMENT = Manual flow booking approved by captain, awaiting angler payment
  */
 function isPaymentPending(booking: EnrichedMarketBooking): boolean {
-  if (booking.status !== "APPROVED") return false;
+  if (booking.status !== "AWAITING_PAYMENT") return false;
 
   const now = new Date();
   const updatedAt = booking.updatedAt || booking.createdAt;
@@ -130,16 +138,35 @@ export function getPriorityBookings(
       const now = new Date();
       const hoursAgo =
         (now.getTime() - booking.createdAt.getTime()) / (1000 * 60 * 60);
-      const hoursRemaining = Math.max(0, 24 - hoursAgo);
+
+      // PAYMENT_AUTHORIZED has 12h deadline, PENDING has 24h deadline
+      const deadline = booking.status === "PAYMENT_AUTHORIZED" ? 12 : 24;
+      const hoursRemaining = Math.max(0, deadline - hoursAgo);
+
+      // PAYMENT_AUTHORIZED is more urgent (higher threshold)
+      const urgency =
+        booking.status === "PAYMENT_AUTHORIZED"
+          ? hoursRemaining < 4
+            ? "high"
+            : hoursRemaining < 8
+              ? "medium"
+              : "low"
+          : hoursRemaining < 6
+            ? "high"
+            : hoursRemaining < 12
+              ? "medium"
+              : "low";
 
       priorityBookings.push({
         id: booking.id,
         type: "new-request",
-        urgency:
-          hoursRemaining < 6 ? "high" : hoursRemaining < 12 ? "medium" : "low",
+        urgency,
         booking,
         countdown: `${Math.floor(hoursRemaining)}h remaining`,
-        action: "Review Request",
+        action:
+          booking.status === "PAYMENT_AUTHORIZED"
+            ? "Acknowledge Payment"
+            : "Review Request",
         hoursAgo,
       });
     }
@@ -222,9 +249,9 @@ export function filterBookingsByTab(
 
   switch (tab) {
     case "requests":
-      // PENDING and PAYMENT_PENDING statuses (both require captain action)
+      // PENDING (manual flow) and PAYMENT_AUTHORIZED (auto flow) - both require captain action
       return bookings.filter(
-        (b) => b.status === "PENDING" || b.status === "PAYMENT_PENDING"
+        (b) => b.status === "PAYMENT_AUTHORIZED" || b.status === "PENDING"
       );
 
     case "upcoming":

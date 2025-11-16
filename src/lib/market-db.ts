@@ -41,13 +41,14 @@ type PrismaMarketBooking = {
   finalPrice: { toNumber: () => number } | number;
   status:
     | "PENDING"
-    | "APPROVED"
-    | "PAYMENT_PENDING"
-    | "REJECTED"
-    | "EXPIRED"
+    | "AWAITING_PAYMENT"
+    | "PAYMENT_AUTHORIZED"
     | "PAID"
+    | "UNDER_REVIEW"
+    | "COMPLETED"
+    | "REJECTED"
     | "CANCELLED"
-    | "COMPLETED";
+    | "EXPIRED";
   expiresAt: Date;
   captainDecisionAt: Date | null;
   note: string | null;
@@ -92,13 +93,14 @@ export type MarketBooking = {
   finalPrice: number;
   status:
     | "PENDING"
-    | "APPROVED"
-    | "PAYMENT_PENDING"
-    | "REJECTED"
-    | "EXPIRED"
+    | "AWAITING_PAYMENT"
+    | "PAYMENT_AUTHORIZED"
     | "PAID"
+    | "UNDER_REVIEW"
+    | "COMPLETED"
+    | "REJECTED"
     | "CANCELLED"
-    | "COMPLETED";
+    | "EXPIRED";
   expiresAt: Date;
   captainDecisionAt: Date | null;
   note: string | null;
@@ -283,65 +285,71 @@ export async function countBookingsByStatus(
     );
   }
 
-  if (!charterIds.length) {
+  if (!isMarketDbConfigured()) {
     return {
       PENDING: 0,
-      APPROVED: 0,
-      PAYMENT_PENDING: 0,
-      REJECTED: 0,
-      EXPIRED: 0,
+      AWAITING_PAYMENT: 0,
+      PAYMENT_AUTHORIZED: 0,
       PAID: 0,
-      CANCELLED: 0,
+      UNDER_REVIEW: 0,
       COMPLETED: 0,
+      REJECTED: 0,
+      CANCELLED: 0,
+      EXPIRED: 0,
     };
   }
 
   try {
     const [
       pending,
-      approved,
-      paymentPending,
-      rejected,
-      expired,
+      awaitingPayment,
+      paymentAuthorized,
       paid,
-      cancelled,
+      underReview,
       completed,
+      rejected,
+      cancelled,
+      expired,
     ] = await Promise.all([
       prismaMarket.booking.count({
         where: { charterId: { in: charterIds }, status: "PENDING" },
       }),
       prismaMarket.booking.count({
-        where: { charterId: { in: charterIds }, status: "APPROVED" },
+        where: { charterId: { in: charterIds }, status: "AWAITING_PAYMENT" },
       }),
       prismaMarket.booking.count({
-        where: { charterId: { in: charterIds }, status: "PAYMENT_PENDING" },
-      }),
-      prismaMarket.booking.count({
-        where: { charterId: { in: charterIds }, status: "REJECTED" },
-      }),
-      prismaMarket.booking.count({
-        where: { charterId: { in: charterIds }, status: "EXPIRED" },
+        where: { charterId: { in: charterIds }, status: "PAYMENT_AUTHORIZED" },
       }),
       prismaMarket.booking.count({
         where: { charterId: { in: charterIds }, status: "PAID" },
       }),
       prismaMarket.booking.count({
-        where: { charterId: { in: charterIds }, status: "CANCELLED" },
+        where: { charterId: { in: charterIds }, status: "UNDER_REVIEW" },
       }),
       prismaMarket.booking.count({
         where: { charterId: { in: charterIds }, status: "COMPLETED" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "REJECTED" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "CANCELLED" },
+      }),
+      prismaMarket.booking.count({
+        where: { charterId: { in: charterIds }, status: "EXPIRED" },
       }),
     ]);
 
     return {
       PENDING: pending,
-      APPROVED: approved,
-      PAYMENT_PENDING: paymentPending,
-      REJECTED: rejected,
-      EXPIRED: expired,
+      AWAITING_PAYMENT: awaitingPayment,
+      PAYMENT_AUTHORIZED: paymentAuthorized,
       PAID: paid,
-      CANCELLED: cancelled,
+      UNDER_REVIEW: underReview,
       COMPLETED: completed,
+      REJECTED: rejected,
+      CANCELLED: cancelled,
+      EXPIRED: expired,
     };
   } catch (error) {
     console.error("Error counting bookings from Market DB:", error);

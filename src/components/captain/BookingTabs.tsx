@@ -32,7 +32,7 @@ interface BookingTabsProps {
 export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
   // Tab state
   const [activeTab, setActiveTab] = useState<
-    "requests" | "upcoming" | "all" | "history"
+    "requests" | "approved" | "all" | "history"
   >("requests");
 
   // Filters / search state
@@ -149,46 +149,36 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
   const requests = useMemo(
     () =>
       sorted.filter(
-        (b) => b.status === "PENDING" || b.status === "PAYMENT_PENDING"
+        (b) => b.status === "PAYMENT_AUTHORIZED" || b.status === "PENDING"
       ),
     [sorted]
   );
 
-  const upcoming = useMemo(() => {
+  const approved = useMemo(() => {
     return sorted.filter((b) => {
-      const dt = parseBookingDate(b);
-      if (!dt) return false;
-      // Consider upcoming any APPROVED / PAID / PAYMENT_PENDING where trip is today or in future
-      if (
-        ["APPROVED", "PAID", "PAYMENT_PENDING"].includes(b.status) &&
-        dt.getTime() >= now.getTime()
-      ) {
-        return true;
-      }
-      return false;
+      // PAID = payment received, trip confirmed
+      // AWAITING_PAYMENT = manual flow, captain approved, awaiting angler payment
+      return b.status === "PAID" || b.status === "AWAITING_PAYMENT";
     });
-  }, [sorted, now]);
+  }, [sorted]);
 
   const completed = useMemo(() => {
     return sorted.filter((b) => {
-      const dt = parseBookingDate(b);
-      // Treat bookings as completed when they were paid and the trip date is in the past
-      if (b.status === "PAID" && dt && dt.getTime() < now.getTime())
-        return true;
-      return false;
+      // Cron automatically changes PAID → COMPLETED after trip date
+      return b.status === "COMPLETED";
     });
-  }, [sorted, now]);
+  }, [sorted]);
 
   const history = useMemo(() => {
     return sorted.filter((b) => {
-      // History includes: rejected, cancelled, expired, and completed trips
-      if (["REJECTED", "CANCELLED", "EXPIRED"].includes(b.status)) return true;
-      const dt = parseBookingDate(b);
-      if (b.status === "PAID" && dt && dt.getTime() < now.getTime())
-        return true;
-      return false;
+      // History includes all terminal statuses
+      // COMPLETED, REJECTED, CANCELLED, EXPIRED
+      // Also includes legacy PENDING/APPROVED if they exist
+      return ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"].includes(
+        b.status
+      );
     });
-  }, [sorted, now]);
+  }, [sorted]);
 
   // When filters/search active, show grouped view; otherwise show tab-filtered view
   const hasFiltersOrSearch = Boolean(
@@ -202,8 +192,8 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
     switch (activeTab) {
       case "requests":
         return requests;
-      case "upcoming":
-        return upcoming;
+      case "approved":
+        return approved;
       case "all":
         return sorted;
       case "history":
@@ -211,17 +201,17 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
       default:
         return sorted;
     }
-  }, [activeTab, hasFiltersOrSearch, sorted, requests, upcoming, history]);
+  }, [activeTab, hasFiltersOrSearch, sorted, requests, approved, history]);
 
   // Tab counts
   const tabCounts = useMemo(
     () => ({
       requests: requests.length,
-      upcoming: upcoming.length,
+      approved: approved.length,
       all: sorted.length,
       history: history.length,
     }),
-    [requests.length, upcoming.length, sorted.length, history.length]
+    [requests.length, approved.length, sorted.length, history.length]
   );
 
   function clearFilters() {
@@ -362,7 +352,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             {[
               { label: "Requests", value: "requests" as const },
-              { label: "Upcoming", value: "upcoming" as const },
+              { label: "Approved", value: "approved" as const },
               { label: "All Bookings", value: "all" as const },
               { label: "History", value: "history" as const },
             ].map((tab) => {
@@ -440,16 +430,16 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
             )}
           </div>
 
-          {/* Upcoming */}
+          {/* Approved */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Upcoming</h3>
+              <h3 className="text-lg font-semibold">Approved</h3>
               <div className="text-sm text-slate-500">
-                {upcoming.length} items
+                {approved.length} items
               </div>
             </div>
 
-            {upcoming.length > 0 ? (
+            {approved.length > 0 ? (
               <div
                 className={
                   viewMode === "grid"
@@ -457,7 +447,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
                     : "space-y-4"
                 }
               >
-                {upcoming.map((b) => (
+                {approved.map((b) => (
                   <EnhancedBookingCard
                     key={b.id}
                     booking={b}
@@ -469,7 +459,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
               </div>
             ) : (
               <div className="p-6 text-center bg-white border border-slate-200 rounded-xl text-slate-600">
-                No upcoming trips match your filters.
+                No approved or confirmed bookings.
               </div>
             )}
           </div>
@@ -532,21 +522,21 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
               <div className="max-w-sm mx-auto">
                 <div className="mb-4 text-4xl">
                   {activeTab === "requests" && "📬"}
-                  {activeTab === "upcoming" && "🗓️"}
+                  {activeTab === "approved" && "⏳"}
                   {activeTab === "all" && "📋"}
                   {activeTab === "history" && "📚"}
                 </div>
                 <h3 className="mb-2 text-lg font-semibold text-slate-900">
                   {activeTab === "requests" && "No pending requests"}
-                  {activeTab === "upcoming" && "No upcoming trips"}
+                  {activeTab === "approved" && "No approved bookings"}
                   {activeTab === "all" && "No bookings yet"}
                   {activeTab === "history" && "No booking history"}
                 </h3>
                 <p className="text-sm text-slate-600">
                   {activeTab === "requests" &&
                     "New booking requests will appear here when customers book your charters."}
-                  {activeTab === "upcoming" &&
-                    "Confirmed trips will be listed here."}
+                  {activeTab === "approved" &&
+                    "Approved and confirmed bookings will appear here."}
                   {activeTab === "all" && "All bookings will appear here."}
                   {activeTab === "history" &&
                     "Completed, rejected, and cancelled bookings will appear here."}

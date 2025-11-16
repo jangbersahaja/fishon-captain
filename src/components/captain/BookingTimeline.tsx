@@ -30,37 +30,68 @@ export function BookingTimeline({
   const now = new Date();
   const isTripCompleted = tripDate.getTime() < now.getTime();
 
-  // Define the booking journey steps
-  const steps: TimelineStep[] = [
-    {
-      label: "Requested",
-      completed: true,
-      current: status === "PENDING",
-      timestamp: createdAt,
-    },
-    {
-      label: "Approved",
-      completed: ["APPROVED", "PAID", "COMPLETED"].includes(status),
-      current: status === "APPROVED",
-      timestamp:
-        status === "APPROVED" || status === "PAID" || status === "COMPLETED"
-          ? updatedAt || undefined
-          : undefined,
-    },
-    {
-      label: "Paid",
-      completed: ["PAID", "COMPLETED"].includes(status),
-      current: status === "PAID" && !isTripCompleted,
-      timestamp: status === "PAID" ? updatedAt || undefined : undefined,
-    },
-    {
-      label: "Trip",
-      completed:
-        status === "COMPLETED" || (status === "PAID" && isTripCompleted),
-      current: status === "PAID" && isTripCompleted,
-      timestamp: isTripCompleted ? tripDate : undefined,
-    },
-  ];
+  // Define the booking journey steps based on flow type
+  // PAYMENT_PENDING = Hybrid flow (payment received, awaiting approval)
+  // PENDING → APPROVED → PAID = Legacy flow (approve first, pay later)
+  const isHybridFlow = status === "PAYMENT_PENDING";
+
+  const steps: TimelineStep[] = isHybridFlow
+    ? [
+        {
+          label: "Requested",
+          completed: true,
+          current: false,
+          timestamp: createdAt,
+        },
+        {
+          label: "Payment Received",
+          completed: true,
+          current: true,
+          timestamp: updatedAt || createdAt,
+        },
+        {
+          label: "Confirmed",
+          completed: false,
+          current: false,
+          timestamp: undefined,
+        },
+        {
+          label: "Trip",
+          completed: false,
+          current: false,
+          timestamp: undefined,
+        },
+      ]
+    : [
+        {
+          label: "Requested",
+          completed: true,
+          current: status === "PENDING",
+          timestamp: createdAt,
+        },
+        {
+          label: "Approved",
+          completed: ["APPROVED", "PAID", "COMPLETED"].includes(status),
+          current: status === "APPROVED",
+          timestamp:
+            status === "APPROVED" || status === "PAID" || status === "COMPLETED"
+              ? updatedAt || undefined
+              : undefined,
+        },
+        {
+          label: "Paid",
+          completed: ["PAID", "COMPLETED"].includes(status),
+          current: status === "PAID" && !isTripCompleted,
+          timestamp: status === "PAID" ? updatedAt || undefined : undefined,
+        },
+        {
+          label: "Trip",
+          completed:
+            status === "COMPLETED" || (status === "PAID" && isTripCompleted),
+          current: status === "PAID" && isTripCompleted,
+          timestamp: isTripCompleted ? tripDate : undefined,
+        },
+      ];
 
   // Handle rejected/cancelled states
   if (status === "REJECTED" || status === "CANCELLED") {

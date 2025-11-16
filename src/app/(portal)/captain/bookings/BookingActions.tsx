@@ -133,8 +133,8 @@ export function BookingActions({ bookingId }: Props) {
               Approve Booking
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to approve this booking? The customer will
-              be notified and prompted to complete payment.
+              Payment has been received and secured. Approving will confirm the
+              booking and capture the payment. The customer will be notified.
             </DialogDescription>
           </DialogHeader>
 
@@ -187,8 +187,9 @@ export function BookingActions({ bookingId }: Props) {
               Reject Booking
             </DialogTitle>
             <DialogDescription>
-              Please select a reason for rejecting this booking. The customer
-              will receive this explanation.
+              Please select a reason for rejecting this booking. The payment
+              will be refunded to the customer, and they will receive your
+              explanation.
             </DialogDescription>
           </DialogHeader>
 

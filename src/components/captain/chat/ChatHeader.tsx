@@ -304,7 +304,7 @@ export function ChatHeader({
 
           {/* Actions */}
           <div className="px-5 pt-3">
-            {booking.status === "PENDING" && (
+            {booking.status === "PAYMENT_PENDING" && (
               <BookingActions bookingId={booking.id} />
             )}
           </div>

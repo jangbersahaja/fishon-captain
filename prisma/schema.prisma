@@ -91,6 +91,11 @@ model Charter {
   isActive           Boolean                 @default(true)
   backupPhone        String?
   ownerId            String?
+  
+  // Booking flow settings (for dual-flow booking system)
+  bookingFlowType       BookingFlowType @default(MANUAL)  // MANUAL (request→approve→pay) or AUTO (instant booking)
+  approvalTimeHours     Int             @default(24)      // For MANUAL flow: 12/24/48 or custom (1-168 hours max)
+  instantBookingEnabled Boolean         @default(false)   // UI-friendly flag for AUTO flow activation
   videos             CaptainVideo[]          @relation("LegacyCharterVideos")
   boat               Boat?                   @relation(fields: [boatId], references: [id])
   captain            CaptainProfile          @relation(fields: [captainId], references: [id])
@@ -109,6 +114,11 @@ model Charter {
   unavailability     CharterUnavailability[]
 
   @@index([ownerId])
+}
+
+enum BookingFlowType {
+  MANUAL      // Request → Approval → Payment → Paid
+  AUTO        // Payment → Acknowledgment → Paid
 }
 
 model Boat {

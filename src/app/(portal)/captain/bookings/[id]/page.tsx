@@ -30,9 +30,9 @@ function getStatusColor(
   switch (status) {
     case "PENDING":
       return "outline";
-    case "PAYMENT_PENDING":
+    case "PAYMENT_AUTHORIZED":
       return "default"; // Blue badge for paid bookings awaiting approval
-    case "APPROVED":
+    case "AWAITING_PAYMENT":
       return "secondary";
     case "PAID":
       return "default";
@@ -48,9 +48,9 @@ function getStatusIcon(status: string) {
   switch (status) {
     case "PENDING":
       return Clock;
-    case "PAYMENT_PENDING":
+    case "PAYMENT_AUTHORIZED":
       return CircleDollarSign; // Show money icon for paid bookings
-    case "APPROVED":
+    case "AWAITING_PAYMENT":
     case "PAID":
       return CheckCircle2;
     default:
@@ -143,9 +143,9 @@ export default async function BookingDetailsPage({
             <Badge variant={getStatusColor(booking.status)}>
               {booking.status === "PENDING"
                 ? "New Request"
-                : booking.status === "PAYMENT_PENDING"
+                : booking.status === "PAYMENT_AUTHORIZED"
                   ? "Payment Received"
-                  : booking.status === "APPROVED"
+                  : booking.status === "AWAITING_PAYMENT"
                     ? "Awaiting Payment"
                     : booking.status === "PAID"
                       ? "Confirmed"
@@ -153,7 +153,7 @@ export default async function BookingDetailsPage({
             </Badge>
             {/* Payment Flow Badge */}
             {(booking.status === "PENDING" ||
-              booking.status === "PAYMENT_PENDING" ||
+              booking.status === "PAYMENT_AUTHORIZED" ||
               booking.status === "PAID") &&
               booking.paymentFlow && (
                 <Badge
@@ -175,7 +175,7 @@ export default async function BookingDetailsPage({
           </p>
           {/* Payment Flow Info */}
           {(booking.status === "PENDING" ||
-            booking.status === "PAYMENT_PENDING" ||
+            booking.status === "PAYMENT_AUTHORIZED" ||
             booking.status === "PAID") &&
             booking.paymentFlow && (
               <div
@@ -189,10 +189,10 @@ export default async function BookingDetailsPage({
                   <>
                     <p className="font-medium">Card Authorization Hold</p>
                     <p className="mt-1 text-xs">
-                      {booking.status === "PAYMENT_PENDING"
+                      {booking.status === "PAYMENT_AUTHORIZED"
                         ? "Payment authorized and held. Approve to capture payment or reject to refund."
-                        : "Customer's card is authorized but not charged yet. If you approve, their card will be charged automatically. If"}
-                      you decline or don&apos;t respond within 12 hours, the
+                        : "Customer's card is authorized but not charged yet. If you approve, their card will be charged automatically. If you"}{" "}
+                      decline or don&apos;t respond within 12 hours, the
                       authorization will be released with no charge.
                     </p>
                   </>
@@ -214,8 +214,7 @@ export default async function BookingDetailsPage({
             )}
         </div>
         <div className="col-span-1">
-          {(booking.status === "PENDING" ||
-            booking.status === "PAYMENT_PENDING") && (
+          {booking.status === "PAYMENT_AUTHORIZED" && (
             <BookingActions bookingId={booking.id} />
           )}
         </div>
@@ -235,9 +234,9 @@ export default async function BookingDetailsPage({
                 className={`rounded-xl p-2.5 ${
                   booking.status === "PENDING"
                     ? "bg-amber-50"
-                    : booking.status === "PAYMENT_PENDING"
+                    : booking.status === "PAYMENT_AUTHORIZED"
                       ? "bg-blue-50"
-                      : booking.status === "APPROVED" ||
+                      : booking.status === "AWAITING_PAYMENT" ||
                           booking.status === "PAID"
                         ? "bg-green-50"
                         : "bg-red-50"
@@ -247,9 +246,9 @@ export default async function BookingDetailsPage({
                   className={`h-5 w-5 ${
                     booking.status === "PENDING"
                       ? "text-amber-600"
-                      : booking.status === "PAYMENT_PENDING"
+                      : booking.status === "PAYMENT_AUTHORIZED"
                         ? "text-blue-600"
-                        : booking.status === "APPROVED" ||
+                        : booking.status === "AWAITING_PAYMENT" ||
                             booking.status === "PAID"
                           ? "text-green-600"
                           : "text-red-600"
@@ -260,9 +259,9 @@ export default async function BookingDetailsPage({
                 <p className="font-medium text-slate-900">
                   {booking.status === "PENDING"
                     ? "New Request"
-                    : booking.status === "PAYMENT_PENDING"
+                    : booking.status === "PAYMENT_AUTHORIZED"
                       ? "Payment Received"
-                      : booking.status === "APPROVED"
+                      : booking.status === "AWAITING_PAYMENT"
                         ? "Awaiting Payment"
                         : booking.status === "PAID"
                           ? "Confirmed"
@@ -270,9 +269,9 @@ export default async function BookingDetailsPage({
                 </p>
                 <p className="text-sm text-slate-600">
                   {booking.status === "PENDING" && "Awaiting your response"}
-                  {booking.status === "PAYMENT_PENDING" &&
+                  {booking.status === "PAYMENT_AUTHORIZED" &&
                     "Payment secured - approve to confirm"}
-                  {booking.status === "APPROVED" && "Awaiting payment"}
+                  {booking.status === "AWAITING_PAYMENT" && "Awaiting payment"}
                   {booking.status === "PAID" && "Confirmed"}
                   {booking.status === "REJECTED" && "Booking declined"}
                   {booking.status === "CANCELLED" && "Cancelled by customer"}
@@ -535,7 +534,9 @@ export default async function BookingDetailsPage({
               {booking.captainDecisionAt && (
                 <div>
                   <p className="font-medium text-slate-700">
-                    {booking.status === "APPROVED" ? "Approved" : "Responded"}
+                    {booking.status === "AWAITING_PAYMENT"
+                      ? "Approved"
+                      : "Responded"}
                   </p>
                   <p className="text-slate-600">
                     {new Date(booking.captainDecisionAt).toLocaleString(
