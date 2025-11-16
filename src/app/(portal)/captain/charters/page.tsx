@@ -1,10 +1,11 @@
 import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
+import { getEnhancedChartersList } from "@/lib/charter-service";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CharterList } from "./CharterList";
+import { CharterConfigList } from "./CharterConfigList";
 
 export const dynamic = "force-dynamic";
 
@@ -47,26 +48,8 @@ export default async function ChartersListPage({
   });
   if (!effectiveUserId) redirect("/auth?mode=signin");
 
-  // Fetch user's charters
-  const charters = await prisma.charter.findMany({
-    where: { ownerId: effectiveUserId },
-    select: {
-      id: true,
-      name: true,
-      charterType: true,
-      city: true,
-      state: true,
-      startingPoint: true,
-      isActive: true,
-      _count: {
-        select: {
-          trips: true,
-          media: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  // Fetch enhanced charter configurations
+  const charters = await getEnhancedChartersList(effectiveUserId);
 
   return (
     <div className="px-6 py-8 space-y-8">
@@ -99,13 +82,12 @@ export default async function ChartersListPage({
             Charter Management
           </h1>
           <p className="text-sm text-slate-500">
-            Manage your charter listings and core details. Trips, boats, media,
-            and profile have dedicated management pages.
+            Manage your charter listings, configurations, and booking settings
           </p>
         </div>
       </div>
 
-      <CharterList
+      <CharterConfigList
         charters={charters}
         userRole={role as "CAPTAIN" | "OPERATOR" | "CREW" | "STAFF" | "ADMIN"}
         adminUserId={adminUserId}
