@@ -74,10 +74,14 @@ function getTimeUntil(date: Date): string {
 }
 
 /**
- * Check if booking is a new request (PENDING < 24h old)
+ * Check if booking is a new request (PENDING or PAYMENT_PENDING < 24h old)
+ * PAYMENT_PENDING = payment received/authorized, awaiting captain approval
  */
 function isNewRequest(booking: EnrichedMarketBooking): boolean {
-  if (booking.status !== "PENDING") return false;
+  // Include both PENDING and PAYMENT_PENDING as they both need captain action
+  if (booking.status !== "PENDING" && booking.status !== "PAYMENT_PENDING") {
+    return false;
+  }
 
   const now = new Date();
   const hoursAgo =
@@ -218,8 +222,10 @@ export function filterBookingsByTab(
 
   switch (tab) {
     case "requests":
-      // Only PENDING status
-      return bookings.filter((b) => b.status === "PENDING");
+      // PENDING and PAYMENT_PENDING statuses (both require captain action)
+      return bookings.filter(
+        (b) => b.status === "PENDING" || b.status === "PAYMENT_PENDING"
+      );
 
     case "upcoming":
       // PAID bookings with date <= 30 days from now

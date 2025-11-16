@@ -64,6 +64,7 @@ export async function getBooking(
 
 /**
  * Get pending bookings for a captain (requires action)
+ * Includes both PENDING (not yet approved) and PAYMENT_PENDING (payment received/authorized, awaiting approval)
  * @param charterIds - Array of charter IDs owned by the captain
  * @returns Array of enriched pending bookings
  */
@@ -74,8 +75,18 @@ export async function getPendingBookings(
     return [];
   }
 
-  const bookings = await fetchBookingsByStatus(charterIds, "PENDING");
-  return enrichBookings(bookings);
+  // Fetch both PENDING and PAYMENT_PENDING statuses
+  const [pendingBookings, paymentPendingBookings] = await Promise.all([
+    fetchBookingsByStatus(charterIds, "PENDING"),
+    fetchBookingsByStatus(charterIds, "PAYMENT_PENDING"),
+  ]);
+
+  // Combine and sort by creation date (newest first)
+  const allPendingBookings = [...pendingBookings, ...paymentPendingBookings].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+  );
+
+  return enrichBookings(allPendingBookings);
 }
 
 /**
