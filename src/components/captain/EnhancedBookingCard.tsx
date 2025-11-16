@@ -36,6 +36,8 @@ function getStatusColor(
   switch (status) {
     case "PENDING":
       return "outline";
+    case "PAYMENT_PENDING":
+      return "default"; // Blue badge for paid bookings awaiting approval
     case "APPROVED":
       return "secondary";
     case "PAID":
@@ -52,6 +54,7 @@ function getStatus(
   status: string
 ):
   | "New Request"
+  | "Payment Received"
   | "Awaiting Payment"
   | "Confirmed"
   | "Cancelled"
@@ -60,6 +63,8 @@ function getStatus(
   switch (status) {
     case "PENDING":
       return "New Request";
+    case "PAYMENT_PENDING":
+      return "Payment Received"; // Hybrid flow: paid, awaiting approval
     case "APPROVED":
       return "Awaiting Payment";
     case "PAID":

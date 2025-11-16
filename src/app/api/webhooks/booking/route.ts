@@ -108,6 +108,31 @@ export async function POST(request: NextRequest) {
             );
             break;
 
+          case "booking.payment_pending":
+            console.log(
+              `💰 [WEBHOOK] Creating PAYMENT_PENDING notification...`
+            );
+            await createNotification({
+              type: "PAYMENT_PENDING",
+              userId: captainUserId,
+              title: "Payment Received - Action Required! 💰",
+              message: `${booking.anglerName || "An angler"} has paid for a booking on ${
+                booking.charterName || "your charter"
+              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""}. Please review and approve to confirm the trip.`,
+              actionUrl: `/captain/bookings/${booking.id}`,
+              actionLabel: "Review & Approve",
+              metadata: {
+                bookingId: booking.id,
+                charterId: booking.charterId,
+                anglerName: booking.anglerName,
+                date: booking.date,
+              },
+            });
+            console.log(
+              `✅ PAYMENT_PENDING notification sent to captain ${captainUserId}`
+            );
+            break;
+
           case "booking.cancelled":
             await createNotification({
               type: "BOOKING_CANCELLED",
@@ -127,6 +152,31 @@ export async function POST(request: NextRequest) {
             });
             console.log(
               `✅ BOOKING_CANCELLED notification sent to captain ${captainUserId}`
+            );
+            break;
+
+          case "booking.confirmed":
+            console.log(
+              `✅ [WEBHOOK] Creating BOOKING_CONFIRMED notification...`
+            );
+            await createNotification({
+              type: "BOOKING_CONFIRMED",
+              userId: captainUserId,
+              title: "Booking Confirmed! ✅",
+              message: `Booking with ${booking.anglerName || "the angler"} for ${
+                booking.charterName || "your charter"
+              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""} has been confirmed. Payment secured!`,
+              actionUrl: `/captain/bookings/${booking.id}`,
+              actionLabel: "View Details",
+              metadata: {
+                bookingId: booking.id,
+                charterId: booking.charterId,
+                anglerName: booking.anglerName,
+                date: booking.date,
+              },
+            });
+            console.log(
+              `✅ BOOKING_CONFIRMED notification sent to captain ${captainUserId}`
             );
             break;
 
