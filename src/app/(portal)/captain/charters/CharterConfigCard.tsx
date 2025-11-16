@@ -2,16 +2,26 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import type { EnhancedCharterConfig } from "@/lib/charter-service";
 import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDown,
   ChevronUp,
+  Copy,
   Edit2,
-  Eye,
+  ExternalLink,
+  List,
   Loader2,
   MapPin,
+  MoreVertical,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -173,22 +183,61 @@ export function CharterConfigCard({
         </Button>
 
         <Link
-          href={`https://www.fishon.my/charters/${charter.id}`}
-          target="_blank"
-          rel="noopener"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors bg-white border rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50"
-        >
-          <Eye className="w-4 h-4" />
-          View
-        </Link>
-
-        <Link
           href={editHref}
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#ec2227] px-4 py-2 text-sm font-medium text-white hover:bg-[#d81e23] transition-colors"
         >
           <Edit2 className="w-4 h-4" />
           Edit
         </Link>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="px-3"
+              aria-label="More actions"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <Link
+                href={`https://www.fishon.my/charters/${charter.id}`}
+                target="_blank"
+                rel="noopener"
+                className="flex items-center cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                View on Marketplace
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/captain/account/bookings?charterId=${charter.id}`}
+                className="flex items-center cursor-pointer"
+              >
+                <List className="w-4 h-4 mr-2" />
+                View All Bookings
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onClick={() => {
+                // TODO: Implement duplicate charter functionality in future phase
+                console.log("Duplicate charter:", charter.id);
+              }}
+              className="cursor-pointer"
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Duplicate Charter
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

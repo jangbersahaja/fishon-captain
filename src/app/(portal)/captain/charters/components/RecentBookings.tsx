@@ -1,9 +1,11 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/helpers/booking-helpers";
 import { format } from "date-fns";
-import { Calendar, Clock, Users } from "lucide-react";
+import { ArrowRight, Calendar, Clock, Users } from "lucide-react";
+import Link from "next/link";
 
 interface Booking {
   id: string;
@@ -20,6 +22,7 @@ interface Booking {
 
 interface RecentBookingsProps {
   bookings: Booking[];
+  charterId: string;
 }
 
 const getStatusColor = (status: string) => {
@@ -49,7 +52,7 @@ const formatStatus = (status: string) => {
     .join(" ");
 };
 
-export function RecentBookings({ bookings }: RecentBookingsProps) {
+export function RecentBookings({ bookings, charterId }: RecentBookingsProps) {
   if (bookings.length === 0) {
     return (
       <div className="p-6 text-center border border-dashed rounded-lg bg-slate-50 border-slate-300">
@@ -117,6 +120,16 @@ export function RecentBookings({ bookings }: RecentBookingsProps) {
           </div>
         </div>
       ))}
+
+      {/* View All Bookings Link */}
+      {bookings.length > 0 && (
+        <Link href={`/captain/account/bookings?charterId=${charterId}`}>
+          <Button variant="outline" size="sm" className="w-full mt-2">
+            View All Bookings
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </Link>
+      )}
     </div>
   );
 }

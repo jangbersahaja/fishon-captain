@@ -233,7 +233,10 @@ export function CharterConfiguration({
             Recent Bookings
           </h4>
         </div>
-        <RecentBookings bookings={charter.recentBookings} />
+        <RecentBookings
+          bookings={charter.recentBookings}
+          charterId={charter.id}
+        />
       </div>
     </div>
   );
