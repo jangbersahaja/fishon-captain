@@ -33,6 +33,7 @@ interface ChatHeaderProps {
     children: number;
     totalPrice: number;
     status?: string;
+    bookingFlowType?: string;
     note?: string;
     startTime?: string;
   };
@@ -304,8 +305,13 @@ export function ChatHeader({
 
           {/* Actions */}
           <div className="px-5 pt-3">
-            {booking.status === "PAYMENT_AUTHORIZED" && (
-              <BookingActions bookingId={booking.id} />
+            {(booking.status === "PAYMENT_AUTHORIZED" ||
+              booking.status === "PENDING") && (
+              <BookingActions
+                bookingId={booking.id}
+                status={booking.status}
+                flowType={booking.bookingFlowType}
+              />
             )}
           </div>
         </div>

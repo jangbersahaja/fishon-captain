@@ -95,9 +95,6 @@ export async function getCaptainConversationsEnriched(charterIds: string[]) {
           id: true,
           status: true,
           userId: true,
-          guestFirstName: true,
-          guestLastName: true,
-          guestEmail: true,
         },
       },
       messages: {
@@ -121,22 +118,14 @@ export async function getCaptainConversationsEnriched(charterIds: string[]) {
       let anglerName = "Angler";
       let anglerAvatar: string | null = null;
 
-      if (conversation.booking) {
-        if (conversation.booking.userId) {
-          // Registered user - fetch from User table
-          const user = await prismaMarket.marketUser.findUnique({
-            where: { id: conversation.booking.userId },
-            select: { name: true, image: true },
-          });
-          anglerName = user?.name || "Angler";
-          anglerAvatar = user?.image || null;
-        } else {
-          // Guest booking - use guest name fields
-          anglerName =
-            `${conversation.booking.guestFirstName || ""} ${conversation.booking.guestLastName || ""}`.trim() ||
-            "Angler";
-          anglerAvatar = null;
-        }
+      if (conversation.booking && conversation.booking.userId) {
+        // Fetch user info (works for both registered and guest users)
+        const user = await prismaMarket.marketUser.findUnique({
+          where: { id: conversation.booking.userId },
+          select: { name: true, image: true },
+        });
+        anglerName = user?.name || "Angler";
+        anglerAvatar = user?.image || null;
       }
 
       return {
@@ -202,10 +191,6 @@ export async function getConversationEnriched(conversationId: string) {
           startTime: true,
           guests: true,
           userId: true,
-          guestFirstName: true,
-          guestLastName: true,
-          guestEmail: true,
-          guestPhone: true,
         },
       },
       messages: {
@@ -246,26 +231,16 @@ export async function getConversationEnriched(conversationId: string) {
   let anglerPhone = "";
   let anglerAvatar: string | null = null;
 
-  if (conversation.booking) {
-    if (conversation.booking.userId) {
-      // Registered user
-      const user = await prismaMarket.marketUser.findUnique({
-        where: { id: conversation.booking.userId },
-        select: { name: true, email: true, image: true, phone: true },
-      });
-      anglerName = user?.name || "Angler";
-      anglerEmail = user?.email || "";
-      anglerPhone = user?.phone || "";
-      anglerAvatar = user?.image || null;
-    } else {
-      // Guest booking
-      anglerName =
-        `${conversation.booking.guestFirstName || ""} ${conversation.booking.guestLastName || ""}`.trim() ||
-        "Angler";
-      anglerEmail = conversation.booking.guestEmail || "";
-      anglerPhone = conversation.booking.guestPhone || "";
-      anglerAvatar = null;
-    }
+  if (conversation.booking && conversation.booking.userId) {
+    // Fetch user info (works for both registered and guest users)
+    const user = await prismaMarket.marketUser.findUnique({
+      where: { id: conversation.booking.userId },
+      select: { name: true, email: true, image: true, phone: true },
+    });
+    anglerName = user?.name || "Angler";
+    anglerEmail = user?.email || "";
+    anglerPhone = user?.phone || "";
+    anglerAvatar = user?.image || null;
   }
 
   // Parse guests JSON

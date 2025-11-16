@@ -214,8 +214,13 @@ export default async function BookingDetailsPage({
             )}
         </div>
         <div className="col-span-1">
-          {booking.status === "PAYMENT_AUTHORIZED" && (
-            <BookingActions bookingId={booking.id} />
+          {(booking.status === "PAYMENT_AUTHORIZED" ||
+            booking.status === "PENDING") && (
+            <BookingActions
+              bookingId={booking.id}
+              status={booking.status}
+              flowType={booking.bookingFlowType}
+            />
           )}
         </div>
       </div>

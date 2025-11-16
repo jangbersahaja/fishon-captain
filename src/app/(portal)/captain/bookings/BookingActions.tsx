@@ -18,6 +18,8 @@ import { useState, useTransition } from "react";
 
 type Props = {
   bookingId: string;
+  status?: string;
+  flowType?: string;
 };
 
 const COMMON_REJECTION_REASONS = [
@@ -29,7 +31,7 @@ const COMMON_REJECTION_REASONS = [
   "Other (please specify)",
 ];
 
-export function BookingActions({ bookingId }: Props) {
+export function BookingActions({ bookingId, status, flowType }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -40,11 +42,27 @@ export function BookingActions({ bookingId }: Props) {
   const [customReason, setCustomReason] = useState("");
   const [error, setError] = useState("");
 
+  const isAutoFlow = status === "PAYMENT_AUTHORIZED" || flowType === "AUTO";
+  const approveButtonText = isAutoFlow ? "Acknowledge" : "Approve";
+  const approveModalTitle = isAutoFlow
+    ? "Acknowledge Payment"
+    : "Approve Booking";
+  const approveModalDescription = isAutoFlow
+    ? "Payment has been received and secured. Acknowledging will confirm the booking and the customer will be notified."
+    : "Approving this booking will notify the customer to complete payment within 48 hours.";
+
   const handleApprove = () => {
     setError("");
     startTransition(async () => {
       try {
-        const res = await fetch("/api/market/bookings/approve", {
+        // Use acknowledge endpoint for PAYMENT_AUTHORIZED (AUTO flow)
+        // Use approve endpoint for PENDING (MANUAL flow)
+        const endpoint =
+          status === "PAYMENT_AUTHORIZED"
+            ? "/api/market/bookings/acknowledge"
+            : "/api/market/bookings/approve";
+
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ id: bookingId }),
@@ -110,7 +128,7 @@ export function BookingActions({ bookingId }: Props) {
           className="flex-1 text-white bg-green-600 hover:bg-green-700"
         >
           <CheckCircle2 className="h-4 w-4 mr-1.5" />
-          Approve
+          {approveButtonText}
         </Button>
         <Button
           size="sm"
@@ -130,12 +148,9 @@ export function BookingActions({ bookingId }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-700">
               <CheckCircle2 className="w-5 h-5" />
-              Approve Booking
+              {approveModalTitle}
             </DialogTitle>
-            <DialogDescription>
-              Payment has been received and secured. Approving will confirm the
-              booking and capture the payment. The customer will be notified.
-            </DialogDescription>
+            <DialogDescription>{approveModalDescription}</DialogDescription>
           </DialogHeader>
 
           {error && (

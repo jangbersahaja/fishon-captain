@@ -365,8 +365,13 @@ export function EnhancedBookingCard({
                 View Details
               </Link>
 
-              {booking.status === "PAYMENT_AUTHORIZED" && (
-                <BookingActions bookingId={booking.id} />
+              {(booking.status === "PENDING" ||
+                booking.status === "PAYMENT_AUTHORIZED") && (
+                <BookingActions
+                  bookingId={booking.id}
+                  status={booking.status}
+                  flowType={booking.bookingFlowType}
+                />
               )}
 
               {(booking.status === "AWAITING_PAYMENT" ||
@@ -531,8 +536,13 @@ export function EnhancedBookingCard({
             View Full Details
           </Link>
 
-          {booking.status === "PAYMENT_AUTHORIZED" && (
-            <BookingActions bookingId={booking.id} />
+          {(booking.status === "PENDING" ||
+            booking.status === "PAYMENT_AUTHORIZED") && (
+            <BookingActions
+              bookingId={booking.id}
+              status={booking.status}
+              flowType={booking.bookingFlowType}
+            />
           )}
 
           {(booking.status === "AWAITING_PAYMENT" ||

@@ -64,6 +64,7 @@ type PrismaMarketBooking = {
   paymentAuthorizedAt: Date | null;
   paymentCapturedAt: Date | null;
   paymentReleasedAt: Date | null;
+  bookingFlowType: "MANUAL" | "AUTO";
   platformFee: { toNumber: () => number } | number | null;
   serviceFee: { toNumber: () => number } | number | null;
   captainEarnings: { toNumber: () => number } | number | null;
@@ -116,6 +117,7 @@ export type MarketBooking = {
   paymentAuthorizedAt: Date | null;
   paymentCapturedAt: Date | null;
   paymentReleasedAt: Date | null;
+  bookingFlowType: "MANUAL" | "AUTO";
   platformFee: number | null;
   serviceFee: number | null;
   captainEarnings: number | null;
