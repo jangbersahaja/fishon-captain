@@ -22,7 +22,7 @@ import type { EnhancedCharterConfig } from "@/lib/charter-service";
 import { Clock, Loader2, Settings2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useUpdateBookingFlow } from "../hooks/useUpdateBookingFlow";
+import { useUpdateBookingFlow } from "../hooks/useCharterMutations";
 
 interface BookingFlowSettingsProps {
   charter: EnhancedCharterConfig;
