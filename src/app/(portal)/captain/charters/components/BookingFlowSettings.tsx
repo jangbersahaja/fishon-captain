@@ -117,7 +117,7 @@ export function BookingFlowSettings({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="py-4 space-y-6">
             {/* Booking Flow Type Selection */}
             <RadioGroup
               value={selectedFlow}
@@ -192,7 +192,7 @@ export function BookingFlowSettings({
 
             {/* Approval Time Selection (only for MANUAL) */}
             {selectedFlow === "MANUAL" && (
-              <div className="space-y-2 p-4 border rounded-lg bg-blue-50 border-blue-200">
+              <div className="p-4 space-y-2 border border-blue-200 rounded-lg bg-blue-50">
                 <Label htmlFor="approvalTime" className="text-sm font-medium">
                   Approval Time Window
                 </Label>
@@ -210,7 +210,7 @@ export function BookingFlowSettings({
                 </Select>
                 <p className="text-xs text-slate-600">
                   Customers must wait for your approval within this time. If you
-                  don't respond, the booking is automatically cancelled.
+                  don&apos;t respond, the booking is automatically cancelled.
                 </p>
               </div>
             )}
