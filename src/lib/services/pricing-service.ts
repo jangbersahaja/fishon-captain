@@ -83,7 +83,7 @@ export function calculatePricing(input: PricingInput): PricingBreakdown {
     Math.round((amountBeforeGateway + paymentGatewayFee + sst) * 100) / 100;
 
   // Step 8: Captain Earnings (what captain receives: subtotal - platform fee)
-  const captainEarnings = Math.round((subtotal - platformFee) * 100) / 100;
+  const captainEarnings = subtotal;
 
   return {
     tripPrice,
