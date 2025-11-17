@@ -6,6 +6,7 @@ interface UpdateBookingFlowData {
   bookingFlowType?: "MANUAL" | "AUTO";
   approvalTimeHours?: number;
   instantBookingEnabled?: boolean;
+  adminUserId?: string;
 }
 
 export function useUpdateBookingFlow() {
@@ -40,6 +41,7 @@ export function useUpdateBookingFlow() {
 interface ToggleStatusData {
   charterId: string;
   isActive: boolean;
+  adminUserId?: string;
 }
 
 export function useToggleCharterStatus() {
