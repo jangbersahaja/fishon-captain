@@ -376,7 +376,7 @@ export function EnhancedBookingCard({
             <div className="min-w-0">
               <div className="text-xs text-slate-500">Total Price</div>
               <div className="text-sm font-semibold text-slate-900">
-                RM {booking.totalPrice.toLocaleString()}
+                RM {(booking.captainEarnings ?? 0).toLocaleString()}
               </div>
             </div>
           </div>

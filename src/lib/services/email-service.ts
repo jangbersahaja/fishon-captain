@@ -175,6 +175,11 @@ interface SendBookingConfirmedCaptainParams {
   anglerEmail: string;
   anglerPhone: string;
   bookingUrl: string;
+  // Pricing breakdown
+  subtotal?: string;
+  platformFee?: string;
+  captainEarnings?: string;
+  paymentFlow?: "TOKENIZED" | "DIRECT";
 }
 
 export async function sendBookingConfirmedCaptainEmail(
@@ -193,11 +198,15 @@ export async function sendBookingConfirmedCaptainEmail(
     anglerEmail: params.anglerEmail,
     anglerPhone: params.anglerPhone,
     bookingUrl: params.bookingUrl,
+    subtotal: params.subtotal,
+    platformFee: params.platformFee,
+    captainEarnings: params.captainEarnings,
+    paymentFlow: params.paymentFlow,
   });
 
   return sendEmail({
     to: params.to,
-    subject: `Booking Confirmed - ${params.charterName}`,
+    subject: `Payment Received - ${params.charterName}`,
     html,
   });
 }
