@@ -1,3 +1,4 @@
+import { BookingStatusBadge } from "@/components/captain/BookingStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { authOptions } from "@/lib/auth";
 import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
@@ -34,26 +35,6 @@ type EmergencyContact = {
   phone?: string;
   relationship?: string;
 };
-
-function getStatusColor(
-  status: string
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "PENDING":
-      return "outline";
-    case "PAYMENT_AUTHORIZED":
-      return "default"; // Blue badge for paid bookings awaiting approval
-    case "AWAITING_PAYMENT":
-      return "secondary";
-    case "PAID":
-      return "default";
-    case "REJECTED":
-    case "CANCELLED":
-      return "destructive";
-    default:
-      return "secondary";
-  }
-}
 
 function getStatusIcon(status: string) {
   switch (status) {
@@ -162,35 +143,7 @@ export default async function BookingDetailsPage({
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               {booking.charterName}
             </h1>
-            <Badge variant={getStatusColor(booking.status)}>
-              {booking.status === "PENDING"
-                ? "New Request"
-                : booking.status === "PAYMENT_AUTHORIZED"
-                  ? "Payment Received"
-                  : booking.status === "AWAITING_PAYMENT"
-                    ? "Awaiting Payment"
-                    : booking.status === "PAID"
-                      ? "Confirmed"
-                      : booking.status}
-            </Badge>
-            {/* Payment Flow Badge */}
-            {(booking.status === "PENDING" ||
-              booking.status === "PAYMENT_AUTHORIZED" ||
-              booking.status === "PAID") &&
-              booking.paymentFlow && (
-                <Badge
-                  variant="outline"
-                  className={
-                    booking.paymentFlow === "TOKENIZED"
-                      ? "border-blue-300 text-blue-700 bg-blue-50"
-                      : "border-green-300 text-green-700 bg-green-50"
-                  }
-                >
-                  {booking.paymentFlow === "TOKENIZED"
-                    ? "💳 Card Held"
-                    : "✅ Already Paid"}
-                </Badge>
-              )}
+            <BookingStatusBadge status={booking.status} size="lg" />
           </div>
           <p className="mt-1 text-sm text-slate-600">
             Booking ID: {booking.id}
@@ -203,8 +156,8 @@ export default async function BookingDetailsPage({
               <div
                 className={`mt-3 p-3 rounded-lg text-sm ${
                   booking.paymentFlow === "TOKENIZED"
-                    ? "bg-blue-50 text-blue-800"
-                    : "bg-green-50 text-green-800"
+                    ? "bg-indigo-50 text-indigo-800"
+                    : "bg-yellow-50 text-yellow-800"
                 }`}
               >
                 {booking.paymentFlow === "TOKENIZED" ? (
@@ -260,23 +213,27 @@ export default async function BookingDetailsPage({
               <div
                 className={`rounded-xl p-2.5 ${
                   booking.status === "PENDING"
-                    ? "bg-amber-50"
+                    ? "bg-red-50"
                     : booking.status === "PAYMENT_AUTHORIZED"
-                      ? "bg-blue-50"
-                      : ["AWAITING_PAYMENT", "PAID"].includes(booking.status)
-                        ? "bg-green-50"
-                        : "bg-red-50"
+                      ? "bg-indigo-50"
+                      : booking.status === "AWAITING_PAYMENT"
+                        ? "bg-yellow-50"
+                        : booking.status === "PAID"
+                          ? "bg-green-50"
+                          : "bg-red-50"
                 }`}
               >
                 <StatusIcon
                   className={`h-5 w-5 ${
                     booking.status === "PENDING"
-                      ? "text-amber-600"
+                      ? "text-red-600"
                       : booking.status === "PAYMENT_AUTHORIZED"
-                        ? "text-blue-600"
-                        : ["AWAITING_PAYMENT", "PAID"].includes(booking.status)
-                          ? "text-green-600"
-                          : "text-red-600"
+                        ? "text-indigo-600"
+                        : booking.status === "AWAITING_PAYMENT"
+                          ? "text-yellow-600"
+                          : booking.status === "PAID"
+                            ? "text-green-600"
+                            : "text-red-600"
                   }`}
                 />
               </div>
@@ -553,11 +510,11 @@ export default async function BookingDetailsPage({
 
           {/* Customer Note */}
           {booking.note && (
-            <div className="p-6 border border-blue-200 rounded-2xl bg-blue-50">
-              <h2 className="mb-2 text-base font-semibold text-blue-900">
+            <div className="p-6 border border-slate-200 rounded-2xl bg-slate-50">
+              <h2 className="mb-2 text-base font-semibold text-slate-700">
                 Customer Note
               </h2>
-              <p className="text-sm text-blue-800">{booking.note}</p>
+              <p className="text-sm text-slate-700">{booking.note}</p>
             </div>
           )}
         </div>

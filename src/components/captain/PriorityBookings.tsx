@@ -44,15 +44,15 @@ export function PriorityBookings({
   );
 
   return (
-    <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 to-white overflow-hidden">
+    <div className="overflow-hidden border-2 rounded-2xl border-amber-200 bg-gradient-to-b">
       {/* Header */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-amber-50/50 transition-colors"
+        className="flex items-center justify-between w-full px-6 py-4 transition-colors hover:bg-amber-50/50"
       >
         <div className="flex items-center gap-3">
-          <div className="rounded-full bg-amber-500 p-2">
-            <AlertCircle className="h-5 w-5 text-white" />
+          <div className="p-2 rounded-full bg-amber-500">
+            <AlertCircle className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
             <h2 className="text-lg font-bold text-amber-900">
@@ -66,9 +66,9 @@ export function PriorityBookings({
           </div>
         </div>
         {isCollapsed ? (
-          <ChevronDown className="h-5 w-5 text-amber-700" />
+          <ChevronDown className="w-5 h-5 text-amber-700" />
         ) : (
-          <ChevronUp className="h-5 w-5 text-amber-700" />
+          <ChevronUp className="w-5 h-5 text-amber-700" />
         )}
       </button>
 
@@ -79,7 +79,7 @@ export function PriorityBookings({
           <div className="flex flex-wrap gap-2">
             {newRequests.length > 0 && (
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-800 text-sm font-medium">
-                <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                 {newRequests.length} New Request
                 {newRequests.length !== 1 ? "s" : ""}
               </div>
@@ -111,17 +111,17 @@ export function PriorityBookings({
                   {/* Type indicator */}
                   <div className="absolute -left-3 top-6">
                     {priority.type === "new-request" && (
-                      <div className="h-6 w-6 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold">
+                      <div className="flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-500 rounded-full">
                         !
                       </div>
                     )}
                     {priority.type === "upcoming-trip" && (
-                      <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                      <div className="flex items-center justify-center w-6 h-6 text-white bg-blue-500 rounded-full">
                         <Calendar className="h-3.5 w-3.5" />
                       </div>
                     )}
                     {priority.type === "payment-pending" && (
-                      <div className="h-6 w-6 rounded-full bg-amber-500 flex items-center justify-center text-white">
+                      <div className="flex items-center justify-center w-6 h-6 text-white rounded-full bg-amber-500">
                         <Clock className="h-3.5 w-3.5" />
                       </div>
                     )}
@@ -129,9 +129,9 @@ export function PriorityBookings({
 
                   {/* Countdown badge */}
                   {priority.countdown && (
-                    <div className="absolute -right-2 -top-2 z-10">
-                      <div className="px-2 py-1 rounded-full bg-slate-900 text-white text-xs font-semibold shadow-lg flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                    <div className="absolute z-10 -right-2 -top-2">
+                      <div className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white rounded-full shadow-lg bg-slate-900">
+                        <Clock className="w-3 h-3" />
                         {priority.countdown}
                       </div>
                     </div>

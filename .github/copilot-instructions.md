@@ -1,7 +1,4 @@
-````instructions
 # Copilot Instructions · Fishon Captain
-
-
 
 ## Platform Snapshot
 
@@ -11,7 +8,18 @@ Fishon Captain is the **management dashboard** for captains and charter operator
 - **Fishon.my**: Customer-facing marketplace where anglers discover and book charters
 - **Fishon Video Worker**: External video normalization service
 
+## System Configuration
+
+- Please check on /docs/config/\* to see current system configuration file.
+- It's either in Fishon Captain or Fishon Market repository depending on where the main implementation is.
+- Treat this document as a living document and update it as necessary when you make changes to the system configuration.
+- Currently I have done configuration documentation for:
+  - Email Notification System
+  - Booking System
+- Other documents may not be correct or up to date.
+
 ### Architecture Highlights
+
 - Domain logic lives in feature modules (e.g. `src/features/charter-onboarding`) that bundle `schema.ts`, `server/`, `components/`, `hooks/`, `__tests__/`, and README guidance
 - Import via barrels like `@features/charter-onboarding`
 - Middleware (`src/middleware.ts`) gates `/captain/*` and `/staff/*` routes; staff pages require STAFF or ADMIN roles
@@ -23,20 +31,24 @@ Fishon Captain is the **management dashboard** for captains and charter operator
 ## Core Workflows
 
 ### Charter Onboarding
+
 - **New registration** and **edit mode** supported
 - Draft saves hit `/api/charter-drafts` and finalization calls `/api/charter-drafts/:id/finalize`
 - Always check `isEditing`/initial state before changing flow logic
 
 ### Draft Lifecycle
+
 - PATCH `/api/charter-drafts/:id` with `clientVersion` for optimistic locking (409 on conflict)
 - POST finalize with media payload → creates Charter + CaptainProfile, marks draft SUBMITTED
 
 ### Media Lifecycle
+
 - Direct Vercel Blob uploads (no PendingMedia model)
 - Finalize associates blob keys with CharterMedia records
 - Videos use `CaptainVideo` with metadata (trim start, processed duration, blob keys, deletion flags)
 
 ### Local Dev Commands
+
 ```bash
 npm run dev --turbopack   # preferred dev server
 npm run check:env         # ensure required env vars exist
@@ -46,6 +58,7 @@ npm run test:ci           # single-run mode with dot reporter
 ```
 
 ### Database
+
 ```bash
 npx prisma migrate dev
 npx prisma generate
@@ -56,15 +69,18 @@ npm run migrate:drift-heal  # Schema drift healing
 ## Video Pipeline (Critical Path)
 
 ### Client-Side
+
 - **Trim modal** (`src/components/captain/VideoTrimModal.tsx`): enforces ≤30 s clips, bitrate-based size estimates, feeds trim metadata to queue
 
 ### Queue Orchestration
+
 - **Video queue** (`src/lib/uploads/videoQueue.ts`):
   - IndexedDB persistence (survives page refresh)
   - Retry policy
   - Finishing via `/api/blob/finish`
 
 ### Server-Side Processing
+
 - **Finish route** (`src/app/api/blob/finish/route.ts`):
   - Decides bypass vs normalization
   - Probes dimensions with ffprobe
@@ -77,11 +93,13 @@ npm run migrate:drift-heal  # Schema drift healing
   - Required env: `VIDEO_WORKER_SECRET`, `VERCEL_BLOB_READ_WRITE_TOKEN`
 
 ### UI Components
+
 - `EnhancedVideoUploader` - Upload interface
 - `VideoManager` - Status pills + thumbnails
 - `VideoPreviewCarousel` - Review step preview (fixed-height, horizontal scroll)
 
 ### Video Status Flow
+
 `queued` → `processing` → `ready` | `failed` (retryable) | `cancelled` (during deletion)
 
 Worker gracefully handles `cancelled` videos
@@ -160,11 +178,14 @@ Worker gracefully handles `cancelled` videos
 ## Shared Package Strategy
 
 ### Current Packages
+
 - **@fishon/ui**: Shared UI components and types (Charter, Captain, Trip, etc.) - git package
 - **@fishon/schemas**: Shared validation schemas - git package
 
 ### Future: @fishon/packages
+
 Plan to consolidate `@fishon/ui` and `@fishon/schemas` into a single `@fishon/packages` monorepo containing:
+
 - Components (React UI components)
 - Types (TypeScript definitions)
 - Schemas (Zod validation)
@@ -172,7 +193,9 @@ Plan to consolidate `@fishon/ui` and `@fishon/schemas` into a single `@fishon/pa
 - Data (Static data like amenities, species)
 
 ### Implementation Guidelines
+
 1. **When Encountering Shared Code**: Add a TODO comment to mark for consolidation
+
    ```typescript
    // TODO(@fishon/packages): Move this to shared package
    ```
@@ -193,4 +216,7 @@ Plan to consolidate `@fishon/ui` and `@fishon/schemas` into a single `@fishon/pa
 You have access to a terminal where you can run commands. Follow instructions in `.github/terminal.instructions.md` when using the terminal.
 
 Need clarification or spot gaps? Ask which sections feel incomplete so we can refine this guide.
-````
+
+```
+
+```

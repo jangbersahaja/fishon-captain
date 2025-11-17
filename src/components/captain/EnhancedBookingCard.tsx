@@ -1,7 +1,6 @@
 "use client";
 
 import { BookingActions } from "@/app/(portal)/captain/bookings/BookingActions";
-import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/datetime";
 import type { EnrichedMarketBooking } from "@/lib/enrich-booking";
 import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
@@ -16,6 +15,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { BookingStatusBadge } from "./BookingStatusBadge";
 import { BookingTimeline } from "./BookingTimeline";
 
 interface EnhancedBookingCardProps {
@@ -28,62 +28,6 @@ interface EnhancedBookingCardProps {
   showTimeline?: boolean;
   priority?: "high" | "medium" | "low";
   viewDensity?: "comfortable" | "compact";
-}
-
-function getStatusColor(
-  status: string
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "PENDING":
-      return "outline";
-    case "PAYMENT_AUTHORIZED":
-      return "default"; // Blue badge for paid bookings awaiting approval
-    case "AWAITING_PAYMENT":
-      return "secondary";
-    case "PAID":
-      return "default";
-    case "COMPLETED":
-      return "secondary";
-    case "REJECTED":
-    case "CANCELLED":
-    case "EXPIRED":
-      return "destructive";
-    default:
-      return "secondary";
-  }
-}
-
-function getStatus(
-  status: string
-):
-  | "New Request"
-  | "Payment Received"
-  | "Awaiting Payment"
-  | "Confirmed"
-  | "Cancelled"
-  | "Rejected"
-  | "Completed"
-  | "Expired" {
-  switch (status) {
-    case "PENDING":
-      return "New Request";
-    case "PAYMENT_AUTHORIZED":
-      return "Payment Received"; // Auto flow: paid, awaiting approval
-    case "AWAITING_PAYMENT":
-      return "Awaiting Payment";
-    case "PAID":
-      return "Confirmed";
-    case "REJECTED":
-      return "Rejected";
-    case "CANCELLED":
-      return "Cancelled";
-    case "COMPLETED":
-      return "Completed";
-    case "EXPIRED":
-      return "Expired";
-    default:
-      return "Completed";
-  }
 }
 
 export function EnhancedBookingCard({
@@ -123,7 +67,7 @@ export function EnhancedBookingCard({
         priority === "high"
           ? "border-red-300 bg-red-50/30"
           : priority === "medium"
-            ? "border-amber-300 bg-amber-50/30"
+            ? "border-yellow-300 bg-yellow-50/30"
             : "border-slate-200"
       }`}
     >
@@ -133,67 +77,22 @@ export function EnhancedBookingCard({
           {/* Left: Main Info */}
           <div className="flex-1 min-w-0 space-y-2.5">
             {/* Header Row */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3
-                    className={`font-semibold text-slate-900 truncate ${isCompact ? "text-base" : "text-lg"}`}
-                  >
-                    {booking.tripName}
-                  </h3>
-                  <Badge
-                    variant={getStatusColor(booking.status)}
-                    className={
-                      isCompact ? "text-xs py-0 capitalize" : "capitalize"
-                    }
-                  >
-                    {getStatus(booking.status)}
-                  </Badge>
-                  {/* Payment Flow Badge */}
-                  {(booking.status === "PAYMENT_AUTHORIZED" ||
-                    booking.status === "PAID") &&
-                    booking.paymentFlow && (
-                      <Badge
-                        variant={
-                          booking.paymentFlow === "TOKENIZED"
-                            ? "outline"
-                            : "default"
-                        }
-                        className={`py-0.5 ${isCompact ? "text-xs" : "text-xs"} ${
-                          booking.paymentFlow === "TOKENIZED"
-                            ? "border-blue-300 text-blue-700 bg-blue-50"
-                            : "border-green-300 text-green-700 bg-green-50"
-                        }`}
-                      >
-                        {booking.paymentFlow === "TOKENIZED"
-                          ? "💳 Card Held"
-                          : "✅ Already Paid"}
-                      </Badge>
-                    )}
-                  {priority && (
-                    <Badge
-                      variant={
-                        priority === "high"
-                          ? "destructive"
-                          : priority === "medium"
-                            ? "secondary"
-                            : "outline"
-                      }
-                      className="py-0.5 text-xs"
-                    >
-                      {priority === "high"
-                        ? "Urgent"
-                        : priority === "medium"
-                          ? "Priority"
-                          : ""}
-                    </Badge>
-                  )}
-                </div>
-                <div
-                  className={`text-slate-600 truncate ${isCompact ? "text-xs" : "text-sm"}`}
+            <div className="">
+              <div className="flex items-center gap-2 mb-1">
+                <h3
+                  className={`font-semibold text-slate-900 truncate ${isCompact ? "text-base" : "text-lg"}`}
                 >
-                  {booking.charterName}
-                </div>
+                  {booking.tripName}
+                </h3>
+                <BookingStatusBadge
+                  status={booking.status}
+                  size={isCompact ? "sm" : "md"}
+                />
+              </div>
+              <div
+                className={`text-slate-600 truncate ${isCompact ? "text-xs" : "text-sm"}`}
+              >
+                {booking.charterName}
               </div>
             </div>
 
@@ -406,32 +305,7 @@ export function EnhancedBookingCard({
           <div className="mb-2 text-sm text-slate-600">
             {booking.charterName}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              className="capitalize"
-              variant={getStatusColor(booking.status)}
-            >
-              {getStatus(booking.status)}
-            </Badge>
-            {priority && (
-              <Badge
-                variant={
-                  priority === "high"
-                    ? "destructive"
-                    : priority === "medium"
-                      ? "secondary"
-                      : "outline"
-                }
-                className="text-xs py-0.5"
-              >
-                {priority === "high"
-                  ? "Urgent"
-                  : priority === "medium"
-                    ? "Priority"
-                    : ""}
-              </Badge>
-            )}
-          </div>
+          <BookingStatusBadge status={booking.status} size="sm" />
         </div>
 
         {/* Angler Info with Image */}
@@ -510,11 +384,11 @@ export function EnhancedBookingCard({
 
         {/* Note */}
         {booking.note && (
-          <div className="p-2.5 border border-blue-100 rounded-lg bg-blue-50">
-            <div className="mb-1 text-xs font-semibold text-blue-900">
+          <div className="p-2.5 border border-slate-200 rounded-lg bg-slate-50">
+            <div className="mb-1 text-xs font-semibold text-slate-700">
               Angler&apos;s Note:
             </div>
-            <div className="text-sm text-blue-800">{booking.note}</div>
+            <div className="text-sm text-slate-700">{booking.note}</div>
           </div>
         )}
 
