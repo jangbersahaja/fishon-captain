@@ -75,7 +75,10 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
 
   // Trip Income (PAID bookings only)
   const paidBookings = bookings.filter((b) => b.status === "PAID");
-  const tripIncome = paidBookings.reduce((sum, b) => sum + b.totalPrice, 0);
+  const tripIncome = paidBookings.reduce(
+    (sum, b) => sum + Number(b.captainEarnings),
+    0
+  );
 
   // Cancellation Stats
   const cancelledByAngler = bookings.filter((b) => b.status === "CANCELLED");
@@ -101,9 +104,9 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
   };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
       {/* Requests */}
-      <div className="p-6 bg-white border rounded-2xl border-slate-200 hover:shadow-md transition-shadow">
+      <div className="p-6 transition-shadow bg-white border rounded-2xl border-slate-200 hover:shadow-md">
         <div className="flex items-center gap-3 mb-2">
           <div className="rounded-xl bg-amber-50 p-2.5">
             <Clock className="w-5 h-5 text-amber-600" />
@@ -119,7 +122,7 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
           <>
             <button
               onClick={() => toggleCard("requests")}
-              className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 mt-2 w-full"
+              className="flex items-center w-full gap-1 mt-2 text-xs text-slate-600 hover:text-slate-900"
             >
               {expandedCard === "requests" ? (
                 <>
@@ -134,16 +137,16 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
               )}
             </button>
             {expandedCard === "requests" && (
-              <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+              <div className="pt-2 mt-2 space-y-1 border-t border-slate-100">
                 {requestsBreakdown.map((item) => (
                   <div
                     key={item.tripName}
                     className="flex justify-between text-xs"
                   >
-                    <span className="text-slate-600 truncate">
+                    <span className="truncate text-slate-600">
                       {item.tripName}
                     </span>
-                    <span className="font-medium text-slate-900 ml-2">
+                    <span className="ml-2 font-medium text-slate-900">
                       {item.count}
                     </span>
                   </div>
@@ -155,7 +158,7 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
       </div>
 
       {/* Upcoming */}
-      <div className="p-6 bg-white border rounded-2xl border-slate-200 hover:shadow-md transition-shadow">
+      <div className="p-6 transition-shadow bg-white border rounded-2xl border-slate-200 hover:shadow-md">
         <div className="flex items-center gap-3 mb-2">
           <div className="rounded-xl bg-blue-50 p-2.5">
             <Calendar className="w-5 h-5 text-blue-600" />
@@ -171,7 +174,7 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
           <>
             <button
               onClick={() => toggleCard("upcoming")}
-              className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 mt-2 w-full"
+              className="flex items-center w-full gap-1 mt-2 text-xs text-slate-600 hover:text-slate-900"
             >
               {expandedCard === "upcoming" ? (
                 <>
@@ -186,16 +189,16 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
               )}
             </button>
             {expandedCard === "upcoming" && (
-              <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+              <div className="pt-2 mt-2 space-y-1 border-t border-slate-100">
                 {upcomingBreakdown.map((item) => (
                   <div
                     key={item.tripName}
                     className="flex justify-between text-xs"
                   >
-                    <span className="text-slate-600 truncate">
+                    <span className="truncate text-slate-600">
                       {item.tripName}
                     </span>
-                    <span className="font-medium text-slate-900 ml-2">
+                    <span className="ml-2 font-medium text-slate-900">
                       {item.count}
                     </span>
                   </div>
@@ -207,7 +210,7 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
       </div>
 
       {/* Trips Completed */}
-      <div className="p-6 bg-white border rounded-2xl border-slate-200 hover:shadow-md transition-shadow">
+      <div className="p-6 transition-shadow bg-white border rounded-2xl border-slate-200 hover:shadow-md">
         <div className="flex items-center gap-3 mb-2">
           <div className="rounded-xl bg-green-50 p-2.5">
             <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -223,7 +226,7 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
           <>
             <button
               onClick={() => toggleCard("completed")}
-              className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 mt-2 w-full"
+              className="flex items-center w-full gap-1 mt-2 text-xs text-slate-600 hover:text-slate-900"
             >
               {expandedCard === "completed" ? (
                 <>
@@ -238,16 +241,16 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
               )}
             </button>
             {expandedCard === "completed" && (
-              <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+              <div className="pt-2 mt-2 space-y-1 border-t border-slate-100">
                 {completedBreakdown.map((item) => (
                   <div
                     key={item.tripName}
                     className="flex justify-between text-xs"
                   >
-                    <span className="text-slate-600 truncate">
+                    <span className="truncate text-slate-600">
                       {item.tripName}
                     </span>
-                    <span className="font-medium text-slate-900 ml-2">
+                    <span className="ml-2 font-medium text-slate-900">
                       {item.count}
                     </span>
                   </div>
@@ -259,7 +262,7 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
       </div>
 
       {/* Trip Income */}
-      <div className="p-6 bg-white border rounded-2xl border-slate-200 hover:shadow-md transition-shadow">
+      <div className="p-6 transition-shadow bg-white border rounded-2xl border-slate-200 hover:shadow-md">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-emerald-50 p-2.5">
             <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -277,7 +280,7 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
       </div>
 
       {/* Cancellation Rate */}
-      <div className="p-6 bg-white border rounded-2xl border-slate-200 hover:shadow-md transition-shadow">
+      <div className="p-6 transition-shadow bg-white border rounded-2xl border-slate-200 hover:shadow-md">
         <div className="flex items-center gap-3 mb-2">
           <div className="rounded-xl bg-red-50 p-2.5">
             <TrendingDown className="w-5 h-5 text-red-600" />
@@ -291,7 +294,7 @@ export function BookingStatsCards({ bookings }: BookingStatsCardsProps) {
         </div>
         <button
           onClick={() => toggleCard("cancellation")}
-          className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 mt-2 w-full"
+          className="flex items-center w-full gap-1 mt-2 text-xs text-slate-600 hover:text-slate-900"
         >
           {expandedCard === "cancellation" ? (
             <>
