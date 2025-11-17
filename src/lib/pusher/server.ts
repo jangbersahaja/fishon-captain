@@ -74,7 +74,7 @@ export async function triggerNotification(
   }
 
   try {
-    await pusher.trigger(`private-user-${userId}`, "notification", {
+    await pusher.trigger(`private-user.${userId}`, "notification", {
       ...notification,
       createdAt: notification.createdAt.toISOString(),
     });
@@ -107,7 +107,7 @@ export async function triggerNotificationCount(userId: string, count: number) {
   }
 
   try {
-    await pusher.trigger(`private-user-${userId}`, "notification-count", {
+    await pusher.trigger(`private-user.${userId}`, "notification-count", {
       count,
     });
 

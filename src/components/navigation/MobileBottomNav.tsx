@@ -1,11 +1,11 @@
 "use client";
 
 import {
+  BookCheck,
   Calendar,
   LayoutDashboard,
   MessageCircle,
   MoreHorizontal,
-  Ship,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,14 +39,14 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
       icon: <LayoutDashboard className="w-6 h-6" />,
     },
     {
-      href: "/captain/charters",
-      label: "Charters",
-      icon: <Ship className="w-6 h-6" />,
+      href: "/captain/calendar",
+      label: "Calendar",
+      icon: <Calendar className="w-6 h-6" />,
     },
     {
       href: "/captain/bookings",
       label: "Bookings",
-      icon: <Calendar className="w-6 h-6" />,
+      icon: <BookCheck className="w-6 h-6" />,
     },
     {
       href: "/captain/messages",
