@@ -22,6 +22,7 @@ export interface EnhancedCharterConfig {
   state: string;
   startingPoint: string;
   isActive: boolean;
+  isLocked: boolean; // Admin-only: prevents captain from changing isActive
 
   // Booking flow settings
   bookingFlowType: "MANUAL" | "AUTO";
@@ -121,6 +122,7 @@ export async function getEnhancedCharterConfig(
       state: true,
       startingPoint: true,
       isActive: true,
+      isLocked: true,
       bookingFlowType: true,
       approvalTimeHours: true,
       instantBookingEnabled: true,
@@ -291,6 +293,7 @@ export async function getEnhancedCharterConfig(
     state: charter.state,
     startingPoint: charter.startingPoint,
     isActive: charter.isActive,
+    isLocked: charter.isLocked,
     bookingFlowType: charter.bookingFlowType,
     approvalTimeHours: charter.approvalTimeHours,
     instantBookingEnabled: charter.instantBookingEnabled,

@@ -83,6 +83,7 @@ export async function GET(req: Request) {
         city: c.city,
         state: c.state,
         isActive: c.isActive,
+        isLocked: c.isLocked,
         updatedAt: c.updatedAt.toISOString(),
         captain: c.captain,
         draftId: c.draft?.id ?? null,

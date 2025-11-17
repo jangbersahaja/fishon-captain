@@ -42,8 +42,11 @@ function getStatusColor(
       return "secondary";
     case "PAID":
       return "default";
+    case "COMPLETED":
+      return "secondary";
     case "REJECTED":
     case "CANCELLED":
+    case "EXPIRED":
       return "destructive";
     default:
       return "secondary";
@@ -59,7 +62,8 @@ function getStatus(
   | "Confirmed"
   | "Cancelled"
   | "Rejected"
-  | "Completed" {
+  | "Completed"
+  | "Expired" {
   switch (status) {
     case "PENDING":
       return "New Request";
@@ -73,6 +77,10 @@ function getStatus(
       return "Rejected";
     case "CANCELLED":
       return "Cancelled";
+    case "COMPLETED":
+      return "Completed";
+    case "EXPIRED":
+      return "Expired";
     default:
       return "Completed";
   }
@@ -97,6 +105,15 @@ export function EnhancedBookingCard({
   const anglerEmail = anglerInfo?.email || null;
 
   const isCompact = viewDensity === "compact";
+
+  // Debug logging for conversation status
+  console.log(`[EnhancedBookingCard] Booking ${booking.id}:`, {
+    conversationId: booking.conversationId,
+    conversationStatus: booking.conversationStatus,
+    shouldShowButton: !!(
+      booking.conversationId && booking.conversationStatus === "ACTIVE"
+    ),
+  });
 
   return (
     <div
@@ -310,7 +327,7 @@ export function EnhancedBookingCard({
             </div>
 
             {/* Expandable Section - Note & Timeline */}
-            {(booking.note || showTimeline) && (
+            {booking.note && (
               <>
                 {isExpanded && (
                   <div className="pt-2 mt-2 space-y-2 border-t border-slate-100">
@@ -323,16 +340,6 @@ export function EnhancedBookingCard({
                           {booking.note}
                         </div>
                       </div>
-                    )}
-                    {showTimeline && (
-                      <BookingTimeline
-                        status={booking.status}
-                        createdAt={booking.createdAt}
-                        updatedAt={booking.updatedAt}
-                        tripDate={new Date(booking.date)}
-                        rejectionReason={booking.rejectionReason}
-                        cancellationReason={booking.cancellationReason}
-                      />
                     )}
                   </div>
                 )}
@@ -374,17 +381,16 @@ export function EnhancedBookingCard({
                 />
               )}
 
-              {(booking.status === "AWAITING_PAYMENT" ||
-                booking.status === "PAID") && (
-                <button
-                  className={`inline-flex items-center justify-center px-4 font-medium transition-colors border rounded-lg text-slate-700 bg-white border-slate-300 hover:bg-slate-50 hover:border-slate-400 flex-1 ${isCompact ? "py-1.5 text-xs" : "py-1.5 text-sm"}`}
-                  onClick={() => {
-                    alert("Contact angler feature coming soon!");
-                  }}
-                >
-                  Contact Angler
-                </button>
-              )}
+              {booking.conversationId &&
+                booking.conversationStatus === "ACTIVE" && (
+                  <Link
+                    href={`/captain/messages/${booking.conversationId}`}
+                    className={`inline-flex items-center justify-center px-4 font-medium transition-colors border rounded-lg flex-1 bg-slate-900 text-white border-slate-900 hover:bg-slate-800 hover:border-slate-800 ${isCompact ? "py-1.5 text-xs" : "py-1.5 text-sm"}`}
+                    prefetch={false}
+                  >
+                    Message Angler
+                  </Link>
+                )}
             </div>
           </div>
         </div>
@@ -545,17 +551,16 @@ export function EnhancedBookingCard({
             />
           )}
 
-          {(booking.status === "AWAITING_PAYMENT" ||
-            booking.status === "PAID") && (
-            <button
-              className="inline-flex items-center justify-center flex-1 px-4 py-2 text-sm font-medium transition-colors bg-white border rounded-lg text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400"
-              onClick={() => {
-                alert("Contact angler feature coming soon!");
-              }}
-            >
-              Contact Angler
-            </button>
-          )}
+          {booking.conversationId &&
+            booking.conversationStatus === "ACTIVE" && (
+              <Link
+                href={`/captain/messages/${booking.conversationId}`}
+                className="inline-flex items-center justify-center flex-1 px-4 py-2 text-sm font-medium text-white transition-colors border rounded-lg bg-slate-900 border-slate-900 hover:bg-slate-800 hover:border-slate-800"
+                prefetch={false}
+              >
+                Message Angler
+              </Link>
+            )}
         </div>
       </div>
     </div>

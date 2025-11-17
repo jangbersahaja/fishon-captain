@@ -18,6 +18,8 @@ export type EnrichedMarketBooking = MarketBooking & {
   totalPrice: number;
   location: string;
   durationHour: number;
+  conversationId: string | null;
+  conversationStatus: string | null; // ACTIVE, LOCKED, CLOSED
   // Additional trip/charter data for enhanced display
   trip?: {
     id: string;
@@ -124,6 +126,36 @@ export async function enrichBooking(
       const primaryBooker = allParticipants.find((p) => p.isBooker);
       const formattedTimeSlots = formatTimeSlots(booking.timeSlots);
 
+      // Fetch conversation status even for fallback
+      const { prismaMarket } = await import("./prisma-market");
+      let conversationId: string | null = null;
+      let conversationStatus: string | null = null;
+
+      try {
+        const conversation = await prismaMarket.conversation.findUnique({
+          where: { bookingId: booking.id },
+          select: { id: true, status: true },
+        });
+        console.log(
+          `[enrichBooking fallback] Booking ${booking.id} conversation:`,
+          {
+            found: !!conversation,
+            conversationId: conversation?.id,
+            status: conversation?.status,
+            bookingChatId: booking.chatId,
+          }
+        );
+        if (conversation) {
+          conversationId = conversation.id;
+          conversationStatus = conversation.status;
+        }
+      } catch (error) {
+        console.error(
+          `[enrichBooking fallback] Error fetching conversation for booking ${booking.id}:`,
+          error
+        );
+      }
+
       return {
         ...booking,
         charterName: "Unknown Charter",
@@ -134,6 +166,8 @@ export async function enrichBooking(
         totalPrice: Number(booking.finalPrice),
         location: "Unknown Location",
         durationHour: 0,
+        conversationId,
+        conversationStatus,
         allParticipants,
         primaryBooker,
         formattedTimeSlots:
@@ -152,6 +186,33 @@ export async function enrichBooking(
     // Format time slots for display
     const formattedTimeSlots = formatTimeSlots(booking.timeSlots);
 
+    // Fetch conversation status from market DB
+    const { prismaMarket } = await import("./prisma-market");
+    let conversationId: string | null = null;
+    let conversationStatus: string | null = null;
+
+    try {
+      const conversation = await prismaMarket.conversation.findUnique({
+        where: { bookingId: booking.id },
+        select: { id: true, status: true },
+      });
+      console.log(`[enrichBooking] Booking ${booking.id} conversation:`, {
+        found: !!conversation,
+        conversationId: conversation?.id,
+        status: conversation?.status,
+        bookingChatId: booking.chatId,
+      });
+      if (conversation) {
+        conversationId = conversation.id;
+        conversationStatus = conversation.status;
+      }
+    } catch (error) {
+      console.error(
+        `[enrichBooking] Error fetching conversation for booking ${booking.id}:`,
+        error
+      );
+    }
+
     return {
       ...booking,
       charterName: trip.charter.name,
@@ -162,6 +223,8 @@ export async function enrichBooking(
       totalPrice: Number(booking.finalPrice),
       location,
       durationHour: trip.durationHours,
+      conversationId,
+      conversationStatus,
       allParticipants,
       primaryBooker,
       formattedTimeSlots:
@@ -196,6 +259,8 @@ export async function enrichBooking(
       totalPrice: Number(booking.finalPrice),
       location: "Unknown Location",
       durationHour: 0,
+      conversationId: null,
+      conversationStatus: null,
       allParticipants,
       primaryBooker,
       formattedTimeSlots:

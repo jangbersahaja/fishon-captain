@@ -89,6 +89,7 @@ model Charter {
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
   isActive           Boolean                 @default(true)
+  isLocked           Boolean                 @default(false) // Admin-only: prevents captain from changing isActive
   backupPhone        String?
   ownerId            String?
   

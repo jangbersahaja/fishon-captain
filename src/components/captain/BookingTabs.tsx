@@ -4,7 +4,11 @@
 import type { EnrichedMarketBooking } from "@/lib/enrich-booking";
 import { isWithinInterval } from "date-fns";
 import {
+  Archive,
+  CheckCircle2,
+  Clock3,
   Grid3x3,
+  Inbox,
   List,
   Maximize2,
   Minimize2,
@@ -32,7 +36,7 @@ interface BookingTabsProps {
 export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
   // Tab state
   const [activeTab, setActiveTab] = useState<
-    "requests" | "approved" | "all" | "history"
+    "requests" | "confirmed" | "pending-payment" | "history"
   >("requests");
 
   // Filters / search state
@@ -143,37 +147,40 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
     }
   }, [searched, sortBy]);
 
-  // Grouping: REQUESTS, UPCOMING, COMPLETED, HISTORY (use sorted data)
+  // Grouping: NEW_REQUESTS, CONFIRMED, PENDING_PAYMENT, HISTORY (use sorted data)
   const now = useMemo(() => new Date(), []);
 
+  // Tab 1: New Requests - Bookings requiring captain action (approve/reject)
   const requests = useMemo(
     () =>
       sorted.filter(
-        (b) => b.status === "PAYMENT_AUTHORIZED" || b.status === "PENDING"
+        (b) =>
+          b.status === "PENDING" || // New request, no payment yet
+          b.status === "PAYMENT_AUTHORIZED" // Payment received, needs approval
       ),
     [sorted]
   );
 
-  const approved = useMemo(() => {
+  // Tab 2: Confirmed - Upcoming trips that are fully confirmed
+  const confirmed = useMemo(() => {
     return sorted.filter((b) => {
-      // PAID = payment received, trip confirmed
-      // AWAITING_PAYMENT = manual flow, captain approved, awaiting angler payment
-      return b.status === "PAID" || b.status === "AWAITING_PAYMENT";
+      // PAID = payment received + captain approved, ready for trip
+      return b.status === "PAID";
     });
   }, [sorted]);
 
-  const completed = useMemo(() => {
+  // Tab 3: Pending Payment - Captain approved, waiting for angler payment
+  const pendingPayment = useMemo(() => {
     return sorted.filter((b) => {
-      // Cron automatically changes PAID → COMPLETED after trip date
-      return b.status === "COMPLETED";
+      // AWAITING_PAYMENT = manual flow, captain approved, awaiting payment
+      return b.status === "AWAITING_PAYMENT";
     });
   }, [sorted]);
 
+  // Tab 4: History - All finished bookings (successful or unsuccessful)
   const history = useMemo(() => {
     return sorted.filter((b) => {
-      // History includes all terminal statuses
-      // COMPLETED, REJECTED, CANCELLED, EXPIRED
-      // Also includes legacy PENDING/APPROVED if they exist
+      // Terminal statuses: COMPLETED, REJECTED, CANCELLED, EXPIRED
       return ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"].includes(
         b.status
       );
@@ -192,26 +199,34 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
     switch (activeTab) {
       case "requests":
         return requests;
-      case "approved":
-        return approved;
-      case "all":
-        return sorted;
+      case "confirmed":
+        return confirmed;
+      case "pending-payment":
+        return pendingPayment;
       case "history":
         return history;
       default:
         return sorted;
     }
-  }, [activeTab, hasFiltersOrSearch, sorted, requests, approved, history]);
+  }, [
+    activeTab,
+    hasFiltersOrSearch,
+    sorted,
+    requests,
+    confirmed,
+    pendingPayment,
+    history,
+  ]);
 
   // Tab counts
   const tabCounts = useMemo(
     () => ({
       requests: requests.length,
-      approved: approved.length,
-      all: sorted.length,
+      confirmed: confirmed.length,
+      "pending-payment": pendingPayment.length,
       history: history.length,
     }),
-    [requests.length, approved.length, sorted.length, history.length]
+    [requests.length, confirmed.length, pendingPayment.length, history.length]
   );
 
   function clearFilters() {
@@ -349,15 +364,36 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
       {/* Tabs - Hidden when filters/search active */}
       {!hasFiltersOrSearch && (
         <div className="bg-white border border-slate-200 rounded-xl p-1.5">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5">
             {[
-              { label: "Requests", value: "requests" as const },
-              { label: "Approved", value: "approved" as const },
-              { label: "All Bookings", value: "all" as const },
-              { label: "History", value: "history" as const },
+              {
+                label: "New Requests",
+                value: "requests" as const,
+                icon: Inbox,
+                color: "orange",
+              },
+              {
+                label: "Confirmed",
+                value: "confirmed" as const,
+                icon: CheckCircle2,
+                color: "green",
+              },
+              {
+                label: "Pending Payment",
+                value: "pending-payment" as const,
+                icon: Clock3,
+                color: "yellow",
+              },
+              {
+                label: "History",
+                value: "history" as const,
+                icon: Archive,
+                color: "gray",
+              },
             ].map((tab) => {
               const isActive = activeTab === tab.value;
               const count = tabCounts[tab.value];
+              const Icon = tab.icon;
 
               return (
                 <button
@@ -374,12 +410,19 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2">
+                    <Icon className="hidden w-4 h-4 sm:inline" />
                     <span>{tab.label}</span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                         isActive
                           ? "bg-white/20 text-white"
-                          : "bg-slate-100 text-slate-600"
+                          : count > 0 && tab.color === "orange"
+                            ? "bg-orange-100 text-orange-700"
+                            : count > 0 && tab.color === "green"
+                              ? "bg-green-100 text-green-700"
+                              : count > 0 && tab.color === "yellow"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-slate-100 text-slate-600"
                       }`}
                     >
                       {count}
@@ -396,10 +439,13 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
       {hasFiltersOrSearch ? (
         /* Grouped Sections */
         <section className="space-y-6">
-          {/* Requests */}
+          {/* New Requests */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Requests</h3>
+              <h3 className="flex items-center gap-2 text-lg font-semibold">
+                <Inbox className="w-5 h-5 text-orange-600" />
+                <span>New Requests</span>
+              </h3>
               <div className="text-sm text-slate-500">
                 {requests.length} items
               </div>
@@ -425,21 +471,24 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
               </div>
             ) : (
               <div className="p-6 text-center bg-white border border-slate-200 rounded-xl text-slate-600">
-                No pending requests.
+                No new requests match your filters.
               </div>
             )}
           </div>
 
-          {/* Approved */}
+          {/* Confirmed */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Approved</h3>
+              <h3 className="flex items-center gap-2 text-lg font-semibold">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <span>Confirmed</span>
+              </h3>
               <div className="text-sm text-slate-500">
-                {approved.length} items
+                {confirmed.length} items
               </div>
             </div>
 
-            {approved.length > 0 ? (
+            {confirmed.length > 0 ? (
               <div
                 className={
                   viewMode === "grid"
@@ -447,7 +496,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
                     : "space-y-4"
                 }
               >
-                {approved.map((b) => (
+                {confirmed.map((b) => (
                   <EnhancedBookingCard
                     key={b.id}
                     booking={b}
@@ -459,21 +508,24 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
               </div>
             ) : (
               <div className="p-6 text-center bg-white border border-slate-200 rounded-xl text-slate-600">
-                No approved or confirmed bookings.
+                No confirmed bookings match your filters.
               </div>
             )}
           </div>
 
-          {/* Completed */}
+          {/* Pending Payment */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Completed</h3>
+              <h3 className="flex items-center gap-2 text-lg font-semibold">
+                <Clock3 className="w-5 h-5 text-yellow-600" />
+                <span>Pending Payment</span>
+              </h3>
               <div className="text-sm text-slate-500">
-                {completed.length} items
+                {pendingPayment.length} items
               </div>
             </div>
 
-            {completed.length > 0 ? (
+            {pendingPayment.length > 0 ? (
               <div
                 className={
                   viewMode === "grid"
@@ -481,7 +533,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
                     : "space-y-4"
                 }
               >
-                {completed.map((b) => (
+                {pendingPayment.map((b) => (
                   <EnhancedBookingCard
                     key={b.id}
                     booking={b}
@@ -493,7 +545,44 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
               </div>
             ) : (
               <div className="p-6 text-center bg-white border border-slate-200 rounded-xl text-slate-600">
-                No completed bookings match your filters.
+                No pending payment bookings match your filters.
+              </div>
+            )}
+          </div>
+
+          {/* History */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="flex items-center gap-2 text-lg font-semibold">
+                <Archive className="w-5 h-5 text-slate-600" />
+                <span>History</span>
+              </h3>
+              <div className="text-sm text-slate-500">
+                {history.length} items
+              </div>
+            </div>
+
+            {history.length > 0 ? (
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                    : "space-y-4"
+                }
+              >
+                {history.map((b) => (
+                  <EnhancedBookingCard
+                    key={b.id}
+                    booking={b}
+                    anglerInfo={b.userId ? anglerMap[b.userId] : null}
+                    showTimeline
+                    viewDensity={viewDensity}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center bg-white border border-slate-200 rounded-xl text-slate-600">
+                No history bookings match your filters.
               </div>
             )}
           </div>
@@ -520,26 +609,35 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
           ) : (
             <div className="p-12 text-center bg-white border border-slate-200 rounded-xl">
               <div className="max-w-sm mx-auto">
-                <div className="mb-4 text-4xl">
-                  {activeTab === "requests" && "📬"}
-                  {activeTab === "approved" && "⏳"}
-                  {activeTab === "all" && "📋"}
-                  {activeTab === "history" && "📚"}
+                <div className="flex justify-center mb-4">
+                  {activeTab === "requests" && (
+                    <Inbox className="w-16 h-16 text-slate-400" />
+                  )}
+                  {activeTab === "confirmed" && (
+                    <CheckCircle2 className="w-16 h-16 text-slate-400" />
+                  )}
+                  {activeTab === "pending-payment" && (
+                    <Clock3 className="w-16 h-16 text-slate-400" />
+                  )}
+                  {activeTab === "history" && (
+                    <Archive className="w-16 h-16 text-slate-400" />
+                  )}
                 </div>
                 <h3 className="mb-2 text-lg font-semibold text-slate-900">
-                  {activeTab === "requests" && "No pending requests"}
-                  {activeTab === "approved" && "No approved bookings"}
-                  {activeTab === "all" && "No bookings yet"}
+                  {activeTab === "requests" && "No new requests"}
+                  {activeTab === "confirmed" && "No confirmed trips"}
+                  {activeTab === "pending-payment" && "No pending payments"}
                   {activeTab === "history" && "No booking history"}
                 </h3>
                 <p className="text-sm text-slate-600">
                   {activeTab === "requests" &&
                     "New booking requests will appear here when customers book your charters."}
-                  {activeTab === "approved" &&
-                    "Approved and confirmed bookings will appear here."}
-                  {activeTab === "all" && "All bookings will appear here."}
+                  {activeTab === "confirmed" &&
+                    "Confirmed trips ready to go will appear here."}
+                  {activeTab === "pending-payment" &&
+                    "Bookings you've approved that are awaiting customer payment will appear here."}
                   {activeTab === "history" &&
-                    "Completed, rejected, and cancelled bookings will appear here."}
+                    "Completed, rejected, cancelled, and expired bookings will appear here."}
                 </p>
               </div>
             </div>
