@@ -20,6 +20,7 @@ import {
   ExternalLink,
   List,
   Loader2,
+  Lock,
   MapPin,
   MoreVertical,
 } from "lucide-react";
@@ -78,13 +79,26 @@ export function CharterConfigCard({
         </div>
 
         {/* Status Toggle */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center flex-shrink-0 gap-2">
           <div className="flex flex-col items-end">
             <label
               htmlFor={`status-${charter.id}`}
-              className="text-xs font-medium text-slate-700"
+              className="flex items-center gap-1 text-xs font-medium text-slate-700"
+              title={
+                charter.isLocked
+                  ? "Locked by admin. Contact support to change status."
+                  : ""
+              }
             >
-              {toggleStatusMutation.isPending ? "Updating..." : "Status"}
+              {toggleStatusMutation.isPending ? (
+                "Updating..."
+              ) : charter.isLocked ? (
+                <>
+                  <Lock className="w-3 h-3" /> Locked
+                </>
+              ) : (
+                "Status"
+              )}
             </label>
             <div className="flex items-center gap-2 mt-1">
               {toggleStatusMutation.isPending && (
@@ -94,7 +108,10 @@ export function CharterConfigCard({
                 id={`status-${charter.id}`}
                 checked={charter.isActive}
                 onCheckedChange={handleStatusToggle}
-                disabled={toggleStatusMutation.isPending}
+                disabled={toggleStatusMutation.isPending || charter.isLocked}
+                title={
+                  charter.isLocked ? "This charter is locked by admin" : ""
+                }
               />
             </div>
           </div>

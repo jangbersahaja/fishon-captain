@@ -10,6 +10,7 @@ type CharterItem = {
   city: string;
   state: string;
   isActive: boolean;
+  isLocked: boolean;
   updatedAt: string;
   captain?: { displayName?: string | null; userId: string };
   draftId?: string | null;
@@ -140,15 +141,22 @@ export default function ChartersClient({
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <span
-                  className={
-                    c.isActive
-                      ? "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
-                      : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
-                  }
-                >
-                  {c.isActive ? "Active" : "Inactive"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      c.isActive
+                        ? "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                        : "inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700"
+                    }
+                  >
+                    {c.isActive ? "Active" : "Inactive"}
+                  </span>
+                  {c.isLocked && (
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      🔒 Locked
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -183,6 +191,7 @@ export default function ChartersClient({
                 charterId={c.id}
                 charterName={c.name}
                 isActive={c.isActive}
+                isLocked={c.isLocked}
                 bulkAction={bulkAction}
                 redirectTo={redirectTo}
                 isAdmin={isAdmin}

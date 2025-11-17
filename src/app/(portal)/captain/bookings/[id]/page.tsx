@@ -1,28 +1,39 @@
-import { BookingTimeline } from "@/components/captain/BookingTimeline";
 import { Badge } from "@/components/ui/badge";
 import { authOptions } from "@/lib/auth";
 import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
 import { prisma } from "@/lib/prisma";
+import { calculatePricing } from "@/lib/services/pricing-service";
 import {
+  AlertCircle,
   ArrowLeft,
   Calendar,
   CheckCircle2,
   CircleDollarSign,
   Clock,
   CreditCard,
+  FileText,
   Mail,
-  MapPin,
+  MessageCircle,
   Phone,
   Ship,
+  User,
   Users,
 } from "lucide-react";
 import { getServerSession } from "next-auth";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import React from "react";
 import { BookingActions } from "../BookingActions";
 
 export const dynamic = "force-dynamic";
+
+// Type for emergency contact in guests JSON
+type EmergencyContact = {
+  name: string;
+  phone?: string;
+  relationship?: string;
+};
 
 function getStatusColor(
   status: string
@@ -62,7 +73,7 @@ export default async function BookingDetailsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
-}) {
+}): Promise<React.JSX.Element> {
   const session = await getServerSession(authOptions);
   const { id } = await params;
 
@@ -117,12 +128,23 @@ export default async function BookingDetailsPage({
 
   const StatusIcon = getStatusIcon(booking.status);
 
-  const anglerPaid = Number(booking.finalPrice.toFixed(2));
-  const fishonCommission = anglerPaid * 0.1;
-  const yourEarning = anglerPaid - fishonCommission;
+  // Calculate pricing breakdown
+  const pricing = calculatePricing({
+    tripPrice: booking.unitPrice,
+    days: booking.days,
+  });
+
+  // Extract emergency contact for type safety
+  const emergencyContact: EmergencyContact | null =
+    booking.guests &&
+    typeof booking.guests === "object" &&
+    "emergencyContact" in booking.guests &&
+    booking.guests.emergencyContact
+      ? (booking.guests.emergencyContact as EmergencyContact)
+      : null;
 
   return (
-    <div className="px-6 py-8 space-y-6">
+    <div className="px-6 py-8 space-y-6" key={booking.id}>
       {/* Back Link */}
       <Link
         href="/captain/bookings"
@@ -234,15 +256,14 @@ export default async function BookingDetailsPage({
             <h2 className="mb-4 text-base font-semibold text-slate-900">
               Booking Status
             </h2>
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3">
               <div
                 className={`rounded-xl p-2.5 ${
                   booking.status === "PENDING"
                     ? "bg-amber-50"
                     : booking.status === "PAYMENT_AUTHORIZED"
                       ? "bg-blue-50"
-                      : booking.status === "AWAITING_PAYMENT" ||
-                          booking.status === "PAID"
+                      : ["AWAITING_PAYMENT", "PAID"].includes(booking.status)
                         ? "bg-green-50"
                         : "bg-red-50"
                 }`}
@@ -253,8 +274,7 @@ export default async function BookingDetailsPage({
                       ? "text-amber-600"
                       : booking.status === "PAYMENT_AUTHORIZED"
                         ? "text-blue-600"
-                        : booking.status === "AWAITING_PAYMENT" ||
-                            booking.status === "PAID"
+                        : ["AWAITING_PAYMENT", "PAID"].includes(booking.status)
                           ? "text-green-600"
                           : "text-red-600"
                   }`}
@@ -273,78 +293,127 @@ export default async function BookingDetailsPage({
                           : booking.status}
                 </p>
                 <p className="text-sm text-slate-600">
-                  {booking.status === "PENDING" && "Awaiting your response"}
-                  {booking.status === "PAYMENT_AUTHORIZED" &&
-                    "Payment secured - approve to confirm"}
-                  {booking.status === "AWAITING_PAYMENT" && "Awaiting payment"}
-                  {booking.status === "PAID" && "Confirmed"}
-                  {booking.status === "REJECTED" && "Booking declined"}
-                  {booking.status === "CANCELLED" && "Cancelled by customer"}
+                  {booking.status === "PENDING"
+                    ? "Awaiting your response"
+                    : booking.status === "PAYMENT_AUTHORIZED"
+                      ? "Payment secured - approve to confirm"
+                      : booking.status === "AWAITING_PAYMENT"
+                        ? "Awaiting payment"
+                        : booking.status === "PAID"
+                          ? "Confirmed"
+                          : booking.status === "REJECTED"
+                            ? "Booking declined"
+                            : booking.status === "CANCELLED"
+                              ? "Cancelled by customer"
+                              : ""}
                 </p>
               </div>
             </div>
-
-            <BookingTimeline
-              status={booking.status}
-              createdAt={booking.createdAt}
-              updatedAt={booking.updatedAt}
-              tripDate={new Date(booking.date)}
-              rejectionReason={booking.rejectionReason}
-              cancellationReason={booking.cancellationReason}
-            />
           </div>
 
-          {/* Trip Details */}
+          {/* Booking Details */}
           <div className="p-6 bg-white border rounded-2xl border-slate-200">
             <h2 className="mb-4 text-base font-semibold text-slate-900">
-              Trip Details
+              Booking Details
             </h2>
             <div className="space-y-4">
+              {/* Trip Name */}
               <div className="flex items-start gap-3">
                 <Ship className="h-5 w-5 text-slate-400 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-slate-700">
-                    Trip Type
-                  </p>
+                  <p className="text-sm font-medium text-slate-700">Trip</p>
                   <p className="text-sm text-slate-900">{booking.tripName}</p>
                 </div>
               </div>
 
+              {/* Guest Name */}
               <div className="flex items-start gap-3">
-                <Calendar className="h-5 w-5 text-slate-400 mt-0.5" />
+                <User className="h-5 w-5 text-slate-400 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-slate-700">Date</p>
-                  <p className="text-sm text-slate-900">
-                    <span>
-                      {new Date(booking.date).toLocaleDateString("en-MY", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                    {booking.days > 1 && (
+                  <p className="text-sm font-medium text-slate-700">
+                    Guest Name
+                  </p>
+                  <p className="text-sm capitalize text-slate-900">
+                    {customerName || "Not available"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Booking ID */}
+              <div className="flex items-start gap-3">
+                <FileText className="h-5 w-5 text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">
+                    Booking ID
+                  </p>
+                  <p className="font-mono text-sm text-slate-900">
+                    {booking.id}
+                  </p>
+                </div>
+              </div>
+
+              {/* Time Slots or Date */}
+              {booking.formattedTimeSlots &&
+              booking.formattedTimeSlots.length > 0 ? (
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-5 w-5 text-slate-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="mb-2 text-sm font-medium text-slate-700">
+                      Trip Schedule ({booking.formattedTimeSlots.length}{" "}
+                      {booking.formattedTimeSlots.length === 1
+                        ? "session"
+                        : "sessions"}
+                      )
+                    </p>
+                    <div className="space-y-2">
+                      {booking.formattedTimeSlots.map((slot, index) => (
+                        <div
+                          key={index}
+                          className="p-2 text-sm rounded text-slate-600 bg-slate-50"
+                        >
+                          {slot}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-5 w-5 text-slate-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Date</p>
+                    <p className="text-sm text-slate-900">
                       <span>
-                        {" - "}
-                        {new Date(
-                          new Date(booking.date).getTime() +
-                            booking.days * 24 * 60 * 60 * 1000
-                        ).toLocaleDateString("en-MY", {
+                        {new Date(booking.date).toLocaleDateString("en-MY", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
                         })}
                       </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-slate-900"></p>
-                  {booking.days && (
-                    <p className="text-sm text-slate-600">
-                      {booking.days} day{booking.days !== 1 ? "s" : ""}
+                      {booking.days > 1 && (
+                        <span>
+                          {" - "}
+                          {new Date(
+                            new Date(booking.date).getTime() +
+                              booking.days * 24 * 60 * 60 * 1000
+                          ).toLocaleDateString("en-MY", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                      )}
                     </p>
-                  )}
+                    {booking.days > 0 && (
+                      <p className="text-sm text-slate-600">
+                        {booking.days} day{booking.days !== 1 ? "s" : ""}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
+              {/* Duration */}
               {booking.durationHour && (
                 <div className="flex items-start gap-3">
                   <Clock className="h-5 w-5 text-slate-400 mt-0.5" />
@@ -368,10 +437,13 @@ export default async function BookingDetailsPage({
                 </div>
               )}
 
+              {/* Guests */}
               <div className="flex items-start gap-3">
                 <Users className="h-5 w-5 text-slate-400 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-slate-700">Guests</p>
+                  <p className="text-sm font-medium text-slate-700">
+                    Total Guests
+                  </p>
                   <p className="text-sm text-slate-900">
                     {booking.adults} adult{booking.adults !== 1 ? "s" : ""}
                     {booking.children > 0 &&
@@ -382,15 +454,102 @@ export default async function BookingDetailsPage({
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-slate-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Location</p>
-                  <p className="text-sm text-slate-900">{booking.location}</p>
-                </div>
-              </div>
+              {/* Participant List */}
+              {booking.allParticipants &&
+                booking.allParticipants.length > 0 && (
+                  <div className="flex items-start gap-3">
+                    <Users className="h-5 w-5 text-slate-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="mb-2 text-sm font-medium text-slate-700">
+                        Participants
+                      </p>
+                      <div className="space-y-1.5">
+                        {booking.allParticipants.map((participant, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 text-sm text-slate-600"
+                          >
+                            <span className="capitalize">
+                              {participant.name}
+                            </span>
+                            {participant.phone && (
+                              <>
+                                <span className="text-slate-400">•</span>
+                                <p className="flex items-center gap-1.5">
+                                  <Phone className="w-3.5 h-3.5" />
+                                  <span className="font-mono text-xs">
+                                    {participant.phone}
+                                  </span>
+                                </p>
+                              </>
+                            )}
+                            {participant.isBooker && (
+                              <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                                Booker
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
+
+          {/* Emergency Contact */}
+          {emergencyContact && (
+            <div className="p-6 bg-white border rounded-2xl border-slate-200">
+              <h2 className="mb-4 text-base font-semibold text-slate-900">
+                Emergency Contact
+              </h2>
+              <div className="space-y-3">
+                {/* Name */}
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Name</p>
+                    <p className="text-sm capitalize text-slate-900">
+                      {emergencyContact.name}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Phone */}
+                {emergencyContact.phone && (
+                  <div className="flex items-start gap-3">
+                    <Phone className="h-5 w-5 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">
+                        Phone
+                      </p>
+                      <a
+                        href={`tel:${emergencyContact.phone}`}
+                        className="text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        {emergencyContact.phone}
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* Relationship */}
+                {emergencyContact.relationship && (
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">
+                        Relationship
+                      </p>
+                      <p className="text-sm capitalize text-slate-900">
+                        {emergencyContact.relationship}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Customer Note */}
           {booking.note && (
@@ -406,35 +565,102 @@ export default async function BookingDetailsPage({
         {/* Right Column - Pricing & Customer Info */}
         <div className="space-y-6">
           {/* Pricing Breakdown */}
-          <div className="p-6 bg-white border rounded-2xl border-slate-200">
+          <div className="relative p-6 bg-white border rounded-2xl border-slate-200">
+            {/* PAID Stamp */}
+            {(booking.status === "PAID" || booking.status === "COMPLETED") && (
+              <div className="absolute z-10 pointer-events-none top-15 right-20">
+                <div className="relative">
+                  <div className="px-6 py-3 text-3xl font-black tracking-wider text-green-600 uppercase border-4 border-green-600 rounded-lg rotate-12 bg-white/90">
+                    PAID
+                  </div>
+                  <div className="absolute inset-0 px-6 py-3 text-3xl font-black tracking-wider uppercase border-4 rounded-lg text-green-600/30 border-green-600/30 rotate-12 blur-sm">
+                    PAID
+                  </div>
+                </div>
+              </div>
+            )}
+
             <h2 className="mb-4 text-base font-semibold text-slate-900">
               Earning
             </h2>
             <div className="space-y-3">
+              {/* Trip Price per Day */}
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">
-                  RM {booking.unitPrice.toLocaleString()} × {booking.days} day
-                  {booking.days !== 1 ? "s" : ""}
-                </span>
+                <span className="text-slate-600">Trip Price (per day)</span>
                 <span className="text-slate-900">
-                  RM {booking.totalPrice.toLocaleString()}
+                  RM {pricing.tripPrice.toFixed(2)}
                 </span>
               </div>
 
+              {/* Number of Days */}
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Commission (10%)</span>
+                <span className="text-slate-600">Number of Days</span>
+                <span className="text-slate-900">× {pricing.days}</span>
+              </div>
+
+              {/* Subtotal */}
+              <div className="flex justify-between pt-2 text-sm border-t border-slate-100">
+                <span className="text-slate-600">Subtotal</span>
                 <span className="text-slate-900">
-                  - RM {fishonCommission.toLocaleString()}
+                  RM {pricing.subtotal.toFixed(2)}
                 </span>
               </div>
+
+              {/* Platform Fee */}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Platform Fee (10%)</span>
+                <span className="text-slate-900">
+                  RM {pricing.platformFee.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Discount */}
+              {pricing.discount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Discount</span>
+                  <span className="text-green-600">
+                    - RM {pricing.discount.toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {/* Payment Gateway Fee */}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">
+                  Payment Gateway Fee (1.5%)
+                </span>
+                <span className="text-slate-900">
+                  RM {pricing.paymentGatewayFee.toFixed(2)}
+                </span>
+              </div>
+
+              {/* SST */}
+              {pricing.sst > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">SST</span>
+                  <span className="text-slate-900">
+                    RM {pricing.sst.toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {/* Angler Paid */}
+              <div className="flex justify-between pt-2 text-sm border-t border-slate-200">
+                <span className="font-medium text-slate-700">Angler Paid</span>
+                <span className="font-medium text-slate-900">
+                  RM {pricing.finalPrice.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Your Earnings */}
               <div className="pt-3 border-t border-slate-200">
                 <div className="flex items-center justify-between">
                   <span className="text-base font-semibold text-slate-900">
-                    Total
+                    Your Earnings
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xl font-bold text-slate-900">
-                      RM {yourEarning.toLocaleString()}
+                    <span className="text-xl font-bold text-green-600">
+                      RM {pricing.captainEarnings.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -501,14 +727,22 @@ export default async function BookingDetailsPage({
                       </div>
                     </div>
                   )}
-                  {!isGuest && (
-                    <div className="p-3 text-xs rounded-lg bg-slate-50 text-slate-600">
-                      <Phone className="h-3.5 w-3.5 inline mr-1" />
-                      Contact details available after payment
-                    </div>
-                  )}
                 </>
               )}
+
+              {/* Message Angler Button */}
+              {(booking.status === "PAID" || booking.status === "COMPLETED") &&
+                booking.conversationId &&
+                booking.conversationStatus === "ACTIVE" && (
+                  <Link
+                    href={`/captain/messages/${booking.conversationId}`}
+                    className="inline-flex items-center justify-center flex-1 w-full px-4 py-2 text-sm font-medium text-white transition-colors border rounded-lg bg-slate-900 border-slate-900 hover:bg-slate-800 hover:border-slate-800"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Message Angler
+                  </Link>
+                )}
+
               {booking.status !== "PAID" && (
                 <div className="p-3 text-xs rounded-lg bg-slate-50 text-slate-600">
                   Full contact details will be available after payment is

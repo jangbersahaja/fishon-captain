@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * Admin-only endpoint to lock/unlock a charter
+ * When locked, captains cannot change isActive status
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -16,23 +20,33 @@ export async function PATCH(
       );
     }
 
+    // Only admins can lock/unlock charters
+    const role = session.user.role as string | undefined;
+    const isAdmin = role === "ADMIN";
+
+    if (!isAdmin) {
+      return applySecurityHeaders(
+        NextResponse.json({ error: "Admin access required" }, { status: 403 })
+      );
+    }
+
     const { id: charterId } = await params;
     const body = await request.json();
-    const { isActive } = body;
+    const { isLocked } = body;
 
-    if (typeof isActive !== "boolean") {
+    if (typeof isLocked !== "boolean") {
       return applySecurityHeaders(
         NextResponse.json(
-          { error: "isActive must be a boolean" },
+          { error: "isLocked must be a boolean" },
           { status: 400 }
         )
       );
     }
 
-    // Validate charter ownership
+    // Check if charter exists
     const charter = await prisma.charter.findUnique({
       where: { id: charterId },
-      select: { ownerId: true, captainId: true, isLocked: true },
+      select: { id: true, name: true, isLocked: true, isActive: true },
     });
 
     if (!charter) {
@@ -41,36 +55,19 @@ export async function PATCH(
       );
     }
 
-    // Check if user owns the charter
-    const role = session.user.role as string | undefined;
-    const isOwner = charter.ownerId === session.user.id;
-    const isAdmin = role === "ADMIN" || role === "STAFF";
-
-    if (!isOwner && !isAdmin) {
-      return applySecurityHeaders(
-        NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      );
-    }
-
-    // Check if charter is locked by admin
-    if (charter.isLocked && !isAdmin) {
-      return applySecurityHeaders(
-        NextResponse.json(
-          {
-            error:
-              "Charter is locked by admin. Contact support to change status.",
-          },
-          { status: 403 }
-        )
-      );
-    }
-
-    // Update charter status
+    // Update lock status
+    // When locking: auto-set to inactive
+    // When unlocking: keep inactive (admin/user will manually activate)
     const updatedCharter = await prisma.charter.update({
       where: { id: charterId },
-      data: { isActive },
+      data: {
+        isLocked,
+        ...(isLocked ? { isActive: false } : {}), // Auto-set inactive when locking
+      },
       select: {
         id: true,
+        name: true,
+        isLocked: true,
         isActive: true,
       },
     });
@@ -79,13 +76,16 @@ export async function PATCH(
       NextResponse.json({
         success: true,
         data: updatedCharter,
+        message: isLocked
+          ? "Charter locked and set to inactive. Captain cannot change status."
+          : "Charter unlocked (remains inactive). Manually activate when ready.",
       })
     );
   } catch (error) {
-    console.error("Error updating charter status:", error);
+    console.error("Error updating charter lock status:", error);
     return applySecurityHeaders(
       NextResponse.json(
-        { error: "Failed to update charter status" },
+        { error: "Failed to update charter lock status" },
         { status: 500 }
       )
     );

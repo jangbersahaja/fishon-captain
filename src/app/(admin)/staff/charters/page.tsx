@@ -42,6 +42,7 @@ async function getCharters(
         city: string;
         state: string;
         isActive: boolean;
+        isLocked: boolean;
         updatedAt: string;
         captain?: { displayName?: string | null; userId: string };
       }[];
@@ -56,6 +57,7 @@ async function getCharters(
       city: string;
       state: string;
       isActive: boolean;
+      isLocked: boolean;
       updatedAt: string;
       captain?: { displayName?: string | null; userId: string };
     }[];
