@@ -1,7 +1,12 @@
 "use client";
 
 import { approveBooking, rejectBooking } from "@/app/actions/booking-actions";
-import { ChatHeader, ChatInput, MessageList } from "@/components/captain/chat";
+import {
+  ChatHeader,
+  ChatInput,
+  ChatStatusNotice,
+  MessageList,
+} from "@/components/captain/chat";
 import type { Message as HookMessage } from "@/hooks/useConversation";
 import { useConversation } from "@/hooks/useConversation";
 import { useRouter } from "next/navigation";
@@ -192,6 +197,29 @@ export function ChatDetail({
           />
         </div>
       )} */}
+
+      {/* Chat status notice - Show when locked */}
+      {isChatLocked && (
+        <div className="px-4 py-3 border-t bg-gray-50">
+          <ChatStatusNotice
+            status={
+              conversation.status === "CLOSED"
+                ? "CLOSED"
+                : conversation.booking?.status === "CANCELLED" ||
+                    conversation.booking?.status === "REJECTED"
+                  ? "RESTRICTED"
+                  : "LOCKED"
+            }
+            reason={
+              conversation.booking?.status === "PENDING"
+                ? "Chat will unlock when you approve the booking and angler completes payment."
+                : conversation.booking?.status === "AWAITING_PAYMENT"
+                  ? "Chat will unlock when the angler completes payment."
+                  : undefined
+            }
+          />
+        </div>
+      )}
 
       {/* Chat input - Fixed at bottom */}
       <div className="fixed left-0 right-0 px-4 py-3 bg-white border-t bottom-19 md:relative md:bottom-auto md:left-auto md:right-auto md:border-t-0">

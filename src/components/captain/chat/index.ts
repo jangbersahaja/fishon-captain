@@ -2,6 +2,7 @@
 export { BookingDetailsCard } from "./BookingDetailsCard";
 export { ChatHeader } from "./ChatHeader";
 export { ChatInput } from "./ChatInput";
+export { ChatStatusNotice } from "./ChatStatusNotice";
 export { ConversationListItem } from "./ConversationListItem";
 export { MessageBubble } from "./MessageBubble";
 export { MessageList } from "./MessageList";

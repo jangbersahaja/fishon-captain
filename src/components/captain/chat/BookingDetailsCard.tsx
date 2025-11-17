@@ -1,5 +1,6 @@
 "use client";
 
+import { BookingStatusBadge } from "@/components/captain/BookingStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -82,17 +83,6 @@ export function BookingDetailsCard({
     }
   };
 
-  // Status badge color
-  const statusColor = {
-    PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    APPROVED: "bg-blue-100 text-blue-800 border-blue-200",
-    PAID: "bg-green-100 text-green-800 border-green-200",
-    COMPLETED: "bg-gray-100 text-gray-800 border-gray-200",
-    REJECTED: "bg-red-100 text-red-800 border-red-200",
-    CANCELLED: "bg-gray-100 text-gray-800 border-gray-200",
-    EXPIRED: "bg-gray-100 text-gray-800 border-gray-200",
-  }[booking.status || "PENDING"];
-
   return (
     <Card className="m-4 overflow-hidden border-gray-200 bg-gradient-to-br from-white to-gray-50">
       <button
@@ -105,11 +95,7 @@ export function BookingDetailsCard({
               {booking.charterName}
             </h3>
             {booking.status && (
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full border ${statusColor}`}
-              >
-                {booking.status}
-              </span>
+              <BookingStatusBadge status={booking.status} size="sm" />
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">

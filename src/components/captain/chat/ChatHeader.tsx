@@ -1,6 +1,7 @@
 "use client";
 
 import { BookingActions } from "@/app/(portal)/captain/bookings/BookingActions";
+import { BookingStatusBadge } from "@/components/captain/BookingStatusBadge";
 import { Button } from "@/components/ui/button";
 import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
 import {
@@ -67,17 +68,6 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Status badge color
-  const statusColor = {
-    PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    APPROVED: "bg-blue-100 text-blue-800 border-blue-200",
-    PAID: "bg-green-100 text-green-800 border-green-200",
-    COMPLETED: "bg-gray-100 text-gray-800 border-gray-200",
-    REJECTED: "bg-red-100 text-red-800 border-red-200",
-    CANCELLED: "bg-gray-100 text-gray-800 border-gray-200",
-    EXPIRED: "bg-gray-100 text-gray-800 border-gray-200",
-  }[booking?.status || "PENDING"];
-
   return (
     <div className="bg-white">
       {/* Main Header Bar */}
@@ -122,10 +112,8 @@ export function ChatHeader({
         </div>
 
         {booking && (
-          <div
-            className={`${statusColor} capitalize px-4 mr-5 rounded-lg py-2 text-sm font-semibold border-t text-center md:flex hidden`}
-          >
-            <span>{booking.status?.toLocaleLowerCase()}</span>
+          <div className="hidden mr-5 md:flex">
+            <BookingStatusBadge status={booking.status ?? ""} size="md" />
           </div>
         )}
 
@@ -278,13 +266,6 @@ export function ChatHeader({
       {/* Special Requests */}
       {booking && (
         <div className="flex flex-col w-full">
-          <div
-            className={`${statusColor} capitalize px-4 py-2 text-sm font-semibold border-t justify-center w-full flex md:hidden`}
-          >
-            <span className="text-center">
-              {booking.status?.toLocaleLowerCase()}
-            </span>
-          </div>
           <Link
             href={`/captain/bookings/${booking.id}`}
             className="inline-flex items-center justify-center flex-1 px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-white border-gray-200 border-y hover:bg-gray-50 hover:border-gray-400"

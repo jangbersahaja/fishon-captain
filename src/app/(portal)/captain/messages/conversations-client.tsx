@@ -1,5 +1,6 @@
 "use client";
 
+import { BookingStatusBadge } from "@/components/captain/BookingStatusBadge";
 import type { Message } from "@/hooks/useConversation";
 import { getPusherClient } from "@/lib/pusher/client";
 import { MessageCircle, MessageSquare, User } from "lucide-react";
@@ -231,15 +232,11 @@ export default function ConversationsClient({
                           <p className="font-semibold text-gray-900 truncate">
                             {conversation.anglerName}
                           </p>
-                          {bookingStatus === "PENDING" && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
-                              Pending
-                            </span>
-                          )}
-                          {bookingStatus === "PAID" && (
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
-                              Paid
-                            </span>
+                          {bookingStatus && (
+                            <BookingStatusBadge
+                              status={bookingStatus}
+                              size="sm"
+                            />
                           )}
                         </div>
                         {/* Last message preview */}

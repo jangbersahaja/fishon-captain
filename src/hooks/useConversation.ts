@@ -202,10 +202,28 @@ export function useConversation(conversationId: string, userId: string) {
    * Mark all messages in conversation as read
    */
   const markAsRead = useCallback(async () => {
-    // Captain app marks unread on conversation fetch server-side.
-    // No-op here to avoid calling non-existent endpoints.
-    return;
-  }, []);
+    try {
+      const response = await fetch(
+        `/api/captain/conversations/${conversationId}/read`,
+        { method: "PATCH" }
+      );
+
+      if (!response.ok) {
+        console.error(
+          "[useConversation] Failed to mark as read:",
+          response.statusText
+        );
+        return;
+      }
+
+      console.log("[useConversation] Marked conversation as read");
+
+      // Trigger router refresh to update unread counts in sidebar
+      router.refresh();
+    } catch (error) {
+      console.error("[useConversation] Error marking as read:", error);
+    }
+  }, [conversationId, router]);
 
   // ============================================================================
   // TYPING INDICATOR
