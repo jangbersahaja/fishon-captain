@@ -1,41 +1,22 @@
-import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
 import { MediaRemovalSchema } from "@fishon/schemas";
 import { del } from "@vercel/blob";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { verifyCharterOwnership } from "@/lib/api/charter-middleware";
 
 export const runtime = "nodejs";
-
-function getUserId(session: unknown): string | null {
-  if (!session || typeof session !== "object") return null;
-  const user = (session as Record<string, unknown>).user;
-  if (!user || typeof user !== "object") return null;
-  const id = (user as Record<string, unknown>).id;
-  return typeof id === "string" ? id : null;
-}
 
 export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id: charterId } = await ctx.params;
-  const session = await getServerSession(authOptions);
-  const userId = getUserId(session);
-  if (!userId)
-    return applySecurityHeaders(
-      NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    );
 
-  const charter = await prisma.charter.findUnique({
-    where: { id: charterId },
-    select: { captain: { select: { userId: true } }, id: true },
-  });
-  if (!charter || charter.captain.userId !== userId) {
-    return applySecurityHeaders(
-      NextResponse.json({ error: "not_found" }, { status: 404 })
-    );
+  // Verify charter ownership
+  const authResult = await verifyCharterOwnership(charterId);
+  if (!authResult.success) {
+    return authResult.response;
   }
 
   let body: unknown;

@@ -1,8 +1,7 @@
-import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { verifyCharterOwnership } from "@/lib/api/charter-middleware";
 
 const LinkVideosSchema = z.object({
   videoIds: z.array(z.string()),
@@ -12,34 +11,13 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  const sessionUserId = (session?.user as { id?: string })?.id;
-
-  if (!sessionUserId) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
-
   const resolvedParams = await params;
   const charterId = resolvedParams.id;
 
-  // Verify charter exists and belongs to the captain
-  const charter = await prisma.charter.findUnique({
-    where: { id: charterId },
-    include: {
-      captain: {
-        select: {
-          userId: true,
-        },
-      },
-    },
-  });
-
-  if (!charter) {
-    return NextResponse.json({ error: "charter_not_found" }, { status: 404 });
-  }
-
-  if (charter.captain.userId !== sessionUserId) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  // Verify charter ownership
+  const authResult = await verifyCharterOwnership(charterId);
+  if (!authResult.success) {
+    return authResult.response;
   }
 
   // Parse request body
@@ -59,7 +37,7 @@ export async function POST(
     // Phase 2: Get all user's videos by ownerId (not captainId)
     const userVideos = await prisma.captainVideo.findMany({
       where: {
-        ownerId: sessionUserId,
+        ownerId: authResult.userId,
       },
       select: {
         id: true,

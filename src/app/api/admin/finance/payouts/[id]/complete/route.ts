@@ -1,9 +1,8 @@
-import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { logger } from "@/lib/logger";
 import { markPayoutCompleted } from "@/lib/services/finance-service";
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/api/admin-middleware";
 
 export const dynamic = "force-dynamic";
 
@@ -21,23 +20,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
 
     // Auth check
-    const session = await getServerSession(authOptions);
-    const role = (session?.user as { role?: string } | undefined)?.role;
-    const userId = session?.user?.id;
-
-    if (!session?.user || !userId) {
-      return applySecurityHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    if (role !== "ADMIN") {
-      return applySecurityHeaders(
-        NextResponse.json(
-          { error: "Forbidden - Admin access required" },
-          { status: 403 }
-        )
-      );
+    const authResult = await requireAdmin();
+    if (!authResult.success) {
+      return authResult.response;
     }
 
     // Parse request body
@@ -54,12 +39,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     // Mark payout as completed
-    const payout = await markPayoutCompleted(id, transferReference, userId);
+    const payout = await markPayoutCompleted(id, transferReference, authResult.userId);
 
     logger.info("payout_completed", {
       payoutId: id,
       batchId: payout.batchId,
-      completedBy: userId,
+      completedBy: authResult.userId,
       transferReference,
       netPayout: Number(payout.netPayout),
       bookingCount: payout.bookingCount,

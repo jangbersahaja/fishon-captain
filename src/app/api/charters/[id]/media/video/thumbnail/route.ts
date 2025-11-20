@@ -1,32 +1,25 @@
-import authOptions from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
 import { VideoThumbnailSchema } from "@fishon/schemas";
 import { put } from "@vercel/blob";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
+import { verifyCharterOwnership } from "@/lib/api/charter-middleware";
 
 export const runtime = "nodejs";
-
-function getUserId(session: unknown): string | null {
-  if (!session || typeof session !== "object") return null;
-  const user = (session as { user?: { id?: string } }).user;
-  return user && typeof user.id === "string" ? user.id : null;
-}
 
 export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id: charterId } = await ctx.params;
-  const session = await getServerSession(authOptions);
-  const userId = getUserId(session);
-  if (!userId) {
-    return applySecurityHeaders(
-      NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    );
+
+  // Verify charter ownership
+  const authResult = await verifyCharterOwnership(charterId);
+  if (!authResult.success) {
+    return authResult.response;
   }
+
   let bodyJson: unknown = null;
   try {
     bodyJson = await req.json();
@@ -45,16 +38,6 @@ export async function PATCH(
     );
   }
   const { storageKey, dataUrl, durationSeconds } = parsed.data;
-
-  const charter = await prisma.charter.findUnique({
-    where: { id: charterId },
-    select: { captain: { select: { userId: true } }, id: true },
-  });
-  if (!charter || charter.captain.userId !== userId) {
-    return applySecurityHeaders(
-      NextResponse.json({ error: "not_found" }, { status: 404 })
-    );
-  }
 
   // Find video in CaptainVideo table
   const video = await prisma.captainVideo.findFirst({
@@ -110,7 +93,7 @@ export async function PATCH(
     : mime.includes("webp")
     ? "webp"
     : "jpg";
-  const key = `captains/${userId}/media/thumb/${video.id}-${crypto
+  const key = `captains/${authResult.userId}/media/thumb/${video.id}-${crypto
     .randomUUID()
     .slice(0, 8)}.${ext}`;
 
