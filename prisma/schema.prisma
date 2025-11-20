@@ -199,6 +199,9 @@ model CharterUnavailability {
   startDate DateTime
   endDate   DateTime
   reason    String?
+  isAllDay  Boolean  @default(true)
+  startTime String?  // Format: HH:MM (e.g., "09:00")
+  endTime   String?  // Format: HH:MM (e.g., "17:00")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String

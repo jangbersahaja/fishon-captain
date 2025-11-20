@@ -1,6 +1,7 @@
 import { type BookingReview } from "@/dummy/receipts";
 import { formatDate as formatDateMY } from "@/lib/datetime";
 import { summariseBadges } from "@/utils/reviewBadges";
+import Image from "next/image";
 import Stars from "./Stars";
 
 function formatDate(iso: string | undefined) {
@@ -35,7 +36,7 @@ export default function GuestFeedbackPanel({
   const highlightBadges = badgeSummary.slice(0, 3).map((item) => item.badge);
 
   return (
-    <section className="mt-8 rounded-2xl border border-black/10 bg-white p-5 sm:p-6">
+    <section className="p-5 mt-8 bg-white border rounded-2xl border-black/10 sm:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-semibold sm:text-lg">Guest feedback</h3>
@@ -44,7 +45,7 @@ export default function GuestFeedbackPanel({
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-700">
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1">
+          <span className="inline-flex items-center gap-2 px-3 py-1 bg-white border rounded-full border-black/10">
             <Stars value={ratingAvg} />
             <span className="font-medium">{ratingAvg.toFixed(1)}</span>
           </span>
@@ -54,27 +55,32 @@ export default function GuestFeedbackPanel({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-black/10 bg-white p-4 lg:col-span-2">
+      <div className="grid gap-4 mt-4 lg:grid-cols-3">
+        <div className="p-4 bg-white border rounded-2xl border-black/10 lg:col-span-2">
           <h4 className="text-sm font-semibold">Badge highlights</h4>
           {topBadges.length > 0 ? (
             <>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mt-3">
                 {topBadges.map(({ badge, count }) => (
-                  <span key={badge.id} className="group relative inline-flex">
+                  <span key={badge.id} className="relative inline-flex group">
                     <span
                       tabIndex={0}
-                      className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-full border-amber-200 bg-amber-50 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     >
-                      <span className="text-base">{badge.icon}</span>
-                      <span className="text-xs font-semibold uppercase tracking-wide">
+                      <Image
+                        src={badge.iconUrl}
+                        alt={badge.label}
+                        width={24}
+                        height={24}
+                      />
+                      <span className="text-xs font-semibold tracking-wide uppercase">
                         {badge.label}
                       </span>
                       <span className="text-[11px] font-semibold text-amber-600">
                         ×{count}
                       </span>
                     </span>
-                    <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-48 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-center text-xs font-medium text-white shadow-lg group-hover:flex group-focus-within:flex">
+                    <span className="absolute z-20 hidden w-48 px-3 py-2 mt-2 text-xs font-medium text-center text-white -translate-x-1/2 bg-gray-900 rounded-lg shadow-lg pointer-events-none left-1/2 top-full group-hover:flex group-focus-within:flex">
                       <span className="leading-snug">{badge.description}</span>
                     </span>
                   </span>
@@ -92,20 +98,20 @@ export default function GuestFeedbackPanel({
           )}
         </div>
 
-        <div className="rounded-2xl border border-black/10 bg-white p-4">
+        <div className="p-4 bg-white border rounded-2xl border-black/10">
           <h4 className="text-sm font-semibold">At a glance</h4>
-          <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-lg border border-black/5 bg-gray-50 p-3">
+          <div className="grid grid-cols-2 gap-3 mt-2 text-sm">
+            <div className="p-3 border rounded-lg border-black/5 bg-gray-50">
               <div className="text-xs text-gray-500">Avg. rating</div>
               <div className="text-base font-semibold">
                 {ratingAvg.toFixed(1)} / 5
               </div>
             </div>
-            <div className="rounded-lg border border-black/5 bg-gray-50 p-3">
+            <div className="p-3 border rounded-lg border-black/5 bg-gray-50">
               <div className="text-xs text-gray-500">Total badges</div>
               <div className="text-base font-semibold">{totalBadges}</div>
             </div>
-            <div className="col-span-2 rounded-lg border border-black/5 bg-gray-50 p-3">
+            <div className="col-span-2 p-3 border rounded-lg border-black/5 bg-gray-50">
               <div className="text-xs text-gray-500">Recent activity</div>
               <div className="text-sm">{formatDate(reviews[0]?.createdAt)}</div>
             </div>

@@ -10,6 +10,7 @@ export default defineConfig({
       "src/lib/**/__tests__/**/*.test.{ts,tsx}",
       "src/hooks/**/__tests__/**/*.test.{ts,tsx}",
       "src/app/api/**/__tests__/**/*.test.{ts,tsx}",
+      "src/app/actions/**/__tests__/**/*.test.{ts,tsx}",
       "src/__tests__/**/*.test.{ts,tsx}",
       "src/components/__tests__/**/*.test.{ts,tsx}",
     ],

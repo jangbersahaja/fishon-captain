@@ -99,7 +99,7 @@ export async function approveBooking(bookingId: string) {
     revalidatePath("/captain/bookings");
     revalidatePath(`/captain/bookings/${bookingId}`);
     revalidatePath("/captain/dashboard");
-    revalidatePath("/captain/calendar");
+    revalidatePath("/captain/new-calendar");
     revalidatePath("/captain/messages");
     revalidatePath(`/captain/messages/${booking.conversation?.id}`);
 
@@ -217,7 +217,7 @@ export async function rejectBooking(
     revalidatePath("/captain/bookings");
     revalidatePath(`/captain/bookings/${bookingId}`);
     revalidatePath("/captain/dashboard");
-    revalidatePath("/captain/calendar");
+    revalidatePath("/captain/new-calendar");
     revalidatePath("/captain/messages");
 
     return {

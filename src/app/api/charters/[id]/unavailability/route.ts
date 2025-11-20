@@ -3,6 +3,7 @@
  *
  * GET: List unavailable date ranges
  * POST: Create unavailability block
+ * PATCH: Update unavailability block
  * DELETE: Remove unavailability block
  *
  * @route /api/charters/[id]/unavailability
@@ -10,21 +11,66 @@
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  buildDateRange,
+  normalizeUnavailabilityPayload,
+  shouldPersistTimes,
+  UnavailabilityPayloadSchema,
+} from "@/lib/schemas/unavailability";
 import { validateUnavailability } from "@/lib/services/availability-service";
+import type { CharterUnavailability } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 // Request validation schemas
-const UnavailabilityCreateSchema = z.object({
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime(),
-  reason: z.string().optional(),
+const UnavailabilityCreateSchema = UnavailabilityPayloadSchema;
+
+const UnavailabilityUpdateSchema = UnavailabilityPayloadSchema.safeExtend({
+  unavailabilityId: z.string(),
 });
 
 const UnavailabilityDeleteSchema = z.object({
   unavailabilityId: z.string(),
 });
+
+interface UnavailabilityListResponse {
+  unavailability: CharterUnavailability[];
+  count: number;
+}
+
+interface UnavailabilityMutationResponse {
+  unavailability: CharterUnavailability;
+  message: string;
+}
+
+interface ConflictDetails {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  isAllDay: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  reason: string | null;
+}
+
+const formatConflictDetails = (
+  conflict?: CharterUnavailability
+): ConflictDetails | undefined => {
+  if (!conflict) {
+    return undefined;
+  }
+
+  return {
+    id: conflict.id,
+    startDate: conflict.startDate,
+    endDate: conflict.endDate,
+    isAllDay: conflict.isAllDay,
+    startTime: conflict.startTime,
+    endTime: conflict.endTime,
+    reason: conflict.reason ?? null,
+  };
+};
 
 /**
  * GET /api/charters/[id]/unavailability
@@ -93,10 +139,12 @@ export async function GET(
       orderBy: { startDate: "asc" },
     });
 
-    return NextResponse.json({
+    const response: UnavailabilityListResponse = {
       unavailability,
       count: unavailability.length,
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error fetching unavailability:", error);
     return NextResponse.json(
@@ -116,6 +164,9 @@ export async function GET(
  *   startDate: string (ISO datetime),
  *   endDate: string (ISO datetime),
  *   reason?: string
+ *   isAllDay?: boolean
+ *   startTime?: string
+ *   endTime?: string
  * }
  */
 export async function POST(
@@ -154,7 +205,7 @@ export async function POST(
     }
 
     // Parse and validate request body
-    const body = await request.json();
+    const body: unknown = await request.json();
     const validation = UnavailabilityCreateSchema.safeParse(body);
 
     if (!validation.success) {
@@ -164,17 +215,9 @@ export async function POST(
       );
     }
 
-    const { startDate, endDate, reason } = validation.data;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    // Validate date range (allow same day for single-day blocks)
-    if (start > end) {
-      return NextResponse.json(
-        { error: "End date cannot be before start date" },
-        { status: 400 }
-      );
-    }
+    const normalizedPayload = normalizeUnavailabilityPayload(validation.data);
+    const { start, end } = buildDateRange(normalizedPayload);
+    const times = shouldPersistTimes(normalizedPayload);
 
     // Validate no overlapping blocks
     const validationResult = await validateUnavailability(
@@ -187,6 +230,7 @@ export async function POST(
         {
           error:
             validationResult.message || "Cannot create unavailability block",
+          conflict: formatConflictDetails(validationResult.conflict),
         },
         { status: 409 }
       );
@@ -198,20 +242,149 @@ export async function POST(
         charterId,
         startDate: start,
         endDate: end,
-        reason,
+        reason: normalizedPayload.reason,
+        isAllDay: normalizedPayload.isAllDay,
+        startTime: times.startTime,
+        endTime: times.endTime,
         createdBy: session.user.id,
       },
     });
 
-    return NextResponse.json(
-      {
-        unavailability,
-        message: "Unavailability block created successfully",
-      },
-      { status: 201 }
-    );
+    const response: UnavailabilityMutationResponse = {
+      unavailability,
+      message: "Unavailability block created successfully",
+    };
+
+    return NextResponse.json(response, { status: 201 });
   } catch (error) {
     console.error("Error creating unavailability:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/charters/[id]/unavailability
+ *
+ * Update an existing unavailability block.
+ *
+ * Request body:
+ * {
+ *   unavailabilityId: string,
+ *   startDate: string (ISO datetime),
+ *   endDate: string (ISO datetime),
+ *   reason?: string
+ *   isAllDay?: boolean
+ *   startTime?: string
+ *   endTime?: string
+ * }
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: charterId } = await params;
+
+    // Parse and validate request body
+    const body: unknown = await request.json();
+    const validation = UnavailabilityUpdateSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid request data", details: validation.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const normalizedPayload = normalizeUnavailabilityPayload(validation.data);
+    const { unavailabilityId } = validation.data;
+    const { start, end } = buildDateRange(normalizedPayload);
+    const times = shouldPersistTimes(normalizedPayload);
+
+    // Fetch existing block to verify ownership
+    const existingBlock = await prisma.charterUnavailability.findUnique({
+      where: { id: unavailabilityId },
+      include: {
+        charter: {
+          include: {
+            captain: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!existingBlock) {
+      return NextResponse.json(
+        { error: "Unavailability block not found" },
+        { status: 404 }
+      );
+    }
+
+    if (existingBlock.charterId !== charterId) {
+      return NextResponse.json(
+        { error: "Unavailability block does not belong to this charter" },
+        { status: 400 }
+      );
+    }
+
+    // Authorization check
+    const isOwner = existingBlock.charter.captain.userId === session.user.id;
+    const isAdmin = session.user.role === "ADMIN";
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Validate no overlapping blocks (excluding current one)
+    const validationResult = await validateUnavailability(
+      charterId,
+      start,
+      end,
+      unavailabilityId
+    );
+    if (!validationResult.canCreate) {
+      return NextResponse.json(
+        {
+          error:
+            validationResult.message || "Cannot update unavailability block",
+          conflict: formatConflictDetails(validationResult.conflict),
+        },
+        { status: 409 }
+      );
+    }
+
+    // Update unavailability block
+    const unavailability = await prisma.charterUnavailability.update({
+      where: { id: unavailabilityId },
+      data: {
+        startDate: start,
+        endDate: end,
+        reason: normalizedPayload.reason,
+        isAllDay: normalizedPayload.isAllDay,
+        startTime: times.startTime,
+        endTime: times.endTime,
+      },
+    });
+
+    const response: UnavailabilityMutationResponse = {
+      unavailability,
+      message: "Unavailability block updated successfully",
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error("Error updating unavailability:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

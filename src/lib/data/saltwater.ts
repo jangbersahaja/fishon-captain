@@ -248,4 +248,120 @@ export const SALTWATER_SPECIES = [
   },
   { id: "tuna", english_name: "Tuna", local_name: "Tuna", image: Tuna },
   { id: "shark", english_name: "Shark", local_name: "Yu", image: Shark },
+  {
+    id: "barracuda",
+    english_name: "Barracuda",
+    local_name: "Alu-Alu",
+    image: "/images/species/saltwater/new-28-10-25/Alu-Alu - Barracuda.png",
+  },
+  {
+    id: "flat-needlefish",
+    english_name: "Flat Needlefish",
+    local_name: "Banang",
+    image:
+      "/images/species/saltwater/new-28-10-25/Banang - Flat Needlefish.png",
+  },
+  {
+    id: "black-snapper",
+    english_name: "Black Snapper",
+    local_name: "Blackbass",
+    image:
+      "/images/species/saltwater/new-28-10-25/Blackbass - Black Snapper.png",
+  },
+  {
+    id: "big-eye-trevally",
+    english_name: "Big Eye Trevally",
+    local_name: "Cupak",
+    image:
+      "/images/species/saltwater/new-28-10-25/Cupak - Big Eye Travelly.png",
+  },
+  {
+    id: "bluefin-trevally",
+    english_name: "Bluefin Trevally",
+    local_name: "Gerepoh Sirip Biru",
+    image:
+      "/images/species/saltwater/new-28-10-25/Gerepoh Sirip Biru - Bluefin Travelly.png",
+  },
+  {
+    id: "golden-trevally",
+    english_name: "Golden Trevally",
+    local_name: "Gerung Belang",
+    image:
+      "/images/species/saltwater/new-28-10-25/Gerung Belang - Golden Travelly.png",
+  },
+  {
+    id: "goldspotted-trevally",
+    english_name: "Goldspotted Trevally",
+    local_name: "Jemuduk",
+    image:
+      "/images/species/saltwater/new-28-10-25/Jemuduk - Goldspotted Travelly.png",
+  },
+  {
+    id: "diagramma-pictum",
+    english_name: "Diagramma pictum",
+    local_name: "Kaci Mandi Abu",
+    image:
+      "/images/species/saltwater/new-28-10-25/Kaci Mandi Abu - Diagramma pictum.png",
+  },
+  {
+    id: "tuskfish",
+    english_name: "Tuskfish",
+    local_name: "Ketarap",
+    image: "/images/species/saltwater/new-28-10-25/Ketarap - Tuskfish.png",
+  },
+  {
+    id: "scatophagus-argus",
+    english_name: "Scatophagus argus",
+    local_name: "Kitang",
+    image:
+      "/images/species/saltwater/new-28-10-25/Kitang - Scatophagus argus.png",
+  },
+  {
+    id: "lethrinus-olivaceus",
+    english_name: "Lethrinus Olivaceus",
+    local_name: "Luping",
+    image:
+      "/images/species/saltwater/new-28-10-25/Luping - Lethrinus Olivaceus.png",
+  },
+  {
+    id: "rainbow-runner",
+    english_name: "Rainbow Runner",
+    local_name: "Pepisang",
+    image:
+      "/images/species/saltwater/new-28-10-25/Pepisang - Rainbow Runner.png",
+  },
+  {
+    id: "squirrelfish-snapper",
+    english_name: "Squirrelfish Snapper",
+    local_name: "Ruby Snapper",
+    image:
+      "/images/species/saltwater/new-28-10-25/Ruby Snapper - Squirrelfish Snapper.png",
+  },
+  {
+    id: "longfin-trevally",
+    english_name: "Longfin Trevally",
+    local_name: "Sagai",
+    image:
+      "/images/species/saltwater/new-28-10-25/Sagai - Longfin Travelly.png",
+  },
+  {
+    id: "scissortail-rasbora",
+    english_name: "Scissortail Rasbora",
+    local_name: "Seluang Gajah",
+    image:
+      "/images/species/saltwater/new-28-10-25/Seluang Gajah -  Scissortail Rasbora.png",
+  },
+  {
+    id: "terubuk",
+    english_name: "Toli Shad",
+    local_name: "Terubuk",
+    image: "/images/species/saltwater/new-28-10-25/Terubuk - Toli Shad.png",
+  },
+  {
+    id: "largehead-hairtail",
+    english_name: "Largehead Hairtail",
+    local_name: "Timah",
+    image:
+      "/images/species/saltwater/new-28-10-25/Timah - Largehead Hairtail.png",
+  },
 ];

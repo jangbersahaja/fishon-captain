@@ -242,17 +242,8 @@ export async function POST(request: NextRequest) {
       revalidatePath("/captain/bookings", "page");
       revalidatePath(`/captain/bookings/${booking.id}`, "page");
       revalidatePath("/captain/dashboard", "page");
-      revalidatePath("/captain/calendar", "page");
-
-      // Revalidate message page if conversation exists
-      const conversation = await prisma.conversation.findUnique({
-        where: { bookingId: booking.id },
-        select: { id: true },
-      });
-
-      if (conversation) {
-        revalidatePath(`/captain/messages/${conversation.id}`, "page");
-      }
+      revalidatePath("/captain/new-calendar", "page");
+      revalidatePath("/captain/messages", "page");
 
       console.log(`✅ Revalidated captain pages for booking ${booking.id}`);
     } catch (error) {

@@ -6,6 +6,7 @@ import { getCaptainReviews, getCaptainReviewStats } from "@/lib/review-service";
 import { summariseBadges } from "@/utils/reviewBadges";
 import { Star } from "lucide-react";
 import { getServerSession } from "next-auth";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
@@ -283,8 +284,13 @@ export default async function CaptainReviewsPage() {
                 className="flex items-center justify-between p-4 transition-shadow border rounded-lg border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:shadow-md"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-100">
-                    <span className="text-2xl">{badge.icon}</span>
+                  <div className="flex items-center justify-center">
+                    <Image
+                      src={badge.iconUrl}
+                      alt={badge.label}
+                      width={48}
+                      height={48}
+                    />
                   </div>
                   <div>
                     <p className="font-medium text-slate-900">{badge.label}</p>
@@ -293,7 +299,7 @@ export default async function CaptainReviewsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-col items-center justify-center w-16 h-16 rounded-lg bg-slate-100">
+                <div className="flex flex-col items-center justify-center w-16 h-16 ml-3 rounded-lg bg-slate-100">
                   <span className="text-2xl font-bold text-slate-900">
                     {count}
                   </span>

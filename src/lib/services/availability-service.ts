@@ -152,26 +152,27 @@ export async function validateUnavailability(
   startDate: Date,
   endDate: Date,
   excludeId?: string
-): Promise<{ canCreate: boolean; message?: string }> {
+): Promise<{
+  canCreate: boolean;
+  message?: string;
+  conflict?: CharterUnavailability;
+}> {
   // Check for overlapping unavailability blocks
-  const existingBlocks = await prisma.charterUnavailability.findMany({
+  const conflict = await prisma.charterUnavailability.findFirst({
     where: {
       charterId,
       id: excludeId ? { not: excludeId } : undefined,
-      OR: [
-        {
-          // New block starts during existing block
-          startDate: { lte: endDate },
-          endDate: { gte: startDate },
-        },
-      ],
+      startDate: { lte: endDate },
+      endDate: { gte: startDate },
     },
+    orderBy: { startDate: "asc" },
   });
 
-  if (existingBlocks.length > 0) {
+  if (conflict) {
     return {
       canCreate: false,
       message: "Date range overlaps with existing unavailability block",
+      conflict,
     };
   }
 

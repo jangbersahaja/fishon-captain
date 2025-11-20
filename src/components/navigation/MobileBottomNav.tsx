@@ -39,7 +39,7 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
       icon: <LayoutDashboard className="w-6 h-6" />,
     },
     {
-      href: "/captain/calendar",
+      href: "/captain/new-calendar",
       label: "Calendar",
       icon: <Calendar className="w-6 h-6" />,
     },

@@ -4,7 +4,7 @@
 export type ReviewBadge = {
   id: string;
   label: string;
-  icon: string;
+  iconUrl: string;
   description: string;
 };
 
@@ -12,73 +12,49 @@ export const REVIEW_BADGES: ReviewBadge[] = [
   {
     id: "crew_mvp",
     label: "Crew MVP",
-    icon: "🧑‍✈️",
+    iconUrl: "/images/badges/FO_CaptainMVP.svg",
     description: "Crew felt attentive, friendly, and easy to learn from.",
-  },
-  {
-    id: "safety_first",
-    label: "Safety First",
-    icon: "🛟",
-    description: "Briefings, gear, and handling made the trip feel secure.",
   },
   {
     id: "expert_guide",
     label: "Expert Guide",
-    icon: "🎯",
+    iconUrl: "/images/badges/FO_ExpertGuide.svg",
     description: "Captain read the water well and shared useful tactics.",
   },
   {
     id: "epic_catch",
     label: "Epic Catch",
-    icon: "🐟",
+    iconUrl: "/images/badges/FO_EpicCatch.svg",
     description: "Guests landed memorable fish or filled the cooler.",
   },
   {
     id: "family_friendly",
     label: "Family Friendly",
-    icon: "👨‍👩‍👧",
+    iconUrl: "/images/badges/FO_FamilyFriendly.svg",
     description: "Kids and elders were comfortable and engaged throughout.",
-  },
-  {
-    id: "smooth_sailing",
-    label: "Smooth Sailing",
-    icon: "⛵",
-    description: "Schedule, boarding, and ride quality were hassle free.",
-  },
-  {
-    id: "top_gear",
-    label: "Top Gear",
-    icon: "🧰",
-    description: "Rods, reels, bait, and electronics were dialed in.",
   },
   {
     id: "scenic_escape",
     label: "Scenic Escape",
-    icon: "🌅",
+    iconUrl: "/images/badges/FO_ScenicEscape.svg",
     description: "Routes included photogenic views or wildlife moments.",
   },
   {
     id: "eco_minded",
     label: "Eco Minded",
-    icon: "🌿",
+    iconUrl: "/images/badges/FO_EcoMind.svg",
     description: "Catch care and clean practices respected the water.",
-  },
-  {
-    id: "worth_the_price",
-    label: "Worth the Price",
-    icon: "💰",
-    description: "Trip value felt strong compared to its cost.",
   },
   {
     id: "night_owl",
     label: "Night Owl",
-    icon: "🌙",
+    iconUrl: "/images/badges/FO_NightOwl.svg",
     description: "Night missions ran smoothly with good lighting and vibe.",
   },
   {
     id: "photo_ready",
     label: "Photo Ready",
-    icon: "📸",
+    iconUrl: "/images/badges/FO_PhotoReady.svg",
     description: "Crew captured great shots or set up scenic backdrops.",
   },
 ];
@@ -112,7 +88,11 @@ function createRng(seed: string) {
   };
 }
 
-export function getRandomBadges(seed: string, minimum = 2, maximum = 4): ReviewBadgeId[] {
+export function getRandomBadges(
+  seed: string,
+  minimum = 2,
+  maximum = 4
+): ReviewBadgeId[] {
   const rng = createRng(seed);
   const pool = [...REVIEW_BADGES];
   const result: ReviewBadgeId[] = [];
@@ -151,7 +131,9 @@ export function summariseBadges(
   const list = Array.from(tally.entries())
     .map(([id, count]) => ({ badge: BADGE_LOOKUP[id], count }))
     .filter((item) => Boolean(item.badge))
-    .sort((a, b) => b.count - a.count || a.badge.label.localeCompare(b.badge.label));
+    .sort(
+      (a, b) => b.count - a.count || a.badge.label.localeCompare(b.badge.label)
+    );
 
   return list;
 }

@@ -9,6 +9,9 @@ import { ChatDetail } from "./chat-detail";
  * Mobile-only chat detail page
  * On desktop, chat is shown inline in /captain/messages
  */
+// Force dynamic rendering to ensure revalidation works
+export const dynamic = "force-dynamic";
+
 export default async function CaptainChatPage({
   params,
 }: {
