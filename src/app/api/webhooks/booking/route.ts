@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
         date?: string;
         anglerName?: string;
         charterName?: string;
+        bookingFlowType?: string;
+        paymentFlow?: string;
       };
     };
 
@@ -85,26 +87,44 @@ export async function POST(request: NextRequest) {
         switch (type) {
           case "booking.created":
             console.log(
-              `📝 [WEBHOOK] Creating BOOKING_RECEIVED notification...`
+              `📝 [WEBHOOK] Creating BOOKING_RECEIVED notification...`,
+              {
+                bookingFlowType: booking.bookingFlowType,
+                status: booking.status,
+              }
             );
+
+            // For AUTO flow with PAYMENT_AUTHORIZED, show different message
+            const isAutoFlowPaid =
+              booking.bookingFlowType === "AUTO" &&
+              booking.status === "PAYMENT_AUTHORIZED";
+
             await createNotification({
               type: "BOOKING_RECEIVED",
               userId: captainUserId,
-              title: "New Booking Request! 🎣",
-              message: `${booking.anglerName || "An angler"} requested a booking for ${
-                booking.charterName || "your charter"
-              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""}.`,
+              title: isAutoFlowPaid
+                ? "New Paid Booking! 💰"
+                : "New Booking Request! 🎣",
+              message: isAutoFlowPaid
+                ? `${booking.anglerName || "An angler"} booked ${
+                    booking.charterName || "your charter"
+                  }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""}. Payment authorized and secured!`
+                : `${booking.anglerName || "An angler"} requested a booking for ${
+                    booking.charterName || "your charter"
+                  }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""}.`,
               actionUrl: `/captain/bookings?highlight=${booking.id}`,
-              actionLabel: "Review Request",
+              actionLabel: isAutoFlowPaid ? "View Booking" : "Review Request",
               metadata: {
                 bookingId: booking.id,
                 charterId: booking.charterId,
                 anglerName: booking.anglerName,
                 date: booking.date,
+                bookingFlowType: booking.bookingFlowType,
+                status: booking.status,
               },
             });
             console.log(
-              `✅ BOOKING_RECEIVED notification sent to captain ${captainUserId}`
+              `✅ BOOKING_RECEIVED notification sent to captain ${captainUserId} (flowType: ${booking.bookingFlowType}, status: ${booking.status})`
             );
             break;
 
@@ -222,6 +242,8 @@ export async function POST(request: NextRequest) {
       revalidatePath("/captain/bookings", "page");
       revalidatePath(`/captain/bookings/${booking.id}`, "page");
       revalidatePath("/captain/dashboard", "page");
+      revalidatePath("/captain/new-calendar", "page");
+      revalidatePath("/captain/messages", "page");
 
       console.log(`✅ Revalidated captain pages for booking ${booking.id}`);
     } catch (error) {

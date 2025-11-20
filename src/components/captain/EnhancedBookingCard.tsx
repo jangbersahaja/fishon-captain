@@ -1,22 +1,12 @@
 "use client";
 
 import { BookingActions } from "@/app/(portal)/captain/bookings/BookingActions";
-import { formatDate } from "@/lib/datetime";
 import type { EnrichedMarketBooking } from "@/lib/enrich-booking";
-import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
-import {
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  CircleDollarSign,
-  Clock,
-  Users,
-} from "lucide-react";
+import { CircleDollarSign, Clock, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { BookingStatusBadge } from "./BookingStatusBadge";
-import { BookingTimeline } from "./BookingTimeline";
 
 interface EnhancedBookingCardProps {
   booking: EnrichedMarketBooking;
@@ -124,141 +114,59 @@ export function EnhancedBookingCard({
 
             {/* Trip Details - Same as Mobile */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="flex items-start gap-2">
-                <Calendar
-                  className={`text-slate-400 mt-0.5 flex-shrink-0 ${isCompact ? "w-3.5 h-3.5" : "w-4 h-4"}`}
-                />
-                <div className="min-w-0">
-                  <div
-                    className={`text-slate-500 ${isCompact ? "text-[10px]" : "text-xs"}`}
-                  >
-                    Date
+              {/* Time Slots (rich schedule) */}
+              {booking.formattedTimeSlots &&
+                booking.formattedTimeSlots.length > 0 && (
+                  <div className="col-span-2 px-3 py-2 space-y-1 rounded-lg bg-slate-50">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                      <Clock className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Trip Schedule</span>
+                    </div>
+                    <ul className="ml-5 space-y-0.5 list-disc">
+                      {booking.formattedTimeSlots.map((slot) => (
+                        <li key={slot} className="text-xs text-slate-700">
+                          {slot}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div
-                    className={`font-medium text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
-                  >
-                    <span>
-                      {new Date(booking.date).toLocaleDateString("en-MY", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                    {booking.days > 1 && (
-                      <span>
-                        {" - "}
-                        {new Date(
-                          new Date(booking.date).getTime() +
-                            booking.days * 24 * 60 * 60 * 1000
-                        ).toLocaleDateString("en-MY", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={`text-slate-600 ${isCompact ? "text-[10px]" : "text-xs"}`}
-                  >
-                    {booking.days} day{booking.days !== 1 ? "s" : ""}
-                  </div>
+                )}
+
+              <div className="px-3 py-2 space-y-1 rounded-lg bg-slate-50">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <Users className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Guests</span>
                 </div>
+                <span
+                  className={`font-medium text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
+                >
+                  {booking.adults} adult{booking.adults !== 1 ? "s" : ""}
+                  {booking.children > 0 &&
+                    `, ${booking.children} child${booking.children !== 1 ? "ren" : ""}`}
+                </span>
               </div>
 
-              {booking.startTime && (
-                <div className="flex items-start gap-2">
-                  <Clock
-                    className={`text-slate-400 mt-0.5 flex-shrink-0 ${isCompact ? "w-3.5 h-3.5" : "w-4 h-4"}`}
-                  />
-                  <div className="min-w-0">
-                    <div
-                      className={`text-slate-500 ${isCompact ? "text-[10px]" : "text-xs"}`}
-                    >
-                      Time
-                    </div>
-                    <div
-                      className={`font-medium text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
-                    >
-                      {convert24to12Hour(booking.startTime)}
-                    </div>
-                  </div>
+              <div className="px-3 py-2 space-y-1 rounded-lg bg-slate-50">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <CircleDollarSign className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Total Earning</span>
                 </div>
-              )}
-
-              <div className="flex items-start gap-2">
-                <Users
-                  className={`text-slate-400 mt-0.5 flex-shrink-0 ${isCompact ? "w-3.5 h-3.5" : "w-4 h-4"}`}
-                />
-                <div className="min-w-0">
-                  <div
-                    className={`text-slate-500 ${isCompact ? "text-[10px]" : "text-xs"}`}
-                  >
-                    Guests
-                  </div>
-                  <div
-                    className={`font-medium text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
-                  >
-                    {booking.adults} adult{booking.adults !== 1 ? "s" : ""}
-                    {booking.children > 0 &&
-                      `, ${booking.children} child${booking.children !== 1 ? "ren" : ""}`}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2">
-                <CircleDollarSign
-                  className={`text-slate-400 mt-0.5 flex-shrink-0 ${isCompact ? "w-3.5 h-3.5" : "w-4 h-4"}`}
-                />
-                <div className="min-w-0">
-                  <div
-                    className={`text-slate-500 ${isCompact ? "text-[10px]" : "text-xs"}`}
-                  >
-                    Total Price
-                  </div>
-                  <div
-                    className={`font-semibold text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
-                  >
-                    RM {booking.totalPrice.toLocaleString()}
-                  </div>
-                </div>
+                <span
+                  className={`font-semibold text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
+                >
+                  RM {(booking.captainEarnings ?? 0).toLocaleString()}
+                </span>
               </div>
             </div>
 
-            {/* Expandable Section - Note & Timeline */}
+            {/* Note */}
             {booking.note && (
-              <>
-                {isExpanded && (
-                  <div className="pt-2 mt-2 space-y-2 border-t border-slate-100">
-                    {booking.note && (
-                      <div className="p-2 border border-blue-100 rounded-lg bg-blue-50">
-                        <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-900">
-                          Angler&apos;s Note
-                        </div>
-                        <div className="text-xs text-blue-800">
-                          {booking.note}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center gap-1 text-xs transition-colors text-slate-600 hover:text-slate-900"
-                >
-                  {isExpanded ? (
-                    <>
-                      <ChevronUp className="w-3.5 h-3.5" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                      Show More
-                    </>
-                  )}
-                </button>
-              </>
+              <div className="p-2.5 border border-slate-200 rounded-lg bg-slate-50">
+                <div className="mb-1 text-xs font-semibold text-slate-700">
+                  Angler&apos;s Note:
+                </div>
+                <div className="text-sm text-slate-700">{booking.note}</div>
+              </div>
             )}
 
             {/* Actions - Horizontal at Bottom */}
@@ -334,51 +242,48 @@ export function EnhancedBookingCard({
 
         {/* Trip Details */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-start gap-2">
-            <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="text-xs text-slate-500">Date</div>
-              <div className="text-sm font-medium text-slate-900">
-                {formatDate(booking.date)}
-              </div>
-              <div className="text-xs text-slate-600">
-                {booking.days} day{booking.days !== 1 ? "s" : ""}
-              </div>
-            </div>
-          </div>
-
-          {booking.startTime && (
-            <div className="flex items-start gap-2">
-              <Clock className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-              <div className="min-w-0">
-                <div className="text-xs text-slate-500">Time</div>
-                <div className="text-sm font-medium text-slate-900">
-                  {booking.startTime}
+          {/* Time Slots (rich schedule) */}
+          {booking.formattedTimeSlots &&
+            booking.formattedTimeSlots.length > 0 && (
+              <div className="col-span-2 px-3 py-2 space-y-1 rounded-lg bg-slate-50">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <Clock className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Trip Schedule</span>
                 </div>
+                <ul className="ml-5 space-y-0.5 list-disc">
+                  {booking.formattedTimeSlots.map((slot) => (
+                    <li key={slot} className="text-xs text-slate-700">
+                      {slot}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="flex items-start gap-2">
-            <Users className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="text-xs text-slate-500">Guests</div>
-              <div className="text-sm font-medium text-slate-900">
-                {booking.adults} adult{booking.adults !== 1 ? "s" : ""}
-                {booking.children > 0 &&
-                  `, ${booking.children} child${booking.children !== 1 ? "ren" : ""}`}
-              </div>
+          <div className="px-3 py-2 space-y-1 rounded-lg bg-slate-50">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <Users className="w-3.5 h-3.5 text-slate-500" />
+              <span>Guests</span>
             </div>
+            <span
+              className={`font-medium text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
+            >
+              {booking.adults} adult{booking.adults !== 1 ? "s" : ""}
+              {booking.children > 0 &&
+                `, ${booking.children} child${booking.children !== 1 ? "ren" : ""}`}
+            </span>
           </div>
 
-          <div className="flex items-start gap-2">
-            <CircleDollarSign className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="text-xs text-slate-500">Total Price</div>
-              <div className="text-sm font-semibold text-slate-900">
-                RM {(booking.captainEarnings ?? 0).toLocaleString()}
-              </div>
+          <div className="px-3 py-2 space-y-1 rounded-lg bg-slate-50">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <CircleDollarSign className="w-3.5 h-3.5 text-slate-500" />
+              <span>Total Earning</span>
             </div>
+            <span
+              className={`font-semibold text-slate-900 ${isCompact ? "text-xs" : "text-sm"}`}
+            >
+              RM {(booking.captainEarnings ?? 0).toLocaleString()}
+            </span>
           </div>
         </div>
 
@@ -389,20 +294,6 @@ export function EnhancedBookingCard({
               Angler&apos;s Note:
             </div>
             <div className="text-sm text-slate-700">{booking.note}</div>
-          </div>
-        )}
-
-        {/* Timeline */}
-        {showTimeline && (
-          <div className="pt-3 border-t border-slate-100">
-            <BookingTimeline
-              status={booking.status}
-              createdAt={booking.createdAt}
-              updatedAt={booking.updatedAt}
-              tripDate={new Date(booking.date)}
-              rejectionReason={booking.rejectionReason}
-              cancellationReason={booking.cancellationReason}
-            />
           </div>
         )}
 

@@ -96,6 +96,10 @@ export async function approveBooking(bookingId: string) {
     });
 
     // Revalidate relevant pages
+    revalidatePath("/captain/bookings");
+    revalidatePath(`/captain/bookings/${bookingId}`);
+    revalidatePath("/captain/dashboard");
+    revalidatePath("/captain/new-calendar");
     revalidatePath("/captain/messages");
     revalidatePath(`/captain/messages/${booking.conversation?.id}`);
 
@@ -209,6 +213,11 @@ export async function rejectBooking(
       reason: rejectionReason,
     });
 
+    // Revalidate relevant pages
+    revalidatePath("/captain/bookings");
+    revalidatePath(`/captain/bookings/${bookingId}`);
+    revalidatePath("/captain/dashboard");
+    revalidatePath("/captain/new-calendar");
     revalidatePath("/captain/messages");
 
     return {

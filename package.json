@@ -17,7 +17,10 @@
     "migrate:heic": "tsx scripts/migrate-heic-to-jpeg.ts",
     "migrate:avatar": "tsx scripts/migrate-avatar-heic-to-jpeg.ts",
     "check:media": "tsx scripts/check-media-status.ts",
-    "check:avatar": "tsx scripts/check-avatar-status.ts"
+    "check:avatar": "tsx scripts/check-avatar-status.ts",
+    "db:backup": "./scripts/backup-db.sh",
+    "db:restore": "./scripts/restore-db.sh",
+    "db:migrate:safe": "./scripts/safe-migrate.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

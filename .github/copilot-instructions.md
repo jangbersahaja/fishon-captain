@@ -60,11 +60,135 @@ npm run test:ci           # single-run mode with dot reporter
 ### Database
 
 ```bash
+npm run db:migrate:safe <migration-name> # SAFE migration with auto-backup
 npx prisma migrate dev
 npx prisma generate
 npx prisma studio
 npm run migrate:drift-heal  # Schema drift healing
 ```
+
+## Database Backup & Migration Safety
+
+**CRITICAL**: Always backup before database migrations. We learned this lesson the hard way after a data loss incident.
+
+### Backup Strategy
+
+The project includes automated backup scripts to prevent data loss during migrations:
+
+#### Quick Reference
+
+```bash
+# Safe migration (RECOMMENDED - auto-backup + review + apply)
+npm run db:migrate:safe migration-name
+
+# Manual backup
+npm run db:backup backup-name
+
+# Restore from backup
+npm run db:restore ./backups/backup-file.sql.gz
+```
+
+#### Migration Workflow (ALWAYS USE THIS)
+
+1.  **Before any schema change**: Create a backup
+    `npm run db:backup pre-migration`
+2.  **Make schema changes**: Edit `prisma/schema.prisma`
+3.  **Run safe migration**: Auto-backup, review SQL, confirm, apply
+    `npm run db:migrate:safe add_user_field`
+4.  **Verify migration**: Check database and run tests
+    `npm run typecheck`
+    `npm test`
+
+#### Backup Scripts Location
+
+All scripts are in `scripts/` directory:
+
+- **`backup-db.sh`**: Creates timestamped, compressed backups
+  - Stores in `./backups/` directory
+  - Auto-cleanup: keeps last 10 backups
+  - Compression: gzip for space efficiency
+- **`restore-db.sh`**: Restores from backup file
+  - Lists available backups if none specified
+  - Creates safety backup before restore
+  - Requires "yes" confirmation to prevent accidents
+- **`safe-migrate.sh`**: Complete migration workflow
+  - Step 1: Auto-backup (pre-{migration}\_{timestamp})
+  - Step 2: Create migration (--create-only)
+  - Step 3: Show SQL for review
+  - Step 4: Apply after user confirmation
+  - Provides rollback instructions on failure
+
+#### Critical Rules
+
+**NEVER DO THIS:**
+
+- ❌ `npx prisma migrate reset` on databases with important data
+- ❌ Run migrations without reviewing the SQL first
+- ❌ Skip backups "just this once"
+- ❌ Edit migration files directly after creation
+
+**ALWAYS DO THIS:**
+
+- ✅ Use `npm run db:migrate:safe` for all migrations
+- ✅ Review migration SQL before applying
+- ✅ Keep backups in `./backups/` (gitignored)
+- ✅ Test migrations on development/staging first
+- ✅ Check Neon dashboard for point-in-time restore options
+
+#### Emergency Rollback
+
+If a migration fails or causes issues:
+
+```bash
+# 1. List available backups
+ls -lh ./backups/
+
+# 2. Restore from pre-migration backup
+npm run db:restore ./backups/pre-migration_TIMESTAMP.sql.gz
+
+# 3. Regenerate Prisma client
+npx prisma generate
+
+# 4. Fix the schema issue
+# Edit prisma/schema.prisma
+
+# 5. Try migration again
+npm run db:migrate:safe fixed-migration-name
+```
+
+#### Neon-Specific Features
+
+Neon PostgreSQL provides additional safety:
+
+- **Point-in-Time Restore**: Available in Neon dashboard (last 7 days, varies by plan)
+- **Branching**: Create test branch for migration testing
+
+  ```bash
+  # Install Neon CLI
+  npm install -g neonctl
+
+  # Create test branch
+  neonctl branches create --name test-migration
+
+  # Test migration on branch, then apply to main if successful
+  ```
+
+- **Automatic Snapshots**: Check Neon dashboard for available restore points
+
+#### Backup Schedule Recommendations
+
+- **Development**: Before each migration (automated with `safe-migrate.sh`)
+- **Staging**: Daily automated backups + before deployments
+- **Production**: Use Neon's built-in backups + daily S3 backups for compliance
+
+#### Documentation
+
+For complete documentation, see: `scripts/README.md`
+
+- Usage examples for all scripts
+- Troubleshooting guide
+- Neon-specific features
+- Advanced backup strategies
 
 ## Video Pipeline (Critical Path)
 
