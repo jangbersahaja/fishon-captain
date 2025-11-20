@@ -5,56 +5,33 @@
  * Unlocks a locked user account
  */
 
-import { authOptions } from "@/lib/auth";
 import { applySecurityHeaders } from "@/lib/headers";
 import { prisma } from "@/lib/prisma";
-import { rateLimit } from "@/lib/rateLimiter";
 import { withTiming } from "@/lib/requestTiming";
 import { writeAuditLog } from "@/server/audit";
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminOrStaff } from "@/lib/api/admin-middleware";
+import { checkRateLimit } from "@/lib/api/admin-middleware";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withTiming("admin_unlock_account", async () => {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return applySecurityHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    // Check admin/staff role
-    const userRole = session.user.role;
-    if (userRole !== "ADMIN" && userRole !== "STAFF") {
-      return applySecurityHeaders(
-        NextResponse.json(
-          { error: "Forbidden - Admin access required" },
-          { status: 403 }
-        )
-      );
+    // Check authentication and authorization
+    const authResult = await requireAdminOrStaff();
+    if (!authResult.success) {
+      return authResult.response;
     }
 
     // Rate limiting
-    const identifier = `admin_unlock_${session.user.id}`;
-    const rateLimitResult = await rateLimit({
-      key: identifier,
+    const rateLimitResult = await checkRateLimit({
+      key: `admin_unlock_${authResult.userId}`,
       windowMs: 60 * 1000,
       max: 10,
     });
     if (!rateLimitResult.allowed) {
-      return applySecurityHeaders(
-        NextResponse.json(
-          {
-            error: "Too many requests",
-            resetAt: rateLimitResult.resetAt,
-          },
-          { status: 429 }
-        )
-      );
+      return rateLimitResult.response!;
     }
 
     try {
@@ -105,7 +82,7 @@ export async function POST(
       // Write audit log
       await writeAuditLog({
         action: "UNLOCK_ACCOUNT",
-        actorUserId: session.user.id,
+        actorUserId: authResult.userId,
         entityType: "captainProfile",
         entityId: userId,
         after: {
