@@ -4,15 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
+import { MermaidDiagram } from "@/components/MermaidDiagram";
 
 export default function CharterRegistrationPage() {
-  useEffect(() => {
-    import("mermaid").then((mermaid) => {
-      mermaid.default.initialize({ startOnLoad: true, theme: "default" });
-      mermaid.default.contentLoaded();
-    });
-  }, []);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -43,8 +37,7 @@ export default function CharterRegistrationPage() {
               <CardDescription>Multi-step wizard with validation and live preview</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`graph TD
+              <MermaidDiagram chart={`graph TD
     A[Start Registration] --> B[Step 1: Basic Info]
     B --> C[Step 2: Boat Details]
     C --> D[Step 3: Trip Details]
@@ -79,8 +72,7 @@ export default function CharterRegistrationPage() {
     style L fill:#c8e6c9
     style Q fill:#c8e6c9
     style M fill:#ffcdd2
-    style J fill:#fff3e0`}
-              </div>
+    style J fill:#fff3e0`} />
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <div className="p-4 bg-muted rounded-lg">
@@ -120,8 +112,7 @@ export default function CharterRegistrationPage() {
               <CardDescription>Auto-save with optimistic locking and conflict resolution</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`sequenceDiagram
+              <MermaidDiagram chart={`sequenceDiagram
     participant User
     participant Form
     participant LocalStorage
@@ -169,8 +160,7 @@ export default function CharterRegistrationPage() {
     Form->>User: Redirect to Charter Dashboard
     
     style API fill:#e3f2fd
-    style DB fill:#fff3e0`}
-              </div>
+    style DB fill:#fff3e0`} />
 
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <h3 className="font-semibold mb-2">Conflict Resolution:</h3>
@@ -195,8 +185,7 @@ export default function CharterRegistrationPage() {
               <CardDescription>Direct Vercel Blob uploads with validation</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`graph TD
+              <MermaidDiagram chart={`graph TD
     A[User Selects Media] --> B{Media Type}
     
     B -->|Photos| C[Photo Validation]
@@ -228,8 +217,7 @@ export default function CharterRegistrationPage() {
     
     style F fill:#e3f2fd
     style Q fill:#c8e6c9
-    style G fill:#ffcdd2`}
-              </div>
+    style G fill:#ffcdd2`} />
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
@@ -265,8 +253,7 @@ export default function CharterRegistrationPage() {
               <CardDescription>External worker integration with queue and status tracking</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`graph TB
+              <MermaidDiagram chart={`graph TB
     A[Video Upload Complete] --> B[POST /api/blob/finish]
     
     B --> C[Probe with ffprobe]
@@ -303,8 +290,7 @@ export default function CharterRegistrationPage() {
     style E fill:#e3f2fd
     style R fill:#c8e6c9
     style V fill:#ffcdd2
-    style W fill:#c8e6c9`}
-              </div>
+    style W fill:#c8e6c9`} />
 
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <h3 className="font-semibold mb-2">Video Status Flow:</h3>

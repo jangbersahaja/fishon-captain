@@ -4,15 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
+import { MermaidDiagram } from "@/components/MermaidDiagram";
 
 export default function VideoUploadPage() {
-  useEffect(() => {
-    import("mermaid").then((mermaid) => {
-      mermaid.default.initialize({ startOnLoad: true, theme: "default" });
-      mermaid.default.contentLoaded();
-    });
-  }, []);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -43,8 +37,7 @@ export default function VideoUploadPage() {
               <CardDescription>From selection to normalization</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`graph TD
+              <MermaidDiagram chart={`graph TD
     A[User Selects Video] --> B{Check Duration & Size}
     
     B -->|>30s| C[Open Trim Modal]
@@ -87,8 +80,7 @@ export default function VideoUploadPage() {
     style X fill:#c8e6c9
     style Y fill:#c8e6c9
     style E fill:#ffcdd2
-    style M fill:#ffcdd2`}
-              </div>
+    style M fill:#ffcdd2`} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -100,8 +92,7 @@ export default function VideoUploadPage() {
               <CardDescription>IndexedDB persistence with retry logic and concurrency control</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`stateDiagram-v2
+              <MermaidDiagram chart={`stateDiagram-v2
     [*] --> Pending: Add to Queue
     
     Pending --> Uploading: Start Upload (if slots available)
@@ -134,8 +125,7 @@ export default function VideoUploadPage() {
     note right of Failed
         Exponential backoff:
         1s → 2s → 4s → 8s
-    end note`}
-              </div>
+    end note`} />
 
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <h3 className="font-semibold mb-2">Queue Features:</h3>
@@ -158,8 +148,7 @@ export default function VideoUploadPage() {
               <CardDescription>WhatsApp-style trim interface with real-time preview</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`graph LR
+              <MermaidDiagram chart={`graph LR
     A[Video >30s Detected] --> B[Open Trim Modal]
     
     B --> C[Load Video in Player]
@@ -184,8 +173,7 @@ export default function VideoUploadPage() {
     style B fill:#e3f2fd
     style M fill:#fff3e0
     style O fill:#c8e6c9
-    style H fill:#ffcdd2`}
-              </div>
+    style H fill:#ffcdd2`} />
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <div className="p-4 bg-muted rounded-lg">
@@ -220,8 +208,7 @@ export default function VideoUploadPage() {
               <CardDescription>QStash-based normalization with callback</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`sequenceDiagram
+              <MermaidDiagram chart={`sequenceDiagram
     participant Captain as fishon-captain
     participant Queue as /api/videos/queue
     participant QStash
@@ -264,8 +251,7 @@ export default function VideoUploadPage() {
     end
     
     style Worker fill:#e3f2fd
-    style Callback fill:#c8e6c9`}
-              </div>
+    style Callback fill:#c8e6c9`} />
 
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <h3 className="font-semibold mb-2">Worker Configuration:</h3>
