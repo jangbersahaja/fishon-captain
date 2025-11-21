@@ -44,7 +44,7 @@ export function CharterActions({
   };
 
   const handleLockToggle = async () => {
-    const action = isLocked ? "unlock" : "lock";
+    const _action = isLocked ? "unlock" : "lock";
     const actionText = isLocked ? "unlock" : "lock";
 
     if (

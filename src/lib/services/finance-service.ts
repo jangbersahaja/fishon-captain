@@ -3,6 +3,25 @@ import { prismaMarket } from "@/lib/prisma-market";
 
 export type TimePeriod = "7d" | "30d" | "90d" | "1y" | "all";
 
+/**
+ * Dashboard earnings summary with period comparison
+ *
+ * @property currentPeriod - Captain earnings in the selected period
+ * @property previousPeriod - Captain earnings in the comparison period
+ * @property percentChange - Percentage change from previous to current period
+ * @property pending - Pending payouts awaiting processing
+ * @property nextPayoutDate - Estimated next payout date if pending > 0
+ * @property commissionRate - Captain's commission rate based on pricing plan
+ */
+export interface EarningsSummary {
+  currentPeriod: number;
+  previousPeriod: number;
+  percentChange: number;
+  pending: number;
+  nextPayoutDate: Date | null;
+  commissionRate: number;
+}
+
 export interface RevenueStats {
   totalRevenue: number; // Sum of finalPrice (PAID bookings)
   platformRevenue: number; // Sum of platformFee
@@ -837,4 +856,180 @@ export async function getCaptainBookings(
     status: "PAID",
     ...filters,
   });
+}
+
+/**
+ * Calculate date range for a given period from today
+ *
+ * @param period - "7d", "30d", "90d", "1y", or "all"
+ * @returns Object with startDate and endDate boundaries
+ */
+function getPeriodBoundaries(period: TimePeriod): {
+  startDate: Date;
+  endDate: Date;
+} {
+  const endDate = new Date();
+  endDate.setHours(23, 59, 59, 999);
+
+  const startDate = new Date(endDate);
+
+  if (period === "all") {
+    startDate.setFullYear(1970); // Very far past
+  } else if (period === "7d") {
+    startDate.setDate(startDate.getDate() - 7);
+  } else if (period === "30d") {
+    startDate.setDate(startDate.getDate() - 30);
+  } else if (period === "90d") {
+    startDate.setDate(startDate.getDate() - 90);
+  } else if (period === "1y") {
+    startDate.setFullYear(startDate.getFullYear() - 1);
+  }
+
+  startDate.setHours(0, 0, 0, 0);
+  return { startDate, endDate };
+}
+
+/**
+ * Get earnings summary for a captain with period comparison
+ *
+ * Compares current period earnings to previous period and calculates metrics
+ * needed for the dashboard earnings card. Period is compared to an equal
+ * preceding period (e.g., last 30d vs previous 30d).
+ *
+ * Data sources:
+ * - Captain DB: Charter (to determine pricing plan and commission rate)
+ * - Market DB: Booking (PAID bookings with captainEarnings and payoutStatus)
+ * - Captain DB: Payout (to verify payout history)
+ *
+ * @param userId - Captain's user ID (used to find owned charters)
+ * @param period - Time period to analyze: "7d" (default), "30d", "90d", "1y", or "all"
+ * @returns Earnings summary with current/previous comparison and next payout estimate
+ *
+ * @example
+ * const summary = await getEarningsSummary("user-123", "30d");
+ * console.log(summary.currentPeriod); // Earnings this month
+ * console.log(summary.percentChange); // Growth vs last month
+ * console.log(summary.pending); // Awaiting payout
+ */
+export async function getEarningsSummary(
+  userId: string,
+  period: TimePeriod = "30d"
+): Promise<EarningsSummary> {
+  // Fetch captain's charters to determine commission rate
+  const charters = await prisma.charter.findMany({
+    where: { ownerId: userId },
+    select: { id: true, pricingPlan: true },
+  });
+
+  // Determine lowest commission rate from all charters
+  const commissionRate = charters.some((c) => c.pricingPlan === "GOLD")
+    ? 0.05
+    : charters.some((c) => c.pricingPlan === "SILVER")
+      ? 0.08
+      : 0.1; // BASIC
+
+  if (charters.length === 0) {
+    return {
+      currentPeriod: 0,
+      previousPeriod: 0,
+      percentChange: 0,
+      pending: 0,
+      nextPayoutDate: null,
+      commissionRate,
+    };
+  }
+
+  const charterIds = charters.map((c) => c.id);
+
+  // Get period boundaries
+  const { startDate: currentStart, endDate: currentEnd } =
+    getPeriodBoundaries(period);
+
+  // Calculate previous period boundaries
+  const periodMs = currentStart.getTime() - currentEnd.getTime();
+  const previousEnd = new Date(currentStart.getTime() - 1); // Just before current period starts
+  const previousStart = new Date(previousEnd.getTime() - Math.abs(periodMs));
+
+  // Fetch all PAID bookings for this captain's charters
+  const bookings = await prismaMarket.booking.findMany({
+    where: {
+      charterId: { in: charterIds },
+      status: "PAID",
+    },
+    select: {
+      id: true,
+      captainEarnings: true,
+      payoutStatus: true,
+      createdAt: true,
+    },
+  });
+
+  // Partition bookings by period
+  type Booking = (typeof bookings)[0];
+  const currentPeriodBookings = bookings.filter(
+    (b: Booking) => b.createdAt >= currentStart && b.createdAt <= currentEnd
+  );
+  const previousPeriodBookings = bookings.filter(
+    (b: Booking) => b.createdAt >= previousStart && b.createdAt <= previousEnd
+  );
+
+  // Calculate earnings
+  const currentPeriod = currentPeriodBookings.reduce(
+    (sum: number, b: Booking) => {
+      const earnings = b.captainEarnings
+        ? typeof b.captainEarnings === "number"
+          ? b.captainEarnings
+          : Number(b.captainEarnings)
+        : 0;
+      return sum + (isNaN(earnings) ? 0 : earnings);
+    },
+    0
+  );
+
+  const previousPeriod = previousPeriodBookings.reduce(
+    (sum: number, b: Booking) => {
+      const earnings = b.captainEarnings
+        ? typeof b.captainEarnings === "number"
+          ? b.captainEarnings
+          : Number(b.captainEarnings)
+        : 0;
+      return sum + (isNaN(earnings) ? 0 : earnings);
+    },
+    0
+  );
+
+  // Calculate percent change
+  let percentChange = 0;
+  if (previousPeriod === 0) {
+    // If previous was 0, show 100% if current > 0 or -100 if current = 0
+    percentChange = currentPeriod > 0 ? 100 : 0;
+  } else {
+    percentChange = ((currentPeriod - previousPeriod) / previousPeriod) * 100;
+  }
+
+  // Calculate pending payouts (PENDING status bookings)
+  const pending = bookings
+    .filter((b: Booking) => b.payoutStatus === "PENDING")
+    .reduce((sum: number, b: Booking) => {
+      const earnings = b.captainEarnings
+        ? typeof b.captainEarnings === "number"
+          ? b.captainEarnings
+          : Number(b.captainEarnings)
+        : 0;
+      return sum + (isNaN(earnings) ? 0 : earnings);
+    }, 0);
+
+  // Estimate next payout date (1st of next month)
+  const now = new Date();
+  const nextPayoutDate =
+    pending > 0 ? new Date(now.getFullYear(), now.getMonth() + 1, 1) : null;
+
+  return {
+    currentPeriod: Math.round(currentPeriod * 100) / 100,
+    previousPeriod: Math.round(previousPeriod * 100) / 100,
+    percentChange: Math.round(percentChange * 100) / 100,
+    pending: Math.round(pending * 100) / 100,
+    nextPayoutDate,
+    commissionRate,
+  };
 }

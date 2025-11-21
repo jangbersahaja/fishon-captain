@@ -23,11 +23,12 @@ interface EnhancedBookingCardProps {
 export function EnhancedBookingCard({
   booking,
   anglerInfo,
-  showTimeline = false,
+  showTimeline: _showTimeline = false,
   priority,
   viewDensity = "comfortable",
 }: EnhancedBookingCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  // For now, we won't show the timeline
+  const [isExpanded, _setIsExpanded] = useState(false);
   const isGuest = !booking.userId;
 
   // Get guest name from new structure (primaryBooker)

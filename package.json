@@ -85,6 +85,7 @@
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bcrypt": "^6.0.0",
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/google.maps": "^3.55.9",

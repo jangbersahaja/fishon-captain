@@ -18,7 +18,7 @@ type TabFilterProps = {
 
 export function TabFilter({ q, status, step, counts }: TabFilterProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const _searchParams = useSearchParams();
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Determine active main tab

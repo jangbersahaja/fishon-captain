@@ -40,19 +40,6 @@ interface TripUpdateData {
   [key: string]: unknown;
 }
 
-interface SessionLikeUser {
-  id?: string;
-}
-interface SessionLike {
-  user?: SessionLikeUser;
-}
-function getUserId(session: unknown): string | null {
-  if (!session || typeof session !== "object") return null;
-  const user = (session as SessionLike).user;
-  if (!user || typeof user !== "object") return null;
-  return typeof user.id === "string" ? user.id : null;
-}
-
 export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string }> }

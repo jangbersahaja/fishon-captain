@@ -107,7 +107,7 @@ export function PayoutTimeline({ payout }: PayoutTimelineProps) {
         <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           {stages.map((stage, index) => {
             const Icon = stage.icon;
-            const isLast = index === stages.length - 1;
+            const _isLast = index === stages.length - 1;
 
             return (
               <div

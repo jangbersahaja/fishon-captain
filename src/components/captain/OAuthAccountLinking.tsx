@@ -33,7 +33,10 @@ export default function OAuthAccountLinking() {
   const [loading, setLoading] = useState(true);
   const [linking, setLinking] = useState(false);
   const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
-  const [providerToUnlink, setProviderToUnlink] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [_providerToUnlink, setProviderToUnlink] = useState<string | null>(
+    null
+  );
   const [hasPassword, setHasPassword] = useState(true);
 
   // Check for callback messages

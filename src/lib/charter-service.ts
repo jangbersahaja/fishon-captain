@@ -355,3 +355,101 @@ export async function getEnhancedChartersList(
 
   return configs;
 }
+
+/**
+ * Charter performance summary for dashboard
+ *
+ * @property id - Charter ID
+ * @property name - Charter name
+ * @property isActive - Whether charter is currently active
+ * @property rating - Average rating (from reviews/ratings)
+ * @property bookingCount - Total count of PAID/COMPLETED bookings
+ * @property mediaCount - Total media items (photos/videos)
+ * @property lastUpdated - Last time charter was updated
+ */
+export interface CharterPerformance {
+  id: string;
+  name: string;
+  isActive: boolean;
+  rating: number | null;
+  bookingCount: number;
+  mediaCount: number;
+  lastUpdated: Date;
+}
+
+/**
+ * Get performance metrics for all charters owned by a captain
+ *
+ * Aggregates charter data with booking statistics and media counts.
+ * Used for dashboard overview to show captain which charters are performing well.
+ *
+ * Data sources:
+ * - Captain DB: Charter (basic info, rating, media count)
+ * - Market DB: Booking (booking count aggregation for PAID/COMPLETED)
+ *
+ * @param captainId - Captain's user ID (maps to Charter.ownerId)
+ * @returns Array of charters with performance metrics
+ *
+ * @example
+ * const charters = await getCharterPerformance("captain-123");
+ * charters.forEach(c => {
+ *   console.log(`${c.name}: ${c.bookingCount} bookings, ${c.mediaCount} media`);
+ * });
+ */
+export async function getCharterPerformance(
+  captainId: string
+): Promise<CharterPerformance[]> {
+  // Fetch all charters for this captain with media count
+  const charters = await prisma.charter.findMany({
+    where: { ownerId: captainId },
+    select: {
+      id: true,
+      name: true,
+      isActive: true,
+      updatedAt: true,
+      _count: {
+        select: {
+          media: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (charters.length === 0) {
+    return [];
+  }
+
+  const charterIds = charters.map((c) => c.id);
+
+  // Fetch booking counts for PAID and COMPLETED bookings
+  const bookingCounts = await prismaMarket.booking.groupBy({
+    by: ["charterId"],
+    where: {
+      charterId: { in: charterIds },
+      status: { in: ["PAID", "COMPLETED"] },
+    },
+    _count: {
+      id: true,
+    },
+  });
+
+  // Build lookup map for booking counts
+  const bookingCountMap = new Map(
+    bookingCounts.map((bc: { charterId: string; _count: { id: number } }) => [
+      bc.charterId,
+      bc._count.id,
+    ])
+  );
+
+  // Transform to performance format
+  return charters.map((charter) => ({
+    id: charter.id,
+    name: charter.name,
+    isActive: charter.isActive,
+    rating: null, // Rating would come from reviews in market DB
+    bookingCount: (bookingCountMap.get(charter.id) || 0) as number,
+    mediaCount: charter._count.media,
+    lastUpdated: charter.updatedAt,
+  }));
+}

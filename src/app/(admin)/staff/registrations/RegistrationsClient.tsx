@@ -74,7 +74,7 @@ export function RegistrationsClient({
   userMap,
   charterMap,
   noteCountMap,
-  role,
+  role: _role,
   q,
   status,
   step,

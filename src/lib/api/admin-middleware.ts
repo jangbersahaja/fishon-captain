@@ -10,16 +10,16 @@ import { NextResponse } from "next/server";
 
 export type AdminRole = "ADMIN" | "STAFF";
 
-interface AuthResult {
-  userId: string;
-  role: string;
-}
+// interface AuthResult {
+//   userId: string;
+//   role: string;
+// }
 
-interface AuthError {
-  response: Response;
-}
+// interface AuthError {
+//   response: Response;
+// }
 
-export type AuthCheckResult = 
+export type AuthCheckResult =
   | { success: true; userId: string; role: string }
   | { success: false; response: Response };
 
