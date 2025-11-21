@@ -50,6 +50,7 @@ model User {
   notificationPreferences  NotificationPreferences?
   notifications            Notification[]
   payouts                  Payout[]                 @relation("OwnerPayouts")
+  dismissedMessages        MessageDismissal[]
 }
 
 model CaptainProfile {
@@ -708,4 +709,19 @@ model Payout {
   @@index([ownerId, status])
   @@index([batchId])
   @@index([status, scheduledAt])
+}
+
+/// Message dismissal tracking - records when a captain dismisses a system message
+model MessageDismissal {
+  id          String   @id @default(cuid())
+  userId      String
+  messageId   String
+  dismissedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId])
+  @@index([userId, dismissedAt])
+  @@index([userId])
+  @@map("message_dismissals")
 }

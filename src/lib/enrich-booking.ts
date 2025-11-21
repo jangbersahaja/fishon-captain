@@ -58,24 +58,24 @@ function formatTimeSlots(
 
   return timeSlots.map((slot) => {
     const date = new Date(slot.startDateTime);
-    const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
-    const dateStr = date.toLocaleDateString("en-US", {
+    const dayName = date.toLocaleDateString("en-MY", { weekday: "short" });
+    const dateStr = date.toLocaleDateString("en-MY", {
       month: "short",
       day: "numeric",
     });
 
-    const startTime = new Date(slot.startDateTime).toLocaleTimeString("en-US", {
+    const startTime = new Date(slot.startDateTime).toLocaleTimeString("en-MY", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
     });
-    const endTime = new Date(slot.endDateTime).toLocaleTimeString("en-US", {
+    const endTime = new Date(slot.endDateTime).toLocaleTimeString("en-MY", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
     });
 
-    return `Day ${slot.day}: ${dayName}, ${dateStr} • ${startTime} - ${endTime}`;
+    return `${slot.day > 1 ? `Day ${slot.day}: ` : ""}  ${dayName}, ${dateStr} • ${startTime} - ${endTime}`;
   });
 }
 

@@ -107,7 +107,7 @@ export function useConversation(conversationId: string, userId: string) {
   /**
    * Fetch conversation details
    */
-  const fetchConversation = useCallback(async () => {
+  const _fetchConversation = useCallback(async () => {
     try {
       setIsLoadingConversation(true);
 

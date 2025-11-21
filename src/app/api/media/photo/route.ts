@@ -9,15 +9,6 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-interface SessionUserShape {
-  user?: { id?: string };
-}
-function getUserId(session: unknown): string | null {
-  if (!session || typeof session !== "object") return null;
-  const user = (session as SessionUserShape).user;
-  return user && typeof user.id === "string" ? user.id : null;
-}
-
 // POST /api/media/photo
 // Simple direct photo upload (resized client-side already). Creates CharterMedia immediately if charterId provided.
 export async function POST(req: Request) {

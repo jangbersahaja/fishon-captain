@@ -74,8 +74,8 @@ export function ChatDetail({
     [sendMessage, userId]
   );
 
-  // Handle quick reply selection
-  const handleQuickReply = useCallback(
+  // Quick reply handler (unused but kept for future functionality)
+  const _handleQuickReply = useCallback(
     async (reply: string) => {
       if (!userId) return;
       await sendMessage(reply);

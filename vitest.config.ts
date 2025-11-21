@@ -13,6 +13,7 @@ export default defineConfig({
       "src/app/actions/**/__tests__/**/*.test.{ts,tsx}",
       "src/__tests__/**/*.test.{ts,tsx}",
       "src/components/__tests__/**/*.test.{ts,tsx}",
+      "src/components/**/__tests__/**/*.test.{ts,tsx}",
     ],
     environment: "jsdom", // Default to jsdom for most tests
     setupFiles: ["vitest.setup.ts"],

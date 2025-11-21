@@ -18,7 +18,7 @@ export function CharterConfigList({
   adminUserId,
 }: CharterConfigListProps) {
   const router = useRouter();
-  const canAddCharter =
+  const _canAddCharter =
     userRole === "OPERATOR" ||
     (userRole === "CAPTAIN" && charters.length === 0);
 

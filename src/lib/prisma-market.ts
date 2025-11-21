@@ -66,7 +66,6 @@ export const prismaMarket: PrismaClientInstance =
         throw new Error(msg);
       } else {
         // Warn in development to aid setup without crashing the dev server
-        // eslint-disable-next-line no-console
         console.warn(msg);
       }
     }

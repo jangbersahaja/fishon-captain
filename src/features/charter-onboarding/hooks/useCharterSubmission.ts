@@ -277,6 +277,7 @@ export function useCharterSubmission({
       existingImages,
       existingVideos,
       finalizingRef,
+      adminUserId,
     ]
   );
 

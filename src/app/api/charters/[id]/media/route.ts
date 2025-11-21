@@ -16,14 +16,6 @@ const mediaKeyPattern = (key: string) => {
   return false;
 };
 
-function getUserId(session: unknown): string | null {
-  if (!session || typeof session !== "object") return null;
-  const user = (session as Record<string, unknown>).user;
-  if (!user || typeof user !== "object") return null;
-  const id = (user as Record<string, unknown>).id;
-  return typeof id === "string" ? id : null;
-}
-
 export const runtime = "nodejs";
 
 export async function PUT(

@@ -298,7 +298,7 @@ export const VideoManager: React.FC<VideoManagerProps> = ({
   } | null>(null);
   const prevPendingRef = useRef<boolean | null>(null);
   const prevVideosRef = useRef<VideoRecord[]>([]);
-  const [reordering, setReordering] = useState(false);
+  const [_reordering, setReordering] = useState(false);
 
   // Drag and drop sensors
   const sensors = useSensors(

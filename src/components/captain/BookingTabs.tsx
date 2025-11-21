@@ -148,7 +148,7 @@ export function BookingTabs({ bookings, anglerMap }: BookingTabsProps) {
   }, [searched, sortBy]);
 
   // Grouping: NEW_REQUESTS, CONFIRMED, PENDING_PAYMENT, HISTORY (use sorted data)
-  const now = useMemo(() => new Date(), []);
+  const _now = useMemo(() => new Date(), []);
 
   // Tab 1: New Requests - Bookings requiring captain action (approve/reject)
   const requests = useMemo(

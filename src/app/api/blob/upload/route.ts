@@ -9,14 +9,6 @@ import { put } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-function getUserId(session: unknown): string | null {
-  if (!session || typeof session !== "object") return null;
-  const user = (session as Record<string, unknown>).user;
-  if (!user || typeof user !== "object") return null;
-  const id = (user as Record<string, unknown>).id;
-  return typeof id === "string" ? id : null;
-}
-
 export const runtime = "nodejs"; // ensure Node (not edge) to handle big bodies
 export const maxDuration = 60; // allow larger upload handling if needed
 

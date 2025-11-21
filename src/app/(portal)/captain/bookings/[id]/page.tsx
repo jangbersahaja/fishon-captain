@@ -1,7 +1,6 @@
 import { BookingStatusBadge } from "@/components/captain/BookingStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { authOptions } from "@/lib/auth";
-import { convert24to12Hour } from "@/lib/helpers/booking-helpers";
 import { prisma } from "@/lib/prisma";
 import { calculatePricing } from "@/lib/services/pricing-service";
 import {
@@ -370,30 +369,6 @@ export default async function BookingDetailsPage({
                 </div>
               )}
 
-              {/* Duration */}
-              {booking.durationHour && (
-                <div className="flex items-start gap-3">
-                  <Clock className="h-5 w-5 text-slate-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">
-                      Duration
-                    </p>
-                    <p className="text-sm text-slate-900">
-                      <span>
-                        {booking.durationHour} hour
-                        {booking.durationHour !== 1 ? "s" : ""}
-                      </span>
-                      {booking.startTime && (
-                        <span>
-                          {" "}
-                          · Starting at {convert24to12Hour(booking.startTime)}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {/* Guests */}
               <div className="flex items-start gap-3">
                 <Users className="h-5 w-5 text-slate-400 mt-0.5" />
@@ -522,21 +497,7 @@ export default async function BookingDetailsPage({
         {/* Right Column - Pricing & Customer Info */}
         <div className="space-y-6">
           {/* Pricing Breakdown */}
-          <div className="relative p-6 bg-white border rounded-2xl border-slate-200">
-            {/* PAID Stamp */}
-            {(booking.status === "PAID" || booking.status === "COMPLETED") && (
-              <div className="absolute z-10 pointer-events-none top-15 right-20">
-                <div className="relative">
-                  <div className="px-6 py-3 text-3xl font-black tracking-wider text-green-600 uppercase border-4 border-green-600 rounded-lg rotate-12 bg-white/90">
-                    PAID
-                  </div>
-                  <div className="absolute inset-0 px-6 py-3 text-3xl font-black tracking-wider uppercase border-4 rounded-lg text-green-600/30 border-green-600/30 rotate-12 blur-sm">
-                    PAID
-                  </div>
-                </div>
-              </div>
-            )}
-
+          <div className="p-6 bg-white border rounded-2xl border-slate-200">
             <h2 className="mb-4 text-base font-semibold text-slate-900">
               Earning
             </h2>
@@ -546,14 +507,32 @@ export default async function BookingDetailsPage({
               {/* Your Earnings */}
               <div className="pt-3 border-t border-slate-200">
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-semibold text-slate-900">
+                  <span className="text-sm font-semibold text-slate-900">
                     Your Earnings
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xl font-bold text-green-600">
+                    <span className="text-lg font-bold text-green-600">
                       RM {pricing.captainEarnings.toFixed(2)}
                     </span>
                   </div>
+                </div>
+                {/* PAID Stamp */}
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-900">
+                    Status
+                  </span>
+
+                  {booking.status === "PAID" ||
+                  booking.status === "COMPLETED" ? (
+                    <Badge variant="outline" className="text-green-600">
+                      PAID
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-slate-600">
+                      PENDING
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>

@@ -12,6 +12,12 @@ vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@/lib/metrics", () => ({ counter: () => ({ inc: vi.fn() }) }));
+vi.mock("@/lib/services/verification-status", () => ({
+  getVerificationStatus: vi.fn(async () => null),
+}));
+vi.mock("@/lib/services/system-messages", () => ({
+  generateSystemMessages: vi.fn(async () => []),
+}));
 
 type PrismaMock = {
   charterDraft: { findUnique: Mock; update: Mock };

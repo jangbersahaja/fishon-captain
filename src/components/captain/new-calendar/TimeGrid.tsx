@@ -204,9 +204,9 @@ export function TimeGrid({
                   )} // 24 * 48px (h-12 is 3rem = 48px)
                   onClick={(e) => {
                     if (onSlotClick) {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const y =
-                        e.clientY - rect.top + e.currentTarget.scrollTop; // Adjust for scroll if needed, but here click is on the div
+                      const _rect = e.currentTarget.getBoundingClientRect();
+                      const _y =
+                        e.clientY - _rect.top + e.currentTarget.scrollTop; // Adjust for scroll if needed, but here click is on the div
                       // Actually, e.clientY is viewport relative.
                       // e.nativeEvent.offsetY is relative to target.
                       const offsetY = e.nativeEvent.offsetY;

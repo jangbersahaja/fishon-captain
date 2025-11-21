@@ -1,0 +1,426 @@
+{
+  "research_date": "2025-11-22",
+  "codebase": "fishon-captain",
+  "verification_fields": {
+    "government_id": {
+      "field_name": "idFront",
+      "type": "Json",
+      "status": "optional",
+      "description": "Front side of government ID document"
+    },
+    "government_id_back": {
+      "field_name": "idBack",
+      "type": "Json",
+      "status": "optional",
+      "description": "Back side of government ID document"
+    },
+    "captain_license": {
+      "field_name": "captainLicense",
+      "type": "Json",
+      "status": "optional",
+      "description": "Captain/Skipper license document"
+    },
+    "boat_registration": {
+      "field_name": "boatRegistration",
+      "type": "Json",
+      "status": "optional",
+      "description": "Boat registration document"
+    },
+    "fishing_license": {
+      "field_name": "fishingLicense",
+      "type": "Json",
+      "status": "optional",
+      "description": "Fishing license document"
+    },
+    "bank_statement": {
+      "field_name": "bankStatement",
+      "type": "Json",
+      "status": "optional",
+      "description": "Bank statement for verification"
+    },
+    "additional_documents": {
+      "field_name": "additional",
+      "type": "Json",
+      "status": "optional",
+      "description": "Array of additional documents"
+    },
+    "banking_info": {
+      "fields": [
+        "bankAccountHolder",
+        "bankAccountNumber",
+        "bankBranch",
+        "bankName",
+        "bankSwiftCode"
+      ],
+      "type": "String",
+      "status": "optional",
+      "description": "Banking information for payouts"
+    },
+    "verification_status_enum": {
+      "field_name": "status",
+      "type": "enum VerificationStatus",
+      "values": ["PENDING", "APPROVED", "REJECTED"],
+      "default": "PENDING",
+      "description": "Overall verification status"
+    }
+  },
+  "document_upload_structure": {
+    "uploaded_document_format": {
+      "key": "string (Vercel Blob storage key)",
+      "url": "string (public URL)",
+      "name": "string (original filename)",
+      "updatedAt": "string (ISO timestamp, optional)"
+    },
+    "api_endpoint": "/api/captain/documents",
+    "supported_operations": [
+      "Single field upload (idFront, idBack, captainLicense, etc.)",
+      "Additional document upload/removal",
+      "Banking information update",
+      "Full snapshot replacement"
+    ],
+    "note": "All documents stored via Vercel Blob with public URLs; no PendingMedia model needed"
+  },
+  "notification_patterns": {
+    "existing_alert_components": [
+      {
+        "name": "Admin Override Banner",
+        "location": "src/app/(portal)/captain/page.tsx (lines 127-146)",
+        "style": "Orange border + orange background",
+        "classes": "border border-orange-200 bg-orange-50 rounded-2xl",
+        "components": [
+          "Alert section with heading + message",
+          "Exit button linking to /staff"
+        ],
+        "pattern": "Status/informational banner for admin impersonation"
+      },
+      {
+        "name": "Toast Notifications",
+        "library": "sonner",
+        "types": [
+          "toast.success(message)",
+          "toast.error(message)",
+          "toast.warning(message)"
+        ],
+        "usage": "NotificationSettings, PaymentPreviewForm, and other components",
+        "pattern": "Transient notifications for user feedback"
+      },
+      {
+        "name": "StatCard Alert Variant",
+        "location": "src/components/captain/BookingStatsCardsCompact.tsx",
+        "style": "Red alert with AlertCircle icon",
+        "icon": "lucide-react AlertCircle",
+        "pattern": "Icon + label for urgent metric display"
+      }
+    ],
+    "ui_component_source": "shadcn/ui (via fishon-market)",
+    "alert_component": {
+      "location": "src/components/ui/alert.tsx (in fishon-market)",
+      "variants": ["default", "destructive"],
+      "role": "alert",
+      "description": "Semantic HTML alert component with variant styling"
+    },
+    "sonner_config": {
+      "location": "src/components/ui/sonner.tsx (in fishon-market)",
+      "icons": "Uses TriangleAlertIcon for warnings",
+      "available_methods": ["success", "error", "warning/loading"]
+    }
+  },
+  "existing_notification_system": {
+    "model": "Notification (in Prisma schema)",
+    "fields": [
+      "id",
+      "userId",
+      "type (NotificationType enum)",
+      "status (UNREAD/READ/ARCHIVED)",
+      "title",
+      "message",
+      "actionUrl",
+      "actionLabel",
+      "bookingId (optional)",
+      "charterId (optional)",
+      "metadata (Json)",
+      "createdAt",
+      "readAt",
+      "archivedAt",
+      "expiresAt"
+    ],
+    "notification_types": [
+      "BOOKING_RECEIVED",
+      "PAYMENT_PENDING",
+      "BOOKING_CONFIRMED",
+      "BOOKING_PAID",
+      "BOOKING_CANCELLED",
+      "CHARTER_APPROVED",
+      "CHARTER_REJECTED",
+      "CHARTER_UPDATED",
+      "ACCOUNT_VERIFIED",
+      "PROFILE_INCOMPLETE",
+      "SYSTEM_ANNOUNCEMENT",
+      "REVIEW_RECEIVED"
+    ],
+    "preferences": {
+      "model": "NotificationPreferences",
+      "fields": [
+        "inAppEnabled",
+        "emailEnabled",
+        "bookingUpdates",
+        "charterUpdates",
+        "systemUpdates"
+      ]
+    },
+    "delivery": "Prisma database + real-time via Pusher + email/SMS"
+  },
+  "data_fetching_opportunities": {
+    "dashboard_service": {
+      "file": "src/lib/dashboard-service.ts",
+      "current_data": [
+        "profile (CaptainProfile)",
+        "bookingStats",
+        "priorityBookings",
+        "earningsData",
+        "charterPerformance"
+      ],
+      "missing_data": [
+        "verification status",
+        "verification completeness",
+        "document submission status"
+      ],
+      "opportunity": "Add verification data fetch to getDashboardData()"
+    },
+    "verification_query": {
+      "from_prisma": "prisma.captainVerification.findUnique({ where: { userId } })",
+      "includes": [
+        "overall status",
+        "which documents are submitted",
+        "banking info status"
+      ]
+    },
+    "charter_page_data": {
+      "location": "src/app/(portal)/captain/page.tsx",
+      "current_queries": [
+        "captainProfile with charters",
+        "charterMedia count",
+        "captainVideo count",
+        "dashboard data"
+      ],
+      "additional_query_needed": "captainVerification status for inline checking"
+    }
+  },
+  "message_types_needed": [
+    {
+      "category": "KYC/Verification",
+      "messages": [
+        {
+          "trigger": "User first logs in after signup",
+          "message": "Welcome! Complete your verification to start accepting bookings.",
+          "type": "PROFILE_INCOMPLETE",
+          "priority": "HIGH",
+          "action_url": "/captain/documents"
+        },
+        {
+          "trigger": "Government ID document missing",
+          "message": "Government ID required. Upload front and back to proceed.",
+          "type": "PROFILE_INCOMPLETE",
+          "priority": "HIGH"
+        },
+        {
+          "trigger": "Banking info not submitted",
+          "message": "Add banking details to receive payouts.",
+          "type": "PROFILE_INCOMPLETE",
+          "priority": "MEDIUM",
+          "action_url": "/captain/documents"
+        },
+        {
+          "trigger": "Verification status = APPROVED",
+          "message": "✅ Your account is verified! You can now accept bookings.",
+          "type": "ACCOUNT_VERIFIED",
+          "priority": "MEDIUM"
+        },
+        {
+          "trigger": "Verification status = REJECTED",
+          "message": "⚠️ Your documents were rejected. Please review feedback and resubmit.",
+          "type": "PROFILE_INCOMPLETE",
+          "priority": "CRITICAL"
+        }
+      ]
+    },
+    {
+      "category": "Payout/Financial",
+      "messages": [
+        {
+          "trigger": "Payout scheduled",
+          "message": "Payout scheduled for this week. Expected deposit: RM 500",
+          "type": "SYSTEM_ANNOUNCEMENT",
+          "priority": "MEDIUM",
+          "action_url": "/captain/earnings"
+        },
+        {
+          "trigger": "Payout failed",
+          "message": "Payout transfer failed. Check your banking details.",
+          "type": "SYSTEM_ANNOUNCEMENT",
+          "priority": "CRITICAL",
+          "action_url": "/captain/settings"
+        },
+        {
+          "trigger": "Bank details outdated (older than 6 months)",
+          "message": "Please update your banking details for payouts.",
+          "type": "PROFILE_INCOMPLETE",
+          "priority": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "category": "Charter Status",
+      "messages": [
+        {
+          "trigger": "Charter is_locked = true",
+          "message": "Your charter is locked by admin. Contact support.",
+          "type": "CHARTER_UPDATED",
+          "priority": "CRITICAL"
+        },
+        {
+          "trigger": "Charter has no media",
+          "message": "Add photos and videos to your charter to attract bookings.",
+          "type": "PROFILE_INCOMPLETE",
+          "priority": "MEDIUM",
+          "action_url": "/captain/form"
+        },
+        {
+          "trigger": "Charter has no trips",
+          "message": "Create at least one trip to start accepting bookings.",
+          "type": "PROFILE_INCOMPLETE",
+          "priority": "HIGH",
+          "action_url": "/captain/form"
+        }
+      ]
+    },
+    {
+      "category": "Compliance/Deadlines",
+      "messages": [
+        {
+          "trigger": "Annual captain license renewal approaching (30 days)",
+          "message": "Your captain license expires in 30 days. Renew it now.",
+          "type": "SYSTEM_ANNOUNCEMENT",
+          "priority": "HIGH",
+          "metadata": { "expires_at": "date string" }
+        },
+        {
+          "trigger": "Fishing permits/licenses expiring",
+          "message": "Update your fishing permits before expiry.",
+          "type": "SYSTEM_ANNOUNCEMENT",
+          "priority": "MEDIUM"
+        }
+      ]
+    }
+  ],
+  "banner_styling_patterns": {
+    "admin_banner_example": {
+      "container": "p-4 border border-orange-200 shadow-sm rounded-2xl bg-orange-50",
+      "heading": "text-sm font-semibold text-orange-800 with 🛡️ icon",
+      "body": "text-xs text-orange-700",
+      "action_button": "px-3 py-1 text-xs font-semibold text-white bg-orange-600 rounded-full hover:bg-orange-700"
+    },
+    "stat_card_alert": {
+      "container": "p-4 bg-white border border-slate-200 rounded-2xl hover:shadow-md",
+      "icon_wrapper": "rounded-lg p-2.5 with color class",
+      "icon_colors": [
+        "bg-blue-100 text-blue-600",
+        "bg-green-100 text-green-600",
+        "bg-red-100 text-red-600",
+        "bg-amber-100 text-amber-600"
+      ]
+    },
+    "color_scheme_recommendations": {
+      "critical": {
+        "border": "border-red-200",
+        "background": "bg-red-50",
+        "text": "text-red-800",
+        "description": "For REJECTED status, missing required docs"
+      },
+      "warning": {
+        "border": "border-amber-200",
+        "background": "bg-amber-50",
+        "text": "text-amber-800",
+        "description": "For PENDING status, expiring documents"
+      },
+      "success": {
+        "border": "border-green-200",
+        "background": "bg-green-50",
+        "text": "text-green-800",
+        "description": "For APPROVED status"
+      },
+      "info": {
+        "border": "border-blue-200",
+        "background": "bg-blue-50",
+        "text": "text-blue-800",
+        "description": "For general announcements"
+      }
+    }
+  },
+  "system_message_generation_strategy": {
+    "approach": "Multi-check system on page load",
+    "checks": [
+      {
+        "check": "Verification Status",
+        "query": "prisma.captainVerification.findUnique({ where: { userId } })",
+        "fields_to_check": [
+          "status (PENDING/APPROVED/REJECTED)",
+          "idFront, idBack (presence)",
+          "bankAccountNumber (presence)"
+        ]
+      },
+      {
+        "check": "Charter Status",
+        "query": "Get all charters for user",
+        "fields_to_check": [
+          "isLocked",
+          "media.length === 0",
+          "trips.length === 0"
+        ]
+      },
+      {
+        "check": "Payout Status",
+        "query": "prisma.payout.findMany({ where: { ownerId: userId, status: 'PENDING' } })",
+        "fields_to_check": ["Unpaid earnings", "Pending payouts"]
+      },
+      {
+        "check": "Document Expiry",
+        "logic": "Parse metadata from captainVerification documents",
+        "fields_to_check": ["License renewal dates", "Banking info age"]
+      }
+    ],
+    "priority_ranking": [
+      "CRITICAL: account locked, verification rejected, missing mandatory docs",
+      "HIGH: incomplete verification, no banking info, charter locked",
+      "MEDIUM: missing optional docs, expiring soon, payout issues",
+      "LOW: informational announcements"
+    ]
+  },
+  "implementation_integration_points": {
+    "dashboard_page": "src/app/(portal)/captain/page.tsx",
+    "should_add": [
+      "Fetch captainVerification in getCharter() async function",
+      "Pass verification status to banner components",
+      "Create SystemMessageBanner component to display calculated messages"
+    ],
+    "message_generation_location": "Could be new file src/lib/system-messages.ts",
+    "banner_display_location": "Above DashboardMetricsGrid in captain/page.tsx",
+    "database_changes_needed": "None - all fields already exist in CaptainVerification model"
+  },
+  "recommendations": {
+    "quick_wins": [
+      "Add VerificationStatusBanner component (uses existing banner pattern from admin banner)",
+      "Create generateSystemMessages() utility in new lib/system-messages.ts",
+      "Add verification fetch to getDashboardData() in dashboard-service.ts",
+      "Display top-priority message on dashboard page"
+    ],
+    "future_enhancements": [
+      "Implement notification center for all system messages",
+      "Add task tracking: show which documents are pending, which approved",
+      "Create document submission form with progress indicator",
+      "Add email notifications for critical messages",
+      "Implement reminder emails for expiring documents"
+    ],
+    "shared_package_notes": "Alert/Banner components could be added to @fishon/ui for reuse across fishon-market"
+  }
+}
