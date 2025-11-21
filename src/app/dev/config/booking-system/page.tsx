@@ -266,7 +266,7 @@ export default function BookingSystemPage() {
                     <li>Card tokenized, not charged</li>
                     <li>Lower angler risk</li>
                     <li>Token released if rejected</li>
-                    <li>Message: "Card will only be charged if approved"</li>
+                    <li>Message: &quot;Card will only be charged if approved&quot;</li>
                   </ul>
                 </div>
 
@@ -276,7 +276,7 @@ export default function BookingSystemPage() {
                     <li>Payment completed immediately</li>
                     <li>Higher angler risk</li>
                     <li>Refund required if rejected</li>
-                    <li>Message: "Refund in 3-5 business days if declined"</li>
+                    <li>Message: &quot;Refund in 3-5 business days if declined&quot;</li>
                   </ul>
                 </div>
               </div>
