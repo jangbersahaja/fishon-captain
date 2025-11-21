@@ -28,7 +28,7 @@ export function MermaidDiagram({ chart, id }: MermaidDiagramProps) {
         });
 
         // Generate unique ID for this diagram
-        const diagramId = id || `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+        const diagramId = id || `mermaid-${Math.random().toString(36).substring(2, 11)}`;
         
         // Render the diagram
         const { svg: renderedSvg } = await mermaid.render(diagramId, chart);
