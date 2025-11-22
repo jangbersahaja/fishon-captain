@@ -4,16 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
+import { MermaidDiagram } from "@/components/MermaidDiagram";
 
 export default function BookingSystemPage() {
-  useEffect(() => {
-    // Dynamically import mermaid
-    import("mermaid").then((mermaid) => {
-      mermaid.default.initialize({ startOnLoad: true, theme: "default" });
-      mermaid.default.contentLoaded();
-    });
-  }, []);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -45,8 +38,7 @@ export default function BookingSystemPage() {
               <CardDescription>Cross-app integration between fishon-market and fishon-captain</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`graph TB
+              <MermaidDiagram chart={`graph TB
     subgraph "fishon-market (Angler)"
         A[Angler Creates Booking]
         B[Payment Processing]
@@ -83,8 +75,7 @@ export default function BookingSystemPage() {
     style D fill:#fff3e0
     style W fill:#f3e5f5
     style P fill:#e8f5e9
-    style E fill:#fce4ec`}
-              </div>
+    style E fill:#fce4ec`} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -96,8 +87,7 @@ export default function BookingSystemPage() {
               <CardDescription>Captain approves booking before angler pays</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`sequenceDiagram
+              <MermaidDiagram chart={`sequenceDiagram
     participant Angler
     participant Market as fishon-market
     participant Webhook
@@ -136,8 +126,7 @@ export default function BookingSystemPage() {
     
     style Market fill:#e3f2fd
     style Captain fill:#fff3e0
-    style Payment fill:#f3e5f5`}
-              </div>
+    style Payment fill:#f3e5f5`} />
 
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <h3 className="font-semibold mb-2">Key Points:</h3>
@@ -159,8 +148,7 @@ export default function BookingSystemPage() {
               <CardDescription>Angler pays upfront, captain acknowledges</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`sequenceDiagram
+              <MermaidDiagram chart={`sequenceDiagram
     participant Angler
     participant Market as fishon-market
     participant Payment as Payment Gateway
@@ -201,8 +189,7 @@ export default function BookingSystemPage() {
     
     style Market fill:#e3f2fd
     style Captain fill:#fff3e0
-    style Payment fill:#f3e5f5`}
-              </div>
+    style Payment fill:#f3e5f5`} />
 
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <h3 className="font-semibold mb-2">Key Points:</h3>
@@ -224,8 +211,7 @@ export default function BookingSystemPage() {
               <CardDescription>TOKENIZED (card) vs DIRECT (FPX/e-wallet) payment processing</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`graph TB
+              <MermaidDiagram chart={`graph TB
     A[Angler Selects Payment Method]
     
     A -->|Credit/Debit Card| B[TOKENIZED Flow]
@@ -256,8 +242,7 @@ export default function BookingSystemPage() {
     style G fill:#c8e6c9
     style H fill:#ffcdd2
     style N fill:#c8e6c9
-    style O fill:#ffcdd2`}
-              </div>
+    style O fill:#ffcdd2`} />
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
@@ -291,8 +276,7 @@ export default function BookingSystemPage() {
               <CardDescription>Cross-app event propagation with retry logic</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mermaid">
-                {`graph TB
+              <MermaidDiagram chart={`graph TB
     A[Booking Event in fishon-market]
     
     A --> B{Webhook Enabled?}
@@ -328,8 +312,7 @@ export default function BookingSystemPage() {
     style H fill:#c8e6c9
     style L fill:#ffcdd2
     style R fill:#ffcdd2
-    style Q fill:#fff3e0`}
-              </div>
+    style Q fill:#fff3e0`} />
 
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <h3 className="font-semibold mb-2">Webhook Events:</h3>
