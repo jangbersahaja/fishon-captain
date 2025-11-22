@@ -77,7 +77,7 @@ export function EarningsOverview({ summary, period }: EarningsOverviewProps) {
           </div>
           <p className="mt-2 text-xs text-slate-500">
             {summary.nextPayoutDate
-              ? `Next payment: ${summary.nextPayoutDate.toLocaleDateString("en-MY", { month: "short", day: "numeric" })}`
+              ? `Next payment: ${summary.nextPayoutDate.toLocaleDateString("en-MY", { month: "short", day: "numeric", timeZone: "Asia/Kuala_Lumpur" })}`
               : "No pending earnings"}
           </p>
         </div>

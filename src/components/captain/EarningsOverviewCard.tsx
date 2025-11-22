@@ -63,6 +63,7 @@ export function EarningsOverviewCard({
     nextPayoutDate?.toLocaleDateString("en-MY", {
       month: "short",
       day: "numeric",
+      timeZone: "Asia/Kuala_Lumpur",
     }) || "N/A";
 
   return (

@@ -139,9 +139,10 @@ export default function CaptainDetailModal({
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Anchor className="h-5 w-5 text-[#EC2227]" />
                   <p className="text-lg font-bold text-neutral-900">
-                    {captain.createdAt.toLocaleDateString("en-US", {
+                    {captain.createdAt.toLocaleDateString("en-MY", {
                       month: "short",
                       year: "2-digit",
+                      timeZone: "Asia/Kuala_Lumpur",
                     })}
                   </p>
                 </div>

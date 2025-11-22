@@ -23,17 +23,19 @@ export function CalendarEventBand({
   let timeSummary: string | null = null;
   if (firstSlot) {
     const start = new Date(firstSlot.startDateTime).toLocaleTimeString(
-      "en-US",
+      "en-MY",
       {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
+        timeZone: "Asia/Kuala_Lumpur",
       }
     );
-    const end = new Date(firstSlot.endDateTime).toLocaleTimeString("en-US", {
+    const end = new Date(firstSlot.endDateTime).toLocaleTimeString("en-MY", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: "Asia/Kuala_Lumpur",
     });
     timeSummary = `${start} - ${end}`;
   }

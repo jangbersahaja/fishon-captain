@@ -166,8 +166,8 @@ export default async function StaffCharterDetailPage({
             {charter.captain?.displayName || charter.captain?.userId || "—"}
           </div>
           <div className="text-slate-500">
-            Created {new Date(c.createdAt).toLocaleString()} • Updated{" "}
-            {new Date(c.updatedAt).toLocaleString()}
+            Created {new Date(c.createdAt).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })} • Updated{" "}
+            {new Date(c.updatedAt).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}
           </div>
         </div>
         <span

@@ -226,8 +226,9 @@ function formatTimestamp(date: Date): string {
     return `${diffDays}d ago`;
   }
 
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString("en-MY", {
     month: "short",
     day: "numeric",
+    timeZone: "Asia/Kuala_Lumpur",
   });
 }

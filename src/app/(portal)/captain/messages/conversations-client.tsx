@@ -273,7 +273,9 @@ export default function ConversationsClient({
                       {/* Time */}
                       {lastMessage && (
                         <time className="flex-shrink-0 text-xs text-gray-500">
-                          {new Date(lastMessage.createdAt).toLocaleDateString()}
+                          {new Date(lastMessage.createdAt).toLocaleDateString("en-MY", {
+                            timeZone: "Asia/Kuala_Lumpur",
+                          })}
                         </time>
                       )}
                     </div>

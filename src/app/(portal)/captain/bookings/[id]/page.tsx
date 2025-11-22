@@ -344,6 +344,7 @@ export default async function BookingDetailsPage({
                           month: "short",
                           day: "numeric",
                           year: "numeric",
+                          timeZone: "Asia/Kuala_Lumpur",
                         })}
                       </span>
                       {booking.days > 1 && (
@@ -356,6 +357,7 @@ export default async function BookingDetailsPage({
                             month: "short",
                             day: "numeric",
                             year: "numeric",
+                            timeZone: "Asia/Kuala_Lumpur",
                           })}
                         </span>
                       )}
@@ -631,12 +633,13 @@ export default async function BookingDetailsPage({
               <div>
                 <p className="font-medium text-slate-700">Created</p>
                 <p className="text-slate-600">
-                  {new Date(booking.createdAt).toLocaleString("en-US", {
+                  {new Date(booking.createdAt).toLocaleString("en-MY", {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
                     hour: "numeric",
                     minute: "2-digit",
+                    timeZone: "Asia/Kuala_Lumpur",
                   })}
                 </p>
               </div>
@@ -649,13 +652,14 @@ export default async function BookingDetailsPage({
                   </p>
                   <p className="text-slate-600">
                     {new Date(booking.captainDecisionAt).toLocaleString(
-                      "en-US",
+                      "en-MY",
                       {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
                         hour: "numeric",
                         minute: "2-digit",
+                        timeZone: "Asia/Kuala_Lumpur",
                       }
                     )}
                   </p>
@@ -665,12 +669,13 @@ export default async function BookingDetailsPage({
                 <div>
                   <p className="font-medium text-slate-700">Expires </p>
                   <p className="text-slate-600">
-                    {new Date(booking.expiresAt).toLocaleString("en-US", {
+                    {new Date(booking.expiresAt).toLocaleString("en-MY", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
                       hour: "numeric",
                       minute: "2-digit",
+                      timeZone: "Asia/Kuala_Lumpur",
                     })}
                   </p>
                 </div>

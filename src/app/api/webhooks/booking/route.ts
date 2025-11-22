@@ -108,10 +108,10 @@ export async function POST(request: NextRequest) {
               message: isAutoFlowPaid
                 ? `${booking.anglerName || "An angler"} booked ${
                     booking.charterName || "your charter"
-                  }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""}. Payment authorized and secured!`
+                  }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}` : ""}. Payment authorized and secured!`
                 : `${booking.anglerName || "An angler"} requested a booking for ${
                     booking.charterName || "your charter"
-                  }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""}.`,
+                  }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}` : ""}.`,
               actionUrl: `/captain/bookings?highlight=${booking.id}`,
               actionLabel: isAutoFlowPaid ? "View Booking" : "Review Request",
               metadata: {
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
               title: "Payment Received - Action Required! 💰",
               message: `${booking.anglerName || "An angler"} has paid for a booking on ${
                 booking.charterName || "your charter"
-              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""}. Please review and approve to confirm the trip.`,
+              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}` : ""}. Please review and approve to confirm the trip.`,
               actionUrl: `/captain/bookings/${booking.id}`,
               actionLabel: "Review & Approve",
               metadata: {
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
               title: "Booking Cancelled",
               message: `${booking.anglerName || "The angler"} cancelled their booking for ${
                 booking.charterName || "your charter"
-              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""}.`,
+              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}` : ""}.`,
               actionUrl: `/captain/bookings?filter=cancelled`,
               actionLabel: "View Cancelled",
               metadata: {
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
               title: "Booking Confirmed! ✅",
               message: `Booking with ${booking.anglerName || "the angler"} for ${
                 booking.charterName || "your charter"
-              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString()}` : ""} has been confirmed. Payment secured!`,
+              }${booking.date ? ` on ${new Date(booking.date).toLocaleDateString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}` : ""} has been confirmed. Payment secured!`,
               actionUrl: `/captain/bookings/${booking.id}`,
               actionLabel: "View Details",
               metadata: {
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
               title: "Payment Received! 💰",
               message: `${booking.anglerName || "The angler"} has paid for their booking on ${
                 booking.date
-                  ? new Date(booking.date).toLocaleDateString()
+                  ? new Date(booking.date).toLocaleDateString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })
                   : "the scheduled date"
               }. Trip confirmed!`,
               actionUrl: `/captain/bookings/${booking.id}`,

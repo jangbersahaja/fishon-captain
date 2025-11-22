@@ -105,6 +105,7 @@ export function BookingDetailsCard({
                 month: "short",
                 day: "numeric",
                 year: "numeric",
+                timeZone: "Asia/Kuala_Lumpur",
               })}
             </span>
             <span className="flex items-center gap-1">
