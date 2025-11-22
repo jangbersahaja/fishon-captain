@@ -19,7 +19,7 @@ export function PendingEarningsCard({
         </h3>
         <p className="mt-1 text-sm text-amber-700">
           {nextPayoutDate
-            ? `Your earnings will be processed on ${nextPayoutDate.toLocaleDateString("en-MY", { month: "long", day: "numeric", year: "numeric" })}. `
+            ? `Your earnings will be processed on ${nextPayoutDate.toLocaleDateString("en-MY", { month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Kuala_Lumpur" })}. `
             : "Your earnings are awaiting payment processing. "}
           Make sure your{" "}
           <Link

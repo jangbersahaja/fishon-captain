@@ -268,6 +268,7 @@ export default async function CharterDetailPage({
             {charter.updatedAt.toLocaleString("en-MY", {
               dateStyle: "medium",
               timeStyle: "short",
+              timeZone: "Asia/Kuala_Lumpur",
             })}
           </p>
         </div>
