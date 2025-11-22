@@ -156,6 +156,7 @@ export function ChatHeader({
                       month: "short",
                       day: "numeric",
                       year: "numeric",
+                      timeZone: "Asia/Kuala_Lumpur",
                     })}
                   </span>
                   {booking.days > 1 && (
@@ -168,6 +169,7 @@ export function ChatHeader({
                         month: "short",
                         day: "numeric",
                         year: "numeric",
+                        timeZone: "Asia/Kuala_Lumpur",
                       })}
                     </span>
                   )}

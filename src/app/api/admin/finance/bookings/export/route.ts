@@ -96,6 +96,7 @@ export async function GET(req: NextRequest) {
         year: "numeric",
         month: "short",
         day: "numeric",
+        timeZone: "Asia/Kuala_Lumpur",
       }),
       booking.finalPrice?.toFixed(2) || "0.00",
       booking.platformFee?.toFixed(2) || "0.00",
@@ -110,6 +111,7 @@ export async function GET(req: NextRequest) {
             day: "numeric",
             hour: "2-digit",
             minute: "2-digit",
+            timeZone: "Asia/Kuala_Lumpur",
           })
         : "N/A",
     ]);

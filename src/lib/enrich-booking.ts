@@ -56,23 +56,31 @@ function formatTimeSlots(
 ): string[] {
   if (!timeSlots || !Array.isArray(timeSlots)) return [];
 
+  const MALAYSIA_TIMEZONE = "Asia/Kuala_Lumpur";
+
   return timeSlots.map((slot) => {
     const date = new Date(slot.startDateTime);
-    const dayName = date.toLocaleDateString("en-MY", { weekday: "short" });
+    const dayName = date.toLocaleDateString("en-MY", { 
+      weekday: "short",
+      timeZone: MALAYSIA_TIMEZONE,
+    });
     const dateStr = date.toLocaleDateString("en-MY", {
       month: "short",
       day: "numeric",
+      timeZone: MALAYSIA_TIMEZONE,
     });
 
     const startTime = new Date(slot.startDateTime).toLocaleTimeString("en-MY", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: MALAYSIA_TIMEZONE,
     });
     const endTime = new Date(slot.endDateTime).toLocaleTimeString("en-MY", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: MALAYSIA_TIMEZONE,
     });
 
     return `${slot.day > 1 ? `Day ${slot.day}: ` : ""}  ${dayName}, ${dateStr} • ${startTime} - ${endTime}`;

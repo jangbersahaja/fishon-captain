@@ -168,7 +168,7 @@ export default function ChartersClient({
                   {c.captain?.displayName || c.captain?.userId || "—"}
                 </div>
                 <div className="mt-1 text-xs text-slate-400">
-                  Updated {new Date(c.updatedAt).toLocaleString()}
+                  Updated {new Date(c.updatedAt).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}
                 </div>
               </div>
             </div>

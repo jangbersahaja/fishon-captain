@@ -33,10 +33,11 @@ export function MessageBubble({
   showSystemStyling = true,
 }: MessageBubbleProps) {
   // Format time
-  const time = new Date(createdAt).toLocaleTimeString("en-US", {
+  const time = new Date(createdAt).toLocaleTimeString("en-MY", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "Asia/Kuala_Lumpur",
   });
 
   // System message styling
