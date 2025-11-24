@@ -242,8 +242,11 @@ export function UnavailabilityModal({
       const method = isEditMode ? "PATCH" : "POST";
       const body = {
         unavailabilityId: isEditMode ? editBlock?.id : undefined,
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
+        startDate: isAllDay ? start.toISOString() : format(start, "yyyy-MM-dd"),
+        endDate: isAllDay ? end.toISOString() : format(end, "yyyy-MM-dd"),
+        isAllDay,
+        startTime: isAllDay ? undefined : startTime,
+        endTime: isAllDay ? undefined : endTime,
         reason: finalReason?.trim() || undefined,
       };
 
