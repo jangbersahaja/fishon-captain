@@ -1,4 +1,4 @@
-import { CalendarShell } from "@/components/captain/new-calendar/CalendarShell";
+import { CalendarShell } from "@/components/captain/calendar/CalendarShell";
 import { Button } from "@/components/ui/button";
 import { authOptions } from "@/lib/auth";
 import { getCaptainBookings } from "@/lib/booking-service";

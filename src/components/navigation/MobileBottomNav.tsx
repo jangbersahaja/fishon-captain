@@ -2,10 +2,10 @@
 
 import {
   BookCheck,
-  Calendar,
+  Inbox,
   LayoutDashboard,
-  MessageCircle,
   MoreHorizontal,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,9 +39,9 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
       icon: <LayoutDashboard className="w-6 h-6" />,
     },
     {
-      href: "/captain/new-calendar",
-      label: "Calendar",
-      icon: <Calendar className="w-6 h-6" />,
+      href: "/captain/earnings",
+      label: "Earnings",
+      icon: <Wallet className="w-6 h-6" />,
     },
     {
       href: "/captain/bookings",
@@ -50,8 +50,8 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
     },
     {
       href: "/captain/messages",
-      label: "Messages",
-      icon: <MessageCircle className="w-6 h-6" />,
+      label: "Inbox",
+      icon: <Inbox className="w-6 h-6" />,
     },
     {
       label: "More",
@@ -61,12 +61,14 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 md:hidden pb-safe">
-      <div className="grid grid-cols-5 gap-1 px-2 py-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#ec2227] md:hidden pb-safe">
+      <div className="grid grid-cols-5 gap-1 px-2 py-1">
         {items.map((item) => {
           const active = item.href ? isActive(item.href) : false;
-          const className = `flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-colors ${
-            active ? "text-[#ec2227]" : "text-slate-600"
+          const className = `flex flex-col items-center gap-1 py-1 px-1 rounded-lg transition-colors ${
+            active
+              ? "bg-white text-[#ec2227]"
+              : "text-white/90 hover:text-white hover:bg-white/10"
           }`;
 
           if (item.onClick) {

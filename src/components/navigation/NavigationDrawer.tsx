@@ -3,19 +3,25 @@
 import {
   BarChart3,
   Bell,
+  BookCheck,
   Calendar,
+  DollarSign,
   IdCard,
   Image as ImageIcon,
   LayoutDashboard,
   LifeBuoy,
+  LogOut,
   MessageCircle,
   Settings as SettingsIcon,
   Ship,
+  Sliders,
   Star,
+  Store,
   User,
   Users,
   X,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -38,26 +44,32 @@ const navSections: NavSection[] = [
     links: [{ href: "/captain", label: "Overview", Icon: LayoutDashboard }],
   },
   {
-    label: "Business",
+    label: "Configuration",
     links: [
       { href: "/captain/charters", label: "Charters", Icon: Ship },
       { href: "/captain/boats", label: "Boats", Icon: Ship },
-      { href: "/captain/trips", label: "Trips", Icon: Calendar },
-      { href: "/captain/bookings", label: "Bookings", Icon: Calendar },
-      { href: "/captain/bookings/calendar", label: "Calendar", Icon: Calendar },
-      { href: "/captain/reviews", label: "Reviews", Icon: Star },
+      { href: "/captain/trips", label: "Trips", Icon: Sliders },
     ],
   },
   {
-    label: "Communication",
+    label: "Operations",
+    links: [
+      { href: "/captain/bookings", label: "Bookings", Icon: BookCheck },
+      { href: "/captain/calendar", label: "Calendar", Icon: Calendar },
+    ],
+  },
+  {
+    label: "Inbox",
     links: [
       { href: "/captain/messages", label: "Messages", Icon: MessageCircle },
       { href: "/captain/notifications", label: "Notifications", Icon: Bell },
     ],
   },
   {
-    label: "Analytics",
+    label: "Business",
     links: [
+      { href: "/captain/earnings", label: "Earnings", Icon: DollarSign },
+      { href: "/captain/reviews", label: "Reviews", Icon: Star },
       { href: "/captain/analytics", label: "Analytics", Icon: BarChart3 },
     ],
   },
@@ -220,6 +232,26 @@ export function NavigationDrawer(props: NavigationDrawerProps) {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-4 border-t border-slate-200 space-y-2 bg-slate-50">
+            <Link
+              href="https://www.fishon.my"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Store className="w-5 h-5" />
+              <span className="font-medium">Marketplace</span>
+            </Link>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium">Sign Out</span>
+            </button>
           </div>
         </div>
       </div>

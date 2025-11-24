@@ -207,7 +207,9 @@ export async function POST(request: NextRequest) {
               title: "Payment Received! 💰",
               message: `${booking.anglerName || "The angler"} has paid for their booking on ${
                 booking.date
-                  ? new Date(booking.date).toLocaleDateString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })
+                  ? new Date(booking.date).toLocaleDateString("en-MY", {
+                      timeZone: "Asia/Kuala_Lumpur",
+                    })
                   : "the scheduled date"
               }. Trip confirmed!`,
               actionUrl: `/captain/bookings/${booking.id}`,
@@ -242,7 +244,7 @@ export async function POST(request: NextRequest) {
       revalidatePath("/captain/bookings", "page");
       revalidatePath(`/captain/bookings/${booking.id}`, "page");
       revalidatePath("/captain/dashboard", "page");
-      revalidatePath("/captain/new-calendar", "page");
+      revalidatePath("/captain/calendar", "page");
       revalidatePath("/captain/messages", "page");
 
       console.log(`✅ Revalidated captain pages for booking ${booking.id}`);

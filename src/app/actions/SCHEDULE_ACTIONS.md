@@ -84,7 +84,7 @@ Updates or creates a charter schedule.
 
 - **Uses Upsert**: Creates new schedule if doesn't exist, updates if exists
 - **Clears Operational Days**: For non-CUSTOM types, sets `operationalDays` to empty array `[]`
-- **Revalidates Cache**: Calls `revalidatePath("/captain/new-calendar")` after successful update
+- **Revalidates Cache**: Calls `revalidatePath("/captain/calendar")` after successful update
 
 #### Example Usage
 

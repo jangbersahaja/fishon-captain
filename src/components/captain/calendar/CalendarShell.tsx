@@ -110,7 +110,7 @@ export function CalendarShell({
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col relative">
+    <div className="relative flex flex-col h-full md:h-screen">
       <CalendarHeader
         view={view}
         date={date}
@@ -121,18 +121,18 @@ export function CalendarShell({
       />
 
       {/* Mobile Filters Toggle */}
-      <div className="md:hidden border-b bg-white px-4 py-2">
+      <div className="px-4 py-2 bg-white border-b md:hidden">
         <Button
           variant="outline"
           size="sm"
-          className="w-full justify-between"
+          className="justify-between w-full"
           onClick={() => setIsFiltersOpen(!isFiltersOpen)}
         >
           <span>Filters & Settings</span>
           {isFiltersOpen ? (
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="w-4 h-4" />
           ) : (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="w-4 h-4" />
           )}
         </Button>
       </div>
@@ -156,7 +156,7 @@ export function CalendarShell({
             }}
             showCancelled={showCancelled}
             onShowCancelledChange={setShowCancelled}
-            className="border-none p-0 h-auto"
+            className="h-auto p-0 border-none"
           />
         </div>
       </div>

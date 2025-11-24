@@ -49,7 +49,7 @@ export default async function CaptainChatPage({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col bg-white">
       <ChatDetail
         conversationId={id}
         initialConversation={conversation}

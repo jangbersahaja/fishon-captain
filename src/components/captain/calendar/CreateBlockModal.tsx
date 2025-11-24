@@ -1,7 +1,7 @@
 "use client";
 
 import { CharterUnavailability } from "@prisma/client";
-import { UnavailabilityModal } from "../calendar/UnavailabilityModal";
+import { UnavailabilityModal } from "./UnavailabilityModal";
 
 interface CreateBlockModalProps {
   isOpen: boolean;

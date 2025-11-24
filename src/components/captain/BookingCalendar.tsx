@@ -110,14 +110,27 @@ export function BookingCalendar({ bookings, anglerMap }: BookingCalendarProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const today = getTodayMY();
 
-  // Scroll to today when month changes or on mount
+  // Scroll to today when month changes or on mount (within container only)
   useEffect(() => {
     if (scrollContainerRef.current) {
       const todayElement = scrollContainerRef.current.querySelector(
         '[data-is-today="true"]'
       );
       if (todayElement) {
-        todayElement.scrollIntoView({ behavior: "smooth", inline: "center" });
+        // Calculate scroll position relative to container, not the page
+        const container = scrollContainerRef.current;
+        const elementRect = (todayElement as HTMLElement).offsetLeft;
+        const containerWidth = container.offsetWidth;
+        const elementWidth = (todayElement as HTMLElement).offsetWidth;
+
+        // Center the element in the container
+        const scrollPosition =
+          elementRect - containerWidth / 2 + elementWidth / 2;
+
+        container.scrollTo({
+          left: scrollPosition,
+          behavior: "smooth",
+        });
       }
     }
   }, [currentMonth]);
