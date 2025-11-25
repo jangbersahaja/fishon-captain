@@ -302,7 +302,8 @@ model Trip {
   description   String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
-  promoPrice    Decimal?        @db.Decimal(10, 2)
+  promoPrice    Decimal?        @db.Decimal(10, 2)  // Captain's minimum acceptable price (semantic: minPrice)
+  priceOverride Decimal?        @db.Decimal(10, 2)  // Admin's active price override (null = use base price)
   charter       Charter         @relation(fields: [charterId], references: [id])
   species       TripSpecies[]
   startTimes    TripStartTime[]

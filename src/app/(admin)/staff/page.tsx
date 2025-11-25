@@ -132,6 +132,18 @@ export default async function StaffHomePage() {
           <span className="text-slate-400 group-hover:text-slate-600">→</span>
         </Link>
         <Link
+          href="/staff/promo-codes"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
+        >
+          <div>
+            <div className="font-medium text-slate-800">Promo Codes</div>
+            <div className="text-sm text-slate-600">
+              Manage promotional codes and track usage
+            </div>
+          </div>
+          <span className="text-slate-400 group-hover:text-slate-600">→</span>
+        </Link>
+        <Link
           href="/staff/security"
           className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
         >

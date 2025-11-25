@@ -48,6 +48,8 @@ interface PrismaClientInstance {
   analyticsEvent: any;
   conversation: any;
   message: any;
+  promoCode: any;
+  userPromoCodeAssignment: any;
   $disconnect: () => Promise<void>;
 }
 

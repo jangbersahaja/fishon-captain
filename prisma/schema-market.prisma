@@ -60,6 +60,7 @@ model Booking {
 
   // === ANGLER'S DETAIL ===
   userId String // Required - references User with role ANGLER or GUEST
+  user   MarketUser @relation("UserBookings", fields: [userId], references: [id])
   // NOTE: Guest booking fields (guestFirstName, guestLastName, etc.) REMOVED
   // All guest details now stored in MarketUser model with role GUEST
 
@@ -102,6 +103,10 @@ model Booking {
   discount   Json? // { "code": "SUMMER10", "percentage": "10%", "amount": 50.00 }
   tax        Json? // { "name": "SST", "percentage": "6%", "amount": 30.00 } (future)
   finalPrice Decimal @db.Decimal(10, 2) // Total amount angler pays (includes platform fee, gateway fee, tax, minus discount)
+
+  // === PROMO CODE ===
+  promoCodeId String?
+  promoCode   PromoCode? @relation("BookingPromoCode", fields: [promoCodeId], references: [id])
 
   // === BOOKING STATUS ===
   status             BookingStatus @default(PENDING)
@@ -182,6 +187,25 @@ enum UserRole {
   ADMIN
 }
 
+enum PromoCodeType {
+  PERCENTAGE  // e.g., 10% off
+  FIXED       // e.g., RM50 off
+}
+
+enum PromoCodeStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  EXHAUSTED   // Max uses reached
+}
+
+enum PromoCodeScope {
+  UNIVERSAL     // Can be used by anyone (admin-created codes)
+  REGISTRATION  // Auto-assigned on registration (like FISHONTRIP1)
+  CHARTER       // Charter-specific codes (future)
+  REFERRAL      // Referral codes (future)
+}
+
 model MarketUser {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -209,7 +233,9 @@ model MarketUser {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  reviews   Review[] // User's reviews
+  bookings             Booking[] @relation("UserBookings")
+  reviews              Review[] // User's reviews
+  promoCodeAssignments UserPromoCodeAssignment[]
 
   @@map("User")
 }
@@ -364,4 +390,73 @@ model Message {
   @@index([senderId, createdAt])
   @@index([senderType])
   @@map("messages")
+}
+
+// Promo Code System
+model PromoCode {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g., "FISHONTRIP1", "SUMMER10"
+  name        String   // Display name: "Welcome Bonus", "Summer Sale"
+  description String?  // "Get 10% off your first trip"
+  
+  // Discount configuration
+  type        PromoCodeType @default(PERCENTAGE)
+  percentage  Int?     // For PERCENTAGE type (e.g., 10 for 10%)
+  fixedAmount Decimal? @db.Decimal(10, 2) // For FIXED type
+  
+  // Scope and eligibility
+  scope       PromoCodeScope @default(UNIVERSAL)
+  
+  // Validity period
+  startDate   DateTime
+  endDate     DateTime
+  
+  // Usage limits
+  maxUses     Int?     // Total times code can be used (null = unlimited)
+  usesCount   Int      @default(0) // Current usage count
+  maxUsesPerUser Int   @default(1) // Per-user limit (default: one-time use)
+  
+  // Eligibility rules
+  minPurchase Decimal? @db.Decimal(10, 2) // Minimum booking amount
+  maxDiscount Decimal? @db.Decimal(10, 2) // Maximum discount cap
+  newUsersOnly Boolean @default(false) // Only for users with no completed bookings
+  
+  // Targeting (future - Phase 2)
+  specificCharters String[] // Charter IDs (empty = all charters)
+  
+  // Status
+  status      PromoCodeStatus @default(ACTIVE)
+  
+  // Tracking
+  createdBy   String?  // Admin user ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  bookings    Booking[] @relation("BookingPromoCode")
+  assignments UserPromoCodeAssignment[]
+  
+  @@index([code])
+  @@index([status, endDate])
+  @@index([scope])
+}
+
+// Track which users have been assigned which promo codes
+model UserPromoCodeAssignment {
+  id           String   @id @default(cuid())
+  userId       String
+  promoCodeId  String
+  
+  // Tracking
+  assignedAt   DateTime @default(now())
+  usedAt       DateTime? // When user redeemed the code
+  usedInBookingId String? // Which booking used this code
+  
+  // Relations
+  user         MarketUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promoCode    PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, promoCodeId]) // User can only be assigned each code once
+  @@index([userId])
+  @@index([promoCodeId])
 }

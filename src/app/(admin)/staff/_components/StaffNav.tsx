@@ -7,6 +7,7 @@ import {
   Image as ImageIcon,
   LayoutDashboard,
   Shield,
+  Tag,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -19,6 +20,7 @@ const links = [
   { href: "/staff/verification", label: "Verification", Icon: IdCard },
   { href: "/staff/charters", label: "Charters", Icon: Anchor },
   { href: "/staff/media", label: "Media", Icon: ImageIcon },
+  { href: "/staff/promo-codes", label: "Promo Codes", Icon: Tag },
   { href: "/staff/finance", label: "Finance", Icon: DollarSign },
   { href: "/staff/security", label: "Security", Icon: Shield },
 ];

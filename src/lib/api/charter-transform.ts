@@ -92,6 +92,7 @@ type CharterWithRelations = {
     style: string;
     description: string | null;
     promoPrice?: Prisma.Decimal | number | null;
+    priceOverride?: Prisma.Decimal | number | null;
     startTimes?: { value: string }[];
     species?: { value: string }[];
     techniques?: { value: string }[];
@@ -176,7 +177,9 @@ export function transformVideos(videos?: CharterWithRelations["videos"]) {
 /**
  * Convert Prisma Decimal to number if needed
  */
-function decimalToNumber(value: Prisma.Decimal | number | null | undefined): number | null | undefined {
+function decimalToNumber(
+  value: Prisma.Decimal | number | null | undefined
+): number | null | undefined {
   if (value === null || value === undefined) return value;
   if (typeof value === "number") return value;
   if (typeof value === "object" && "toNumber" in value) {
@@ -200,6 +203,7 @@ export function transformTrips(trips?: CharterWithRelations["trips"]) {
       style: t.style,
       description: t.description ?? "",
       promoPrice: decimalToNumber(t.promoPrice),
+      priceOverride: decimalToNumber(t.priceOverride),
       startTimes:
         t.startTimes?.map((st: { value: string }) => ({ value: st.value })) ||
         [],
