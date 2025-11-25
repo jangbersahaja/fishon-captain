@@ -1,38 +1,43 @@
 "use client";
 
+import { GroupHeader } from "@/components/navigation/GroupHeader";
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
-import { MobileHeader } from "@/components/navigation/MobileHeader";
 import { NavigationDrawer } from "@/components/navigation/NavigationDrawer";
 import { ToastProvider } from "@/components/toast/ToastContext";
 import { zIndexClasses } from "@/config/zIndex";
+import { useSession } from "next-auth/react";
 import React, { Suspense, useState } from "react";
-import { DashboardNav } from "./nav";
+import { DashboardNav, navSections } from "./nav";
 
 export default function CaptainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { data: session } = useSession();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const user = session?.user;
 
   return (
     <ToastProvider>
-      <div className="flex flex-col max-h-[calc(100vh-64px)] h-[calc(100vh-64px)]">
-        {/* Mobile Header */}
-        <MobileHeader onMenuClick={() => setIsDrawerOpen(true)} />
+      <div className="flex flex-col h-screen overflow-auto">
+        {/* Group Header (tabs for current group) */}
+        <GroupHeader navSections={navSections} />
 
         {/* Navigation Drawer */}
         <NavigationDrawer
           isOpen={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
-          captainName="Captain" // TODO: Get from session
-          captainEmail="" // TODO: Get from session
+          captainName={user?.name || "Captain"}
+          captainEmail={user?.email || ""}
+          captainImage={user?.image || undefined}
         />
 
-        <div className="flex flex-col flex-1 md:flex-row">
+        <div className="flex flex-col flex-1 overflow-hidden md:flex-row">
           {/* Desktop Sidebar */}
           <aside
-            className={`hidden max-h-[calc(100vh-64px)] overflow-y-auto md:block md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 ${zIndexClasses.content}`}
+            className={`hidden h-full overflow-y-auto md:block md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 ${zIndexClasses.content}`}
           >
             <Suspense fallback={<div className="p-4">Loading...</div>}>
               <DashboardNav />
@@ -40,7 +45,7 @@ export default function CaptainLayout({
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 w-full max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-64px)] overflow-y-auto pb-20 overflow-hidden bg-slate-50/60 md:pb-0">
+          <main className="flex-1 w-full h-full pb-20 overflow-y-auto bg-slate-50/60 md:pb-0">
             {children}
           </main>
           {/* Mobile Spacer */}

@@ -299,7 +299,7 @@ export async function updateCharterSchedule(
     });
 
     // Revalidate calendar page
-    revalidatePath("/captain/new-calendar");
+    revalidatePath("/captain/calendar");
 
     return {
       success: true,

@@ -101,7 +101,7 @@ export function ChatDetail({
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-white">
+    <div className="flex flex-col flex-1 h-full bg-white">
       {/* Chat Header with integrated booking details - Fixed on mobile */}
       <div className="sticky top-0 z-10 bg-white">
         <ChatHeader
@@ -173,7 +173,7 @@ export function ChatDetail({
       </div>
 
       {/* Messages list - Scrollable area */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 h-full overflow-y-auto">
         <MessageList
           messages={liveMessages}
           typingUsers={typingUsers}
@@ -199,8 +199,8 @@ export function ChatDetail({
       )} */}
 
       {/* Chat status notice - Show when locked */}
-      {isChatLocked && (
-        <div className="px-4 py-3 border-t bg-gray-50">
+      {isChatLocked ? (
+        <div className="fixed left-0 right-0 px-4 py-3 border-t bottom-15 bg-gray-50">
           <ChatStatusNotice
             status={
               conversation.status === "CLOSED"
@@ -219,25 +219,16 @@ export function ChatDetail({
             }
           />
         </div>
+      ) : (
+        <div className="fixed left-0 right-0 px-4 py-3 bg-white border-t bottom-15 md:relative md:bottom-auto md:left-auto md:right-auto md:border-t-0">
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            isDisabled={!isConnected}
+          />
+        </div>
       )}
 
       {/* Chat input - Fixed at bottom */}
-      <div className="fixed left-0 right-0 px-4 py-3 bg-white border-t bottom-19 md:relative md:bottom-auto md:left-auto md:right-auto md:border-t-0">
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          isDisabled={!isConnected}
-          isLocked={isChatLocked}
-          placeholder={
-            isChatLocked
-              ? conversation.booking?.status === "PENDING"
-                ? "Chat unlocks when you approve and angler pays"
-                : conversation.booking?.status === "AWAITING_PAYMENT"
-                  ? "Chat unlocks when angler completes payment"
-                  : "This conversation is closed"
-              : "Type a message..."
-          }
-        />
-      </div>
 
       {/* Connection status indicator - Fixed at bottom */}
       {!isConnected && (

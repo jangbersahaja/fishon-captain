@@ -24,6 +24,11 @@ interface CalendarShellProps {
       scheduleType?: string;
       operationalDays?: number[];
     } | null;
+    trips: {
+      id: string;
+      name: string;
+      durationHours: number;
+    }[];
   }[];
   bookings: EnrichedMarketBooking[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,6 +91,7 @@ export function CalendarShell({
         isAllDay: true,
         startTime: null,
         endTime: null,
+        tripId: booking.originalTripId || null,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         createdBy: "system",
@@ -110,7 +116,7 @@ export function CalendarShell({
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col relative">
+    <div className="relative flex flex-col h-full md:h-screen">
       <CalendarHeader
         view={view}
         date={date}
@@ -121,18 +127,18 @@ export function CalendarShell({
       />
 
       {/* Mobile Filters Toggle */}
-      <div className="md:hidden border-b bg-white px-4 py-2">
+      <div className="px-4 py-2 bg-white border-b md:hidden">
         <Button
           variant="outline"
           size="sm"
-          className="w-full justify-between"
+          className="justify-between w-full"
           onClick={() => setIsFiltersOpen(!isFiltersOpen)}
         >
           <span>Filters & Settings</span>
           {isFiltersOpen ? (
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="w-4 h-4" />
           ) : (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="w-4 h-4" />
           )}
         </Button>
       </div>
@@ -156,7 +162,7 @@ export function CalendarShell({
             }}
             showCancelled={showCancelled}
             onShowCancelledChange={setShowCancelled}
-            className="border-none p-0 h-auto"
+            className="h-auto p-0 border-none"
           />
         </div>
       </div>
@@ -253,6 +259,7 @@ export function CalendarShell({
           prefillDate={createModalDate}
           charterId={effectiveCharterId}
           editBlock={editBlock}
+          trips={selectedCharter?.trips || []}
           onSuccess={() => {
             // Refresh logic is handled inside UnavailabilityModal via router.refresh()
             // But we might want to close the modal here if not handled

@@ -151,7 +151,8 @@ export async function validateUnavailability(
   charterId: string,
   startDate: Date,
   endDate: Date,
-  excludeId?: string
+  excludeId?: string,
+  tripId?: string | null
 ): Promise<{
   canCreate: boolean;
   message?: string;
@@ -164,6 +165,11 @@ export async function validateUnavailability(
       id: excludeId ? { not: excludeId } : undefined,
       startDate: { lte: endDate },
       endDate: { gte: startDate },
+      ...(tripId
+        ? {
+            OR: [{ tripId: null }, { tripId: tripId }],
+          }
+        : {}),
     },
     orderBy: { startDate: "asc" },
   });

@@ -111,19 +111,10 @@ export function ChatInput({
     };
   }, []);
 
-  // Show locked state
-  if (isLocked) {
-    return (
-      <div className="px-4 py-2 bg-gray-100 text-center">
-        <p className="text-sm text-gray-600">🔒 {placeholder}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white">
       {/* Input area - More compact */}
-      <div className="px-4 py-2 flex gap-2 items-center">
+      <div className="flex items-center gap-2 px-4 py-2">
         <Input
           value={message}
           onChange={handleInputChange}

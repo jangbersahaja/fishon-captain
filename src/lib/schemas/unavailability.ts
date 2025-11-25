@@ -25,6 +25,7 @@ const baseSchema = z.object({
   isAllDay: z.boolean().optional(),
   startTime: timeStringSchema.optional(),
   endTime: timeStringSchema.optional(),
+  tripId: z.string().optional(),
 });
 
 const buildTimeIssue = (path: (string | number)[], message: string) => ({

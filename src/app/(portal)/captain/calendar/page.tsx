@@ -1,4 +1,4 @@
-import { CalendarShell } from "@/components/captain/new-calendar/CalendarShell";
+import { CalendarShell } from "@/components/captain/calendar/CalendarShell";
 import { Button } from "@/components/ui/button";
 import { authOptions } from "@/lib/auth";
 import { getCaptainBookings } from "@/lib/booking-service";
@@ -46,6 +46,14 @@ export default async function NewCalendarPage({
               },
             },
             orderBy: { startDate: "asc" },
+            include: { trip: true },
+          },
+          trips: {
+            select: {
+              id: true,
+              name: true,
+              durationHours: true,
+            },
           },
         },
       },
@@ -101,6 +109,7 @@ export default async function NewCalendarPage({
       userId: "blocked", // Placeholder
       charterId: u.charterId,
       tripId: "blocked",
+      originalTripId: u.tripId,
       guests: { adults: 0, children: 0 },
       tripPrice: 0,
       startTime: u.startDate.toISOString(),
@@ -144,7 +153,10 @@ export default async function NewCalendarPage({
 
       // Enriched fields
       charterName: selectedCharter.name,
-      tripName: u.reason || "Unavailable",
+      tripName:
+        (typeof u.trip === "object" && u.trip !== null && "name" in u.trip ? (u.trip as { name?: string }).name : undefined) ||
+        u.reason ||
+        (u.tripId ? "Specific Trip Unavailable" : "Unavailable"),
       adults: 0,
       children: 0,
       unitPrice: 0,
@@ -187,6 +199,7 @@ export default async function NewCalendarPage({
         id: c.id,
         name: c.name,
         schedule: c.schedule,
+        trips: c.trips,
       }))}
       bookings={allBookings}
       anglerMap={anglerMap}

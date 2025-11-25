@@ -1,7 +1,7 @@
 "use client";
 
 import { CharterUnavailability } from "@prisma/client";
-import { UnavailabilityModal } from "../calendar/UnavailabilityModal";
+import { UnavailabilityModal } from "./UnavailabilityModal";
 
 interface CreateBlockModalProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface CreateBlockModalProps {
   charterId: string;
   onSuccess?: () => void;
   editBlock?: CharterUnavailability | null;
+  trips: { id: string; name: string; durationHours: number }[];
 }
 
 export function CreateBlockModal(props: CreateBlockModalProps) {

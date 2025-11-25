@@ -13,12 +13,13 @@ import {
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/notifications";
-import { Tooltip } from "@/components/ui/Tooltip";
+import { Tooltip } from "@/components/ui/SimpleTooltip";
 import { zIndexClasses } from "@/config/zIndex";
 
 type AccountStatus =
@@ -44,7 +45,9 @@ type NavItem = {
 };
 
 export default function Navbar() {
+  const pathname = usePathname();
   const { data: session, status } = useSession();
+
   const [accountStatus, setAccountStatus] = useState<AccountStatus | null>(
     null
   );
@@ -297,6 +300,10 @@ export default function Navbar() {
       </div>
     </Link>
   );
+
+  if (pathname?.startsWith("/captain")) {
+    return null;
+  }
 
   return (
     <header

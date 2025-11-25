@@ -1,65 +1,61 @@
-"use client";
-import React, { useEffect, useId, useRef, useState } from "react";
+"use client"
 
-/**
- * Lightweight tooltip component (no external deps).
- * Usage:
- * <Tooltip content="Submit edits"><button>...</button></Tooltip>
- */
-export function Tooltip({
-  content,
-  children,
-  side = "top",
-  delay = 60,
-}: {
-  content: React.ReactNode;
-  children: React.ReactElement<Record<string, unknown>>;
-  side?: "top" | "bottom" | "left" | "right";
-  delay?: number;
-}) {
-  const id = useId();
-  const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const timer = useRef<number | null>(null);
-  useEffect(() => setMounted(true), []);
-  const show = () => {
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setOpen(true), delay);
-  };
-  const hide = () => {
-    if (timer.current) window.clearTimeout(timer.current);
-    setOpen(false);
-  };
-  const pos =
-    side === "top"
-      ? "bottom-full left-1/2 -translate-x-1/2 mb-1.5"
-      : side === "bottom"
-      ? "top-full left-1/2 -translate-x-1/2 mt-1.5"
-      : side === "left"
-      ? "right-full top-1/2 -translate-y-1/2 mr-1.5"
-      : "left-full top-1/2 -translate-y-1/2 ml-1.5";
+import * as React from "react"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+
+import { cn } from "@/lib/utils"
+
+function TooltipProvider({
+  delayDuration = 0,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
-    <span
-      className="relative inline-flex bg-[#ec2227] rounded-full"
-      onMouseEnter={show}
-      onMouseLeave={hide}
-      onFocus={show}
-      onBlur={hide}
-    >
-      {React.cloneElement(children, {
-        // Add ARIA description attribute to the trigger element
-        "aria-describedby": open ? id : undefined,
-      })}
-      {mounted && open && (
-        <span
-          id={id}
-          role="tooltip"
-          className={`pointer-events-none absolute z-[25] whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-medium text-white shadow-md ${pos} animate-in fade-in`}
-        >
-          {content}
-          <span className="absolute inset-0 -z-10" aria-hidden />
-        </span>
-      )}
-    </span>
-  );
+    <TooltipPrimitive.Provider
+      data-slot="tooltip-provider"
+      delayDuration={delayDuration}
+      {...props}
+    />
+  )
 }
+
+function Tooltip({
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Root>) {
+  return (
+    <TooltipProvider>
+      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+    </TooltipProvider>
+  )
+}
+
+function TooltipTrigger({
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+}
+
+function TooltipContent({
+  className,
+  sideOffset = 0,
+  children,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+  return (
+    <TooltipPrimitive.Portal>
+      <TooltipPrimitive.Content
+        data-slot="tooltip-content"
+        sideOffset={sideOffset}
+        className={cn(
+          "bg-foreground text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        <TooltipPrimitive.Arrow className="bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" />
+      </TooltipPrimitive.Content>
+    </TooltipPrimitive.Portal>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }

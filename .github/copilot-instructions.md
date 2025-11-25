@@ -13,10 +13,67 @@ Fishon Captain is the **management dashboard** for captains and charter operator
 - Please check on /docs/config/\* to see current system configuration file.
 - It's either in Fishon Captain or Fishon Market repository depending on where the main implementation is.
 - Treat this document as a living document and update it as necessary when you make changes to the system configuration.
-- Currently I have done configuration documentation for:
-  - Email Notification System
-  - Booking System
-- Other documents may not be correct or up to date.
+
+### Admin Tools (`docs/config/ADMIN_TOOLS_SYSTEM.md`)
+
+- **Video Moderation**: Side-by-side comparison of original vs normalized video metadata.
+- **Storage Inventory**: Track all video assets (original, thumbnail, 720p) and their relationships.
+- **API Cleanup**: Removal of legacy endpoints and consolidation of worker routes.
+- **Security**: Role-based access (STAFF/ADMIN), rate limiting, and audit logging for all sensitive actions.
+
+### Authentication (`docs/config/AUTHENTICATION_SYSTEM.md`)
+
+- **Stack**: NextAuth v4 + Prisma Adapter + JWT sessions.
+- **Methods**: OAuth (Google, Facebook, Apple), Credentials (Email/Password).
+- **Security**: MFA (TOTP), Email Verification (OTP), Password Reset (OTP), Account Lockout (5 failed attempts).
+- **Roles**: CAPTAIN, STAFF, ADMIN.
+
+### Booking System (`docs/config/BOOKING_SYSTEM.md`)
+
+- **Dual Flows**:
+  - **MANUAL**: Request → Captain Approve → Pay (48h deadline).
+  - **AUTO**: Pay Upfront → Captain Acknowledge (24h deadline).
+- **Payment**: SenangPay integration (Card Tokenization for MANUAL, Direct FPX/E-Wallet for AUTO).
+- **Webhooks**: `booking.created`, `booking.approved`, `booking.acknowledged`, `booking.paid`, `booking.rejected`, `booking.cancelled`.
+- **Expiry**: Auto-expiry for approval, payment, and acknowledgment deadlines.
+
+### Captain Payouts (`docs/config/CAPTAIN_PAYOUT_SYSTEM.md`)
+
+- **Commission Tiers**: Starter (10%), Standard (8%), Premium (5%).
+- **Schedule**: Bi-weekly (1st & 15th) or Monthly (1st).
+- **Dashboard**: Earnings overview, pending payouts, transaction history.
+
+### Charter Registration (`docs/config/CHARTER_REGISTRATION_SYSTEM.md`)
+
+- **Wizard**: 8-step registration process with Zod validation.
+- **Drafts**: Auto-save with optimistic locking (`x-draft-version` header).
+- **Media**: Direct Vercel Blob uploads for photos and videos.
+- **Configuration**: Dashboard for managing booking flows, availability, and media.
+
+### Dashboard & Analytics (`docs/config/DASHBOARD_ANALYTICS_SYSTEM.md`)
+
+- **Metrics**: Real-time booking stats, earnings, and charter performance.
+- **Alerts**: Priority actionable items (new requests, upcoming trips, deadlines).
+- **Privacy**: Direct database analytics (no third-party tracking).
+- **Views**: 7-day, 30-day, and 90-day periods.
+
+### Email & Notifications (`docs/config/EMAIL_NOTIFICATION_SYSTEM.md`)
+
+- **Dual Channel**: Email (Zoho SMTP) + Real-time (Pusher).
+- **Templates**: Flow-aware templates (MANUAL vs AUTO) in `@fishon/email`.
+- **Events**: Booking lifecycle events trigger specific notifications.
+
+### Operational Calendar (`docs/config/OPERATIONAL_CALENDAR_SYSTEM.md`)
+
+- **Management**: Daily operating hours, unavailable dates, seasonal schedules.
+- **Visuals**: Color-coded calendar (Available, Booked, Unavailable).
+- **Sync**: Updates availability for fishon-market.
+
+### Video Upload System (`docs/config/VIDEO_UPLOAD_SYSTEM.md`)
+
+- **Client**: Trimming (≤30s), queue-based uploads (IndexedDB), retry logic.
+- **Server**: Dual pipeline (New + Legacy), external worker for normalization (720p).
+- **Status**: `queued` → `processing` → `ready` | `failed` | `cancelled`.
 
 ### Architecture Highlights
 
