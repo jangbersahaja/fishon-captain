@@ -23,13 +23,34 @@ export interface EarningsSummary {
 }
 
 export interface RevenueStats {
-  totalRevenue: number; // Sum of finalPrice (PAID bookings)
-  platformRevenue: number; // Sum of platformFee
+  totalRevenue: number; // Sum of finalPrice (PAID bookings) - Total sales
+  platformRevenue: number; // Fishon's net revenue: platformFee - discount
   captainRevenue: number; // Sum of captainEarnings
+  totalDiscount: number; // Total discount given (absorbed by Fishon)
+  totalServiceFee: number; // Total service fee (payment gateway charges)
+  totalTax: number; // Total tax collected (held for government)
   bookingCount: number; // Count of PAID bookings
   avgBookingValue: number; // Average finalPrice
   refundsIssued: number; // Sum of refundAmount
   pendingPayouts: number; // Sum where payoutStatus=PENDING
+}
+
+export interface RevenueComparison {
+  current: RevenueStats;
+  previous: RevenueStats;
+  changes: {
+    totalRevenue: number; // Percentage change
+    platformRevenue: number;
+    bookingCount: number;
+    avgBookingValue: number;
+  };
+}
+
+export interface DailyRevenue {
+  date: string; // YYYY-MM-DD format
+  totalRevenue: number;
+  platformRevenue: number;
+  bookingCount: number;
 }
 
 export interface BookingFinancial {
@@ -53,23 +74,28 @@ export interface BookingFinancial {
 }
 
 /**
- * Get revenue statistics for a given time period
+ * Get revenue statistics for a specific date range
  */
-export async function getRevenueStats(
-  period: TimePeriod
+export async function getRevenueStatsByDateRange(
+  startDate: Date,
+  endDate: Date
 ): Promise<RevenueStats> {
-  const dateFilter = getPeriodFilter(period);
-
   // Fetch all PAID bookings with financial fields for the period
   const bookings = await prismaMarket.booking.findMany({
     where: {
       status: "PAID",
-      ...(dateFilter && { createdAt: dateFilter }),
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
     },
     select: {
       finalPrice: true,
       platformFee: true,
       captainEarnings: true,
+      serviceFee: true,
+      discount: true,
+      tax: true,
       refundAmount: true,
       payoutStatus: true,
     },
@@ -85,10 +111,43 @@ export async function getRevenueStats(
   const bookingCount = bookings.length;
   const avgBookingValue = bookingCount > 0 ? totalRevenue / bookingCount : 0;
 
+  // Calculate Fishon's net revenue: platformFee - discount
+  // Per FINANCIAL_CALCULATION_SYSTEM.md: Discount is absorbed by Fishon from platform fee
   const platformRevenue = bookings.reduce(
-    (sum: number, b: BookingFinancial) => sum + Number(b.platformFee || 0),
+    (sum: number, b: BookingFinancial) => {
+      const platformFee = Number(b.platformFee || 0);
+      const discountAmount =
+        b.discount && typeof b.discount === "object"
+          ? (b.discount as { amount?: number }).amount || 0
+          : 0;
+      return sum + (platformFee - discountAmount);
+    },
     0
   );
+
+  // Calculate total discount given
+  const totalDiscount = bookings.reduce((sum: number, b: BookingFinancial) => {
+    if (b.discount && typeof b.discount === "object") {
+      const discount = b.discount as { amount?: number };
+      return sum + (discount.amount || 0);
+    }
+    return sum;
+  }, 0);
+
+  // Calculate total service fee (payment gateway charges)
+  const totalServiceFee = bookings.reduce(
+    (sum: number, b: BookingFinancial) => sum + Number(b.serviceFee || 0),
+    0
+  );
+
+  // Calculate total tax collected (future: held for government)
+  const totalTax = bookings.reduce((sum: number, b: BookingFinancial) => {
+    if (b.tax && typeof b.tax === "object") {
+      const tax = b.tax as { amount?: number };
+      return sum + (tax.amount || 0);
+    }
+    return sum;
+  }, 0);
 
   const captainRevenue = bookings.reduce(
     (sum: number, b: BookingFinancial) => sum + Number(b.captainEarnings || 0),
@@ -110,13 +169,144 @@ export async function getRevenueStats(
 
   return {
     totalRevenue,
-    platformRevenue,
+    platformRevenue, // Net Fishon revenue (after discounts)
     captainRevenue,
+    totalDiscount,
+    totalServiceFee,
+    totalTax,
     bookingCount,
     avgBookingValue,
     refundsIssued,
     pendingPayouts,
   };
+}
+
+/**
+ * Get revenue statistics for a given time period (legacy wrapper)
+ */
+export async function getRevenueStats(
+  period: TimePeriod
+): Promise<RevenueStats> {
+  const { startDate, endDate } = getPeriodBoundaries(period);
+  return getRevenueStatsByDateRange(startDate, endDate);
+}
+
+/**
+ * Get revenue stats with comparison to previous period
+ */
+export async function getRevenueComparison(
+  startDate: Date,
+  endDate: Date
+): Promise<RevenueComparison> {
+  // Calculate current period stats
+  const current = await getRevenueStatsByDateRange(startDate, endDate);
+
+  // Calculate previous period (same duration before startDate)
+  const periodDuration = endDate.getTime() - startDate.getTime();
+  const previousEnd = new Date(startDate.getTime() - 1);
+  const previousStart = new Date(previousEnd.getTime() - periodDuration);
+
+  const previous = await getRevenueStatsByDateRange(previousStart, previousEnd);
+
+  // Calculate percentage changes
+  const calculateChange = (current: number, previous: number): number => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  return {
+    current,
+    previous,
+    changes: {
+      totalRevenue: calculateChange(
+        current.totalRevenue,
+        previous.totalRevenue
+      ),
+      platformRevenue: calculateChange(
+        current.platformRevenue,
+        previous.platformRevenue
+      ),
+      bookingCount: calculateChange(
+        current.bookingCount,
+        previous.bookingCount
+      ),
+      avgBookingValue: calculateChange(
+        current.avgBookingValue,
+        previous.avgBookingValue
+      ),
+    },
+  };
+}
+
+/**
+ * Get daily revenue breakdown for chart visualization
+ */
+export async function getDailyRevenue(
+  startDate: Date,
+  endDate: Date
+): Promise<DailyRevenue[]> {
+  const bookings = await prismaMarket.booking.findMany({
+    where: {
+      status: "PAID",
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    select: {
+      finalPrice: true,
+      platformFee: true,
+      discount: true,
+      createdAt: true,
+    },
+  });
+
+  // Group bookings by date
+  const dailyMap = new Map<string, DailyRevenue>();
+
+  for (const booking of bookings) {
+    const dateKey = booking.createdAt.toISOString().split("T")[0]; // YYYY-MM-DD
+
+    if (!dailyMap.has(dateKey)) {
+      dailyMap.set(dateKey, {
+        date: dateKey,
+        totalRevenue: 0,
+        platformRevenue: 0,
+        bookingCount: 0,
+      });
+    }
+
+    const day = dailyMap.get(dateKey)!;
+    day.totalRevenue += Number(booking.finalPrice);
+    day.bookingCount += 1;
+
+    // Calculate platform revenue (platformFee - discount)
+    const platformFee = Number(booking.platformFee || 0);
+    const discountAmount =
+      booking.discount && typeof booking.discount === "object"
+        ? (booking.discount as { amount?: number }).amount || 0
+        : 0;
+    day.platformRevenue += platformFee - discountAmount;
+  }
+
+  // Fill in missing dates with zero values
+  const result: DailyRevenue[] = [];
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dateKey = currentDate.toISOString().split("T")[0];
+    result.push(
+      dailyMap.get(dateKey) || {
+        date: dateKey,
+        totalRevenue: 0,
+        platformRevenue: 0,
+        bookingCount: 0,
+      }
+    );
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return result;
 }
 
 /**
