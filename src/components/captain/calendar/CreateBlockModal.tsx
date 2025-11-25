@@ -10,6 +10,7 @@ interface CreateBlockModalProps {
   charterId: string;
   onSuccess?: () => void;
   editBlock?: CharterUnavailability | null;
+  trips: { id: string; name: string; durationHours: number }[];
 }
 
 export function CreateBlockModal(props: CreateBlockModalProps) {

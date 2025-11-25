@@ -223,7 +223,9 @@ export async function POST(
     const validationResult = await validateUnavailability(
       charterId,
       start,
-      end
+      end,
+      undefined,
+      normalizedPayload.tripId
     );
     if (!validationResult.canCreate) {
       return NextResponse.json(
@@ -246,6 +248,7 @@ export async function POST(
         isAllDay: normalizedPayload.isAllDay,
         startTime: times.startTime,
         endTime: times.endTime,
+        tripId: normalizedPayload.tripId,
         createdBy: session.user.id,
       },
     });
@@ -351,7 +354,8 @@ export async function PATCH(
       charterId,
       start,
       end,
-      unavailabilityId
+      unavailabilityId,
+      normalizedPayload.tripId
     );
     if (!validationResult.canCreate) {
       return NextResponse.json(
@@ -374,6 +378,7 @@ export async function PATCH(
         isAllDay: normalizedPayload.isAllDay,
         startTime: times.startTime,
         endTime: times.endTime,
+        tripId: normalizedPayload.tripId,
       },
     });
 

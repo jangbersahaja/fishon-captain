@@ -24,6 +24,11 @@ interface CalendarShellProps {
       scheduleType?: string;
       operationalDays?: number[];
     } | null;
+    trips: {
+      id: string;
+      name: string;
+      durationHours: number;
+    }[];
   }[];
   bookings: EnrichedMarketBooking[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,6 +91,7 @@ export function CalendarShell({
         isAllDay: true,
         startTime: null,
         endTime: null,
+        tripId: booking.originalTripId || null,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         createdBy: "system",
@@ -253,6 +259,7 @@ export function CalendarShell({
           prefillDate={createModalDate}
           charterId={effectiveCharterId}
           editBlock={editBlock}
+          trips={selectedCharter?.trips || []}
           onSuccess={() => {
             // Refresh logic is handled inside UnavailabilityModal via router.refresh()
             // But we might want to close the modal here if not handled

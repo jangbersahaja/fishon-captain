@@ -8,6 +8,7 @@
 
 import { useToasts } from "@/components/toast/ToastContext";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -28,9 +30,15 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { CharterUnavailability } from "@prisma/client";
-import { format } from "date-fns";
-import { Loader2, Trash2 } from "lucide-react";
+import { addHours, format } from "date-fns";
+import { Calendar as CalendarIcon, Info, Loader2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -41,6 +49,7 @@ interface UnavailabilityModalProps {
   prefillDate?: Date;
   onSuccess?: () => void;
   editBlock?: CharterUnavailability | null;
+  trips: { id: string; name: string; durationHours: number }[];
 }
 
 const REASON_OPTIONS = [
@@ -59,6 +68,7 @@ export function UnavailabilityModal({
   prefillDate,
   onSuccess,
   editBlock,
+  trips,
 }: UnavailabilityModalProps) {
   const router = useRouter();
   const toasts = useToasts();
@@ -75,6 +85,11 @@ export function UnavailabilityModal({
   const [reasonType, setReasonType] = useState<string>("");
   const [customReason, setCustomReason] = useState("");
 
+  // New State
+  const [blockType, setBlockType] = useState<"ALL" | "TRIP">("ALL");
+  const [selectedTripId, setSelectedTripId] = useState<string>("custom");
+  const [isMultiDay, setIsMultiDay] = useState(false);
+
   const isEditMode = !!editBlock;
 
   // Initialize form with editBlock data or prefillDate
@@ -86,30 +101,17 @@ export function UnavailabilityModal({
       setStartDate(format(start, "yyyy-MM-dd"));
       setEndDate(format(end, "yyyy-MM-dd"));
 
-      // Detect if it's an all-day block
-      // Heuristic: if times are 00:00 UTC (which might be local time depending on how it was saved)
-      // Given previous implementation used new Date(dateString) which is UTC midnight,
-      // and we want to maintain backward compatibility where those show as All Day.
-      // We'll assume if it looks like a full day (start/end times align with day boundaries or are same), it's all day.
-      // For now, we'll default to true unless we detect specific times that are NOT midnight.
-      // Since we can't easily know the original timezone of the user who created it,
-      // and the previous UI only supported dates, we default to All Day for existing blocks.
-      // If we want to be smarter, we could check if hours/minutes are non-zero.
-      const hasTime =
-        start.getUTCHours() !== 0 ||
-        start.getUTCMinutes() !== 0 ||
-        end.getUTCHours() !== 0 ||
-        end.getUTCMinutes() !== 0;
+      // Check if multi-day
+      const isMulti = format(start, "yyyy-MM-dd") !== format(end, "yyyy-MM-dd");
+      setIsMultiDay(isMulti);
 
-      // However, if the user is in a timezone where 00:00 UTC is 8am, then 00:00 UTC IS a specific time?
-      // No, the previous UI saved "YYYY-MM-DD" as 00:00 UTC.
-      // So 00:00 UTC effectively means "Date Only" in the old system.
+      // Detect if it's an all-day block
+      const hasTime = !editBlock.isAllDay;
       setIsAllDay(!hasTime);
 
       if (hasTime) {
-        // Convert UTC to local time for inputs
-        setStartTime(format(start, "HH:mm"));
-        setEndTime(format(end, "HH:mm"));
+        setStartTime(editBlock.startTime || format(start, "HH:mm"));
+        setEndTime(editBlock.endTime || format(end, "HH:mm"));
       } else {
         setStartTime("08:00");
         setEndTime("18:00");
@@ -126,24 +128,75 @@ export function UnavailabilityModal({
         setReasonType("");
         setCustomReason("");
       }
+
+      // Handle Trip Specific Block
+      if (editBlock.tripId) {
+        setBlockType("TRIP");
+        setSelectedTripId(editBlock.tripId);
+      } else {
+        setBlockType("ALL");
+        setSelectedTripId("custom");
+      }
     } else if (prefillDate) {
       setStartDate(format(prefillDate, "yyyy-MM-dd"));
       setEndDate(format(prefillDate, "yyyy-MM-dd"));
+      setIsMultiDay(false);
       setIsAllDay(true);
       setStartTime("08:00");
       setEndTime("18:00");
       setReasonType("");
       setCustomReason("");
+      setBlockType("ALL");
+      setSelectedTripId("custom");
     } else {
       setStartDate("");
       setEndDate("");
+      setIsMultiDay(false);
       setIsAllDay(true);
       setStartTime("08:00");
       setEndTime("18:00");
       setReasonType("");
       setCustomReason("");
+      setBlockType("ALL");
+      setSelectedTripId("custom");
     }
   }, [editBlock, prefillDate, isOpen]);
+
+  // Handle Trip Selection for Offline Booking
+  const handleTripSelect = (tripId: string) => {
+    setSelectedTripId(tripId);
+
+    if (tripId !== "custom") {
+      const trip = trips.find((t) => t.id === tripId);
+      if (trip && !isAllDay && startTime) {
+        // Auto-calculate end time based on duration
+        const [hours, minutes] = startTime.split(":").map(Number);
+        const start = new Date();
+        start.setHours(hours, minutes, 0, 0);
+        const end = addHours(start, trip.durationHours);
+        setEndTime(format(end, "HH:mm"));
+      }
+    }
+  };
+
+  // Update end time when start time changes if a trip is selected
+  useEffect(() => {
+    if (
+      reasonType === "Offline Booking" &&
+      selectedTripId !== "custom" &&
+      !isAllDay &&
+      startTime
+    ) {
+      const trip = trips.find((t) => t.id === selectedTripId);
+      if (trip) {
+        const [hours, minutes] = startTime.split(":").map(Number);
+        const start = new Date();
+        start.setHours(hours, minutes, 0, 0);
+        const end = addHours(start, trip.durationHours);
+        setEndTime(format(end, "HH:mm"));
+      }
+    }
+  }, [startTime, selectedTripId, reasonType, isAllDay, trips]);
 
   const handleDelete = async () => {
     if (!editBlock) return;
@@ -201,7 +254,16 @@ export function UnavailabilityModal({
       return;
     }
 
-    const finalEndDate = endDate || startDate;
+    const finalEndDate = isMultiDay ? endDate : startDate;
+    if (isMultiDay && !endDate) {
+      toasts.push({
+        type: "error",
+        message: "Please select an end date for multi-day block.",
+        autoDismiss: 5000,
+      });
+      return;
+    }
+
     let start: Date;
     let end: Date;
 
@@ -248,6 +310,13 @@ export function UnavailabilityModal({
         startTime: isAllDay ? undefined : startTime,
         endTime: isAllDay ? undefined : endTime,
         reason: finalReason?.trim() || undefined,
+        tripId:
+          blockType === "TRIP" ||
+          (reasonType === "Offline Booking" && selectedTripId !== "custom")
+            ? selectedTripId !== "custom"
+              ? selectedTripId
+              : undefined
+            : undefined,
       };
 
       const response = await fetch(url, {
@@ -288,7 +357,7 @@ export function UnavailabilityModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isEditMode ? "Edit Blocked Dates" : "Block Dates"}
@@ -300,65 +369,53 @@ export function UnavailabilityModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Block specific time Toggle */}
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="specific-time"
-                checked={!isAllDay}
-                onCheckedChange={(checked) => setIsAllDay(!checked)}
-              />
-              <Label htmlFor="specific-time">Block specific time</Label>
+          <div className="py-4 space-y-6">
+            {/* Block Type Selection */}
+            <div className="space-y-3">
+              <Label>What do you want to block?</Label>
+              <RadioGroup
+                value={blockType}
+                onValueChange={(v) => setBlockType(v as "ALL" | "TRIP")}
+                className="flex flex-col space-y-1"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="ALL" id="block-all" />
+                  <Label htmlFor="block-all" className="font-normal">
+                    Entire Charter (All Trips)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="TRIP" id="block-trip" />
+                  <Label htmlFor="block-trip" className="font-normal">
+                    Specific Trip Only
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Start Date */}
-              <div className="space-y-2">
-                <Label htmlFor="start-date">Start Date</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={format(new Date(), "yyyy-MM-dd")}
-                />
-              </div>
-
-              {/* End Date */}
-              <div className="space-y-2">
-                <Label htmlFor="end-date">End Date</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate || format(new Date(), "yyyy-MM-dd")}
-                  placeholder="Same as start"
-                />
-              </div>
-            </div>
-
-            {/* Time Inputs */}
-            {!isAllDay && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="start-time">Start Time</Label>
-                  <Input
-                    id="start-time"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end-time">End Time</Label>
-                  <Input
-                    id="end-time"
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
-                </div>
+            {/* Trip Selection (if Block Type is TRIP) */}
+            {blockType === "TRIP" && (
+              <div className="p-3 space-y-2 border rounded-md bg-slate-50">
+                <Label htmlFor="trip-select">Select Trip to Block</Label>
+                <Select
+                  value={selectedTripId}
+                  onValueChange={setSelectedTripId}
+                >
+                  <SelectTrigger id="trip-select">
+                    <SelectValue placeholder="Select a trip" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {trips.map((trip) => (
+                      <SelectItem key={trip.id} value={trip.id}>
+                        {trip.name} ({trip.durationHours}h)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  Only this trip will be unavailable. Other trips can still be
+                  booked.
+                </p>
               </div>
             )}
 
@@ -379,6 +436,47 @@ export function UnavailabilityModal({
               </Select>
             </div>
 
+            {/* Offline Booking Trip Selection */}
+            {reasonType === "Offline Booking" && blockType === "ALL" && (
+              <div className="p-3 space-y-2 border border-blue-100 rounded-md bg-blue-50">
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="offline-trip-select"
+                    className="text-blue-900"
+                  >
+                    Which trip was booked?
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="w-4 h-4 text-blue-500" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">
+                          Select a trip to auto-fill the duration. This helps
+                          track which trips are popular even for offline
+                          bookings.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Select value={selectedTripId} onValueChange={handleTripSelect}>
+                  <SelectTrigger id="offline-trip-select">
+                    <SelectValue placeholder="Select trip (Optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom / Other</SelectItem>
+                    {trips.map((trip) => (
+                      <SelectItem key={trip.id} value={trip.id}>
+                        {trip.name} ({trip.durationHours}h)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Custom Reason Textarea */}
             {reasonType === "Other (please specify)" && (
               <div className="space-y-2">
@@ -396,6 +494,99 @@ export function UnavailabilityModal({
                 </p>
               </div>
             )}
+
+            <div className="pt-4 space-y-4 border-t">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Date & Time</Label>
+
+                {/* Multi-day Toggle */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="multi-day"
+                    checked={isMultiDay}
+                    onCheckedChange={(c: boolean | "indeterminate") =>
+                      setIsMultiDay(!!c)
+                    }
+                  />
+                  <Label
+                    htmlFor="multi-day"
+                    className="font-normal cursor-pointer"
+                  >
+                    Multi-day
+                  </Label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Start Date */}
+                <div
+                  className={isMultiDay ? "space-y-2" : "space-y-2 col-span-2"}
+                >
+                  <Label htmlFor="start-date">Start Date</Label>
+                  <div className="relative">
+                    <Input
+                      id="start-date"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      min={format(new Date(), "yyyy-MM-dd")}
+                    />
+                    <CalendarIcon className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* End Date - Only show if Multi-day */}
+                {isMultiDay && (
+                  <div className="space-y-2">
+                    <Label htmlFor="end-date">End Date</Label>
+                    <div className="relative">
+                      <Input
+                        id="end-date"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        min={startDate || format(new Date(), "yyyy-MM-dd")}
+                      />
+                      <CalendarIcon className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Block specific time Toggle */}
+              <div className="flex items-center pt-2 space-x-2">
+                <Switch
+                  id="specific-time"
+                  checked={!isAllDay}
+                  onCheckedChange={(checked) => setIsAllDay(!checked)}
+                />
+                <Label htmlFor="specific-time">Block specific time</Label>
+              </div>
+
+              {/* Time Inputs */}
+              {!isAllDay && (
+                <div className="grid grid-cols-2 gap-4 p-3 border rounded-md bg-slate-50">
+                  <div className="space-y-2">
+                    <Label htmlFor="start-time">Start Time</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="end-time">End Time</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between sm:gap-0">
@@ -409,17 +600,17 @@ export function UnavailabilityModal({
                 >
                   {isDeleting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Deleting...
                     </>
                   ) : (
                     <>
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="w-4 h-4 mr-2" />
                       Delete
                     </>
                   )}
                 </Button>
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex w-full gap-2 sm:w-auto">
                   <Button
                     variant="outline"
                     onClick={onClose}
@@ -434,7 +625,7 @@ export function UnavailabilityModal({
                     className="flex-1 sm:flex-none"
                   >
                     {isLoading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     )}
                     Save Changes
                   </Button>
@@ -456,7 +647,7 @@ export function UnavailabilityModal({
                   className="w-full sm:w-auto"
                 >
                   {isLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   )}
                   Block Dates
                 </Button>

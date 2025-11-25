@@ -203,6 +203,8 @@ model CharterUnavailability {
   isAllDay  Boolean  @default(true)
   startTime String?  // Format: HH:MM (e.g., "09:00")
   endTime   String?  // Format: HH:MM (e.g., "17:00")
+  tripId    String?
+  trip      Trip?    @relation(fields: [tripId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String
@@ -305,6 +307,7 @@ model Trip {
   species       TripSpecies[]
   startTimes    TripStartTime[]
   techniques    TripTechnique[]
+  unavailability CharterUnavailability[]
 }
 
 model TripStartTime {

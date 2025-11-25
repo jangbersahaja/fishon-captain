@@ -2,7 +2,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Controller, type UseFormReturn } from "react-hook-form";
 
-import { Tooltip } from "@/components/ui/Tooltip";
+import { Tooltip } from "@/components/ui/SimpleTooltip";
 import { charterFormOptions } from "@features/charter-onboarding/charterForm.defaults";
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 import {

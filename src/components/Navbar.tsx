@@ -19,7 +19,7 @@ import { createPortal } from "react-dom";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/notifications";
-import { Tooltip } from "@/components/ui/Tooltip";
+import { Tooltip } from "@/components/ui/SimpleTooltip";
 import { zIndexClasses } from "@/config/zIndex";
 
 type AccountStatus =

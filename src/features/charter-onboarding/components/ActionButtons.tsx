@@ -1,5 +1,5 @@
 "use client";
-import { Tooltip } from "@/components/ui/Tooltip";
+import { Tooltip } from "@/components/ui/SimpleTooltip";
 import { useCharterFormSelectors } from "@features/charter-onboarding/context/CharterFormContext";
 import { logFormDebug } from "@features/charter-onboarding/debug";
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react";

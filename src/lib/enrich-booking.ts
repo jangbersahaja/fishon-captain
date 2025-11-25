@@ -36,6 +36,7 @@ export type EnrichedMarketBooking = MarketBooking & {
   primaryBooker?: BookingParticipant; // First participant with isBooker: true
   allParticipants: BookingParticipant[]; // All participants from guests.participants
   formattedTimeSlots?: string[]; // Human-readable time slot strings
+  originalTripId?: string | null; // For blocked bookings to store the actual trip ID
 };
 
 /**
@@ -60,7 +61,7 @@ function formatTimeSlots(
 
   return timeSlots.map((slot) => {
     const date = new Date(slot.startDateTime);
-    const dayName = date.toLocaleDateString("en-MY", { 
+    const dayName = date.toLocaleDateString("en-MY", {
       weekday: "short",
       timeZone: MALAYSIA_TIMEZONE,
     });
