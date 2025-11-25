@@ -35,7 +35,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/components/ui/Tooltip";
 import type { CharterUnavailability } from "@prisma/client";
 import { addHours, format } from "date-fns";
 import { Calendar as CalendarIcon, Info, Loader2, Trash2 } from "lucide-react";
