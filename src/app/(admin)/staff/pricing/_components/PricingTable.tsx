@@ -81,7 +81,7 @@ export function PricingTable({ trips, onRefresh }: PricingTableProps) {
 
   // Apply filters
   const filteredCharters = Object.entries(groupedTrips).filter(
-    ([_, { charter, trips: charterTrips }]) => {
+    ([, { charter, trips: charterTrips }]) => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -192,12 +192,12 @@ export function PricingTable({ trips, onRefresh }: PricingTableProps) {
 
             <Select value={promoFilter} onValueChange={setPromoFilter}>
               <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="All Promos" />
+                <SelectValue placeholder="All Trips" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Trips</SelectItem>
-                <SelectItem value="with-promo">With Promo</SelectItem>
-                <SelectItem value="without-promo">Without Promo</SelectItem>
+                <SelectItem value="with-promo">With Min Price</SelectItem>
+                <SelectItem value="without-promo">Without Min Price</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -247,9 +247,9 @@ export function PricingTable({ trips, onRefresh }: PricingTableProps) {
                               {promoCount > 0 && (
                                 <>
                                   <span className="mx-2">•</span>
-                                  <Tag className="h-3 w-3 text-emerald-600" />
-                                  <span className="text-emerald-600">
-                                    {promoCount} with promo
+                                  <Tag className="h-3 w-3 text-amber-600" />
+                                  <span className="text-amber-600">
+                                    {promoCount} with min price
                                   </span>
                                 </>
                               )}

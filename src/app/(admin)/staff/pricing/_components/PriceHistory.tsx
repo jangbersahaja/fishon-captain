@@ -126,12 +126,12 @@ export function PriceHistory({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
+            <History className="w-5 h-5" />
             Price Change History
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
+          <div className="py-12 text-center">
             <p className="text-slate-500">Loading price history...</p>
           </div>
         </CardContent>
@@ -144,12 +144,12 @@ export function PriceHistory({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
+            <History className="w-5 h-5" />
             Price Change History
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
+          <div className="py-12 text-center">
             <p className="text-red-600">{error}</p>
             <Button
               variant="outline"
@@ -170,10 +170,15 @@ export function PriceHistory({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
+            <History className="w-5 h-5" />
             Price Change History
           </CardTitle>
-          <Select value={filter} onValueChange={(val) => setFilter(val as any)}>
+          <Select
+            value={filter}
+            onValueChange={(val) =>
+              setFilter(val as "all" | "price-increase" | "price-decrease")
+            }
+          >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="All Changes" />
             </SelectTrigger>
@@ -187,8 +192,8 @@ export function PriceHistory({
       </CardHeader>
       <CardContent>
         {filteredChanges.length === 0 ? (
-          <div className="text-center py-12">
-            <History className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+          <div className="py-12 text-center">
+            <History className="w-12 h-12 mx-auto mb-4 text-slate-300" />
             <p className="text-slate-500">No price changes recorded yet</p>
           </div>
         ) : (
@@ -203,7 +208,7 @@ export function PriceHistory({
               return (
                 <div
                   key={change.id}
-                  className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors"
+                  className="p-4 transition-colors border rounded-lg border-slate-200 hover:bg-slate-50"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">
@@ -227,19 +232,19 @@ export function PriceHistory({
 
                   {/* Base Price Changes */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
                       <div className="flex items-center gap-3">
                         {isIncrease ? (
-                          <TrendingUp className="h-5 w-5 text-red-600" />
+                          <TrendingUp className="w-5 h-5 text-red-600" />
                         ) : (
-                          <TrendingDown className="h-5 w-5 text-emerald-600" />
+                          <TrendingDown className="w-5 h-5 text-emerald-600" />
                         )}
                         <div>
-                          <p className="text-xs text-slate-600 font-medium">
+                          <p className="text-xs font-medium text-slate-600">
                             Base Price
                           </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-slate-500 line-through">
+                            <span className="line-through text-slate-500">
                               {formatCurrency(change.before.basePrice)}
                             </span>
                             <span>→</span>
@@ -268,9 +273,9 @@ export function PriceHistory({
                     {/* Promo Price Changes */}
                     {(change.before.promoPrice !== null ||
                       change.after.promoPrice !== null) && (
-                      <div className="flex items-center justify-between bg-emerald-50 rounded-lg p-3">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50">
                         <div>
-                          <p className="text-xs text-emerald-800 font-medium">
+                          <p className="text-xs font-medium text-emerald-800">
                             Promo Price
                           </p>
                           <div className="flex items-center gap-2 mt-1">

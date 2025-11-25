@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface TripPricing {
   id: string;
@@ -53,27 +53,21 @@ export function PriceConfigModal({
   const [error, setError] = useState<string | null>(null);
 
   // Form state
-  const [basePrice, setBasePrice] = useState<string>(
-    trip?.basePrice.toFixed(2) || ""
-  );
-  const [hasMinPrice, setHasMinPrice] = useState<boolean>(
-    trip?.minPrice !== null
-  );
-  const [minPrice, setMinPrice] = useState<string>(
-    trip?.minPrice?.toFixed(2) || ""
-  );
-  const [currentPrice, setCurrentPrice] = useState<string>(
-    trip?.currentPrice?.toFixed(2) || ""
-  );
+  const [basePrice, setBasePrice] = useState<string>("");
+  const [hasMinPrice, setHasMinPrice] = useState<boolean>(false);
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [currentPrice, setCurrentPrice] = useState<string>("");
 
-  // Reset form when trip changes
-  if (trip && trip.id !== (trip as any)?.id) {
-    setBasePrice(trip.basePrice.toFixed(2));
-    setHasMinPrice(trip.minPrice !== null);
-    setMinPrice(trip.minPrice?.toFixed(2) || "");
-    setCurrentPrice(trip.currentPrice?.toFixed(2) || "");
-    setError(null);
-  }
+  // Reset form when trip changes or modal opens
+  useEffect(() => {
+    if (trip && open) {
+      setBasePrice(trip.basePrice.toFixed(2));
+      setHasMinPrice(trip.minPrice !== null);
+      setMinPrice(trip.minPrice?.toFixed(2) || "");
+      setCurrentPrice(trip.currentPrice?.toFixed(2) || "");
+      setError(null);
+    }
+  }, [trip, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,8 +78,11 @@ export function PriceConfigModal({
 
     try {
       const basePriceNum = parseFloat(basePrice);
-      const minPriceNum = hasMinPrice ? parseFloat(minPrice) : null;
-      const currentPriceNum = currentPrice ? parseFloat(currentPrice) : null;
+      const minPriceNum = hasMinPrice && minPrice ? parseFloat(minPrice) : null;
+      const currentPriceNum =
+        currentPrice && currentPrice.trim() !== ""
+          ? parseFloat(currentPrice)
+          : null;
 
       // Validation
       if (isNaN(basePriceNum) || basePriceNum <= 0) {
@@ -101,7 +98,7 @@ export function PriceConfigModal({
         }
       }
 
-      if (currentPriceNum !== null) {
+      if (currentPriceNum !== null && currentPriceNum !== undefined) {
         if (isNaN(currentPriceNum) || currentPriceNum <= 0) {
           throw new Error("Current price must be a positive number");
         }
@@ -110,22 +107,47 @@ export function PriceConfigModal({
         }
       }
 
+      const payload = {
+        basePrice: basePriceNum,
+        minPrice: minPriceNum,
+        currentPrice: currentPriceNum,
+      };
+
+      console.log("[PriceConfigModal] Submitting pricing update:", payload);
+
       const response = await fetch(`/api/admin/pricing/${trip.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          basePrice: basePriceNum,
-          minPrice: minPriceNum,
-          currentPrice: currentPriceNum,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log("[PriceConfigModal] Response status:", response.status);
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to update pricing");
+        let errorMessage = "Failed to update pricing";
+        try {
+          const data = await response.json();
+          console.error("[PriceConfigModal] Update failed:", {
+            status: response.status,
+            data,
+          });
+          errorMessage = data.error || data.message || errorMessage;
+        } catch (parseError) {
+          console.error(
+            "[PriceConfigModal] Failed to parse error response:",
+            parseError
+          );
+          const text = await response.text();
+          console.error("[PriceConfigModal] Response text:", text);
+          errorMessage =
+            text || `Request failed with status ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      console.log("[PriceConfigModal] Update successful");
 
       onSuccess();
       onOpenChange(false);
@@ -143,12 +165,6 @@ export function PriceConfigModal({
     return "0";
   };
 
-  const getDisplayPrice = () => {
-    const current = parseFloat(currentPrice);
-    const base = parseFloat(basePrice);
-    return !isNaN(current) && current > 0 ? current : base;
-  };
-
   if (!trip) return null;
 
   return (
@@ -159,9 +175,9 @@ export function PriceConfigModal({
             <DialogTitle>Edit Trip Pricing</DialogTitle>
             <DialogDescription>
               Update pricing for <strong>{trip.name}</strong>
-              <div className="mt-1 text-xs text-slate-500">
+              <span className="mt-1 text-xs text-slate-500">
                 {trip.charter.name} • {trip.tripType} • {trip.durationHours}h
-              </div>
+              </span>
             </DialogDescription>
           </DialogHeader>
 

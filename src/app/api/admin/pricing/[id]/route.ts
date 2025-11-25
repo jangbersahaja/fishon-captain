@@ -58,9 +58,12 @@ export async function PATCH(
 
     // Parse and validate request body
     const body = await req.json();
+    console.log("[PricingAPI] PATCH request body:", body);
+
     const validation = updatePricingSchema.safeParse(body);
 
     if (!validation.success) {
+      console.error("[PricingAPI] Validation failed:", validation.error.issues);
       return NextResponse.json(
         {
           error: "Validation error",
@@ -151,6 +154,15 @@ export async function PATCH(
       ].filter(Boolean) as string[],
     });
 
+    console.log("[PricingAPI] Update successful:", {
+      tripId: updatedTrip.id,
+      basePrice: Number(updatedTrip.price),
+      minPrice: updatedTrip.promoPrice ? Number(updatedTrip.promoPrice) : null,
+      currentPrice: updatedTrip.priceOverride
+        ? Number(updatedTrip.priceOverride)
+        : null,
+    });
+
     return NextResponse.json({
       success: true,
       trip: {
@@ -167,8 +179,16 @@ export async function PATCH(
     });
   } catch (error) {
     console.error("[PricingAPI] PATCH error:", error);
+
+    // Return more detailed error for debugging
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to update pricing";
     return NextResponse.json(
-      { error: "Failed to update pricing" },
+      {
+        error: errorMessage,
+        details:
+          process.env.NODE_ENV === "development" ? String(error) : undefined,
+      },
       { status: 500 }
     );
   }

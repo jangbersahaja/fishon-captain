@@ -78,7 +78,7 @@ export async function GET(
     // Calculate statistics
     const totalBookings = promoCode.bookings.length;
     const totalDiscountGiven = promoCode.bookings.reduce(
-      (sum: number, booking: any) => {
+      (sum: number, booking: { discount?: unknown }) => {
         if (booking.discount && typeof booking.discount === "object") {
           const discount = booking.discount as { amount?: number };
           return sum + (discount.amount || 0);
@@ -93,39 +93,59 @@ export async function GET(
     // Note: serviceFee is charged to angler (in finalPrice), NOT deducted from Fishon
     // Discount is absorbed entirely by Fishon from the 10% commission
     const fishonRevenue = promoCode.bookings
-      .filter((b: any) => b.status === "PAID" || b.status === "COMPLETED")
-      .reduce((sum: number, booking: any) => {
-        const platformFee = Number(booking.platformFee || 0);
-        const discountAmount =
-          booking.discount && typeof booking.discount === "object"
-            ? (booking.discount as { amount?: number }).amount || 0
-            : 0;
+      .filter(
+        (b: { status: string }) =>
+          b.status === "PAID" || b.status === "COMPLETED"
+      )
+      .reduce(
+        (
+          sum: number,
+          booking: { platformFee?: number | null; discount?: unknown }
+        ) => {
+          const platformFee = Number(booking.platformFee || 0);
+          const discountAmount =
+            booking.discount && typeof booking.discount === "object"
+              ? (booking.discount as { amount?: number }).amount || 0
+              : 0;
 
-        // Fishon's net revenue: platform commission minus discount absorbed
-        const netRevenue = platformFee - discountAmount;
-        return sum + netRevenue;
-      }, 0);
+          // Fishon's net revenue: platform commission minus discount absorbed
+          const netRevenue = platformFee - discountAmount;
+          return sum + netRevenue;
+        },
+        0
+      );
 
     // Total sales generated (what anglers paid)
     const totalSales = promoCode.bookings
-      .filter((b: any) => b.status === "PAID" || b.status === "COMPLETED")
+      .filter(
+        (b: { status: string }) =>
+          b.status === "PAID" || b.status === "COMPLETED"
+      )
       .reduce(
-        (sum: number, booking: any) => sum + Number(booking.finalPrice),
+        (sum: number, booking: { finalPrice: number | string }) =>
+          sum + Number(booking.finalPrice),
         0
       );
 
     // Calculate total service fee (payment gateway charges)
     const totalServiceFee = promoCode.bookings
-      .filter((b: any) => b.status === "PAID" || b.status === "COMPLETED")
+      .filter(
+        (b: { status: string }) =>
+          b.status === "PAID" || b.status === "COMPLETED"
+      )
       .reduce(
-        (sum: number, booking: any) => sum + Number(booking.serviceFee || 0),
+        (sum: number, booking: { serviceFee?: number | null }) =>
+          sum + Number(booking.serviceFee || 0),
         0
       );
 
     // Calculate total tax collected
     const totalTax = promoCode.bookings
-      .filter((b: any) => b.status === "PAID" || b.status === "COMPLETED")
-      .reduce((sum: number, booking: any) => {
+      .filter(
+        (b: { status: string }) =>
+          b.status === "PAID" || b.status === "COMPLETED"
+      )
+      .reduce((sum: number, booking: { tax?: unknown }) => {
         if (booking.tax && typeof booking.tax === "object") {
           const tax = booking.tax as { amount?: number };
           return sum + (tax.amount || 0);
@@ -134,7 +154,7 @@ export async function GET(
       }, 0);
 
     const bookingsByStatus = promoCode.bookings.reduce(
-      (acc: Record<string, number>, booking: any) => {
+      (acc: Record<string, number>, booking: { status: string }) => {
         acc[booking.status] = (acc[booking.status] || 0) + 1;
         return acc;
       },
@@ -142,10 +162,10 @@ export async function GET(
     );
 
     const assignmentsUsed = promoCode.assignments.filter(
-      (a: any) => a.usedAt !== null
+      (a: { usedAt: Date | null }) => a.usedAt !== null
     ).length;
     const assignmentsUnused = promoCode.assignments.filter(
-      (a: any) => a.usedAt === null
+      (a: { usedAt: Date | null }) => a.usedAt === null
     ).length;
 
     return NextResponse.json({
@@ -182,7 +202,14 @@ export async function GET(
               ) / 100
             : 0,
       },
-      recentBookings: promoCode.bookings.slice(0, 10).map((booking: any) => ({
+      recentBookings: promoCode.bookings.slice(0, 10).map((booking: {
+        id: string;
+        status: string;
+        finalPrice: number | string;
+        discount: unknown;
+        createdAt: Date;
+        user: { name: string; email: string };
+      }) => ({
         id: booking.id,
         status: booking.status,
         finalPrice: Number(booking.finalPrice),
@@ -193,7 +220,12 @@ export async function GET(
       })),
       recentAssignments: promoCode.assignments
         .slice(0, 10)
-        .map((assignment: any) => ({
+        .map((assignment: {
+          id: string;
+          assignedAt: Date;
+          usedAt: Date | null;
+          user: { name: string; email: string };
+        }) => ({
           id: assignment.id,
           assignedAt: assignment.assignedAt,
           usedAt: assignment.usedAt,

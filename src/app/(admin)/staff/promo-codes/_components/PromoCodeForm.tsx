@@ -96,7 +96,7 @@ export function PromoCodeForm({
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm({
-    resolver: zodResolver(promoCodeSchema) as any,
+    resolver: zodResolver(promoCodeSchema),
     defaultValues: {
       code: initialData?.code || "",
       name: initialData?.name || "",
@@ -285,6 +285,7 @@ export function PromoCodeForm({
                     <div className="relative">
                       <Input
                         {...field}
+                        value={field.value as number | undefined}
                         type="number"
                         min="1"
                         max="100"
@@ -316,6 +317,7 @@ export function PromoCodeForm({
                       </span>
                       <Input
                         {...field}
+                        value={field.value as number | undefined}
                         type="number"
                         min="0.01"
                         step="0.01"
@@ -346,7 +348,7 @@ export function PromoCodeForm({
                     </span>
                     <Input
                       {...field}
-                      value={field.value ?? ""}
+                      value={(field.value as number | null) ?? ""}
                       onChange={(e) =>
                         field.onChange(
                           e.target.value ? parseFloat(e.target.value) : null
@@ -421,7 +423,7 @@ export function PromoCodeForm({
                     </span>
                     <Input
                       {...field}
-                      value={field.value ?? ""}
+                      value={(field.value as number | null) ?? ""}
                       onChange={(e) =>
                         field.onChange(
                           e.target.value ? parseFloat(e.target.value) : null
@@ -510,7 +512,7 @@ export function PromoCodeForm({
                 <FormControl>
                   <Input
                     {...field}
-                    value={field.value ?? ""}
+                    value={(field.value as number | null) ?? ""}
                     onChange={(e) =>
                       field.onChange(
                         e.target.value ? parseInt(e.target.value) : null
@@ -537,7 +539,12 @@ export function PromoCodeForm({
               <FormItem>
                 <FormLabel>Maximum Uses Per User *</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="1" />
+                  <Input
+                    {...field}
+                    value={field.value as number}
+                    type="number"
+                    min="1"
+                  />
                 </FormControl>
                 <FormDescription>
                   Number of times each user can use this code

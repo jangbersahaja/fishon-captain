@@ -101,7 +101,7 @@ export async function GET(req: Request) {
     const search = searchParams.get("search");
 
     // Build where clause with proper typing
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (status && ["ACTIVE", "INACTIVE", "EXPIRED"].includes(status)) {
       where.status = status;

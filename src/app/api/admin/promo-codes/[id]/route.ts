@@ -66,7 +66,7 @@ export async function PATCH(
     }
 
     // Update promo code
-    const updateData: any = { ...validated };
+    const updateData: Record<string, unknown> = { ...validated };
 
     if (validated.startDate) {
       updateData.startDate = new Date(validated.startDate);

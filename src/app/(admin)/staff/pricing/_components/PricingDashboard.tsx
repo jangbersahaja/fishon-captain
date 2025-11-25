@@ -114,20 +114,20 @@ export function PricingDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-slate-600">
-              Avg Promo Price
+              Avg Min Price
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-slate-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
+            <div className="text-2xl font-bold text-amber-600">
               {stats?.avgPromoPrice
                 ? `RM ${stats.avgPromoPrice.toFixed(2)}`
                 : "N/A"}
             </div>
             <p className="text-xs text-slate-500 mt-1">
               {stats?.avgPromoPrice && stats?.avgBasePrice
-                ? `${(((stats.avgBasePrice - stats.avgPromoPrice) / stats.avgBasePrice) * 100).toFixed(0)}% avg discount`
-                : "No promo prices set"}
+                ? `${(((stats.avgBasePrice - stats.avgPromoPrice) / stats.avgBasePrice) * 100).toFixed(0)}% avg floor`
+                : "No min prices set"}
             </p>
           </CardContent>
         </Card>
@@ -135,7 +135,7 @@ export function PricingDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-slate-600">
-              Promo Adoption
+              Min Price Adoption
             </CardTitle>
             <Percent className="h-4 w-4 text-slate-400" />
           </CardHeader>
@@ -144,7 +144,7 @@ export function PricingDashboard() {
               {stats?.promoAdoptionRate.toFixed(0) || 0}%
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Trips with promo pricing
+              Trips with min price floor
             </p>
           </CardContent>
         </Card>

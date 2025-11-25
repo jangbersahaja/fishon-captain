@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "50", 10);
 
     // Build where clause for audit logs
-    const where: any = {
+    const where: Record<string, unknown> = {
       entityType: "trip",
       action: "pricing.update",
     };
@@ -69,8 +69,8 @@ export async function GET(req: Request) {
 
     // Format the response
     const changes = auditLogs.map((log) => {
-      const before = log.before as any;
-      const after = log.after as any;
+      const before = log.before as Record<string, unknown> | null;
+      const after = log.after as Record<string, unknown> | null;
       const actor = actorMap.get(log.actorUserId);
 
       return {

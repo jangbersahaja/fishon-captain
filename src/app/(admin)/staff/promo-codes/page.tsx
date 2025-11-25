@@ -251,7 +251,12 @@ export default async function PromoCodesPage({
                         <td className="px-6 py-4 whitespace-nowrap">
                           <PromoCodeStatusBadge
                             status={
-                              isExpired ? "EXPIRED" : (promo.status as any)
+                              isExpired
+                                ? "EXPIRED"
+                                : (promo.status as
+                                    | "ACTIVE"
+                                    | "INACTIVE"
+                                    | "EXPIRED")
                             }
                           />
                         </td>
