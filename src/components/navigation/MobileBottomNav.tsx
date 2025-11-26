@@ -8,7 +8,7 @@ import {
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 type BottomNavItem = {
   href?: string;
@@ -23,7 +23,15 @@ interface MobileBottomNavProps {
 
 export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const active = pathname?.replace(/\/$/, "") || "";
+  const isNewCharterRegistration =
+    active === "/captain/form" && !searchParams?.get("editCharterId");
+
+  // Hide mobile bottom nav during new charter registration
+  if (isNewCharterRegistration) {
+    return null;
+  }
 
   const isActive = (href: string) => {
     if (href === "/captain") {

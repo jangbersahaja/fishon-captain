@@ -1,5 +1,6 @@
 import { AdminBypassLink } from "@/components/admin";
 import authOptions from "@/lib/auth";
+import { decrypt } from "@/lib/encryption";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
@@ -149,6 +150,11 @@ export default async function StaffRegistrationDetailPage({
       </div>
     );
   }
+
+  // Fetch verification/banking information
+  const verification = await prisma.captainVerification.findUnique({
+    where: { userId: draft.userId },
+  });
 
   // Notes (separate fetch to avoid include issues in stale client environments)
   let notes: {
@@ -329,6 +335,142 @@ export default async function StaffRegistrationDetailPage({
           </div>
         </div>
       </section>
+
+      {/* Banking Information Section */}
+      {verification && (
+        <section className="p-4 bg-white border rounded-xl border-slate-200">
+          <h2 className="mb-3 text-sm font-semibold text-slate-800">
+            Banking Information
+          </h2>
+          {(() => {
+            const hasBankingInfo =
+              verification.bankName ||
+              verification.bankAccountNumber ||
+              verification.bankAccountHolder;
+
+            if (!hasBankingInfo) {
+              return (
+                <div className="p-3 text-sm border rounded-lg border-amber-300 bg-amber-50 text-amber-800">
+                  ⚠️ No banking information provided yet
+                </div>
+              );
+            }
+
+            // Decrypt sensitive banking data
+            let decryptedAccountNumber = "";
+            let decryptedAccountHolder = "";
+            let decryptionError = false;
+
+            try {
+              if (verification.bankAccountNumber) {
+                decryptedAccountNumber = decrypt(
+                  verification.bankAccountNumber
+                );
+              }
+              if (verification.bankAccountHolder) {
+                decryptedAccountHolder = decrypt(
+                  verification.bankAccountHolder
+                );
+              }
+            } catch (error) {
+              console.error("Banking data decryption error:", error);
+              decryptionError = true;
+            }
+
+            type Uploaded = {
+              key: string;
+              url: string;
+              name: string;
+              updatedAt?: string;
+            };
+            const bankStatement = verification.bankStatement as
+              | Uploaded
+              | null
+              | undefined;
+
+            return (
+              <>
+                {decryptionError && (
+                  <div className="p-3 mb-3 text-sm border rounded-lg border-red-300 bg-red-50 text-red-800">
+                    ⚠️ Error decrypting sensitive banking data. Please contact
+                    technical support.
+                  </div>
+                )}
+                <div className="space-y-3 text-sm text-slate-700">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <span className="text-slate-500">Bank Name:</span>{" "}
+                      <span className="font-medium">
+                        {verification.bankName || "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Account Holder:</span>{" "}
+                      <span className="font-medium">
+                        {decryptedAccountHolder || "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Account Number:</span>{" "}
+                      <span className="font-mono text-emerald-700">
+                        {decryptedAccountNumber || "—"}
+                      </span>
+                    </div>
+                    {verification.bankSwiftCode && (
+                      <div>
+                        <span className="text-slate-500">SWIFT Code:</span>{" "}
+                        <span className="font-mono">
+                          {verification.bankSwiftCode}
+                        </span>
+                      </div>
+                    )}
+                    {verification.bankBranch && (
+                      <div>
+                        <span className="text-slate-500">Branch:</span>{" "}
+                        {verification.bankBranch}
+                      </div>
+                    )}
+                  </div>
+
+                  {bankStatement && (
+                    <div className="pt-3 border-t border-slate-200">
+                      <span className="text-slate-500">Bank Statement:</span>
+                      <div className="mt-2">
+                        <a
+                          href={bankStatement.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 p-2 border rounded-lg border-slate-200 hover:border-sky-400 hover:bg-slate-50"
+                        >
+                          <span className="text-2xl">📄</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium truncate text-slate-700">
+                              {bankStatement.name}
+                            </div>
+                            {bankStatement.updatedAt && (
+                              <div className="text-[10px] text-slate-500">
+                                Uploaded:{" "}
+                                {new Date(
+                                  bankStatement.updatedAt
+                                ).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-3 text-xs border-t border-slate-200 text-slate-500">
+                    Last updated:{" "}
+                    {new Date(verification.updatedAt).toLocaleString()}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </section>
+      )}
 
       {/* Draft Data Cards */}
       {(() => {

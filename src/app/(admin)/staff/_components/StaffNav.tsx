@@ -2,6 +2,7 @@
 
 import {
   Anchor,
+  Building,
   DollarSign,
   IdCard,
   Image as ImageIcon,
@@ -16,12 +17,13 @@ import { useMemo } from "react";
 
 const links = [
   { href: "/staff", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/staff/registrations", label: "Registrations", Icon: Users },
+  { href: "/staff/users", label: "Users & Registrations", Icon: Users },
   { href: "/staff/verification", label: "Verification", Icon: IdCard },
   { href: "/staff/charters", label: "Charters", Icon: Anchor },
   { href: "/staff/media", label: "Media", Icon: ImageIcon },
   { href: "/staff/promo-codes", label: "Promo Codes", Icon: Tag },
-  { href: "/staff/finance", label: "Finance", Icon: DollarSign },
+  { href: "/staff/finance", label: "Finance", Icon: Building },
+  { href: "/staff/pricing", label: "Pricing", Icon: DollarSign },
   { href: "/staff/security", label: "Security", Icon: Shield },
 ];
 
@@ -30,7 +32,7 @@ export default function StaffNav() {
   const active = useMemo(() => pathname?.replace(/\/$/, "") || "", [pathname]);
 
   return (
-    <nav className="p-4 md:py-8 md:px-5 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible text-sm">
+    <nav className="flex gap-2 p-4 overflow-x-auto text-sm md:py-8 md:px-5 md:flex-col md:overflow-visible">
       {links.map(({ href, label, Icon }) => {
         const isActive = active === href;
         return (
@@ -46,7 +48,7 @@ export default function StaffNav() {
             aria-current={isActive ? "page" : undefined}
             prefetch={false}
           >
-            <Icon className="h-4 w-4" aria-hidden />
+            <Icon className="w-4 h-4" aria-hidden />
             {label}
           </Link>
         );
