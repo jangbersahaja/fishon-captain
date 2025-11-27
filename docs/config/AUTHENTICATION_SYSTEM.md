@@ -17,7 +17,7 @@ Multi-layered authentication system supporting OAuth providers (Google, Facebook
 
 **Security Features:**
 
-- OAuth account linking disabled (`allowDangerousEmailAccountLinking: false`)
+- OAuth account linking enabled (`allowDangerousEmailAccountLinking: true`) - Users who signed up with email/password can also sign in via Google OAuth with the same email
 - Email verification required for credentials login
 - Rate limiting on authentication endpoints
 - Account lockout after failed attempts
@@ -38,7 +38,7 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   providers: [
-    GoogleProvider({ allowDangerousEmailAccountLinking: false }),
+    GoogleProvider({ allowDangerousEmailAccountLinking: true }),
     FacebookProvider({ allowDangerousEmailAccountLinking: false }),
     AppleProvider({ allowDangerousEmailAccountLinking: false }),
     CredentialsProvider({
@@ -658,7 +658,6 @@ export const config = {
 ### Best Practices Implemented
 
 ✅ **Password hashing:** bcryptjs with salt rounds  
-✅ **OAuth security:** Account linking disabled  
 ✅ **Rate limiting:** API endpoints protected  
 ✅ **Account lockout:** After 5 failed attempts (15min)  
 ✅ **MFA support:** TOTP with backup codes  
@@ -666,6 +665,10 @@ export const config = {
 ✅ **Password history:** Prevents reuse of last 3 passwords  
 ✅ **Security headers:** CSP, HSTS, X-Frame-Options  
 ✅ **Environment validation:** `src/lib/env.ts` checks required vars
+
+### Configuration Notes
+
+⚠️ **Google OAuth account linking:** `allowDangerousEmailAccountLinking` is enabled for Google OAuth. This allows users who signed up with email/password to also sign in via Google OAuth using the same email address. This is a convenience vs security trade-off - it simplifies user experience but relies on email verification from both the credentials flow and Google OAuth provider.
 
 ---
 
@@ -785,7 +788,7 @@ export const config = {
 
 - [ ] Sign in with Google (new account)
 - [ ] Sign in with Google (existing account)
-- [ ] Attempt to link OAuth to existing credentials account (should fail - linking disabled)
+- [ ] Sign in with Google for user who registered with email/password (should succeed - linking enabled)
 
 **Password Reset:**
 
