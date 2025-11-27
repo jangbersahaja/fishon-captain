@@ -123,6 +123,7 @@ export default async function NewCalendarPage({
       rejectionReason: null,
       cancellationReason: null,
       captainResponse: null,
+      reviewNotes: null,
       timeSlots: [
         {
           day: 1,
@@ -154,7 +155,9 @@ export default async function NewCalendarPage({
       // Enriched fields
       charterName: selectedCharter.name,
       tripName:
-        (typeof u.trip === "object" && u.trip !== null && "name" in u.trip ? (u.trip as { name?: string }).name : undefined) ||
+        (typeof u.trip === "object" && u.trip !== null && "name" in u.trip
+          ? (u.trip as { name?: string }).name
+          : undefined) ||
         u.reason ||
         (u.tripId ? "Specific Trip Unavailable" : "Unavailable"),
       adults: 0,

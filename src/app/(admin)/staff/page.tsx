@@ -144,6 +144,18 @@ export default async function StaffHomePage() {
           <span className="text-slate-400 group-hover:text-slate-600">→</span>
         </Link>
         <Link
+          href="/staff/users"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
+        >
+          <div>
+            <div className="font-medium text-slate-800">User Management</div>
+            <div className="text-sm text-slate-600">
+              View and manage all user accounts and data
+            </div>
+          </div>
+          <span className="text-slate-400 group-hover:text-slate-600">→</span>
+        </Link>
+        <Link
           href="/staff/security"
           className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
         >

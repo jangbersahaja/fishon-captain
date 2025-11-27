@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 
 type NavLink = {
@@ -21,8 +21,11 @@ interface GroupHeaderProps {
 
 export function GroupHeader({ navSections }: GroupHeaderProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const active = useMemo(() => pathname?.replace(/\/$/, "") || "", [pathname]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isNewCharterRegistration =
+    active === "/captain/form" && !searchParams?.get("editCharterId");
 
   // Find the current active group based on pathname
   const activeGroup = useMemo(() => {
@@ -55,6 +58,11 @@ export function GroupHeader({ navSections }: GroupHeaderProps) {
       }
     }
   }, [active]);
+
+  // Hide group header during new charter registration
+  if (isNewCharterRegistration) {
+    return null;
+  }
 
   if (!activeGroup) {
     return null;

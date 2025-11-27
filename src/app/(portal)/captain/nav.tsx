@@ -99,14 +99,70 @@ export function DashboardNav() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const active = useMemo(() => pathname?.replace(/\/$/, "") || "", [pathname]);
-  const hideNav =
+  const isNewCharterRegistration =
     active === "/captain/form" && !searchParams?.get("editCharterId");
 
-  if (hideNav) {
-    return null;
-  }
-
   const user = session?.user;
+
+  // Show minimal navigation during new charter registration
+  if (isNewCharterRegistration) {
+    return (
+      <nav className="flex flex-col h-full text-sm">
+        {/* Profile Section */}
+        <div className="px-5 pt-6 pb-2">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="relative w-10 h-10 overflow-hidden border rounded-full border-slate-200 bg-slate-100 shrink-0">
+              {user?.image ? (
+                <Image
+                  src={user.image}
+                  alt={user.name || "Captain"}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <User className="w-full h-full p-2 text-slate-400" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate text-slate-900">
+                {user?.name || "Captain"}
+              </p>
+              <p className="text-xs truncate text-slate-500">{user?.email}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Minimal Navigation for New Registration */}
+        <div className="flex-1 px-5 py-2 overflow-y-auto">
+          <div className="px-4 pb-2 text-xs font-semibold tracking-wider uppercase text-slate-400">
+            Registration
+          </div>
+          <div className="flex flex-col gap-1">
+            <Link
+              href="/list-your-business"
+              className="rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 text-slate-600 hover:bg-slate-100"
+            >
+              <Store className="w-4 h-4" aria-hidden />
+              Back to Landing Page
+            </Link>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="px-5 py-4 mt-auto border-t border-slate-200">
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 text-red-600 hover:bg-red-50 w-full text-left"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="flex flex-col h-full text-sm">

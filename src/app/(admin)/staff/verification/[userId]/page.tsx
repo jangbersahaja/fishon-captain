@@ -1,4 +1,5 @@
 import authOptions from "@/lib/auth";
+import { decrypt } from "@/lib/encryption";
 import { prisma } from "@/lib/prisma";
 import {
   CheckCircle2,
@@ -340,6 +341,133 @@ export default async function VerificationReviewPage({
             </div>
           );
         })}
+      </div>
+
+      {/* Banking Information Section */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mb-3 font-medium text-slate-800">
+          Banking Information
+        </div>
+        {(() => {
+          const hasBankingInfo =
+            row.bankName || row.bankAccountNumber || row.bankAccountHolder;
+
+          if (!hasBankingInfo) {
+            return (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                ⚠️ No banking information provided yet
+              </div>
+            );
+          }
+
+          // Decrypt sensitive banking data
+          let decryptedAccountNumber = "";
+          let decryptedAccountHolder = "";
+          let decryptionError = false;
+
+          try {
+            if (row.bankAccountNumber) {
+              decryptedAccountNumber = decrypt(row.bankAccountNumber);
+            }
+            if (row.bankAccountHolder) {
+              decryptedAccountHolder = decrypt(row.bankAccountHolder);
+            }
+          } catch (error) {
+            console.error("Banking data decryption error:", error);
+            decryptionError = true;
+          }
+
+          const bankStatement = toDoc(row.bankStatement);
+
+          return (
+            <div className="space-y-3">
+              {decryptionError && (
+                <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+                  ⚠️ Error decrypting sensitive banking data. Please contact
+                  technical support.
+                </div>
+              )}
+
+              <div className="grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
+                <div>
+                  <span className="text-slate-500">Bank Name:</span>{" "}
+                  <span className="font-medium">{row.bankName || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Account Holder:</span>{" "}
+                  <span className="font-medium">
+                    {decryptedAccountHolder || "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Account Number:</span>{" "}
+                  <span className="font-mono text-emerald-700">
+                    {decryptedAccountNumber || "—"}
+                  </span>
+                </div>
+                {row.bankSwiftCode && (
+                  <div>
+                    <span className="text-slate-500">SWIFT Code:</span>{" "}
+                    <span className="font-mono">{row.bankSwiftCode}</span>
+                  </div>
+                )}
+                {row.bankBranch && (
+                  <div>
+                    <span className="text-slate-500">Branch:</span>{" "}
+                    {row.bankBranch}
+                  </div>
+                )}
+              </div>
+
+              {bankStatement && (
+                <div className="border-t border-slate-200 pt-3">
+                  <div className="mb-2 text-sm font-medium text-slate-700">
+                    Bank Statement
+                  </div>
+                  {isImage(bankStatement.name || bankStatement.url) ? (
+                    <a
+                      href={bankStatement.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block overflow-hidden rounded-lg border border-slate-200 hover:border-sky-400"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={bankStatement.url}
+                        alt={bankStatement.name}
+                        className="h-48 w-full bg-slate-50 object-contain"
+                      />
+                    </a>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                      <span className="inline-flex items-center gap-2 text-sm text-slate-700">
+                        <FileText className="h-4 w-4 text-slate-500" />
+                        {bankStatement.name}
+                      </span>
+                      <a
+                        href={bankStatement.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-slate-700 hover:underline"
+                      >
+                        <LinkIcon className="h-4 w-4" /> Open
+                      </a>
+                    </div>
+                  )}
+                  {bankStatement.updatedAt && (
+                    <div className="mt-1 text-xs text-slate-500">
+                      Uploaded: {fmtDate(bankStatement.updatedAt)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="border-t border-slate-200 pt-3 text-xs text-slate-500">
+                Last updated: {fmtDate(row.updatedAt.toISOString())}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {additional.length > 0 && (

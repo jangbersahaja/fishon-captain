@@ -6,5 +6,28 @@
   "terminal.integrated.shellIntegration.enabled": false,
 
   "chat.tools.autoApprove": true,
-  "chat.agent.maxRequests": 100
+  "chat.agent.maxRequests": 100,
+
+  // Console Ninja Pro Settings
+  "console-ninja.featureSet": "Pro",
+  "console-ninja.allowedHosts": ["localhost", "127.0.0.1"],
+  "console-ninja.output.showNetworkRequests": true,
+  "console-ninja.predictiveLoggingEnabled": true,
+  "console-ninja.allowConsoleLogToTriggerPredictions": true,
+  "console-ninja.captureFunctions": ["console.log", "console.warn", "console.error", "console.info", "console.debug", "console.trace", "console.time", "console.timeEnd"],
+  "console-ninja.output.showErrors": true,
+  "console-ninja.output.showAsVirtualText": true,
+  "console-ninja.toolsToEnableSupportFor": ["next.js", "vitest"],
+  "console-ninja.logViewerMode": "Beside File",
+  "console-ninja.dateTimeDisplayMode": "Relative",
+  "console-ninja.logCaptureOptions": {
+    "resolveGetters": true,
+    "defaultLimits": {
+      "props": 100,
+      "elements": 100,
+      "strLength": 51200,
+      "autoExpandLimit": 5000,
+      "autoExpandMaxDepth": 10
+    }
+  }
 }

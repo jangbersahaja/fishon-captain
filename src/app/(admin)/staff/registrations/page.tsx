@@ -3,7 +3,7 @@ import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DraftStatus, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
-
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 const PAGE_SIZE = 25;
@@ -239,18 +239,65 @@ export default async function StaffRegistrationsPage({
     await import("./RegistrationsPageClientWrapper")
   ).default;
   return (
-    <RegistrationsPageClientWrapper
-      drafts={normalizedDrafts}
-      userMap={normalizedUserMap}
-      charterMap={charterMap}
-      noteCountMap={noteCountMap}
-      role={role}
-      q={q}
-      status={status}
-      step={step}
-      counts={counts}
-      page={page}
-      totalPages={totalPages}
-    />
+    <div className="space-y-4">
+      {/* Migration Notice */}
+      <div className="p-4 border-l-4 border-blue-400 rounded-r-lg bg-blue-50">
+        <div className="flex items-start gap-3">
+          <svg
+            className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <div className="flex-1">
+            <h3 className="text-sm font-medium text-blue-900">
+              📢 Registration Management Moved
+            </h3>
+            <p className="mt-1 text-sm text-blue-700">
+              User and registration management have been combined into a single
+              page for better workflow.{" "}
+              <Link
+                href="/staff/users"
+                className="font-medium underline hover:text-blue-800"
+              >
+                Visit Users & Registrations →
+              </Link>
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-blue-600">
+              <li>
+                • View all users and filter by registration status (In Progress,
+                Submitted)
+              </li>
+              <li>
+                • See registration progress and Force Submit directly from user
+                detail page
+              </li>
+              <li>• Better context when managing users and their charters</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <RegistrationsPageClientWrapper
+        drafts={normalizedDrafts}
+        userMap={normalizedUserMap}
+        charterMap={charterMap}
+        noteCountMap={noteCountMap}
+        role={role}
+        q={q}
+        status={status}
+        step={step}
+        counts={counts}
+        page={page}
+        totalPages={totalPages}
+      />
+    </div>
   );
 }

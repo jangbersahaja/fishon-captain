@@ -5,6 +5,9 @@ import type {
 } from "./market-db";
 import { prisma } from "./prisma";
 
+// Re-export MarketBooking for consumers
+export type { BookingParticipant, BookingTimeSlot, MarketBooking };
+
 /**
  * Enriched booking with trip and charter details for display
  */

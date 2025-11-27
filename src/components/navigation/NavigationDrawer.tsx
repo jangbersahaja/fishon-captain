@@ -24,7 +24,7 @@ import {
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 type NavLink = {
@@ -112,7 +112,10 @@ export function NavigationDrawer(props: NavigationDrawerProps) {
     captainImage,
   } = props;
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const active = pathname?.replace(/\/$/, "") || "";
+  const isNewCharterRegistration =
+    active === "/captain/form" && !searchParams?.get("editCharterId");
 
   // Close drawer on escape key
   useEffect(() => {
@@ -205,46 +208,68 @@ export function NavigationDrawer(props: NavigationDrawerProps) {
 
           {/* Navigation Sections */}
           <div className="flex-1 px-4 py-4 space-y-6 overflow-y-auto">
-            {navSections.map((section) => (
-              <div key={section.label}>
+            {isNewCharterRegistration ? (
+              // Minimal navigation during new charter registration
+              <div>
                 <p className="px-3 mb-2 text-xs font-semibold tracking-wider uppercase text-slate-400">
-                  {section.label}
+                  Registration
                 </p>
                 <div className="space-y-1">
-                  {section.links.map(({ href, label, Icon }) => {
-                    const active = isActive(href);
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={onClose}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                          active
-                            ? "bg-[#ec2227] text-white"
-                            : "text-slate-700 hover:bg-slate-100"
-                        }`}
-                      >
-                        <Icon className="w-5 h-5" />
-                        <span className="font-medium">{label}</span>
-                      </Link>
-                    );
-                  })}
+                  <Link
+                    href="/list-your-business"
+                    onClick={onClose}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-slate-700 hover:bg-slate-100"
+                  >
+                    <Store className="w-5 h-5" />
+                    <span className="font-medium">Back to Landing Page</span>
+                  </Link>
                 </div>
               </div>
-            ))}
+            ) : (
+              // Full navigation for completed registrations
+              navSections.map((section) => (
+                <div key={section.label}>
+                  <p className="px-3 mb-2 text-xs font-semibold tracking-wider uppercase text-slate-400">
+                    {section.label}
+                  </p>
+                  <div className="space-y-1">
+                    {section.links.map(({ href, label, Icon }) => {
+                      const active = isActive(href);
+                      return (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={onClose}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                            active
+                              ? "bg-[#ec2227] text-white"
+                              : "text-slate-700 hover:bg-slate-100"
+                          }`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span className="font-medium">{label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Footer Actions */}
           <div className="p-4 border-t border-slate-200 space-y-2 bg-slate-50">
-            <Link
-              href="https://www.fishon.my"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <Store className="w-5 h-5" />
-              <span className="font-medium">Marketplace</span>
-            </Link>
+            {!isNewCharterRegistration && (
+              <Link
+                href="https://www.fishon.my"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <Store className="w-5 h-5" />
+                <span className="font-medium">Marketplace</span>
+              </Link>
+            )}
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"

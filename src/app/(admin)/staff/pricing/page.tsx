@@ -1,12 +1,12 @@
 /**
  * Admin Pricing Management Page
- * 
+ *
  * Centralized pricing control and monitoring:
  * - View all trip prices (base + promo)
  * - Configure promotional pricing
  * - Monitor pricing effectiveness
  * - Track price change history
- * 
+ *
  * Note: All charters use BASIC plan (10% commission)
  */
 
@@ -32,7 +32,7 @@ export default async function PricingPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="px-4 py-6 mx-auto sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
@@ -47,7 +47,7 @@ export default async function PricingPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-4 py-8 mx-auto sm:px-6 lg:px-8">
         <PricingDashboard />
       </div>
     </div>
