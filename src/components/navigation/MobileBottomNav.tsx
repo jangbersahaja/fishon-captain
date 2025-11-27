@@ -28,17 +28,29 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
   const isNewCharterRegistration =
     active === "/captain/form" && !searchParams?.get("editCharterId");
 
-  // Hide mobile bottom nav during new charter registration
-  if (isNewCharterRegistration) {
-    return null;
-  }
-
   const isActive = (href: string) => {
     if (href === "/captain") {
       return active === "/captain";
     }
     return active.startsWith(href);
   };
+
+  // Show minimal navigation during new charter registration (only Menu button)
+  if (isNewCharterRegistration) {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#ec2227] md:hidden pb-safe">
+        <div className="flex justify-center px-2 py-1">
+          <button
+            onClick={onMoreClick}
+            className="flex flex-col items-center gap-1 px-4 py-1 transition-colors rounded-lg text-white/90 hover:text-white hover:bg-white/10"
+          >
+            <MoreHorizontal className="w-6 h-6" />
+            <span className="text-xs">Menu</span>
+          </button>
+        </div>
+      </nav>
+    );
+  }
 
   const items: BottomNavItem[] = [
     {
