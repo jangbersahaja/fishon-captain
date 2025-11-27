@@ -8,6 +8,7 @@ import type { CharterFormValues } from "@features/charter-onboarding/charterForm
 import {
   AddressAutocomplete,
   AutoResizeTextarea,
+  CitySelect,
   Field,
   LocationMap,
   PhoneInput,
@@ -37,6 +38,8 @@ export function BasicsStep({
   const longitude = watch("longitude");
   const placeId = watch("placeId");
   const startingPoint = watch("startingPoint");
+  const selectedState = watch("state");
+  const selectedCity = watch("city");
   const [mapActive, setMapActive] = useState(false);
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   const [refreshCooling, setRefreshCooling] = useState(false);
@@ -297,21 +300,39 @@ export function BasicsStep({
                     const parsed = parseAddressComponents(
                       details.addressComponents
                     );
-                    // Only auto-fill if the user has not touched these fields or they are blank
-                    if (parsed.state) {
-                      setValue("state", parsed.state, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                    }
-                    if (parsed.city) {
-                      // Only auto-fill city if user hasn't typed something different
-                      const currentCity = form.getValues("city");
-                      if (!currentCity?.trim()) {
-                        setValue("city", parsed.city, {
+                    // Auto-fill state first
+                    let newState = parsed.state;
+                    if (newState) {
+                      // Try to match the state from Google to our list (case-insensitive)
+                      const matchedState = MALAYSIA_LOCATIONS.find(
+                        (loc) =>
+                          loc.state.toLowerCase() === newState?.toLowerCase()
+                      );
+                      if (matchedState) {
+                        newState = matchedState.state;
+                        setValue("state", newState, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
+                      }
+                    }
+                    // Auto-fill city only if it matches a city in the selected state
+                    if (parsed.city && newState) {
+                      const stateData = MALAYSIA_LOCATIONS.find(
+                        (loc) => loc.state === newState
+                      );
+                      if (stateData) {
+                        // Try to find a matching city (case-insensitive)
+                        const matchedCity = stateData.city.find(
+                          (c) => c.toLowerCase() === parsed.city?.toLowerCase()
+                        );
+                        if (matchedCity) {
+                          setValue("city", matchedCity, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }
+                        // If no match, don't auto-fill - let user select manually
                       }
                     }
                     if (parsed.postcode) {
@@ -337,23 +358,56 @@ export function BasicsStep({
 
         <div className="grid gap-5 mt-8 sm:grid-cols-3">
           <Field label="State" labelMy="Negeri" error={fieldError("state")}>
-            <select {...register("state")} className={inputClass}>
-              {MALAYSIA_LOCATIONS.map((item) => (
-                <option key={item.state} value={item.state}>
-                  {item.state}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="state"
+              render={({ field }) => (
+                <select
+                  {...field}
+                  className={inputClass}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    // Clear city when state changes to prevent invalid city selection
+                    const newState = e.target.value;
+                    const stateData = MALAYSIA_LOCATIONS.find(
+                      (loc) => loc.state === newState
+                    );
+                    const currentCity = form.getValues("city");
+                    // Only clear if current city is not in the new state's city list
+                    if (
+                      currentCity &&
+                      stateData &&
+                      !stateData.city.includes(currentCity)
+                    ) {
+                      setValue("city", "", { shouldDirty: true });
+                    }
+                  }}
+                >
+                  <option value="">Select state</option>
+                  {MALAYSIA_LOCATIONS.map((item) => (
+                    <option key={item.state} value={item.state}>
+                      {item.state}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
           </Field>
           <Field
             label="City/Town"
             labelMy="Bandar/Kampung"
             error={fieldError("city")}
           >
-            <input
-              {...register("city")}
-              className={inputClass}
-              placeholder="e.g. Langkawi"
+            <CitySelect
+              value={selectedCity ?? ""}
+              onChange={(val) =>
+                setValue("city", val, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+              state={selectedState ?? ""}
+              error={Boolean(fieldError("city"))}
             />
           </Field>
           <Field

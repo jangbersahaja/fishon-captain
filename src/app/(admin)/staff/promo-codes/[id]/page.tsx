@@ -404,6 +404,7 @@ export default async function PromoCodeDetailPage({
                   ? Number(promoCode.maxDiscount)
                   : null,
                 newUsersOnly: promoCode.newUsersOnly,
+                specificCharters: promoCode.specificCharters || [],
                 status: promoCode.status,
               }}
             />

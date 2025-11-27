@@ -1,6 +1,7 @@
 export * from "./AddressAutocomplete";
 export * from "./AutoResizeTextarea";
 export * from "./ChipGrid";
+export * from "./CitySelect";
 export * from "./Field";
 export * from "./LocationMap";
 export * from "./PhoneInput";
