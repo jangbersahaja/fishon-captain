@@ -658,7 +658,6 @@ export const config = {
 ### Best Practices Implemented
 
 ✅ **Password hashing:** bcryptjs with salt rounds  
-✅ **OAuth account linking:** Enabled for Google - allows email/password users to sign in via Google OAuth with same email  
 ✅ **Rate limiting:** API endpoints protected  
 ✅ **Account lockout:** After 5 failed attempts (15min)  
 ✅ **MFA support:** TOTP with backup codes  
@@ -666,6 +665,10 @@ export const config = {
 ✅ **Password history:** Prevents reuse of last 3 passwords  
 ✅ **Security headers:** CSP, HSTS, X-Frame-Options  
 ✅ **Environment validation:** `src/lib/env.ts` checks required vars
+
+### Configuration Notes
+
+⚠️ **Google OAuth account linking:** `allowDangerousEmailAccountLinking` is enabled for Google OAuth. This allows users who signed up with email/password to also sign in via Google OAuth using the same email address. This is a convenience vs security trade-off - it simplifies user experience but relies on email verification from both the credentials flow and Google OAuth provider.
 
 ---
 
