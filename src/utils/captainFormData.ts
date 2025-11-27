@@ -4,15 +4,25 @@ export type MalaysiaStateOption = {
   coast?: boolean;
 };
 
+/**
+ * Malaysian state and city/town options for charter registration.
+ *
+ * Cities are organized at the town level (not district level) for granular
+ * location selection. This allows captains to specify their exact location
+ * (e.g., "Port Klang" instead of just "Klang").
+ *
+ * The city-district-mapping.ts in fishon-market maps these city names
+ * to their parent districts for image lookups.
+ */
 export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
   {
     state: "Kuala Lumpur",
-    coast: true,
+    coast: false,
     city: ["Kuala Lumpur"],
   },
   {
     state: "Putrajaya",
-    coast: true,
+    coast: false,
     city: ["Putrajaya"],
   },
   {
@@ -24,15 +34,43 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
     state: "Johor",
     coast: true,
     city: [
+      // Batu Pahat District
       "Batu Pahat",
+      "Yong Peng",
+      "Parit Raja",
+      // Johor Bahru District
       "Johor Bahru",
+      "Iskandar Puteri",
+      "Pasir Gudang",
+      "Skudai",
+      "Gelang Patah",
+      "Ulu Tiram",
+      "Masai",
+      // Kluang District
       "Kluang",
+      "Simpang Renggam",
+      // Kota Tinggi District
       "Kota Tinggi",
+      "Pengerang",
+      "Desaru",
+      // Kulai District
       "Kulai",
+      "Senai",
+      // Mersing District
       "Mersing",
+      "Endau",
+      // Muar District
       "Muar",
+      "Pagoh",
+      "Bakri",
+      // Pontian District
       "Pontian",
+      "Kukup",
+      "Pekan Nenas",
+      // Segamat District
       "Segamat",
+      "Labis",
+      // Tangkak District
       "Tangkak",
     ],
   },
@@ -40,162 +78,425 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
     state: "Kedah",
     coast: true,
     city: [
-      "Baling",
-      "Bandar Baharu",
-      "Kota Setar",
-      "Kubang Pasu",
+      // Kota Setar District
+      "Alor Setar",
+      "Kuala Kedah",
+      // Kuala Muda District
+      "Sungai Petani",
+      "Bedong",
+      "Gurun",
+      // Kulim District
       "Kulim",
+      "Lunas",
+      // Kubang Pasu District
+      "Jitra",
+      "Changlun",
+      // Langkawi District
       "Langkawi",
-      "Padang Terap",
+      "Kuah",
+      "Pantai Cenang",
+      // Baling District
+      "Baling",
+      // Bandar Baharu District
+      "Bandar Baharu",
+      // Padang Terap District
+      "Kuala Nerang",
+      // Pendang District
       "Pendang",
+      // Sik District
       "Sik",
+      // Yan District
       "Yan",
-    ],
-  },
-  {
-    state: "Melaka",
-    coast: true,
-    city: ["Melaka Tengah", "Alor Gajah", "Jasin"],
-  },
-  {
-    state: "Pahang",
-    coast: true,
-    city: [
-      "Kuantan",
-      "Pekan",
-      "Rompin",
-      "Temerloh",
-      "Jerantut",
-      "Cameron Highlands",
-    ],
-  },
-  {
-    state: "Penang",
-    coast: true,
-    city: [
-      "Timur Laut (George Town)",
-      "Barat Daya",
-      "Seberang Perai Utara",
-      "Seberang Perai Tengah",
-      "Seberang Perai Selatan",
-    ],
-  },
-  {
-    state: "Perak",
-    coast: true,
-    city: [
-      "Kinta",
-      "Larut, Matang & Selama",
-      "Manjung",
-      "Kerian",
-      "Hilir Perak",
-      "Kuala Kangsar",
-      "Batang Padang",
-      "Kampar",
-      "Perak Tengah",
-      "Muallim",
-    ],
-  },
-  {
-    state: "Sabah",
-    coast: true,
-    city: [
-      "Kota Kinabalu",
-      "Sandakan",
-      "Tawau",
-      "Keningau",
-      "Beaufort",
-      "Ranau",
-      "Semporna",
-      "Sipitang",
-      "Lahad Datu",
-      "Papar",
-      "Putatan",
-      "Penampang",
-      "Kota Belud",
-      "Nabawan",
-      "Tambunan",
-      "Tenom",
-      "Kunak",
-      "Tongod",
-      "Kalabakan",
-      "Beluran",
-      "Kinabatangan",
-      "Kudat",
-      "Pitas",
-      "Tombulu",
-    ],
-  },
-
-  {
-    state: "Sarawak",
-    coast: true,
-    city: ["Kuching", "Miri", "Sibu", "Bintulu", "Limbang", "Sri Aman"],
-  },
-  {
-    state: "Perlis",
-    coast: true,
-    city: [
-      "Kangar",
-      "Kuala Perlis",
-      "Arau",
-      "Padang Besar",
-      "Kaki Bukit",
-      "Kayang",
-    ],
-  },
-  {
-    state: "Selangor",
-    city: [
-      "Gombak",
-      "Hulu Langat",
-      "Hulu Selangor",
-      "Klang",
-      "Kuala Langat",
-      "Kuala Selangor",
-      "Petaling",
-      "Sabak Bernam",
-      "Sepang",
-    ],
-  },
-  {
-    state: "Negeri Sembilan",
-    city: [
-      "Jelebu",
-      "Jempol",
-      "Kuala Pilah",
-      "Port Dickson",
-      "Rembau",
-      "Seremban",
-      "Tampin",
-    ],
-  },
-  {
-    state: "Terengganu",
-    coast: true,
-    city: [
-      "Kuala Terengganu",
-      "Dungun",
-      "Hulu Terengganu",
-      "Kemaman",
-      "Marang",
-      "Setiu",
     ],
   },
   {
     state: "Kelantan",
     coast: true,
     city: [
-      "Bachok",
-      "Gua Musang",
-      "Jeli",
+      // Kota Bharu District
       "Kota Bharu",
-      "Kuala Krai",
-      "Machang",
+      "Kubang Kerian",
+      "Pengkalan Chepa",
+      // Pasir Mas District
       "Pasir Mas",
+      "Rantau Panjang",
+      // Gua Musang District
+      "Gua Musang",
+      // Jeli District
+      "Jeli",
+      // Kuala Krai District
+      "Kuala Krai",
+      "Dabong",
+      // Machang District
+      "Machang",
+      // Pasir Puteh District
       "Pasir Puteh",
+      // Tanah Merah District
       "Tanah Merah",
+      // Tumpat District
       "Tumpat",
+      // Bachok District
+      "Bachok",
+    ],
+  },
+  {
+    state: "Melaka",
+    coast: true,
+    city: [
+      // Melaka Tengah District
+      "Melaka",
+      "Ayer Keroh",
+      "Batu Berendam",
+      "Klebang",
+      "Tanjung Kling",
+      // Alor Gajah District
+      "Alor Gajah",
+      "Masjid Tanah",
+      // Jasin District
+      "Jasin",
+      "Merlimau",
+    ],
+  },
+  {
+    state: "Negeri Sembilan",
+    coast: true,
+    city: [
+      // Seremban District
+      "Seremban",
+      "Senawang",
+      "Nilai",
+      // Port Dickson District
+      "Port Dickson",
+      "Teluk Kemang",
+      "Lukut",
+      // Kuala Pilah District
+      "Kuala Pilah",
+      // Jelebu District
+      "Jelebu",
+      "Kuala Klawang",
+      // Rembau District
+      "Rembau",
+      // Tampin District
+      "Tampin",
+      "Gemas",
+      // Jempol District
+      "Bahau",
+    ],
+  },
+  {
+    state: "Pahang",
+    coast: true,
+    city: [
+      // Kuantan District
+      "Kuantan",
+      "Gambang",
+      "Balok",
+      "Beserah",
+      "Sungai Lembing",
+      // Pekan District
+      "Pekan",
+      "Nenasi",
+      // Rompin District
+      "Rompin",
+      "Kuala Rompin",
+      "Tioman",
+      // Temerloh District
+      "Temerloh",
+      "Mentakab",
+      // Jerantut District
+      "Jerantut",
+      // Bentong District
+      "Bentong",
+      "Karak",
+      // Cameron Highlands District
+      "Cameron Highlands",
+      "Tanah Rata",
+      "Brinchang",
+      // Raub District
+      "Raub",
+      // Lipis District
+      "Kuala Lipis",
+      // Maran District
+      "Maran",
+      "Jengka",
+      // Bera District
+      "Bera",
+    ],
+  },
+  {
+    state: "Penang",
+    coast: true,
+    city: [
+      // Northeast Penang Island District
+      "George Town",
+      "Tanjung Tokong",
+      "Tanjung Bungah",
+      "Batu Ferringhi",
+      "Teluk Bahang",
+      "Air Itam",
+      "Jelutong",
+      // Southwest Penang Island District
+      "Bayan Lepas",
+      "Balik Pulau",
+      "Teluk Kumbar",
+      "Batu Maung",
+      // Central Seberang Perai District
+      "Bukit Mertajam",
+      "Seberang Jaya",
+      "Batu Kawan",
+      "Permatang Pauh",
+      // North Seberang Perai District
+      "Butterworth",
+      "Perai",
+      "Kepala Batas",
+      // South Seberang Perai District
+      "Nibong Tebal",
+      "Sungai Jawi",
+    ],
+  },
+  {
+    state: "Perak",
+    coast: true,
+    city: [
+      // Kinta District
+      "Ipoh",
+      "Batu Gajah",
+      "Gopeng",
+      "Tanjung Rambutan",
+      // Larut, Matang and Selama District
+      "Taiping",
+      "Kamunting",
+      "Kuala Sepetang",
+      // Manjung District
+      "Lumut",
+      "Sitiawan",
+      "Seri Manjung",
+      "Pangkor",
+      // Hilir Perak District
+      "Teluk Intan",
+      "Bagan Datoh",
+      // Kuala Kangsar District
+      "Kuala Kangsar",
+      // Kampar District
+      "Kampar",
+      // Batang Padang District
+      "Tapah",
+      "Bidor",
+      // Hulu Perak District
+      "Gerik",
+      "Lenggong",
+      // Kerian District
+      "Parit Buntar",
+      "Bagan Serai",
+      // Perak Tengah District
+      "Seri Iskandar",
+      // Muallim District
+      "Tanjung Malim",
+      "Slim River",
+    ],
+  },
+  {
+    state: "Perlis",
+    coast: true,
+    city: ["Kangar", "Arau", "Kuala Perlis", "Padang Besar", "Kaki Bukit"],
+  },
+  {
+    state: "Sabah",
+    coast: true,
+    city: [
+      // Kota Kinabalu District
+      "Kota Kinabalu",
+      "Inanam",
+      "Likas",
+      "Menggatal",
+      "Tanjung Aru",
+      // Sandakan District
+      "Sandakan",
+      // Tawau District
+      "Tawau",
+      // Lahad Datu District
+      "Lahad Datu",
+      // Keningau District
+      "Keningau",
+      // Beaufort District
+      "Beaufort",
+      "Kuala Penyu",
+      // Kota Belud District
+      "Kota Belud",
+      // Papar District
+      "Papar",
+      "Kinarut",
+      // Penampang District
+      "Penampang",
+      "Donggongon",
+      // Ranau District
+      "Ranau",
+      "Kundasang",
+      // Tuaran District
+      "Tuaran",
+      "Tamparuli",
+      // Kudat District
+      "Kudat",
+      // Semporna District
+      "Semporna",
+      // Kunak District
+      "Kunak",
+      // Putatan District
+      "Putatan",
+      // Tenom District
+      "Tenom",
+      // Tambunan District
+      "Tambunan",
+      // Sipitang District
+      "Sipitang",
+      // Kota Marudu District
+      "Kota Marudu",
+      // Beluran District
+      "Beluran",
+      "Telupid",
+      // Tongod District
+      "Tongod",
+      // Nabawan District
+      "Nabawan",
+      // Kinabatangan District
+      "Kinabatangan",
+      // Pitas District
+      "Pitas",
+    ],
+  },
+  {
+    state: "Sarawak",
+    coast: true,
+    city: [
+      // Kuching District
+      "Kuching",
+      "Bau",
+      "Lundu",
+      // Miri District
+      "Miri",
+      "Niah",
+      "Bekenu",
+      // Sibu District
+      "Sibu",
+      "Kanowit",
+      // Bintulu District
+      "Bintulu",
+      "Tatau",
+      // Limbang District
+      "Limbang",
+      // Sarikei District
+      "Sarikei",
+      "Bintangor",
+      // Sri Aman District
+      "Sri Aman",
+      // Kapit District
+      "Kapit",
+      "Song",
+      "Belaga",
+      // Mukah District
+      "Mukah",
+      "Dalat",
+      // Betong District
+      "Betong",
+      "Saratok",
+      // Lawas District
+      "Lawas",
+      // Marudi District
+      "Marudi",
+      // Serian District
+      "Serian",
+      // Samarahan District
+      "Samarahan",
+      "Kota Samarahan",
+    ],
+  },
+  {
+    state: "Selangor",
+    coast: true,
+    city: [
+      // Petaling District - Major towns
+      "Petaling Jaya",
+      "Shah Alam",
+      "Subang Jaya",
+      "Puchong",
+      "Seri Kembangan",
+      "Kelana Jaya",
+      "Damansara",
+      "Kota Damansara",
+      "USJ",
+      // Klang District
+      "Klang",
+      "Port Klang",
+      "Kapar",
+      "Meru",
+      // Hulu Langat District
+      "Kajang",
+      "Ampang",
+      "Cheras",
+      "Bangi",
+      "Semenyih",
+      "Balakong",
+      // Gombak District
+      "Gombak",
+      "Selayang",
+      "Batu Caves",
+      "Rawang",
+      "Setapak",
+      // Hulu Selangor District
+      "Hulu Selangor",
+      "Kuala Kubu Bharu",
+      "Batang Kali",
+      // Kuala Selangor District
+      "Kuala Selangor",
+      "Tanjung Karang",
+      "Sekinchan",
+      // Kuala Langat District
+      "Banting",
+      "Morib",
+      "Tanjung Sepat",
+      "Jenjarom",
+      // Sabak Bernam District
+      "Sabak Bernam",
+      "Sungai Besar",
+      // Sepang District
+      "Sepang",
+      "Cyberjaya",
+      "Salak Tinggi",
+    ],
+  },
+  {
+    state: "Terengganu",
+    coast: true,
+    city: [
+      // Kuala Terengganu District
+      "Kuala Terengganu",
+      "Chendering",
+      // Kemaman District
+      "Kemaman",
+      "Chukai",
+      "Kerteh",
+      "Paka",
+      "Kijal",
+      // Dungun District
+      "Dungun",
+      "Kuala Dungun",
+      // Marang District
+      "Marang",
+      "Rusila",
+      // Hulu Terengganu District
+      "Kuala Berang",
+      "Tasik Kenyir",
+      // Besut District
+      "Jerteh",
+      "Kuala Besut",
+      "Kampung Raja",
+      // Setiu District
+      "Setiu",
+      "Bandar Permaisuri",
+      "Penarik",
+      // Kuala Nerus District
+      "Kuala Nerus",
+      "Batu Rakit",
     ],
   },
 ];
