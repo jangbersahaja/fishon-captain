@@ -91,15 +91,15 @@ export default async function CaptainFormPage({
 
   return (
     <div className="px-6 py-8">
-      {adminUserId && (
+      {!adminUserId && (
         <Link
           href={`https://wa.me/60165304304?text=Perlu%20bantuan%20daftar%20Fishon%20Captain`}
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed z-10 flex items-center gap-2 px-4 py-2 text-white rounded-full shadow-md top-32 md:top-18 right-1 bg-gradient-to-tr from-[#075E54] to-[#25D366] hover:shadow-lg hover:opacity-95 transition-opacity duration-500 ease-in-out hover:scale-102"
+          className="fixed z-10 flex items-center gap-2 px-4 py-2 text-white rounded-full shadow-md top-1 right-1 bg-gradient-to-tr from-[#075E54] to-[#25D366] hover:shadow-lg hover:opacity-95 transition-opacity duration-500 ease-in-out hover:scale-102"
         >
           <MessageCircle className="w-4 h-4" />
-          <span className="text-sm font-semibold">Chat Admin</span>
+          <span className="text-xs font-semibold">Chat Admin</span>
         </Link>
       )}
       {targetUserInfo && (
