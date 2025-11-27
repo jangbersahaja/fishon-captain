@@ -23,16 +23,20 @@ export default function CaptainLayout({
     <ToastProvider>
       <div className="flex flex-col h-screen overflow-auto">
         {/* Group Header (tabs for current group) */}
-        <GroupHeader navSections={navSections} />
+        <Suspense fallback={null}>
+          <GroupHeader navSections={navSections} />
+        </Suspense>
 
         {/* Navigation Drawer */}
-        <NavigationDrawer
-          isOpen={isDrawerOpen}
-          onClose={() => setIsDrawerOpen(false)}
-          captainName={user?.name || "Captain"}
-          captainEmail={user?.email || ""}
-          captainImage={user?.image || undefined}
-        />
+        <Suspense fallback={null}>
+          <NavigationDrawer
+            isOpen={isDrawerOpen}
+            onClose={() => setIsDrawerOpen(false)}
+            captainName={user?.name || "Captain"}
+            captainEmail={user?.email || ""}
+            captainImage={user?.image || undefined}
+          />
+        </Suspense>
 
         <div className="flex flex-col flex-1 overflow-hidden md:flex-row">
           {/* Desktop Sidebar */}
@@ -53,7 +57,9 @@ export default function CaptainLayout({
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <MobileBottomNav onMoreClick={() => setIsDrawerOpen(true)} />
+        <Suspense fallback={null}>
+          <MobileBottomNav onMoreClick={() => setIsDrawerOpen(true)} />
+        </Suspense>
       </div>
     </ToastProvider>
   );
