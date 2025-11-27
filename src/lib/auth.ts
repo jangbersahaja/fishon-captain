@@ -226,6 +226,7 @@ export const authOptions: NextAuthOptions = {
             select: {
               id: true,
               role: true,
+              email: true,
               createdAt: true,
             },
           });
@@ -235,9 +236,12 @@ export const authOptions: NextAuthOptions = {
             ? Date.now() - existingUser.createdAt.getTime() < 5000
             : true; // If we can't find user, they're likely new
 
+          // Default role for new OAuth users (matches Prisma schema default)
+          const DEFAULT_OAUTH_ROLE = "CAPTAIN" as const;
+
           console.info("[auth] signIn allow", {
             ...context,
-            role: existingUser?.role ?? "CAPTAIN",
+            role: existingUser?.role ?? DEFAULT_OAUTH_ROLE,
             isNewUser,
             ms: Date.now() - start,
           });
