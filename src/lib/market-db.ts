@@ -55,6 +55,7 @@ type PrismaMarketBooking = {
   rejectionReason: string | null;
   cancellationReason: string | null;
   captainResponse: string | null;
+  reviewNotes: string | null;
   timeSlots: unknown;
   paymentTransactionId: string | null;
   paymentMethod: string | null;
@@ -108,6 +109,7 @@ export type MarketBooking = {
   rejectionReason: string | null;
   cancellationReason: string | null;
   captainResponse: string | null;
+  reviewNotes: string | null; // Admin decision notes
   timeSlots: BookingTimeSlot[] | null;
   paymentTransactionId: string | null;
   paymentMethod: string | null;

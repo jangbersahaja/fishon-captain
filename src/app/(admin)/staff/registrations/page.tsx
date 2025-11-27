@@ -3,7 +3,7 @@ import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DraftStatus, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
-
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 const PAGE_SIZE = 25;
@@ -263,12 +263,12 @@ export default async function StaffRegistrationsPage({
             <p className="mt-1 text-sm text-blue-700">
               User and registration management have been combined into a single
               page for better workflow.{" "}
-              <a
+              <Link
                 href="/staff/users"
                 className="font-medium underline hover:text-blue-800"
               >
                 Visit Users & Registrations →
-              </a>
+              </Link>
             </p>
             <ul className="mt-2 space-y-1 text-xs text-blue-600">
               <li>
