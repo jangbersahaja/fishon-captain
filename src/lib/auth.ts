@@ -209,7 +209,18 @@ export const authOptions: NextAuthOptions = {
       // Security: For OAuth sign-ins, verify user exists and has appropriate access
       // PrismaAdapter creates user automatically, but we control access via role checks
       if (account?.type === "oauth") {
+        // For OAuth users, always allow sign-in. The PrismaAdapter handles user creation.
+        // Previously we checked if user exists by ID, but this caused issues with new
+        // registrations due to timing issues with serverless DBs (Neon) where the newly
+        // created user record wasn't immediately visible for ID-based lookups.
+        //
+        // OAuth providers (Google, etc.) have already verified the user's identity,
+        // and the PrismaAdapter creates/updates the user record. Additional DB checks
+        // here are unnecessary and can cause "access denied" errors for new users.
+        //
+        // Role-based access control is enforced at the route/middleware level.
         try {
+          // Try to fetch user info for logging purposes only
           const existingUser = await prisma.user.findUnique({
             where: { id: user.id },
             select: {
@@ -220,48 +231,30 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          if (!existingUser) {
-            console.warn("[auth] signIn blocked - user not found", {
-              ...context,
-              action: "signInBlocked",
-            });
-            return false;
-          }
-
           // Check if this is a newly created user (created in last 5 seconds)
-          const isNewUser =
-            Date.now() - existingUser.createdAt.getTime() < 5000;
+          const isNewUser = existingUser
+            ? Date.now() - existingUser.createdAt.getTime() < 5000
+            : true; // If we can't find user, they're likely new
 
-          // For existing users (not just created), allow sign in
-          // For new users created via OAuth, they get CAPTAIN role by default
-          // Staff/Admin users must be manually created or upgraded via database
+          // Default role for new OAuth users (matches Prisma schema default)
+          const DEFAULT_OAUTH_ROLE = "CAPTAIN" as const;
 
-          if (isNewUser) {
-            console.info("[auth] new user signed in via OAuth", {
-              ...context,
-              role: existingUser.role,
-              isNewUser: true,
-              ms: Date.now() - start,
-            });
-          }
-
-          // Allow access - user will be redirected based on role
-          // CAPTAIN -> /captain/form (to register charter)
-          // STAFF/ADMIN -> /staff (dashboard access)
           console.info("[auth] signIn allow", {
             ...context,
-            role: existingUser.role,
+            role: existingUser?.role ?? DEFAULT_OAUTH_ROLE,
             isNewUser,
             ms: Date.now() - start,
           });
-          return true;
         } catch (err) {
-          console.error("[auth] signIn user lookup failed", {
+          // Log the error but don't block sign-in
+          console.warn("[auth] user lookup for logging failed", {
             ...context,
             error: (err as Error).message,
           });
-          return false;
         }
+
+        // Always allow OAuth sign-ins - the OAuth provider has verified the user
+        return true;
       }
 
       // For non-OAuth (credentials), allow
