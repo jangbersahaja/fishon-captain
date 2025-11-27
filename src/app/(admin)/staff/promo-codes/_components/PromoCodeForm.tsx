@@ -126,7 +126,7 @@ export function PromoCodeForm({
 
   const discountType = form.watch("type");
   const [charterInput, setCharterInput] = useState("");
-  const specificCharters = form.watch("specificCharters");
+  const specificCharters = form.watch("specificCharters") ?? [];
 
   const addCharter = () => {
     const trimmed = charterInput.trim();
