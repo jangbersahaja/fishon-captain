@@ -3,19 +3,10 @@
 import { CheckCircle2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+const REQUIREMENTS_COUNT = 7;
+
 export default function RequirementsSection() {
   const t = useTranslations("tutorial.requirements");
-
-  // Get the items array
-  const items = [
-    t("items.0"),
-    t("items.1"),
-    t("items.2"),
-    t("items.3"),
-    t("items.4"),
-    t("items.5"),
-    t("items.6"),
-  ];
 
   return (
     <section className="bg-white py-16 md:py-20">
@@ -31,10 +22,10 @@ export default function RequirementsSection() {
           {/* Requirements List */}
           <div className="mt-10 rounded-2xl border border-gray-200 bg-gray-50 p-6 md:p-8">
             <ul className="space-y-4">
-              {items.map((item, index) => (
+              {Array.from({ length: REQUIREMENTS_COUNT }).map((_, index) => (
                 <li key={index} className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#EC2227]" />
-                  <span className="text-gray-700">{item}</span>
+                  <span className="text-gray-700">{t(`items.${index}`)}</span>
                 </li>
               ))}
             </ul>

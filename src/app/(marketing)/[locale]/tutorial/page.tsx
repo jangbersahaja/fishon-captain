@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import Footer from "@/components/Footer";
 import CtaSection from "./CtaSection";
@@ -8,27 +9,35 @@ import RequirementsSection from "./RequirementsSection";
 import StepsSection from "./StepsSection";
 import TipsSection from "./TipsSection";
 
-export const metadata: Metadata = {
-  title: "How to Register Your Charter | Fishon.my",
-  description:
-    "Step-by-step guide to registering your fishing charter on Fishon.my - Malaysia's first charter booking platform.",
-  alternates: { canonical: "https://www.fishon.my/tutorial" },
-  openGraph: {
-    title: "How to Register Your Charter | Fishon.my",
-    description:
-      "Learn how to list your charter on Malaysia's premier fishing charter booking platform.",
-    url: "https://www.fishon.my/tutorial",
-    type: "website",
-    siteName: "Fishon.my",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "How to Register Your Charter | Fishon.my",
-    description:
-      "Step-by-step guide to registering your fishing charter on Fishon.my",
-  },
-  robots: { index: true, follow: true },
+type TutorialPageProps = {
+  params: Promise<{ locale: string }>;
 };
+
+export async function generateMetadata({
+  params,
+}: TutorialPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "tutorial.meta" });
+
+  return {
+    title: t("title"),
+    description: t("description"),
+    alternates: { canonical: "https://www.fishon.my/tutorial" },
+    openGraph: {
+      title: t("title"),
+      description: t("description"),
+      url: "https://www.fishon.my/tutorial",
+      type: "website",
+      siteName: "Fishon.my",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("title"),
+      description: t("description"),
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 export default function TutorialPage() {
   return (

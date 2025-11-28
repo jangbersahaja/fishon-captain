@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 
+const STEPS_COUNT = 8;
+
 export default function StepsSection() {
   const t = useTranslations("tutorial.steps");
 
@@ -17,14 +19,14 @@ export default function StepsSection() {
 
         {/* Steps Timeline */}
         <div className="mt-12 space-y-0">
-          {Array.from({ length: 8 }).map((_, index) => (
+          {Array.from({ length: STEPS_COUNT }).map((_, index) => (
             <div key={index} className="relative flex gap-6">
               {/* Timeline line */}
               <div className="flex flex-col items-center">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EC2227] text-lg font-bold text-white shadow-lg md:h-12 md:w-12">
                   {t(`list.${index}.step`)}
                 </div>
-                {index < 7 && (
+                {index < STEPS_COUNT - 1 && (
                   <div className="h-full w-0.5 bg-gradient-to-b from-[#EC2227] to-[#EC2227]/20" />
                 )}
               </div>
