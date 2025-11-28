@@ -1,4 +1,120 @@
 {
+  "tutorial": {
+    "meta": {
+      "title": "How to Register Your Charter | Fishon.my",
+      "description": "Step-by-step guide to registering your fishing charter on Fishon.my - Malaysia's first charter booking platform."
+    },
+    "hero": {
+      "badge": "Captain Guide",
+      "title": "How to Register Your Charter",
+      "subtitle": "A complete step-by-step guide to listing your charter on Fishon.my and start receiving bookings from anglers across Malaysia."
+    },
+    "overview": {
+      "title": "Registration Overview",
+      "description": "Registering your charter on Fishon.my is a simple 8-step process. Our wizard guides you through each step with auto-save, so you can complete it at your own pace.",
+      "features": [
+        {
+          "title": "Auto-Save",
+          "description": "Your progress is automatically saved. Continue anytime without losing data."
+        },
+        {
+          "title": "Live Preview",
+          "description": "See how your listing will appear to anglers before publishing."
+        },
+        {
+          "title": "Easy Media Upload",
+          "description": "Upload photos and videos to showcase your charter and boat."
+        }
+      ]
+    },
+    "steps": {
+      "title": "8 Simple Steps",
+      "list": [
+        {
+          "step": "1",
+          "title": "Basic Information",
+          "description": "Enter your charter name, type (inshore, offshore, freshwater), and a compelling description. Add your location including city, state, and pickup point."
+        },
+        {
+          "step": "2",
+          "title": "Boat Details",
+          "description": "Provide your boat information including name, type, length, and maximum passenger capacity. List amenities like GPS, fish finder, and safety equipment."
+        },
+        {
+          "step": "3",
+          "title": "Trip Details",
+          "description": "Create trip packages (e.g., Half Day, Full Day). Set duration, pricing, and target species for each trip type. You can offer multiple trip options."
+        },
+        {
+          "step": "4",
+          "title": "Availability",
+          "description": "Set your operating days and hours. Mark seasonal availability and any dates you're unavailable. Anglers will only see open slots."
+        },
+        {
+          "step": "5",
+          "title": "Policies",
+          "description": "Define your cancellation policy, weather policy, what guests should bring, and any additional rules. Clear policies build trust with customers."
+        },
+        {
+          "step": "6",
+          "title": "Media Upload",
+          "description": "Upload at least 3 photos (up to 20) of your charter and boat. Add up to 5 short videos (max 30 seconds each). Select your cover photo."
+        },
+        {
+          "step": "7",
+          "title": "Contact & Verification",
+          "description": "Confirm your phone number and email. Optionally upload your captain license for verified status badge."
+        },
+        {
+          "step": "8",
+          "title": "Review & Submit",
+          "description": "Preview your complete listing. Review all details and submit for approval. Once approved, you'll start receiving booking requests!"
+        }
+      ]
+    },
+    "tips": {
+      "title": "Pro Tips for Success",
+      "list": [
+        {
+          "title": "Use High-Quality Photos",
+          "description": "Bright, clear photos of your boat, catches, and happy customers attract more bookings. Minimum 800x600 pixels recommended."
+        },
+        {
+          "title": "Write a Detailed Description",
+          "description": "Tell your story! Mention your experience, specialty, and what makes your charter unique. Aim for at least 50 words."
+        },
+        {
+          "title": "Set Competitive Pricing",
+          "description": "Research similar charters in your area. Offer value through included gear, refreshments, or fishing expertise."
+        },
+        {
+          "title": "Keep Availability Updated",
+          "description": "Regularly update your calendar to avoid double bookings. Mark unavailable dates as soon as you know them."
+        },
+        {
+          "title": "Respond Quickly",
+          "description": "Fast responses to booking requests lead to higher conversion rates. Enable notifications to never miss a request."
+        }
+      ]
+    },
+    "requirements": {
+      "title": "What You'll Need",
+      "items": [
+        "Valid identification (IC or Company Registration/SSM)",
+        "Seafarer ID or Maritime License (where applicable)",
+        "Boat Registration Certificate",
+        "Vessel & Public Liability Insurance",
+        "First Aid Certification (recommended)",
+        "At least 3 high-quality photos of your charter",
+        "Bank account details for payouts"
+      ]
+    },
+    "cta": {
+      "title": "Ready to Get Started?",
+      "subtitle": "Join Malaysia's growing community of successful charter captains. It's free to list!",
+      "button": "Register Your Charter Now"
+    }
+  },
   "common": {
     "nav": {
       "marketplace": "Marketplace",

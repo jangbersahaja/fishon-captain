@@ -1,4 +1,120 @@
 {
+  "tutorial": {
+    "meta": {
+      "title": "Cara Mendaftar Charter Anda | Fishon.my",
+      "description": "Panduan langkah demi langkah untuk mendaftarkan charter memancing anda di Fishon.my - platform tempahan charter pertama di Malaysia."
+    },
+    "hero": {
+      "badge": "Panduan Kapten",
+      "title": "Cara Mendaftar Charter Anda",
+      "subtitle": "Panduan lengkap langkah demi langkah untuk menyenaraikan charter anda di Fishon.my dan mula menerima tempahan daripada pemancing di seluruh Malaysia."
+    },
+    "overview": {
+      "title": "Gambaran Pendaftaran",
+      "description": "Mendaftar charter anda di Fishon.my adalah proses 8 langkah yang mudah. Wizard kami membimbing anda melalui setiap langkah dengan simpan automatik, jadi anda boleh menyelesaikannya mengikut kadar anda sendiri.",
+      "features": [
+        {
+          "title": "Simpan Automatik",
+          "description": "Kemajuan anda disimpan secara automatik. Teruskan bila-bila masa tanpa kehilangan data."
+        },
+        {
+          "title": "Pratonton Langsung",
+          "description": "Lihat bagaimana listing anda akan kelihatan kepada pemancing sebelum diterbitkan."
+        },
+        {
+          "title": "Muat Naik Media Mudah",
+          "description": "Muat naik foto dan video untuk mempamerkan charter dan bot anda."
+        }
+      ]
+    },
+    "steps": {
+      "title": "8 Langkah Mudah",
+      "list": [
+        {
+          "step": "1",
+          "title": "Maklumat Asas",
+          "description": "Masukkan nama charter, jenis (inshore, offshore, air tawar), dan penerangan menarik. Tambahkan lokasi anda termasuk bandar, negeri, dan tempat pengambilan."
+        },
+        {
+          "step": "2",
+          "title": "Butiran Bot",
+          "description": "Berikan maklumat bot anda termasuk nama, jenis, panjang, dan kapasiti penumpang maksimum. Senaraikan kemudahan seperti GPS, pencari ikan, dan peralatan keselamatan."
+        },
+        {
+          "step": "3",
+          "title": "Butiran Trip",
+          "description": "Cipta pakej trip (cth., Separuh Hari, Satu Hari). Tetapkan tempoh, harga, dan spesies sasaran untuk setiap jenis trip. Anda boleh menawarkan pelbagai pilihan trip."
+        },
+        {
+          "step": "4",
+          "title": "Ketersediaan",
+          "description": "Tetapkan hari dan waktu operasi anda. Tandakan ketersediaan bermusim dan tarikh anda tidak tersedia. Pemancing hanya akan melihat slot yang terbuka."
+        },
+        {
+          "step": "5",
+          "title": "Polisi",
+          "description": "Tentukan polisi pembatalan, polisi cuaca, apa yang perlu dibawa tetamu, dan peraturan tambahan. Polisi yang jelas membina kepercayaan dengan pelanggan."
+        },
+        {
+          "step": "6",
+          "title": "Muat Naik Media",
+          "description": "Muat naik sekurang-kurangnya 3 foto (sehingga 20) charter dan bot anda. Tambahkan sehingga 5 video pendek (maksimum 30 saat setiap satu). Pilih foto muka depan anda."
+        },
+        {
+          "step": "7",
+          "title": "Hubungan & Pengesahan",
+          "description": "Sahkan nombor telefon dan emel anda. Pilihan untuk memuat naik lesen kapten untuk lencana status disahkan."
+        },
+        {
+          "step": "8",
+          "title": "Semak & Hantar",
+          "description": "Pratonton listing lengkap anda. Semak semua butiran dan hantar untuk kelulusan. Setelah diluluskan, anda akan mula menerima permintaan tempahan!"
+        }
+      ]
+    },
+    "tips": {
+      "title": "Tip Pro untuk Kejayaan",
+      "list": [
+        {
+          "title": "Gunakan Foto Berkualiti Tinggi",
+          "description": "Foto yang terang dan jelas bot anda, tangkapan, dan pelanggan yang gembira menarik lebih banyak tempahan. Minimum 800x600 piksel disyorkan."
+        },
+        {
+          "title": "Tulis Penerangan Terperinci",
+          "description": "Ceritakan kisah anda! Nyatakan pengalaman, kepakaran, dan apa yang menjadikan charter anda unik. Sasarkan sekurang-kurangnya 50 perkataan."
+        },
+        {
+          "title": "Tetapkan Harga Kompetitif",
+          "description": "Kaji charter serupa di kawasan anda. Tawarkan nilai melalui peralatan yang disertakan, minuman, atau kepakaran memancing."
+        },
+        {
+          "title": "Kemaskini Ketersediaan",
+          "description": "Kemaskini kalendar anda secara berkala untuk mengelakkan tempahan berganda. Tandakan tarikh tidak tersedia sebaik sahaja anda tahu."
+        },
+        {
+          "title": "Balas dengan Cepat",
+          "description": "Respons pantas kepada permintaan tempahan membawa kepada kadar penukaran yang lebih tinggi. Aktifkan notifikasi agar tidak terlepas permintaan."
+        }
+      ]
+    },
+    "requirements": {
+      "title": "Apa yang Anda Perlukan",
+      "items": [
+        "Pengenalan sah (IC atau Pendaftaran Syarikat/SSM)",
+        "Seafarer ID atau Lesen Maritim (jika berkenaan)",
+        "Sijil Pendaftaran Bot",
+        "Insurans Liabiliti Kapal & Awam",
+        "Pensijilan Pertolongan Cemas (disyorkan)",
+        "Sekurang-kurangnya 3 foto berkualiti tinggi charter anda",
+        "Butiran akaun bank untuk pembayaran"
+      ]
+    },
+    "cta": {
+      "title": "Sedia untuk Bermula?",
+      "subtitle": "Sertai komuniti kapten charter yang berjaya di Malaysia. Percuma untuk disenaraikan!",
+      "button": "Daftar Charter Anda Sekarang"
+    }
+  },
   "common": {
     "nav": {
       "marketplace": "Pasaran",
