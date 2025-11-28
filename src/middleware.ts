@@ -86,8 +86,8 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Root and marketing pages (with and without locale prefix)
-
     "/list-your-business",
+    "/tutorial",
     "/(ms|en)/:path*",
     // Protected routes
     "/captain/:path*",
