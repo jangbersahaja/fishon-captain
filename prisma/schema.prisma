@@ -85,6 +85,7 @@ model Charter {
   latitude           Decimal?                @db.Decimal(10, 7)
   longitude          Decimal?                @db.Decimal(10, 7)
   description        String
+  descriptionMy      String?                 // Malay version of description for i18n
   pricingPlan        CharterPricingPlan      @default(BASIC)
   boatId             String?
   createdAt          DateTime                @default(now())

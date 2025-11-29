@@ -1,3 +1,4 @@
+export { BlockedDateDetailsPanel } from "./BlockedDateDetailsPanel";
 export { CalendarShell } from "./CalendarShell";
 export { CalendarSidebar } from "./CalendarSidebar";
 export { CreateBlockModal } from "./CreateBlockModal";

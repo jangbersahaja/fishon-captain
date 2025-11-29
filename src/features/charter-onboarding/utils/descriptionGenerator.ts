@@ -1,10 +1,62 @@
+import {
+  AMENITIES_OPTIONS,
+  BOAT_FEATURE_OPTIONS,
+  TECHNIQUE_OPTIONS,
+} from "@/utils/captainFormData";
 import type { CharterFormValues } from "@features/charter-onboarding/charterForm.schema";
 
-// --- Tone handling ---------------------------------------------------------
+// --- Types -----------------------------------------------------------------
 export type Tone = "friendly" | "adventurous" | "professional";
+export type Language = "en" | "ms";
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// --- Label Translation Helpers ---------------------------------------------
+type LabelOption = { key: string; label: string; labelMy?: string };
+
+function translateLabel(
+  key: string,
+  options: LabelOption[],
+  lang: Language
+): string {
+  const option = options.find((o) => o.key === key || o.label === key);
+  if (!option) return key;
+  return lang === "ms" && option.labelMy ? option.labelMy : option.label;
+}
+
+function translateAmenity(amenity: string, lang: Language): string {
+  return translateLabel(amenity, AMENITIES_OPTIONS, lang);
+}
+
+function translateBoatFeature(feature: string, lang: Language): string {
+  return translateLabel(feature, BOAT_FEATURE_OPTIONS, lang);
+}
+
+function translateTechnique(technique: string, lang: Language): string {
+  // TECHNIQUE_OPTIONS uses { key, label } format without labelMy yet
+  // We'll add basic translations inline for now
+  const techniqueMy: Record<string, string> = {
+    bottom_fishing: "Bottom Fishing",
+    casting: "Casting",
+    deep_sea_fishing: "Deep Sea Fishing",
+    drift_fishing: "Drift Fishing",
+    jigging: "Jigging",
+    eging: "Eging",
+    fly_fishing: "Fly Fishing",
+    prawn_fishing: "Memancing Udang",
+    trolling: "Trolling",
+    apollo: "Apollo",
+  };
+  const option = TECHNIQUE_OPTIONS.find(
+    (o) => o.key === technique || o.label === technique
+  );
+  if (!option) return technique;
+  if (lang === "ms") {
+    return techniqueMy[option.key] || option.label;
+  }
+  return option.label;
 }
 
 // --- Context Extraction ----------------------------------------------------
@@ -16,6 +68,7 @@ interface GenerationContext {
   captainName?: string;
   experienceYears?: number;
   species: string[];
+  techniques: string[];
   boat: {
     type?: string;
     lengthFeet?: number;
@@ -39,9 +92,16 @@ interface GenerationContext {
 
 export function buildContext(values: CharterFormValues): GenerationContext {
   const speciesSet = new Set<string>();
-  (values.trips || []).forEach((t) =>
-    (t.species || []).forEach((s) => speciesSet.add(s))
-  );
+  const techniquesSet = new Set<string>();
+  (values.trips || []).forEach((t) => {
+    (t.species || []).forEach((s) => speciesSet.add(s));
+    const maybe = t as unknown as { techniques?: unknown };
+    if (Array.isArray(maybe.techniques)) {
+      maybe.techniques.forEach((tech) => {
+        if (typeof tech === "string") techniquesSet.add(tech);
+      });
+    }
+  });
   return {
     city: values.city?.trim() || "your area",
     state: values.state?.trim() || "Malaysia",
@@ -52,6 +112,7 @@ export function buildContext(values: CharterFormValues): GenerationContext {
       ? (values.operator?.experienceYears as number)
       : undefined,
     species: Array.from(speciesSet).slice(0, 6),
+    techniques: Array.from(techniquesSet).slice(0, 5),
     boat: {
       type: values.boat?.type,
       lengthFeet: (Number.isFinite(values.boat?.lengthFeet)
@@ -67,6 +128,10 @@ export function buildContext(values: CharterFormValues): GenerationContext {
       catchAndRelease: values.policies?.catchAndRelease,
       catchAndKeep: values.policies?.catchAndKeep,
       childFriendly: values.policies?.childFriendly,
+      licenseProvided: values.policies?.licenseProvided,
+      liveBaitProvided: values.policies?.liveBaitProvided,
+      alcoholNotAllowed: values.policies?.alcoholNotAllowed,
+      smokingNotAllowed: values.policies?.smokingNotAllowed,
     },
     trips: (values.trips || []).map((t) => ({
       durationHours: Number.isFinite(t.durationHours)
@@ -80,420 +145,387 @@ export function buildContext(values: CharterFormValues): GenerationContext {
   };
 }
 
-// --- Copy Fragments -------------------------------------------------------
-const OPENERS: Record<Tone, string[]> = {
-  friendly: [
-    "{{charterName}} in {{city}}, {{state}} is about relaxed time on the water, good company, and fish that keep things interesting.",
-    "Based out of {{city}}, {{state}}, {{charterName}} keeps things welcoming and easygoing while still putting you on quality fish.",
-  ],
-  adventurous: [
-    "Launch with {{charterName}} out of {{city}}, {{state}} and chase fast strikes, sudden blow‑ups, and that next surge of drag you came for.",
-    "Operating from {{city}}, {{state}}, {{charterName}} leans into movement, reaction, and dialing in patterns before the window closes.",
-  ],
-  professional: [
-    "Departing {{city}}, {{state}}, {{charterName}} emphasizes a well-prepared approach—structured, efficient, and focused on productive water.",
-    "From {{city}}, {{state}} {{charterName}} runs a clean, methodical program built around seasonal positioning and steady execution.",
-  ],
+// --- Bilingual Copy Fragments ----------------------------------------------
+const OPENERS: Record<Language, Record<Tone, string[]>> = {
+  en: {
+    friendly: [
+      "Welcome to {{charterName}} in {{city}}, {{state}} — where relaxed vibes meet great fishing.",
+      "{{charterName}} based in {{city}}, {{state}} offers a welcoming experience for anglers of all levels.",
+    ],
+    adventurous: [
+      "Get ready for action with {{charterName}} out of {{city}}, {{state}} — where every trip promises excitement.",
+      "{{charterName}} from {{city}}, {{state}} delivers thrilling fishing adventures for those who chase the bite.",
+    ],
+    professional: [
+      "{{charterName}} departing from {{city}}, {{state}} provides a structured, results-focused fishing experience.",
+      "Experience professional-grade fishing with {{charterName}} based in {{city}}, {{state}}.",
+    ],
+  },
+  ms: {
+    friendly: [
+      "Selamat datang ke {{charterName}} di {{city}}, {{state}} — tempat santai untuk memancing dengan seronok.",
+      "{{charterName}} di {{city}}, {{state}} menawarkan pengalaman mesra untuk pemancing semua peringkat.",
+    ],
+    adventurous: [
+      "Bersedia untuk aksi dengan {{charterName}} dari {{city}}, {{state}} — setiap trip penuh dengan keseronokan.",
+      "{{charterName}} dari {{city}}, {{state}} menawarkan pengembaraan memancing yang mengujakan.",
+    ],
+    professional: [
+      "{{charterName}} dari {{city}}, {{state}} menyediakan pengalaman memancing yang tersusun dan profesional.",
+      "Alami memancing bertaraf profesional dengan {{charterName}} di {{city}}, {{state}}.",
+    ],
+  },
 };
 
-// Closers without placeholders; placeholders optionally appended for first-gen
-const BASE_CLOSERS: Record<Tone, string[]> = {
-  friendly: [
-    "Ready to trade screen time for reel time? Lock in a date and make a few memories.",
-    "Bring a friend, bring the kids—just bring some curiosity. The rest we’ll handle.",
-  ],
-  adventurous: [
-    "If you like story-worthy moments and gear that earns its keep, this is your run.",
-    "Hook up, reset, repeat—that’s the rhythm. Book it and chase something with shoulders.",
-  ],
-  professional: [
-    "Bookings fill as prime conditions line up—secure your slot and refine goals with us in advance.",
-    "We maintain consistent prep standards—reserve early and align expectations in advance.",
-  ],
+const CLOSERS: Record<Language, Record<Tone, string[]>> = {
+  en: {
+    friendly: [
+      "Ready to make some memories? Book your trip and let's get fishing!",
+      "Bring your friends, bring your curiosity — we'll handle the rest.",
+    ],
+    adventurous: [
+      "The water's calling. Book now and chase something worth talking about.",
+      "Adventure awaits — secure your spot and let's make it happen.",
+    ],
+    professional: [
+      "Prime conditions fill fast. Reserve your slot and let's discuss your goals.",
+      "Book in advance to secure the best conditions and preparation.",
+    ],
+  },
+  ms: {
+    friendly: [
+      "Sedia untuk mencipta kenangan? Tempah trip anda dan jom memancing!",
+      "Bawa kawan-kawan anda — kami uruskan yang lain.",
+    ],
+    adventurous: [
+      "Air sedang memanggil. Tempah sekarang dan kejar sesuatu yang berbaloi.",
+      "Pengembaraan menanti — pastikan tempat anda hari ini.",
+    ],
+    professional: [
+      "Kondisi terbaik cepat penuh. Tempah slot anda dan mari bincang matlamat anda.",
+      "Tempah awal untuk memastikan keadaan dan persediaan terbaik.",
+    ],
+  },
+};
+
+// --- Section Labels --------------------------------------------------------
+const SECTION_LABELS: Record<
+  Language,
+  {
+    highlights: string;
+    targetSpecies: string;
+    techniques: string;
+    boat: string;
+    included: string;
+    policies: string;
+  }
+> = {
+  en: {
+    highlights: "Trip Highlights",
+    targetSpecies: "Target Species",
+    techniques: "Fishing Techniques",
+    boat: "Your Vessel",
+    included: "What's Included",
+    policies: "Good to Know",
+  },
+  ms: {
+    highlights: "Kelebihan Trip",
+    targetSpecies: "Spesies Sasaran",
+    techniques: "Teknik Memancing",
+    boat: "Bot Anda",
+    included: "Termasuk",
+    policies: "Info Penting",
+  },
 };
 
 // --- Helpers ---------------------------------------------------------------
-function oxford(list: string[]): string {
-  if (!list.length) return "local species";
-  if (list.length === 1) return list[0];
-  if (list.length === 2) return `${list[0]} and ${list[1]}`;
-  return `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
+function durationsPhrase(
+  trips: GenerationContext["trips"],
+  lang: Language
+): string {
+  const set = Array.from(
+    new Set(trips.map((t) => t.durationHours).filter(Boolean))
+  ) as number[];
+  if (!set.length)
+    return lang === "ms" ? "Tempoh fleksibel" : "Flexible durations";
+  set.sort((a, b) => a - b);
+  const hourWord = lang === "ms" ? "jam" : "hour";
+  const optionsWord = lang === "ms" ? "pilihan" : "options";
+  if (set.length === 1) return `${set[0]} ${hourWord}`;
+  if (set.length === 2)
+    return `${set[0]} & ${set[1]} ${hourWord} ${optionsWord}`;
+  return `${set.slice(0, -1).join(", ")} & ${set[set.length - 1]} ${hourWord} ${optionsWord}`;
 }
 
-function boatSummary(ctx: GenerationContext) {
+function boatSummary(ctx: GenerationContext, lang: Language): string {
   const segs: string[] = [];
-  if (ctx.boat.lengthFeet) segs.push(`${ctx.boat.lengthFeet}’`);
+  if (ctx.boat.lengthFeet) segs.push(`${ctx.boat.lengthFeet}'`);
   if (ctx.boat.type) segs.push(ctx.boat.type);
-  const base = segs.join(" ") || "boat";
+  const base = segs.join(" ") || (lang === "ms" ? "bot" : "boat");
+  const guestWord = lang === "ms" ? "tetamu" : "guests";
+  const upToWord = lang === "ms" ? "sehingga" : "up to";
   const cap = ctx.boat.capacity
-    ? ` that takes up to ${ctx.boat.capacity} guest${
-        ctx.boat.capacity > 1 ? "s" : ""
-      }`
+    ? ` (${upToWord} ${ctx.boat.capacity} ${guestWord})`
     : "";
   return base + cap;
 }
 
-function amenitiesLine(ctx: GenerationContext) {
-  if (!ctx.amenities.length)
-    return "Standard safety gear and tackle are ready when you arrive.";
-  const sample = ctx.amenities.slice(0, 5);
-  const tail =
-    ctx.amenities.length > sample.length ? " (with a few more on request)" : "";
-  return `Gear and onboard extras often include ${oxford(sample)}${tail}.`;
-}
+// --- Highlight Bullets Generator -------------------------------------------
+function generateHighlights(
+  ctx: GenerationContext,
+  tone: Tone,
+  lang: Language
+): string[] {
+  const highlights: string[] = [];
+  const dur = durationsPhrase(ctx.trips, lang);
 
-function durationsPhrase(trips: GenerationContext["trips"]) {
-  const set = Array.from(
-    new Set(trips.map((t) => t.durationHours).filter(Boolean))
-  ) as number[];
-  if (!set.length) return "Flexible trip lengths";
-  set.sort((a, b) => a - b);
-  if (set.length === 1) return `${set[0]} hour trip`;
-  if (set.length === 2) return `${set[0]} and ${set[1]} hour options`;
-  return `${set.slice(0, -1).join(", ")} and ${
-    set[set.length - 1]
-  } hour options`;
-}
-
-function policyNarrative(ctx: GenerationContext) {
-  const bits: string[] = [];
-  if (ctx.policies.childFriendly != null) {
-    bits.push(
-      ctx.policies.childFriendly
-        ? "Kid‑friendly"
-        : "Best suited to capable anglers"
-    );
-  }
-  if (ctx.policies.catchAndRelease && ctx.policies.catchAndKeep)
-    bits.push("Balanced keep & release (conditions dictate)");
-  else if (ctx.policies.catchAndRelease) bits.push("Catch & release focused");
-  else if (ctx.policies.catchAndKeep)
-    bits.push("Keeping a legal fish for the table is fine");
-  // License / bait / restrictions
-  if (ctx.policies.catchAndRelease || ctx.policies.catchAndKeep) {
-    // placeholder for flows already included
-  }
-  return bits.length ? bits.join(". ") + "." : "";
-}
-
-function licenseAndRules(ctx: GenerationContext) {
-  const lines: string[] = [];
-  const { policies } = ctx;
-  const licenseProvided = policies.licenseProvided;
-  const liveBaitProvided = policies.liveBaitProvided;
-  const alcoholNotAllowed = policies.alcoholNotAllowed;
-  const smokingNotAllowed = policies.smokingNotAllowed;
-  if (licenseProvided)
-    lines.push(
-      "Fishing license coverage is handled for you (no paperwork scramble)."
-    );
-  if (liveBaitProvided)
-    lines.push(
-      "Live bait is sourced when it meaningfully improves the bite window."
-    );
-  if (alcoholNotAllowed)
-    lines.push("Alcohol restrictions apply—focus stays on fishing and safety.");
-  if (smokingNotAllowed)
-    lines.push(
-      "No smoking onboard—helps keep the deck clean and family friendly."
-    );
-  return lines.join(" ");
-}
-
-// Water type inference (fresh vs salt) based on charterType / tripType strings
-function inferWaterType(ctx: GenerationContext): "fresh" | "salt" | "mixed" {
-  const tripTypes = (ctx.trips || []).map((t) => t.tripType || "");
-  const texts = [ctx.charterType, ...tripTypes].join(" ").toLowerCase();
-  const freshHit = /(fresh|lake|river|pond|reservoir|dam)/.test(texts);
-  const saltHit = /(salt|offshore|inshore|coast|sea|ocean|reef)/.test(texts);
-  if (freshHit && saltHit) return "mixed";
-  if (freshHit) return "fresh";
-  if (saltHit) return "salt";
-  return "mixed"; // default to mixed so wording stays neutral
-}
-
-// Verb variation pools + technique extraction
-const VERB_VARIANTS = {
-  target: ["target", "work toward", "focus on", "chase"],
-  adjust: ["adjust", "pivot", "adapt", "tune"],
-  present: [
-    "present to",
-    "show baits to",
-    "feed offerings to",
-    "work edges for",
-  ],
-};
-
-function pickVar(
-  key: keyof typeof VERB_VARIANTS,
-  priorBase?: string | undefined
-) {
-  const variants = VERB_VARIANTS[key];
-  if (!priorBase) return pick(variants);
-  const lower = priorBase.toLowerCase();
-  const unused = variants.filter((v) => !lower.includes(v));
-  return pick(unused.length ? unused : variants);
-}
-
-function extractTechniques(values: CharterFormValues): string[] {
-  const all: string[] = [];
-  (values.trips || []).forEach((t) => {
-    const maybe = t as unknown as { techniques?: unknown };
-    if (Array.isArray(maybe.techniques)) {
-      maybe.techniques.forEach((tech) => {
-        if (typeof tech === "string") all.push(tech);
-      });
+  // Experience bullet
+  if (ctx.captainName && ctx.experienceYears && ctx.experienceYears > 0) {
+    if (lang === "ms") {
+      highlights.push(
+        `Dipandu oleh ${ctx.captainName} dengan ${ctx.experienceYears} tahun pengalaman`
+      );
+    } else {
+      highlights.push(
+        `Guided by ${ctx.captainName} with ${ctx.experienceYears} years of experience`
+      );
     }
-  });
-  return Array.from(new Set(all.map((t) => t.toLowerCase())));
+  } else if (ctx.captainName) {
+    if (lang === "ms") {
+      highlights.push(`Dipandu oleh Kapten ${ctx.captainName}`);
+    } else {
+      highlights.push(`Guided by Captain ${ctx.captainName}`);
+    }
+  }
+
+  // Duration bullet
+  if (lang === "ms") {
+    highlights.push(`Trip ${dur} tersedia`);
+  } else {
+    highlights.push(`${dur} trips available`);
+  }
+
+  // Capacity bullet
+  if (ctx.boat.capacity) {
+    if (lang === "ms") {
+      highlights.push(`Boleh memuatkan sehingga ${ctx.boat.capacity} orang`);
+    } else {
+      highlights.push(`Accommodates up to ${ctx.boat.capacity} guests`);
+    }
+  }
+
+  // Child-friendly bullet
+  if (ctx.policies.childFriendly) {
+    if (lang === "ms") {
+      highlights.push(`Sesuai untuk keluarga dan kanak-kanak`);
+    } else {
+      highlights.push(`Family and kid-friendly`);
+    }
+  }
+
+  // License bullet
+  if (ctx.policies.licenseProvided) {
+    if (lang === "ms") {
+      highlights.push(`Lesen memancing disediakan`);
+    } else {
+      highlights.push(`Fishing license provided`);
+    }
+  }
+
+  // Bait bullet
+  if (ctx.policies.liveBaitProvided) {
+    if (lang === "ms") {
+      highlights.push(`Umpan hidup disediakan`);
+    } else {
+      highlights.push(`Live bait provided`);
+    }
+  }
+
+  return highlights;
 }
 
-function buildTechniqueLine(
+// --- Species Section -------------------------------------------------------
+function generateSpeciesSection(
+  ctx: GenerationContext,
+  lang: Language
+): string | null {
+  if (!ctx.species.length) return null;
+  const label = SECTION_LABELS[lang].targetSpecies;
+  const speciesList = ctx.species.map((s) => `• ${s}`).join("\n");
+  return `**${label}:**\n${speciesList}`;
+}
+
+// --- Techniques Section ----------------------------------------------------
+function generateTechniquesSection(
+  ctx: GenerationContext,
+  lang: Language
+): string | null {
+  if (!ctx.techniques.length) return null;
+  const label = SECTION_LABELS[lang].techniques;
+  const techList = ctx.techniques
+    .map((t) => `• ${translateTechnique(t, lang)}`)
+    .join("\n");
+  return `**${label}:**\n${techList}`;
+}
+
+// --- Boat Section ----------------------------------------------------------
+function generateBoatSection(
+  ctx: GenerationContext,
+  lang: Language
+): string | null {
+  const boat = boatSummary(ctx, lang);
+  const label = SECTION_LABELS[lang].boat;
+  const bullets: string[] = [];
+
+  bullets.push(`• ${boat}`);
+
+  if (ctx.boat.features && ctx.boat.features.length > 0) {
+    ctx.boat.features.slice(0, 4).forEach((f) => {
+      bullets.push(`• ${translateBoatFeature(f, lang)}`);
+    });
+  }
+
+  return `**${label}:**\n${bullets.join("\n")}`;
+}
+
+// --- Amenities Section -----------------------------------------------------
+function generateAmenitiesSection(
+  ctx: GenerationContext,
+  lang: Language
+): string | null {
+  if (!ctx.amenities.length) return null;
+  const label = SECTION_LABELS[lang].included;
+  const amenList = ctx.amenities
+    .slice(0, 6)
+    .map((a) => `• ${translateAmenity(a, lang)}`)
+    .join("\n");
+  return `**${label}:**\n${amenList}`;
+}
+
+// --- Policies Section ------------------------------------------------------
+function generatePoliciesSection(
+  ctx: GenerationContext,
+  lang: Language
+): string | null {
+  const policies: string[] = [];
+
+  if (ctx.policies.catchAndRelease && ctx.policies.catchAndKeep) {
+    policies.push(
+      lang === "ms"
+        ? "• Tangkap & lepas atau simpan (ikut keadaan)"
+        : "• Catch & release or keep (conditions apply)"
+    );
+  } else if (ctx.policies.catchAndRelease) {
+    policies.push(
+      lang === "ms" ? "• Amalan tangkap & lepas" : "• Catch & release practice"
+    );
+  } else if (ctx.policies.catchAndKeep) {
+    policies.push(
+      lang === "ms"
+        ? "• Boleh simpan tangkapan yang sah"
+        : "• Keep your legal catch"
+    );
+  }
+
+  if (ctx.policies.alcoholNotAllowed) {
+    policies.push(
+      lang === "ms" ? "• Alkohol tidak dibenarkan" : "• No alcohol on board"
+    );
+  }
+
+  if (ctx.policies.smokingNotAllowed) {
+    policies.push(
+      lang === "ms" ? "• Dilarang merokok di atas bot" : "• No smoking on board"
+    );
+  }
+
+  if (!ctx.policies.childFriendly && ctx.policies.childFriendly !== undefined) {
+    policies.push(
+      lang === "ms"
+        ? "• Sesuai untuk pemancing berpengalaman"
+        : "• Best suited for experienced anglers"
+    );
+  }
+
+  if (!policies.length) return null;
+
+  const label = SECTION_LABELS[lang].policies;
+  return `**${label}:**\n${policies.join("\n")}`;
+}
+
+// --- Main Generation Function ----------------------------------------------
+export function generateCharterDescription(
   values: CharterFormValues,
-  tone: Tone
-): string | undefined {
-  const techniques = extractTechniques(values);
-  if (!techniques.length) return undefined;
-  const fly = techniques.some((t) => /fly/.test(t));
-  const bait = techniques.some((t) => /(bait|live bait)/.test(t));
-  const pop = techniques.some((t) => /pop|topwater/.test(t));
-  const list = techniques.slice(0, 5).join(", ");
-  if (tone === "professional") {
-    return `Technique mix (${list}) is applied selectively to efficiency test the pattern${
-      fly ? ", with careful line management for fly presentations" : ""
-    }.`;
-  } else if (tone === "adventurous") {
-    return `We rotate through ${list} to trigger reaction bites${
-      pop ? ", especially on surface chaos when light allows" : ""
-    }.`;
-  }
-  return `We can try ${list}${
-    fly ? "—even a little fly work if conditions behave" : ""
-  }${
-    bait
-      ? ", or keep it simple with natural bait when that’s what they want"
-      : ""
-  }.`;
-}
-
-function toneBridge(tone: Tone) {
-  switch (tone) {
-    case "adventurous":
-      return "We stay light on our feet—adjusting when wind shifts or bait shows elsewhere.";
-    case "professional":
-      return "Decisions are guided by structure, water clarity, and current seasonal movements.";
-    default:
-      return "We read the conditions and keep things flexible so everyone stays engaged.";
-  }
-}
-
-// --- Main Generation -------------------------------------------------------
-export function generateCharterDescription(values: CharterFormValues): string {
+  lang: Language = "en"
+): string {
   const tone = (values.tone as Tone) || "friendly";
   const ctx = buildContext(values);
-  const waterType = inferWaterType(ctx);
-  const includePlaceholders = !ctx.generatedDescription; // first generation only
-  const userEdited =
-    !!ctx.generatedDescription &&
-    !!ctx.description &&
-    ctx.description !== ctx.generatedDescription;
+  const includePlaceholders = !ctx.generatedDescription;
 
-  // Determine layout complexity (shorter vs fuller narrative)
-  const tripDurations = ctx.trips
-    .map((t) => t.durationHours)
-    .filter(Boolean) as number[];
-  const hasLonger = tripDurations.some((d) => (d || 0) >= 8);
-  const isShortForm =
-    !hasLonger &&
-    ctx.species.length <= 2 &&
-    (!ctx.boat.features || ctx.boat.features.length <= 1);
-
-  // Paragraph 1 – Sense of place & vibe
-  const opener = pick(OPENERS[tone])
+  // Opening paragraph
+  const opener = pick(OPENERS[lang][tone])
     .replace(/{{city}}/g, ctx.city)
     .replace(/{{state}}/g, ctx.state)
-    .replace(/{{charterName}}/g, ctx.charterName || "This charter");
-
-  // Captain intro (inline or its own sentence depending on form)
-  let captainLine = "";
-  if (ctx.captainName) {
-    const years = ctx.experienceYears;
-    const yearsPart =
-      years && years > 0
-        ? years === 1
-          ? "with 1 year guiding"
-          : `with ${years} years on these waters`
-        : undefined;
-    if (tone === "professional") {
-      captainLine = `${ctx.captainName} leads the operation${
-        yearsPart ? ", " + yearsPart : ""
-      }, focusing on preparation, water reading, and guest goals.`;
-    } else if (tone === "adventurous") {
-      captainLine = `Your guide, ${ctx.captainName}${
-        yearsPart ? ", " + yearsPart : ""
-      }, thrives on reactive moves and keeping lines tight.`;
-    } else {
-      captainLine = `${ctx.captainName}${
-        yearsPart ? ", " + yearsPart : ""
-      } is here to keep things relaxed, helpful, and fishy.`;
-    }
-  }
-
-  // Paragraph 2 – Targets, approach & trip structure
-  const speciesList = oxford(ctx.species);
-  const dur = durationsPhrase(ctx.trips);
-  let approach: string;
-  const priorBase = ctx.generatedDescription;
-  const targetVerb = pickVar("target", priorBase);
-  const adjustVerb = pickVar("adjust", priorBase);
-  const presentVerb = pickVar("present", priorBase);
-  const waterFlavor =
-    waterType === "fresh"
-      ? "working banks, timber, and quiet pockets"
-      : waterType === "salt"
-      ? "running channels, setting drifts, and probing contour changes"
-      : "covering productive structure and transitional edges";
-  if (tone === "adventurous") {
-    approach = `Expect an active rhythm ${waterFlavor}—${presentVerb} for ${speciesList} with ${dur} to match your pace.`;
-  } else if (tone === "professional") {
-    approach = `Programs are planned around seasonal positioning, ${adjustVerb}ing as data builds, ${presentVerb} for ${speciesList} across a structured ${dur}.`;
-  } else {
-    approach = `You'll ${targetVerb} ${speciesList} at an easy pace with ${dur}, ${adjustVerb}ing gently as conditions shift.`;
-  }
-  const bridge = toneBridge(tone);
-  const paragraph2 = `${approach} ${bridge}`.trim();
-
-  // Enrich species expectations (avoid bullet style)
-  let speciesExpectation = "";
-  if (ctx.species.length) {
-    if (tone === "adventurous") {
-      speciesExpectation = ` Expect bursts of action when ${
-        ctx.species[0]
-      } push bait or when a bigger ${ctx.species.slice(-1)} shows late.`;
-    } else if (tone === "professional") {
-      speciesExpectation = ` Seasonal adjustments refine how we present to ${
-        ctx.species[0]
-      } and stage drifts for ${ctx.species.slice(-1)}.`;
-    } else {
-      speciesExpectation = ` Some outings lean more toward ${
-        ctx.species[0]
-      }, while other days a surprise ${ctx.species.slice(
-        -1
-      )} keeps everyone smiling.`;
-    }
-  }
-  const techniqueLine = buildTechniqueLine(values, tone);
-  let conditionsPlaceholder = "";
-  if (includePlaceholders) {
-    const starts = new Set<string>();
-    (values.trips || []).forEach((t) =>
-      (t.startTimes || []).forEach((s) => starts.add(s))
+    .replace(
+      /{{charterName}}/g,
+      ctx.charterName || (lang === "ms" ? "Charter ini" : "This charter")
     );
-    if (starts.size > 1)
-      conditionsPlaceholder =
-        " [[Add a note about seasonal pattern or today’s conditions]]";
-  }
-  const paragraph2a = [captainLine, paragraph2].filter(Boolean).join(" ");
-  const paragraph2b = [
-    speciesExpectation.trim(),
-    techniqueLine,
-    conditionsPlaceholder,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
 
-  // Paragraph 3 – Boat, gear, comfort
-  const boat = boatSummary(ctx);
-  const features = ctx.boat.features?.slice(0, 4) || [];
-  const featLine = features.length
-    ? ` It’s outfitted with ${oxford(features)} to keep things smooth.`
-    : "";
-  const amen = amenitiesLine(ctx);
-  // Inclusive phrasing (e.g., meals / drinks / etc.)
-  const inclusions: string[] = [];
-  const mealLike = ctx.amenities.filter((a) =>
-    /lunch|meal|snack|food/i.test(a)
-  );
-  const drinkLike = ctx.amenities.filter((a) =>
-    /drink|water|beverage|refresh/i.test(a)
-  );
-  if (mealLike.length)
-    inclusions.push(
-      `Light bites${
-        mealLike.length > 1 ? " and simple meals" : ""
-      } may be provided—ask ahead if you have preferences.`
-    );
-  if (drinkLike.length)
-    inclusions.push(`Cold drinks and hydration basics are typically on hand.`);
-  const inclusionLine = inclusions.length ? " " + inclusions.join(" ") : "";
-  const paragraph3 =
-    `You’ll fish from a ${boat}.${featLine} ${amen}${inclusionLine}`
-      .replace(/  +/g, " ")
-      .trim();
+  // Highlights section
+  const highlights = generateHighlights(ctx, tone, lang);
+  const highlightsLabel = SECTION_LABELS[lang].highlights;
+  const highlightsSection =
+    highlights.length > 0
+      ? `**${highlightsLabel}:**\n${highlights.map((h) => `• ${h}`).join("\n")}`
+      : null;
 
-  // Paragraph 4 – Policies + call to action + personalization placeholder
-  const policy = policyNarrative(ctx);
-  const closerBase = pick(BASE_CLOSERS[tone]);
-  const placeholderAddon = includePlaceholders
-    ? " [[Add a short personal welcome or promise]]"
-    : "";
-  const anecdotePlaceholder = includePlaceholders
-    ? " [[Add a one-line recent catch or guest reaction]]"
-    : "";
-  const closer = closerBase + placeholderAddon;
-  const licenseRules = licenseAndRules(ctx);
-  const paragraph4 = [policy, licenseRules, closer].filter(Boolean).join(" ");
+  // Content sections
+  const speciesSection = generateSpeciesSection(ctx, lang);
+  const techniquesSection = generateTechniquesSection(ctx, lang);
+  const boatSection = generateBoatSection(ctx, lang);
+  const amenitiesSection = generateAmenitiesSection(ctx, lang);
+  const policiesSection = generatePoliciesSection(ctx, lang);
 
-  if (isShortForm) {
-    // Compact variant still splits approach vs detail if detail exists
-    return [opener, paragraph2a, paragraph2b || undefined, paragraph4]
-      .filter(Boolean)
-      .join("\n\n");
-  }
+  // Closing
+  const closer = pick(CLOSERS[lang][tone]);
 
-  // Longer form: optionally add a pacing paragraph if longer trips are available
-  let pacingParagraph = "";
-  if (hasLonger) {
-    if (tone === "adventurous") {
-      pacingParagraph =
-        "Longer runs let us cycle tide phases, revisit productive contour lines, and gamble on a late bite window if the morning burns fast.";
-    } else if (tone === "professional") {
-      pacingParagraph =
-        "Extended durations enable structured rotation: primary pattern, secondary hedge, and a refinement block to finish.";
-    } else {
-      pacingParagraph =
-        "Fuller-day options give everyone time to settle in, try a few styles, and still keep the mood unhurried.";
-    }
-  }
-
-  const para2bWithAnecdote = paragraph2b
-    ? paragraph2b + anecdotePlaceholder
-    : includePlaceholders
-    ? anecdotePlaceholder.trim()
+  // Add placeholder for personalization on first generation
+  const placeholder = includePlaceholders
+    ? lang === "ms"
+      ? "\n\n[[Tambah nota peribadi atau cerita menarik di sini]]"
+      : "\n\n[[Add a personal note or interesting story here]]"
     : "";
 
-  let result = [
+  // Assemble description
+  const sections = [
     opener,
-    paragraph2a,
-    para2bWithAnecdote || undefined,
-    paragraph3,
-    pacingParagraph,
-    paragraph4,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+    highlightsSection,
+    speciesSection,
+    techniquesSection,
+    boatSection,
+    amenitiesSection,
+    policiesSection,
+    closer + placeholder,
+  ].filter(Boolean);
 
-  // If user already edited, strip placeholders completely
-  if (userEdited) {
-    result = result
-      .replace(/\n?\[\[[^\]]+\]\]\n?/g, " ")
-      .replace(/ {2,}/g, " ")
-      .trim();
-  }
-  return result;
+  return sections.join("\n\n");
 }
 
+// --- Legacy function for backward compatibility ----------------------------
+export { generateCharterDescription as default };
+
+// --- Bilingual Description Generator ---------------------------------------
+export function generateBilingualDescription(values: CharterFormValues): {
+  en: string;
+  ms: string;
+} {
+  return {
+    en: generateCharterDescription(values, "en"),
+    ms: generateCharterDescription(values, "ms"),
+  };
+}
+
+// --- Personalization Score -------------------------------------------------
 export function personalizationScore(
   base: string | undefined,
   current: string | undefined

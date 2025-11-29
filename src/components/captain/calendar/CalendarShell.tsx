@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { CharterUnavailability } from "@prisma/client";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
+import { BlockedDateDetailsPanel } from "./BlockedDateDetailsPanel";
 import { CalendarHeader } from "./CalendarHeader";
 import { CalendarSidebar } from "./CalendarSidebar";
 import { CreateBlockModal } from "./CreateBlockModal";
@@ -70,6 +71,13 @@ export function CalendarShell({
   const [editBlock, setEditBlock] = useState<CharterUnavailability | null>(
     null
   );
+  // Blocked date details panel state
+  const [selectedBlock, setSelectedBlock] =
+    useState<CharterUnavailability | null>(null);
+  const [selectedBlockTripName, setSelectedBlockTripName] = useState<
+    string | undefined
+  >(undefined);
+  const [isBlockDetailsOpen, setIsBlockDetailsOpen] = useState(false);
 
   // If no charter is selected in URL, but we have charters, default to the first one
   // The hook handles reading from URL, but if it's missing, we might want to set it
@@ -82,7 +90,8 @@ export function CalendarShell({
 
   const handleEventClick = (booking: EnrichedMarketBooking) => {
     if (booking.tripId === "blocked") {
-      setEditBlock({
+      // Show blocked date details panel instead of edit modal
+      const blockData: CharterUnavailability = {
         id: booking.id,
         charterId: booking.charterId,
         startDate: booking.date,
@@ -95,11 +104,28 @@ export function CalendarShell({
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         createdBy: "system",
-      });
-      setIsCreateModalOpen(true);
+      };
+      setSelectedBlock(blockData);
+      // Find trip name if specific trip is blocked
+      if (booking.originalTripId) {
+        const trip = selectedCharter?.trips.find(
+          (t) => t.id === booking.originalTripId
+        );
+        setSelectedBlockTripName(trip?.name);
+      } else {
+        setSelectedBlockTripName(undefined);
+      }
+      setIsBlockDetailsOpen(true);
     } else {
       setSelectedBooking(booking);
       setIsDetailsOpen(true);
+    }
+  };
+
+  const handleEditBlock = () => {
+    if (selectedBlock) {
+      setEditBlock(selectedBlock);
+      setIsCreateModalOpen(true);
     }
   };
 
@@ -189,10 +215,7 @@ export function CalendarShell({
               <MonthView
                 date={date}
                 bookings={filteredBookings}
-                onDateClick={(d) => {
-                  setDate(d);
-                  setView("day");
-                }}
+                onDateClick={handleSlotClick}
                 onEventClick={handleEventClick}
                 scheduleType={scheduleType}
                 operationalDays={operationalDays}
@@ -246,6 +269,19 @@ export function CalendarShell({
         anglerInfo={
           selectedBooking ? anglerMap[selectedBooking.userId || ""] : null
         }
+      />
+
+      {/* Blocked Date Details Panel */}
+      <BlockedDateDetailsPanel
+        isOpen={isBlockDetailsOpen}
+        onClose={() => {
+          setIsBlockDetailsOpen(false);
+          setSelectedBlock(null);
+        }}
+        block={selectedBlock}
+        charterName={selectedCharter?.name}
+        tripName={selectedBlockTripName}
+        onEdit={handleEditBlock}
       />
 
       {/* Create Block Modal */}

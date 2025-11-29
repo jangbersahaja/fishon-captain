@@ -27,6 +27,7 @@ export async function patchEditCharter({
       latitude: values.latitude || null,
       longitude: values.longitude || null,
       description: values.description,
+      descriptionMy: values.descriptionMy || null,
       backupPhone: values.operator?.backupPhone || null,
     },
     captain: values.operator
