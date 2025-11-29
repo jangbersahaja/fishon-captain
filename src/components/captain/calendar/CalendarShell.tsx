@@ -149,18 +149,9 @@ export function CalendarShell({
   };
 
   return (
-    <div className="relative flex flex-col h-full md:h-screen">
+    <div className="relative flex flex-col h-[100dvh] md:h-screen overflow-hidden">
       {/* Google Calendar OAuth callback toast handler */}
       <GoogleCalendarToastHandler />
-
-      <CalendarHeader
-        view={view}
-        date={date}
-        onViewChange={setView}
-        onDateChange={setDate}
-        onToday={() => setDate(new Date())}
-        onNewBooking={handleNewBooking}
-      />
 
       {/* Mobile Filters Toggle */}
       <div className="px-4 py-2 bg-white border-b md:hidden">
@@ -182,8 +173,10 @@ export function CalendarShell({
       {/* Mobile Collapsible Filters */}
       <div
         className={cn(
-          "md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-white border-b",
-          isFiltersOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+          "md:hidden transition-all duration-300 ease-in-out bg-white border-b",
+          isFiltersOpen
+            ? "max-h-[70vh] opacity-100 overflow-y-auto"
+            : "max-h-0 opacity-0 overflow-hidden"
         )}
       >
         <div className="p-4">
@@ -199,11 +192,12 @@ export function CalendarShell({
             showCancelled={showCancelled}
             onShowCancelledChange={setShowCancelled}
             className="h-auto p-0 border-none"
+            hideMiniCalendar={true}
           />
         </div>
       </div>
 
-      <div className="relative flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="flex-shrink-0 hidden overflow-y-auto bg-white border-r md:block w-80">
           <CalendarSidebar
@@ -218,56 +212,66 @@ export function CalendarShell({
           />
         </div>
 
-        {/* Main Content Area */}
-        <div className="relative flex-1 p-4 overflow-auto bg-slate-50">
-          {view === "month" && (
-            <div className="h-full">
-              <MonthView
-                date={date}
-                bookings={filteredBookings}
-                onDateClick={handleSlotClick}
-                onEventClick={handleEventClick}
-                scheduleType={scheduleType}
-                operationalDays={operationalDays}
-              />
-            </div>
-          )}
+        <div className="flex flex-col flex-1 min-w-0">
+          <CalendarHeader
+            view={view}
+            date={date}
+            onViewChange={setView}
+            onDateChange={setDate}
+            onToday={() => setDate(new Date())}
+            onNewBooking={handleNewBooking}
+          />
+          {/* Main Content Area */}
+          <div className="relative flex-1 min-h-0 p-4 overflow-auto bg-slate-50">
+            {view === "month" && (
+              <div className="h-full">
+                <MonthView
+                  date={date}
+                  bookings={filteredBookings}
+                  onDateClick={handleSlotClick}
+                  onEventClick={handleEventClick}
+                  scheduleType={scheduleType}
+                  operationalDays={operationalDays}
+                />
+              </div>
+            )}
 
-          {view === "week" && (
-            <div className="h-full">
-              <WeekView
-                date={date}
-                bookings={filteredBookings}
-                onEventClick={handleEventClick}
-                onSlotClick={handleSlotClick}
-                scheduleType={scheduleType}
-                operationalDays={operationalDays}
-              />
-            </div>
-          )}
+            {view === "week" && (
+              <div className="h-full">
+                <WeekView
+                  date={date}
+                  bookings={filteredBookings}
+                  onEventClick={handleEventClick}
+                  onSlotClick={handleSlotClick}
+                  scheduleType={scheduleType}
+                  operationalDays={operationalDays}
+                />
+              </div>
+            )}
 
-          {view === "day" && (
-            <div className="h-full">
-              <DayView
-                date={date}
-                bookings={filteredBookings}
-                onEventClick={handleEventClick}
-                onSlotClick={handleSlotClick}
-                scheduleType={scheduleType}
-                operationalDays={operationalDays}
-              />
-            </div>
-          )}
+            {view === "day" && (
+              <div className="h-full">
+                <DayView
+                  date={date}
+                  bookings={filteredBookings}
+                  onEventClick={handleEventClick}
+                  onSlotClick={handleSlotClick}
+                  scheduleType={scheduleType}
+                  operationalDays={operationalDays}
+                />
+              </div>
+            )}
 
-          {view === "agenda" && (
-            <div className="h-full">
-              <AgendaView
-                date={date}
-                bookings={filteredBookings}
-                onEventClick={handleEventClick}
-              />
-            </div>
-          )}
+            {view === "agenda" && (
+              <div className="h-full">
+                <AgendaView
+                  date={date}
+                  bookings={filteredBookings}
+                  onEventClick={handleEventClick}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

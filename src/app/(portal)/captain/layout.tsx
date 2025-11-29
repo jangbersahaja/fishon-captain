@@ -49,7 +49,7 @@ export default function CaptainLayout({
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 w-full h-full pb-20 overflow-y-auto bg-slate-50/60 md:pb-0">
+          <main className="flex-1 w-full h-full overflow-y-auto pb-18 bg-slate-50/60 md:pb-0">
             {children}
           </main>
           {/* Mobile Spacer */}
