@@ -60,7 +60,7 @@ const sections: SectionDef[] = [
               <li>Device and browser information</li>
               <li>IP address and geolocation data</li>
               <li>Access times and pages viewed</li>
-              <li>Cookies and tracking data (see Section 7)</li>
+              <li>Cookies and tracking data (see Section 8)</li>
             </ul>
           </div>
           <div>
@@ -77,6 +77,7 @@ const sections: SectionDef[] = [
               <li>Payment gateways (e.g., SenangPay)</li>
               <li>Marketing partners or analytics tools</li>
               <li>Social login providers (Google, Facebook, Apple)</li>
+              <li>Calendar services (Google Calendar) when you connect them</li>
             </ul>
           </div>
         </div>
@@ -97,11 +98,130 @@ const sections: SectionDef[] = [
           <li>Improve our services and user experience</li>
           <li>Handle inquiries, complaints, or disputes</li>
           <li>Comply with legal or regulatory obligations</li>
+          <li>Sync your availability with connected calendar services</li>
         </ol>
         <p className="text-sm text-slate-600">
           We will only use your personal data for the purposes stated above or
           for purposes directly related to them.
         </p>
+      </div>
+    ),
+  },
+  {
+    id: "google-calendar-integration",
+    title: "Google Calendar Integration",
+    content: (
+      <div className="space-y-4">
+        <p>
+          Fishon.my offers optional Google Calendar integration for charter
+          operators to sync their availability. This section explains how we
+          handle your Google Calendar data.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold tracking-wide text-slate-700 flex items-center gap-2">
+              <span className="rounded bg-slate-900/5 px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ring-slate-200">
+                3.1
+              </span>
+              <span>Data We Access</span>
+            </h3>
+            <p className="mt-2 text-slate-700 text-sm leading-relaxed">
+              When you connect your Google Calendar, we request access to:
+            </p>
+            <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
+              <li>
+                <span className="font-medium">View your calendars:</span> To
+                display a list of your calendars and let you choose which one to
+                sync with
+              </li>
+              <li>
+                <span className="font-medium">View calendar events:</span> To
+                read event titles, dates, and times for import as blocked dates
+              </li>
+              <li>
+                <span className="font-medium">Create and modify events:</span>{" "}
+                To sync your blocked dates and bookings from Fishon to your
+                Google Calendar
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold tracking-wide text-slate-700 flex items-center gap-2">
+              <span className="rounded bg-slate-900/5 px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ring-slate-200">
+                3.2
+              </span>
+              <span>How We Use This Data</span>
+            </h3>
+            <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
+              <li>
+                Display your blocked dates and bookings as events in your Google
+                Calendar
+              </li>
+              <li>
+                Import events from your Google Calendar as blocked dates on
+                Fishon (with your explicit selection)
+              </li>
+              <li>
+                Keep your Fishon calendar and Google Calendar synchronized
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold tracking-wide text-slate-700 flex items-center gap-2">
+              <span className="rounded bg-slate-900/5 px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ring-slate-200">
+                3.3
+              </span>
+              <span>Data Storage & Security</span>
+            </h3>
+            <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
+              <li>
+                We store OAuth tokens securely and encrypted in our database
+              </li>
+              <li>
+                We do not store the content of your Google Calendar events
+                beyond what is necessary for sync
+              </li>
+              <li>
+                Access tokens are refreshed automatically and revoked when you
+                disconnect
+              </li>
+              <li>
+                Your Google Calendar data is never shared with third parties
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold tracking-wide text-slate-700 flex items-center gap-2">
+              <span className="rounded bg-slate-900/5 px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ring-slate-200">
+                3.4
+              </span>
+              <span>Revoking Access</span>
+            </h3>
+            <p className="mt-2 text-slate-700 text-sm leading-relaxed">
+              You can disconnect Google Calendar at any time from your Fishon
+              Captain dashboard. When you disconnect:
+            </p>
+            <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
+              <li>We immediately revoke our access to your Google Calendar</li>
+              <li>All stored OAuth tokens are deleted from our servers</li>
+              <li>
+                Events already synced to Google Calendar will remain (you can
+                delete them manually)
+              </li>
+              <li>
+                You can also revoke access directly from your{" "}
+                <a
+                  href="https://myaccount.google.com/permissions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-slate-300 hover:decoration-slate-500"
+                >
+                  Google Account permissions page
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     ),
   },
@@ -130,7 +250,9 @@ const sections: SectionDef[] = [
           </li>
         </ul>
         <p className="text-sm text-slate-600">
-          We will never sell your personal data to any third party.
+          We will never sell your personal data to any third party. Your Google
+          Calendar data is never shared with any third party and is used solely
+          for the synchronization features you enable.
         </p>
       </div>
     ),
