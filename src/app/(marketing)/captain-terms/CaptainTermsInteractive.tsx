@@ -144,6 +144,49 @@ const sections: SectionDef[] = [
     ),
   },
   {
+    id: "third-party-integrations",
+    title: "Third-Party Integrations",
+    content: (
+      <div className="space-y-4">
+        <p>
+          Fishon.my offers optional integrations with third-party services to
+          enhance your experience as an operator.
+        </p>
+        <div className="space-y-3">
+          <h4 className="font-medium text-slate-800">
+            Google Calendar Integration
+          </h4>
+          <p className="text-sm">
+            You may connect your Google Calendar to sync your availability and
+            bookings. When you enable this integration:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-sm">
+            <li>
+              Fishon will access your calendar to read and create events related
+              to your charter bookings and blocked dates
+            </li>
+            <li>
+              You can choose which calendar to sync with and control sync
+              settings at any time
+            </li>
+            <li>
+              You may disconnect the integration at any time from your dashboard
+            </li>
+            <li>
+              Your calendar data is used solely for synchronization purposes and
+              is not shared with third parties
+            </li>
+          </ul>
+          <p className="text-sm text-slate-600">
+            By connecting Google Calendar, you agree to Google&apos;s Terms of
+            Service and authorize Fishon to access your calendar data as
+            described in our Privacy Policy.
+          </p>
+        </div>
+      </div>
+    ),
+  },
+  {
     id: "reviews-ratings",
     title: "Reviews & Ratings",
     content: (

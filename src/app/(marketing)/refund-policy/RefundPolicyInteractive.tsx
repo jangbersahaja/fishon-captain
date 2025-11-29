@@ -88,15 +88,13 @@ const sections: SectionDef[] = [
           </h3>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
             <li>
-              The customer will receive a full refund, including service fees.
+              If the operator cancels a confirmed trip, the customer will
+              receive a full refund, including service fees. This will be borne
+              entirely by the operator.
             </li>
             <li>
-              Fishon may assist in rescheduling with the same or a comparable
-              charter.
-            </li>
-            <li>
-              Repeated cancellations by an operator may lead to suspension or
-              removal from the platform.
+              Operators who cancel trips without reasonable cause may face
+              penalties, suspension, or removal from the platform.
             </li>
           </ul>
         </div>
@@ -108,14 +106,19 @@ const sections: SectionDef[] = [
             <span>Weather & Safety Cancellations</span>
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-slate-700">
-            No refund will be given if any of the trips are cancelled due to bad
-            weather, unsafe sea conditions, except force majeure (e.g., storms,
-            government restrictions, natural disasters).
+            No refund will be given if trips are cancelled due to:
           </p>
-
+          <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
+            <li>Bad weather</li>
+            <li>Unsafe sea conditions</li>
+          </ul>
+          <p className="mt-2 text-sm leading-relaxed text-slate-700">
+            Except for force majeure cases such as major storms, government
+            restrictions, or natural disasters.
+          </p>
           <p className="mt-2 text-sm text-slate-600">
-            Operators are responsible for informing customers and Fishon as
-            early as possible if such cancellations are necessary.
+            Operators are responsible for informing customers and Fishon as soon
+            as possible if such cancellations are necessary.
           </p>
         </div>
       </div>
@@ -210,19 +213,19 @@ const sections: SectionDef[] = [
     content: (
       <div className="space-y-4">
         <p>
-          Neither Fishon nor the Operator shall be liable for cancellations or
-          delays caused by circumstances beyond their control, including but not
+          Fishon or the Operator shall not be liable for cancellations or delays
+          caused by circumstances beyond their control, including but not
           limited to:
         </p>
         <ul className="list-disc pl-5 space-y-1 text-sm">
           <li>Natural disasters</li>
-          <li>Severe weather</li>
+          <li>Extreme weather</li>
           <li>Government restrictions</li>
           <li>War or strikes</li>
         </ul>
         <p>
-          In such cases, customers will be entitled to a refund or reschedule as
-          outlined in Section 3.2.
+          In such cases, customers will be entitled to rescheduling as outlined
+          in Section 3.2.
         </p>
       </div>
     ),
