@@ -47,6 +47,8 @@ const MalayanTrout = "/images/species/freshwater/Sikang - Malayan Trout.png";
 const Temelian = "/images/species/freshwater/Temoleh - Temelian.png";
 const BeardlessBarb =
   "/images/species/freshwater/Temperas - Beardless Barb.png";
+const IndoPacificTarpon =
+  "/images/species/freshwater/Ikan Bulan - Indo-Pacific tarpon.png";
 
 export const FRESH_WATER_SPECIES = [
   {
@@ -294,5 +296,11 @@ export const FRESH_WATER_SPECIES = [
     english_name: "Beardless Barb",
     local_name: "Temperas",
     image: BeardlessBarb,
+  },
+  {
+    id: "indo-pacific-tarpon",
+    english_name: "Indo Pacific Tarpon",
+    local_name: "Ikan bulan",
+    image: IndoPacificTarpon,
   },
 ];

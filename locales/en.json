@@ -1,4 +1,246 @@
 {
+  "tutorialCalendar": {
+    "meta": {
+      "title": "How to Use Captain Calendar | Fishon.my",
+      "description": "Learn how to manage your charter calendar, block dates for offline bookings, maintenance, and keep your availability up to date on Fishon.my."
+    },
+    "hero": {
+      "badge": "Calendar Guide",
+      "title": "How to Use Captain Calendar",
+      "subtitle": "Master your charter calendar to manage bookings, block dates for maintenance or offline bookings, and keep your availability accurate for anglers."
+    },
+    "overview": {
+      "title": "Calendar Overview",
+      "description": "The Captain Calendar is your central hub for managing all bookings and availability. View your schedule at a glance, block dates when needed, and never miss a booking.",
+      "features": [
+        {
+          "title": "Multiple Views",
+          "description": "Switch between Month, Week, Day, and Agenda views to see your schedule the way you prefer."
+        },
+        {
+          "title": "See All Bookings",
+          "description": "View all confirmed, pending, and completed bookings in one place with color-coded status."
+        },
+        {
+          "title": "Block Dates Easily",
+          "description": "Block dates for offline bookings, boat maintenance, personal leave, or any reason you need."
+        },
+        {
+          "title": "Charter Switching",
+          "description": "If you have multiple charters, easily switch between them to manage each calendar separately."
+        }
+      ]
+    },
+    "interactions": {
+      "title": "Calendar Interactions",
+      "description": "Learn how to navigate and interact with your calendar effectively.",
+      "list": [
+        {
+          "title": "Click on a Date",
+          "description": "Click any date to view that day in detail or to quickly create a new block for that date."
+        },
+        {
+          "title": "New Booking Button",
+          "description": "Use the '+ New Booking' button in the header to block dates. This opens the block modal."
+        },
+        {
+          "title": "Click on Events",
+          "description": "Click on any booking or blocked date to see details. Bookings show angler info, blocked dates can be edited."
+        },
+        {
+          "title": "Navigate Months/Weeks",
+          "description": "Use the arrow buttons to move forward or backward through your calendar."
+        },
+        {
+          "title": "Go to Today",
+          "description": "Click the 'Today' button to quickly jump back to the current date."
+        },
+        {
+          "title": "Filter by Charter",
+          "description": "Use the sidebar to switch between different charters if you manage more than one."
+        },
+        {
+          "title": "Toggle Cancelled Bookings",
+          "description": "Show or hide cancelled/rejected bookings using the filter in the sidebar."
+        },
+        {
+          "title": "Color-Coded Status",
+          "description": "Bookings are color-coded: Blue for confirmed, Yellow for pending, Green for completed, Gray for cancelled."
+        },
+        {
+          "title": "Blocked Dates Display",
+          "description": "Blocked dates appear in gray with the reason shown. Click to edit or delete them."
+        }
+      ]
+    },
+    "steps": {
+      "title": "How to Block Dates",
+      "subtitle": "Follow these steps to block dates for offline bookings, maintenance, or personal unavailability.",
+      "list": [
+        {
+          "step": "1",
+          "title": "Open Block Modal",
+          "description": "Click the '+ New Booking' button in the calendar header, or click directly on the date you want to block. A modal dialog will appear.",
+          "visualLabel": "What you'll see",
+          "visual": {
+            "button": "+ New Booking",
+            "hint": "Or click directly on any date in the calendar"
+          }
+        },
+        {
+          "step": "2",
+          "title": "Choose Block Type",
+          "description": "Select whether to block the entire charter (all trips unavailable) or just a specific trip. Blocking a specific trip allows other trips to still be booked.",
+          "visualLabel": "Block type options",
+          "visual": {
+            "option1": "Entire Charter (All Trips)",
+            "option2": "Specific Trip Only"
+          }
+        },
+        {
+          "step": "3",
+          "title": "Select a Reason",
+          "description": "Choose a reason from the dropdown. This helps you track why dates are blocked and appears on your calendar.",
+          "visualLabel": "Available reasons",
+          "visual": {
+            "placeholder": "Select a reason...",
+            "reasons": {
+              "0": "Offline Booking",
+              "1": "Boat Maintenance",
+              "2": "No Crew Available",
+              "3": "Weather Concerns",
+              "4": "Personal Leave",
+              "5": "Other (Custom)"
+            }
+          }
+        },
+        {
+          "step": "4",
+          "title": "Set Date Range",
+          "description": "Select the start date. Enable 'Multi-day' checkbox if you need to block multiple consecutive days, then select the end date.",
+          "visualLabel": "Date selection example",
+          "visual": {
+            "startLabel": "Start Date",
+            "endLabel": "End Date",
+            "multiDay": "Multi-day block"
+          }
+        },
+        {
+          "step": "5",
+          "title": "Optional: Block Specific Time",
+          "description": "By default, the entire day is blocked. Toggle 'Block specific time' to set start and end times for partial-day blocks (e.g., morning only).",
+          "visualLabel": "Time selection",
+          "visual": {
+            "toggle": "Block specific time",
+            "startTime": "Start Time",
+            "endTime": "End Time"
+          }
+        },
+        {
+          "step": "6",
+          "title": "Save Block",
+          "description": "Click 'Block Dates' to save. The blocked period will appear on your calendar immediately and anglers won't be able to book during this time.",
+          "visualLabel": "Confirmation",
+          "visual": {
+            "button": "Block Dates",
+            "success": "Unavailability block saved successfully!"
+          }
+        }
+      ]
+    },
+    "examples": {
+      "title": "Real-World Examples",
+      "subtitle": "See how to handle common scenarios when blocking dates on your calendar.",
+      "fields": {
+        "blockType": "Block Type",
+        "reason": "Reason",
+        "date": "Date",
+        "time": "Time",
+        "trip": "Trip"
+      },
+      "calendarPreview": "How it appears on calendar:",
+      "list": [
+        {
+          "title": "Customer Calls to Book Directly",
+          "scenario": "A customer calls you on WhatsApp to book a Full Day trip on December 20th. You want to block this date so no one else can book.",
+          "howToLabel": "How to block this",
+          "blockType": "Entire Charter",
+          "reason": "Offline Booking",
+          "date": "20 Dec 2025",
+          "time": "All Day",
+          "trip": "Full Day Trip (8h)",
+          "calendarDisplay": "20 Dec - Offline Booking: Full Day Trip"
+        },
+        {
+          "title": "Scheduled Boat Maintenance",
+          "scenario": "Your boat needs engine service next week. The mechanic will come on December 15-17. You need to block these 3 days.",
+          "howToLabel": "How to block this",
+          "blockType": "Entire Charter",
+          "reason": "Boat Maintenance",
+          "date": "15-17 Dec 2025",
+          "time": "All Day",
+          "trip": "",
+          "calendarDisplay": "15-17 Dec - Boat Maintenance"
+        },
+        {
+          "title": "Bad Weather Expected",
+          "scenario": "Weather forecast shows storms on December 22nd afternoon. You want to cancel the afternoon Half Day trip but keep the morning available.",
+          "howToLabel": "How to block this",
+          "blockType": "Specific Trip",
+          "reason": "Weather Concerns",
+          "date": "22 Dec 2025",
+          "time": "14:00 - 18:00",
+          "trip": "Half Day Trip (PM)",
+          "calendarDisplay": "22 Dec PM - Weather: Half Day Trip"
+        },
+        {
+          "title": "Personal Day Off",
+          "scenario": "You're attending a family event on December 25th (Christmas) and won't be available for any trips.",
+          "howToLabel": "How to block this",
+          "blockType": "Entire Charter",
+          "reason": "Personal Leave",
+          "date": "25 Dec 2025",
+          "time": "All Day",
+          "trip": "",
+          "calendarDisplay": "25 Dec - Personal Leave"
+        }
+      ]
+    },
+    "tips": {
+      "title": "Pro Tips for Calendar Management",
+      "list": [
+        {
+          "title": "Block Early",
+          "description": "Block dates as soon as you know you'll be unavailable. This prevents last-minute booking conflicts and disappointed customers."
+        },
+        {
+          "title": "Use Offline Booking for Non-Platform Bookings",
+          "description": "When you receive a booking outside Fishon (phone, WhatsApp), mark it as 'Offline Booking' and select the trip type. This helps track your full business."
+        },
+        {
+          "title": "Check Calendar Regularly",
+          "description": "Make it a habit to check your calendar daily or weekly. This helps you stay on top of bookings and avoid scheduling issues."
+        },
+        {
+          "title": "Use Multiple Views",
+          "description": "Month view gives you the big picture, Week view helps with detailed planning, Day view shows time slots clearly, and Agenda view lists upcoming events."
+        },
+        {
+          "title": "Edit or Delete Blocks",
+          "description": "Made a mistake? Click on any blocked date to edit the details or delete it entirely. Changes take effect immediately."
+        },
+        {
+          "title": "Block for Maintenance",
+          "description": "Schedule regular boat maintenance and block those dates in advance. Keeping your boat in top shape means happy customers and great reviews."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Ready to Manage Your Calendar?",
+      "subtitle": "Keep your availability up to date and never miss a booking opportunity.",
+      "button": "Go to Calendar"
+    }
+  },
   "tutorial": {
     "meta": {
       "title": "How to Register Your Charter | Fishon.my",

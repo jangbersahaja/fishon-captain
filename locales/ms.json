@@ -1,4 +1,246 @@
 {
+  "tutorialCalendar": {
+    "meta": {
+      "title": "Cara Menggunakan Kalendar Kapten | Fishon.my",
+      "description": "Ketahui cara mengurus kalendar charter anda, sekat tarikh untuk tempahan luar talian, penyelenggaraan, dan kemaskini ketersediaan anda di Fishon.my."
+    },
+    "hero": {
+      "badge": "Panduan Kalendar",
+      "title": "Cara Menggunakan Kalendar Kapten",
+      "subtitle": "Kuasai kalendar charter anda untuk mengurus tempahan, sekat tarikh untuk penyelenggaraan atau tempahan luar talian, dan pastikan ketersediaan anda tepat untuk pemancing."
+    },
+    "overview": {
+      "title": "Gambaran Kalendar",
+      "description": "Kalendar Kapten adalah pusat kawalan anda untuk mengurus semua tempahan dan ketersediaan. Lihat jadual anda sekilas pandang, sekat tarikh apabila diperlukan, dan jangan terlepas sebarang tempahan.",
+      "features": [
+        {
+          "title": "Pelbagai Paparan",
+          "description": "Tukar antara paparan Bulan, Minggu, Hari, dan Agenda untuk melihat jadual anda mengikut pilihan."
+        },
+        {
+          "title": "Lihat Semua Tempahan",
+          "description": "Lihat semua tempahan yang disahkan, tertunda, dan selesai di satu tempat dengan kod warna status."
+        },
+        {
+          "title": "Sekat Tarikh dengan Mudah",
+          "description": "Sekat tarikh untuk tempahan luar talian, penyelenggaraan bot, cuti peribadi, atau apa-apa sebab yang diperlukan."
+        },
+        {
+          "title": "Tukar Antara Charter",
+          "description": "Jika anda mempunyai berbilang charter, tukar dengan mudah antara setiap kalendar secara berasingan."
+        }
+      ]
+    },
+    "interactions": {
+      "title": "Interaksi Kalendar",
+      "description": "Ketahui cara navigasi dan berinteraksi dengan kalendar anda secara berkesan.",
+      "list": [
+        {
+          "title": "Klik pada Tarikh",
+          "description": "Klik mana-mana tarikh untuk melihat hari itu secara terperinci atau untuk mencipta sekatan baharu dengan cepat untuk tarikh tersebut."
+        },
+        {
+          "title": "Butang Tempahan Baru",
+          "description": "Gunakan butang '+ Tempahan Baru' di header untuk menyekat tarikh. Ini membuka modal sekatan."
+        },
+        {
+          "title": "Klik pada Acara",
+          "description": "Klik pada mana-mana tempahan atau tarikh yang disekat untuk melihat butiran. Tempahan menunjukkan maklumat pemancing, tarikh yang disekat boleh diedit."
+        },
+        {
+          "title": "Navigasi Bulan/Minggu",
+          "description": "Gunakan butang anak panah untuk bergerak ke hadapan atau ke belakang melalui kalendar anda."
+        },
+        {
+          "title": "Pergi ke Hari Ini",
+          "description": "Klik butang 'Hari Ini' untuk melompat kembali ke tarikh semasa dengan cepat."
+        },
+        {
+          "title": "Tapis mengikut Charter",
+          "description": "Gunakan bar sisi untuk menukar antara charter berbeza jika anda mengurus lebih daripada satu."
+        },
+        {
+          "title": "Togol Tempahan Dibatalkan",
+          "description": "Tunjukkan atau sembunyikan tempahan yang dibatalkan/ditolak menggunakan penapis di bar sisi."
+        },
+        {
+          "title": "Status Berkod Warna",
+          "description": "Tempahan berkod warna: Biru untuk disahkan, Kuning untuk tertunda, Hijau untuk selesai, Kelabu untuk dibatalkan."
+        },
+        {
+          "title": "Paparan Tarikh Disekat",
+          "description": "Tarikh yang disekat muncul dalam warna kelabu dengan sebab ditunjukkan. Klik untuk mengedit atau memadamnya."
+        }
+      ]
+    },
+    "steps": {
+      "title": "Cara Menyekat Tarikh",
+      "subtitle": "Ikuti langkah-langkah ini untuk menyekat tarikh bagi tempahan luar talian, penyelenggaraan, atau ketidaktersediaan peribadi.",
+      "list": [
+        {
+          "step": "1",
+          "title": "Buka Modal Sekatan",
+          "description": "Klik butang '+ Tempahan Baru' di header kalendar, atau klik terus pada tarikh yang anda mahu sekat. Satu dialog modal akan muncul.",
+          "visualLabel": "Apa yang anda akan lihat",
+          "visual": {
+            "button": "+ Tempahan Baru",
+            "hint": "Atau klik terus pada mana-mana tarikh di kalendar"
+          }
+        },
+        {
+          "step": "2",
+          "title": "Pilih Jenis Sekatan",
+          "description": "Pilih sama ada mahu menyekat keseluruhan charter (semua trip tidak tersedia) atau hanya trip tertentu. Menyekat trip tertentu membolehkan trip lain masih boleh ditempah.",
+          "visualLabel": "Pilihan jenis sekatan",
+          "visual": {
+            "option1": "Keseluruhan Charter (Semua Trip)",
+            "option2": "Trip Tertentu Sahaja"
+          }
+        },
+        {
+          "step": "3",
+          "title": "Pilih Sebab",
+          "description": "Pilih sebab dari dropdown. Ini membantu anda menjejaki mengapa tarikh disekat dan muncul di kalendar anda.",
+          "visualLabel": "Sebab yang tersedia",
+          "visual": {
+            "placeholder": "Pilih sebab...",
+            "reasons": {
+              "0": "Tempahan Luar Talian",
+              "1": "Penyelenggaraan Bot",
+              "2": "Tiada Krew",
+              "3": "Kebimbangan Cuaca",
+              "4": "Cuti Peribadi",
+              "5": "Lain-lain (Tersuai)"
+            }
+          }
+        },
+        {
+          "step": "4",
+          "title": "Tetapkan Julat Tarikh",
+          "description": "Pilih tarikh mula. Aktifkan kotak semak 'Berbilang hari' jika anda perlu menyekat beberapa hari berturut-turut, kemudian pilih tarikh akhir.",
+          "visualLabel": "Contoh pemilihan tarikh",
+          "visual": {
+            "startLabel": "Tarikh Mula",
+            "endLabel": "Tarikh Akhir",
+            "multiDay": "Sekatan berbilang hari"
+          }
+        },
+        {
+          "step": "5",
+          "title": "Pilihan: Sekat Masa Tertentu",
+          "description": "Secara lalai, keseluruhan hari disekat. Togol 'Sekat masa tertentu' untuk menetapkan masa mula dan akhir bagi sekatan separuh hari (cth., pagi sahaja).",
+          "visualLabel": "Pemilihan masa",
+          "visual": {
+            "toggle": "Sekat masa tertentu",
+            "startTime": "Masa Mula",
+            "endTime": "Masa Akhir"
+          }
+        },
+        {
+          "step": "6",
+          "title": "Simpan Sekatan",
+          "description": "Klik 'Sekat Tarikh' untuk menyimpan. Tempoh yang disekat akan muncul pada kalendar anda serta-merta dan pemancing tidak akan dapat menempah pada masa ini.",
+          "visualLabel": "Pengesahan",
+          "visual": {
+            "button": "Sekat Tarikh",
+            "success": "Sekatan tarikh berjaya disimpan!"
+          }
+        }
+      ]
+    },
+    "examples": {
+      "title": "Contoh Situasi Sebenar",
+      "subtitle": "Lihat cara mengendalikan senario biasa apabila menyekat tarikh di kalendar anda.",
+      "fields": {
+        "blockType": "Jenis Sekatan",
+        "reason": "Sebab",
+        "date": "Tarikh",
+        "time": "Masa",
+        "trip": "Trip"
+      },
+      "calendarPreview": "Bagaimana ia muncul di kalendar:",
+      "list": [
+        {
+          "title": "Pelanggan Menghubungi untuk Tempah Terus",
+          "scenario": "Seorang pelanggan menghubungi anda di WhatsApp untuk menempah trip Satu Hari pada 20 Disember. Anda mahu sekat tarikh ini supaya tiada orang lain boleh tempah.",
+          "howToLabel": "Cara menyekat ini",
+          "blockType": "Keseluruhan Charter",
+          "reason": "Tempahan Luar Talian",
+          "date": "20 Dis 2025",
+          "time": "Sepanjang Hari",
+          "trip": "Trip Satu Hari (8j)",
+          "calendarDisplay": "20 Dis - Tempahan Luar Talian: Trip Satu Hari"
+        },
+        {
+          "title": "Penyelenggaraan Bot Berjadual",
+          "scenario": "Bot anda perlu servis enjin minggu depan. Mekanik akan datang pada 15-17 Disember. Anda perlu sekat 3 hari ini.",
+          "howToLabel": "Cara menyekat ini",
+          "blockType": "Keseluruhan Charter",
+          "reason": "Penyelenggaraan Bot",
+          "date": "15-17 Dis 2025",
+          "time": "Sepanjang Hari",
+          "trip": "",
+          "calendarDisplay": "15-17 Dis - Penyelenggaraan Bot"
+        },
+        {
+          "title": "Cuaca Buruk Dijangka",
+          "scenario": "Ramalan cuaca menunjukkan ribut pada petang 22 Disember. Anda mahu batalkan trip Separuh Hari petang tetapi kekalkan pagi tersedia.",
+          "howToLabel": "Cara menyekat ini",
+          "blockType": "Trip Tertentu",
+          "reason": "Kebimbangan Cuaca",
+          "date": "22 Dis 2025",
+          "time": "14:00 - 18:00",
+          "trip": "Trip Separuh Hari (Petang)",
+          "calendarDisplay": "22 Dis Petang - Cuaca: Trip Separuh Hari"
+        },
+        {
+          "title": "Hari Cuti Peribadi",
+          "scenario": "Anda menghadiri majlis keluarga pada 25 Disember (Krismas) dan tidak akan tersedia untuk sebarang trip.",
+          "howToLabel": "Cara menyekat ini",
+          "blockType": "Keseluruhan Charter",
+          "reason": "Cuti Peribadi",
+          "date": "25 Dis 2025",
+          "time": "Sepanjang Hari",
+          "trip": "",
+          "calendarDisplay": "25 Dis - Cuti Peribadi"
+        }
+      ]
+    },
+    "tips": {
+      "title": "Tip Pro untuk Pengurusan Kalendar",
+      "list": [
+        {
+          "title": "Sekat Awal",
+          "description": "Sekat tarikh sebaik sahaja anda tahu anda tidak akan tersedia. Ini menghalang konflik tempahan saat akhir dan pelanggan yang kecewa."
+        },
+        {
+          "title": "Gunakan Tempahan Luar Talian untuk Tempahan Bukan Platform",
+          "description": "Apabila anda menerima tempahan di luar Fishon (telefon, WhatsApp), tandakan sebagai 'Tempahan Luar Talian' dan pilih jenis trip. Ini membantu menjejaki keseluruhan perniagaan anda."
+        },
+        {
+          "title": "Semak Kalendar Secara Berkala",
+          "description": "Jadikan kebiasaan untuk menyemak kalendar anda setiap hari atau mingguan. Ini membantu anda sentiasa peka dengan tempahan dan mengelakkan isu penjadualan."
+        },
+        {
+          "title": "Gunakan Pelbagai Paparan",
+          "description": "Paparan Bulan memberikan gambaran besar, Paparan Minggu membantu perancangan terperinci, Paparan Hari menunjukkan slot masa dengan jelas, dan Paparan Agenda menyenaraikan acara akan datang."
+        },
+        {
+          "title": "Edit atau Padam Sekatan",
+          "description": "Tersalah buat? Klik pada mana-mana tarikh yang disekat untuk mengedit butiran atau memadamnya sepenuhnya. Perubahan berkuat kuasa serta-merta."
+        },
+        {
+          "title": "Sekat untuk Penyelenggaraan",
+          "description": "Jadualkan penyelenggaraan bot secara berkala dan sekat tarikh tersebut terlebih dahulu. Menjaga bot anda dalam keadaan terbaik bermakna pelanggan yang gembira dan ulasan yang bagus."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Sedia untuk Mengurus Kalendar Anda?",
+      "subtitle": "Pastikan ketersediaan anda sentiasa dikemaskini dan jangan terlepas peluang tempahan.",
+      "button": "Pergi ke Kalendar"
+    }
+  },
   "tutorial": {
     "meta": {
       "title": "Cara Mendaftar Charter Anda | Fishon.my",

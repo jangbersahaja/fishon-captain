@@ -276,18 +276,18 @@ enum BookingStatus {
 
 ### Status Transition Matrix
 
-| From                    | To                   | Trigger             | Flow Type    |
-| ----------------------- | -------------------- | ------------------- | ------------ |
-| `PENDING`               | `AWAITING_PAYMENT`   | Captain approves    | MANUAL       |
-| `PENDING`               | `REJECTED`           | Captain rejects     | MANUAL       |
-| `PENDING`               | `EXPIRED`            | Approval timeout    | MANUAL       |
-| `PAYMENT_AUTHORIZED`    | `PAID`               | Captain acknowledges| AUTO         |
-| `PAYMENT_AUTHORIZED`    | `REJECTED`           | Captain rejects     | AUTO         |
-| `PAYMENT_AUTHORIZED`    | `EXPIRED`            | Ack timeout         | AUTO         |
-| `AWAITING_PAYMENT`      | `PAID`               | Angler pays         | MANUAL       |
-| `AWAITING_PAYMENT`      | `EXPIRED`            | Payment timeout     | MANUAL       |
-| `PAID`                  | `CANCELLED`          | Angler cancels      | Both         |
-| `PAID`                  | `COMPLETED`          | Trip date passed    | Both         |
+| From                 | To                 | Trigger              | Flow Type |
+| -------------------- | ------------------ | -------------------- | --------- |
+| `PENDING`            | `AWAITING_PAYMENT` | Captain approves     | MANUAL    |
+| `PENDING`            | `REJECTED`         | Captain rejects      | MANUAL    |
+| `PENDING`            | `EXPIRED`          | Approval timeout     | MANUAL    |
+| `PAYMENT_AUTHORIZED` | `PAID`             | Captain acknowledges | AUTO      |
+| `PAYMENT_AUTHORIZED` | `REJECTED`         | Captain rejects      | AUTO      |
+| `PAYMENT_AUTHORIZED` | `EXPIRED`          | Ack timeout          | AUTO      |
+| `AWAITING_PAYMENT`   | `PAID`             | Angler pays          | MANUAL    |
+| `AWAITING_PAYMENT`   | `EXPIRED`          | Payment timeout      | MANUAL    |
+| `PAID`               | `CANCELLED`        | Angler cancels       | Both      |
+| `PAID`               | `COMPLETED`        | Trip date passed     | Both      |
 
 ### Automatic Expiry
 
@@ -300,10 +300,22 @@ enum BookingStatus {
 
 **Payment Deadline** (MANUAL flow):
 
-- **Duration**: 48 hours after approval
+- **Duration**: Trip-date-anchored (up to 48 hours, but capped at 6h before trip)
+- **Calculation**: `min(now + 48h, tripStart - 6h)`
 - **Trigger**: Set when captain approves
 - **Action**: Auto-cancel with `EXPIRED` status
-- **Notification**: Angler reminded at 24h and 1h before expiry
+- **Notification**: Angler reminded with dynamic deadline text
+
+> **Important**: Payment deadline is now calculated relative to trip date to prevent
+> scenarios where the payment window extends past the trip start. The system ensures
+> at least a 6-hour buffer before the trip starts for captain preparation.
+
+**Advance Booking Requirement** (Both flows):
+
+- **Inshore/Standard trips**: 48 hours minimum advance booking
+- **Offshore trips**: 72 hours minimum advance booking
+- **Enforcement**: Server-side validation in `/api/bookings/create` and `/api/bookings/create-guest`
+- **Purpose**: Ensures sufficient time for captain approval + payment + preparation
 
 **Acknowledgment Deadline** (AUTO flow):
 
@@ -324,14 +336,14 @@ enum BookingStatus {
 
 **Events**:
 
-| Event                  | Trigger                     | Payload                          |
-| ---------------------- | --------------------------- | -------------------------------- |
-| `booking.created`      | Booking created (either flow) | Full booking object            |
-| `booking.approved`     | Captain approves (MANUAL)   | Updated status + timestamps      |
-| `booking.acknowledged` | Captain acks (AUTO)         | Updated status + timestamps      |
-| `booking.paid`         | Angler pays (MANUAL)        | Payment details                  |
-| `booking.rejected`     | Captain rejects             | Rejection reason                 |
-| `booking.cancelled`    | Angler cancels              | Cancellation reason              |
+| Event                  | Trigger                       | Payload                     |
+| ---------------------- | ----------------------------- | --------------------------- |
+| `booking.created`      | Booking created (either flow) | Full booking object         |
+| `booking.approved`     | Captain approves (MANUAL)     | Updated status + timestamps |
+| `booking.acknowledged` | Captain acks (AUTO)           | Updated status + timestamps |
+| `booking.paid`         | Angler pays (MANUAL)          | Payment details             |
+| `booking.rejected`     | Captain rejects               | Rejection reason            |
+| `booking.cancelled`    | Angler cancels                | Cancellation reason         |
 
 **Example Payload**:
 
@@ -879,14 +891,14 @@ channel.bind_global((event, data) => {
 
 ```typescript
 const statusColors = {
-  PENDING: "yellow",            // Awaiting approval
-  PAYMENT_AUTHORIZED: "blue",   // Payment held
-  AWAITING_PAYMENT: "orange",   // Approved, pay now
-  PAID: "green",                // Confirmed
-  REJECTED: "red",              // Declined
-  CANCELLED: "gray",            // User cancelled
-  COMPLETED: "blue",            // Trip done
-  EXPIRED: "gray",              // Deadline passed
+  PENDING: "yellow", // Awaiting approval
+  PAYMENT_AUTHORIZED: "blue", // Payment held
+  AWAITING_PAYMENT: "orange", // Approved, pay now
+  PAID: "green", // Confirmed
+  REJECTED: "red", // Declined
+  CANCELLED: "gray", // User cancelled
+  COMPLETED: "blue", // Trip done
+  EXPIRED: "gray", // Deadline passed
 };
 ```
 

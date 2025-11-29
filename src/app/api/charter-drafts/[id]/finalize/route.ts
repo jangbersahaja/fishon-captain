@@ -261,6 +261,7 @@ export async function POST(
             ? new Prisma.Decimal(draftData.longitude)
             : undefined,
         description: draftData.description ?? "",
+        descriptionMy: draftData.descriptionMy ?? null,
         backupPhone: draftData.operator?.backupPhone ?? null,
         pricingPlan: CharterPricingPlan.BASIC,
         amenities: {

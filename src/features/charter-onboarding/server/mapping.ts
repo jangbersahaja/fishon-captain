@@ -70,6 +70,7 @@ interface CharterFull {
   latitude: unknown;
   longitude: unknown;
   description: string;
+  descriptionMy?: string | null;
   backupPhone: string | null;
   boat: BoatRecord | null;
   features: CharterFeature[];
@@ -127,6 +128,7 @@ export function mapCharterToDraftValuesFeature(params: {
     latitude: safeNumber(charter.latitude),
     longitude: safeNumber(charter.longitude),
     description: charter.description || "",
+    descriptionMy: charter.descriptionMy || undefined,
     generatedDescription: undefined,
     tone: "friendly",
     boat: {

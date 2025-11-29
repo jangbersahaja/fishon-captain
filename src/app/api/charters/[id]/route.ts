@@ -19,6 +19,7 @@ interface CharterUpdateData {
   latitude?: number | null;
   longitude?: number | null;
   description?: string;
+  descriptionMy?: string | null; // Malay description
   backupPhone?: string | null;
   [key: string]: unknown;
 }
