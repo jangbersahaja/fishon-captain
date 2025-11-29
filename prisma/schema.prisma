@@ -51,6 +51,46 @@ model User {
   notifications            Notification[]
   payouts                  Payout[]                 @relation("OwnerPayouts")
   dismissedMessages        MessageDismissal[]
+  googleCalendarSettings   GoogleCalendarSettings?
+}
+
+/// Google Calendar integration settings for a user
+model GoogleCalendarSettings {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  
+  // Connection status
+  isConnected          Boolean  @default(false)
+  connectedAt          DateTime?
+  
+  // OAuth tokens (encrypted at rest by database)
+  googleAccessToken    String?  @db.Text
+  googleRefreshToken   String?  @db.Text
+  googleTokenExpiresAt DateTime?
+  googleEmail          String?  // Email of connected Google account
+  
+  // Sync preferences
+  selectedCalendarId   String?  @default("primary") // "primary" or specific calendar ID
+  selectedCalendarName String?  // Human-readable calendar name
+  
+  // What to sync
+  syncBookingsToGoogle Boolean  @default(true)  // Push confirmed bookings to Google
+  syncBlockedToGoogle  Boolean  @default(true)  // Push blocked dates to Google
+  importFromGoogle     Boolean  @default(false) // Import Google events as blocked dates
+  
+  // Auto-import rules (when importFromGoogle is true)
+  autoImportAllDay     Boolean  @default(true)  // Auto-import all-day events
+  autoImportKeywords   String[] @default([])    // Keywords to match (e.g., "vacation", "holiday")
+  
+  // Timestamps
+  lastSyncAt           DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("google_calendar_settings")
 }
 
 model CaptainProfile {
@@ -211,8 +251,16 @@ model CharterUnavailability {
   createdBy String
   charter   Charter  @relation(fields: [charterId], references: [id], onDelete: Cascade)
 
+  // Google Calendar sync
+  googleEventId     String?   // Google Calendar event ID
+  googleCalendarId  String?   // Which calendar it's synced to
+  googleSyncedAt    DateTime? // Last sync timestamp
+  isFromGoogle      Boolean   @default(false) // True if imported from Google Calendar
+  googleEventTitle  String?   // Original Google event title (for reference)
+
   @@index([charterId, startDate, endDate])
   @@index([charterId])
+  @@index([googleEventId])
   @@map("charter_unavailability")
 }
 

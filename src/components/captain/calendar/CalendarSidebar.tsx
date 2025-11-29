@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
+import { GoogleCalendarSection } from "./GoogleCalendarSection";
 import { OperationalScheduleEditor } from "./OperationalScheduleEditor";
 
 interface CalendarSidebarProps {
@@ -177,6 +178,11 @@ export function CalendarSidebar({
           />
           <Label htmlFor="show-cancelled">Show Cancelled & Rejected</Label>
         </div>
+      </div>
+
+      {/* Google Calendar Integration */}
+      <div className="pt-4 border-t">
+        <GoogleCalendarSection />
       </div>
 
       {/* Operational Schedule Editor Modal */}

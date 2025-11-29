@@ -12,6 +12,7 @@ import { CalendarHeader } from "./CalendarHeader";
 import { CalendarSidebar } from "./CalendarSidebar";
 import { CreateBlockModal } from "./CreateBlockModal";
 import { EventDetailsPanel } from "./EventDetailsPanel";
+import { GoogleCalendarToastHandler } from "./GoogleCalendarToastHandler";
 import { AgendaView } from "./views/AgendaView";
 import { DayView } from "./views/DayView";
 import { MonthView } from "./views/MonthView";
@@ -104,6 +105,12 @@ export function CalendarShell({
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         createdBy: "system",
+        // Google Calendar sync fields
+        googleEventId: null,
+        googleCalendarId: null,
+        googleSyncedAt: null,
+        isFromGoogle: false,
+        googleEventTitle: null,
       };
       setSelectedBlock(blockData);
       // Find trip name if specific trip is blocked
@@ -143,6 +150,9 @@ export function CalendarShell({
 
   return (
     <div className="relative flex flex-col h-full md:h-screen">
+      {/* Google Calendar OAuth callback toast handler */}
+      <GoogleCalendarToastHandler />
+
       <CalendarHeader
         view={view}
         date={date}
