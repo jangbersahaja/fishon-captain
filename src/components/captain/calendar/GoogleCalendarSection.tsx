@@ -33,6 +33,9 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+// Only enable Google Calendar in development
+const IS_GOOGLE_CALENDAR_ENABLED = process.env.NODE_ENV === "development";
+
 interface GoogleCalendarSettings {
   isConnected: boolean;
   connectedAt?: string;
@@ -85,8 +88,33 @@ export function GoogleCalendarSection({
   }, []);
 
   useEffect(() => {
+    // Skip fetching if feature is disabled
+    if (!IS_GOOGLE_CALENDAR_ENABLED) {
+      setIsLoading(false);
+      return;
+    }
     fetchSettings();
   }, [fetchSettings]);
+
+  // Show "Coming Soon" in production
+  if (!IS_GOOGLE_CALENDAR_ENABLED) {
+    return (
+      <div className={cn("space-y-3", className)}>
+        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          Google Calendar
+        </h3>
+        <div className="rounded-lg border border-dashed p-4 text-center space-y-2">
+          <Badge variant="secondary" className="text-xs">
+            Coming Soon
+          </Badge>
+          <p className="text-xs text-muted-foreground">
+            Sync your blocked dates and bookings with Google Calendar
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Handle connect
   const handleConnect = async () => {

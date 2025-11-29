@@ -34,6 +34,8 @@ interface CalendarSidebarProps {
   showCancelled: boolean;
   onShowCancelledChange: (value: boolean) => void;
   className?: string;
+  /** Hide mini calendar (e.g., on mobile) */
+  hideMiniCalendar?: boolean;
 }
 
 export function CalendarSidebar({
@@ -45,6 +47,7 @@ export function CalendarSidebar({
   showCancelled,
   onShowCancelledChange,
   className,
+  hideMiniCalendar = false,
 }: CalendarSidebarProps) {
   const [editScheduleOpen, setEditScheduleOpen] = useState(false);
 
@@ -127,15 +130,17 @@ export function CalendarSidebar({
         </Select>
       </div>
 
-      {/* Mini Calendar */}
-      <div className="border rounded-md p-2 flex justify-center">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={(d) => d && onDateChange(d)}
-          className="rounded-md border-0"
-        />
-      </div>
+      {/* Mini Calendar - Hidden on mobile */}
+      {!hideMiniCalendar && (
+        <div className="border rounded-md p-2 flex justify-center">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(d) => d && onDateChange(d)}
+            className="rounded-md border-0"
+          />
+        </div>
+      )}
 
       {/* Operational Schedule Section */}
       {selectedCharterId && (
