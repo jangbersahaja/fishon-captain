@@ -1,6 +1,7 @@
 "use client";
 
 import { BookingActions } from "@/app/(portal)/captain/bookings/BookingActions";
+import { CaptainCancelDialog } from "@/app/(portal)/captain/bookings/CaptainCancelDialog";
 import type { EnrichedMarketBooking } from "@/lib/enrich-booking";
 import { CircleDollarSign, Clock, Users } from "lucide-react";
 import Image from "next/image";
@@ -68,25 +69,37 @@ export function EnhancedBookingCard({
           {/* Left: Main Info */}
           <div className="flex-1 min-w-0 space-y-2.5">
             {/* Header Row */}
-            <div className="">
-              <div className="flex items-center gap-2 mb-1">
-                <h3
-                  className={`font-semibold text-slate-900 truncate ${isCompact ? "text-base" : "text-lg"}`}
+            <div className="flex items-center gap-3">
+              {booking.formattedTimeSlots && (
+                <div className="flex flex-col items-center justify-center px-3 py-2 text-white rounded-lg bg-[#ec2227] w-16">
+                  <h2 className="flex-shrink-0 text-4xl font-semibold uppercase font-oswald">
+                    {booking.formattedTimeSlots[0].split(" ")[3]}
+                  </h2>
+                  <h3 className="flex-shrink-0 font-semibold uppercase font-oswald">
+                    {booking.formattedTimeSlots[0].split(" ")[4]}
+                  </h3>
+                </div>
+              )}
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3
+                    className={`font-semibold text-slate-900 truncate ${isCompact ? "text-base" : "text-lg"}`}
+                  >
+                    {booking.tripName}
+                  </h3>
+                  <BookingStatusBadge
+                    status={booking.status}
+                    size={isCompact ? "sm" : "md"}
+                  />
+                </div>
+                <div
+                  className={`text-slate-600 truncate ${isCompact ? "text-xs" : "text-sm"}`}
                 >
-                  {booking.tripName}
-                </h3>
-                <BookingStatusBadge
-                  status={booking.status}
-                  size={isCompact ? "sm" : "md"}
-                />
+                  {booking.charterName}
+                </div>
               </div>
-              <div
-                className={`text-slate-600 truncate ${isCompact ? "text-xs" : "text-sm"}`}
-              >
-                {booking.charterName}
-              </div>
+              {/* Big Date i.e 27 Dec */}
             </div>
-
             {/* Angler Info */}
             <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-50/80">
               <Image
@@ -189,6 +202,14 @@ export function EnhancedBookingCard({
                 />
               )}
 
+              {/* Cancel action for confirmed PAID bookings */}
+              {booking.status === "PAID" && (
+                <CaptainCancelDialog
+                  bookingId={booking.id}
+                  charterName={booking.charterName}
+                />
+              )}
+
               {booking.conversationId &&
                 booking.conversationStatus === "ACTIVE" && (
                   <Link
@@ -207,14 +228,27 @@ export function EnhancedBookingCard({
       {/* Mobile Layout - Vertical, Full Info */}
       <div className="space-y-3 sm:hidden">
         {/* Header */}
-        <div>
-          <h3 className="mb-1 text-lg font-semibold text-slate-900">
-            {booking.tripName}
-          </h3>
-          <div className="mb-2 text-sm text-slate-600">
-            {booking.charterName}
+        <div className="flex items-start gap-3">
+          {/* Big Date i.e 27 Dec */}
+          {booking.formattedTimeSlots && (
+            <div className="flex flex-col items-center justify-center px-3 py-2 text-white rounded-lg bg-[#ec2227] w-16">
+              <h2 className="flex-shrink-0 text-4xl font-semibold uppercase font-oswald">
+                {booking.formattedTimeSlots[0].split(" ")[3]}
+              </h2>
+              <h3 className="flex-shrink-0 font-semibold uppercase font-oswald">
+                {booking.formattedTimeSlots[0].split(" ")[4]}
+              </h3>
+            </div>
+          )}
+          <div>
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">
+              {booking.tripName}
+            </h3>
+            <div className="mb-2 text-sm text-slate-600">
+              {booking.charterName}
+            </div>
+            <BookingStatusBadge status={booking.status} size="sm" />
           </div>
-          <BookingStatusBadge status={booking.status} size="sm" />
         </div>
 
         {/* Angler Info with Image */}
@@ -314,6 +348,14 @@ export function EnhancedBookingCard({
               bookingId={booking.id}
               status={booking.status}
               flowType={booking.bookingFlowType}
+            />
+          )}
+
+          {/* Cancel action for confirmed PAID bookings */}
+          {booking.status === "PAID" && (
+            <CaptainCancelDialog
+              bookingId={booking.id}
+              charterName={booking.charterName}
             />
           )}
 

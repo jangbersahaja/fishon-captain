@@ -25,6 +25,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import React from "react";
 import { BookingActions } from "../BookingActions";
+import { CaptainCancelDialog } from "../CaptainCancelDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -194,6 +195,13 @@ export default async function BookingDetailsPage({
               bookingId={booking.id}
               status={booking.status}
               flowType={booking.bookingFlowType}
+            />
+          )}
+          {/* Captain can cancel confirmed PAID bookings (full refund to angler) */}
+          {booking.status === "PAID" && (
+            <CaptainCancelDialog
+              bookingId={booking.id}
+              charterName={booking.charterName}
             />
           )}
         </div>
