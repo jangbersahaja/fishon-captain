@@ -1,4 +1,5 @@
 import authOptions from "@/lib/auth";
+import { decrypt } from "@/lib/encryption";
 import { getPayoutById } from "@/lib/services/finance-service";
 import { format } from "date-fns";
 import { getServerSession } from "next-auth";
@@ -39,6 +40,20 @@ export default async function PayoutDetailPage({
 
   if (!payout) {
     notFound();
+  }
+
+  // Decrypt bank details (stored encrypted in Payout snapshot)
+  let decryptedAccountNumber = payout.accountNumber;
+  let decryptedAccountHolder = payout.accountHolder;
+  try {
+    if (payout.accountNumber) {
+      decryptedAccountNumber = decrypt(payout.accountNumber);
+    }
+    if (payout.accountHolder) {
+      decryptedAccountHolder = decrypt(payout.accountHolder);
+    }
+  } catch (error) {
+    console.error("Failed to decrypt bank details:", error);
   }
 
   return (
@@ -118,13 +133,13 @@ export default async function PayoutDetailPage({
             <div>
               <dt className="text-sm text-slate-600">Account Number</dt>
               <dd className="mt-1 font-mono text-sm text-slate-900">
-                {payout.accountNumber}
+                {decryptedAccountNumber}
               </dd>
             </div>
             <div>
               <dt className="text-sm text-slate-600">Account Holder</dt>
               <dd className="mt-1 text-sm text-slate-900">
-                {payout.accountHolder}
+                {decryptedAccountHolder}
               </dd>
             </div>
           </dl>

@@ -16,6 +16,8 @@ interface DailyRevenue {
   date: string;
   totalRevenue: number;
   platformRevenue: number;
+  tripIncome: number;
+  serviceIncome: number;
   bookingCount: number;
 }
 
@@ -70,6 +72,20 @@ export function RevenueChart({ data, height = 300 }: RevenueChartProps) {
                       RM {data.platformRevenue.toFixed(2)}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between gap-4 pl-2 border-l-2 border-emerald-200">
+                    <span className="text-xs text-slate-500">Trip Income:</span>
+                    <span className="text-xs text-emerald-500">
+                      RM {data.tripIncome.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 pl-2 border-l-2 border-emerald-200">
+                    <span className="text-xs text-slate-500">
+                      Service Income:
+                    </span>
+                    <span className="text-xs text-emerald-500">
+                      RM {data.serviceIncome.toFixed(2)}
+                    </span>
+                  </div>
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-xs text-slate-600">Bookings:</span>
                     <span className="text-xs font-semibold text-slate-900">
@@ -87,6 +103,8 @@ export function RevenueChart({ data, height = 300 }: RevenueChartProps) {
           formatter={(value) => {
             if (value === "totalRevenue") return "Total Sales";
             if (value === "platformRevenue") return "Fishon Revenue";
+            if (value === "tripIncome") return "Trip Income";
+            if (value === "serviceIncome") return "Service Income";
             return value;
           }}
         />
@@ -107,6 +125,26 @@ export function RevenueChart({ data, height = 300 }: RevenueChartProps) {
           dot={{ fill: "#10b981", r: 3 }}
           activeDot={{ r: 5 }}
           name="platformRevenue"
+        />
+        <Line
+          type="monotone"
+          dataKey="tripIncome"
+          stroke="#34d399"
+          strokeWidth={1}
+          strokeDasharray="3 3"
+          dot={{ fill: "#34d399", r: 2 }}
+          activeDot={{ r: 4 }}
+          name="tripIncome"
+        />
+        <Line
+          type="monotone"
+          dataKey="serviceIncome"
+          stroke="#6ee7b7"
+          strokeWidth={1}
+          strokeDasharray="3 3"
+          dot={{ fill: "#6ee7b7", r: 2 }}
+          activeDot={{ r: 4 }}
+          name="serviceIncome"
         />
       </LineChart>
     </ResponsiveContainer>

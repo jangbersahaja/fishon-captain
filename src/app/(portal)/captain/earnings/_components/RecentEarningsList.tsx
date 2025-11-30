@@ -33,27 +33,30 @@ export function RecentEarningsList({ bookings }: RecentEarningsListProps) {
           </Link>
         )}
       </div>
-      <div className="overflow-hidden bg-white border rounded-lg border-slate-200">
+      <div className="overflow-hidden bg-white border rounded-lg shadow-sm border-slate-200">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="border-b bg-slate-50 border-slate-200">
               <tr>
-                <th className="px-4 py-3 text-xs font-medium text-left text-slate-600">
-                  Booking ID
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-left text-slate-600">
-                  Angler
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-left text-slate-600">
+                <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
                   Charter
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-left text-slate-600">
+                <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
+                  Trip
+                </th>
+                <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
+                  Angler
+                </th>
+                <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
                   Trip Date
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-right text-slate-600">
+                <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
+                  Booked On
+                </th>
+                <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-slate-600">
                   Your Earnings
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-center text-slate-600">
+                <th className="px-4 py-3 text-xs font-medium tracking-wider text-center text-slate-600">
                   Status
                 </th>
               </tr>
@@ -61,17 +64,25 @@ export function RecentEarningsList({ bookings }: RecentEarningsListProps) {
             <tbody className="divide-y divide-slate-200">
               {bookings.map((booking) => (
                 <tr key={booking.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-sm text-slate-600">
-                    {booking.id.substring(0, 8)}
+                  <td className="px-4 py-3 text-sm text-slate-900">
+                    <Link
+                      href={`/captain/bookings/${booking.id}`}
+                      className="font-medium hover:text-blue-600 hover:underline"
+                    >
+                      {booking.charterName}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {booking.tripName}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {booking.anglerName}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
-                    {booking.charterName}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
                     {format(new Date(booking.tripDate), "MMM d, yyyy")}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-500">
+                    {format(new Date(booking.createdAt), "MMM d, yyyy")}
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-right text-green-600">
                     RM {Number(booking.captainEarnings).toLocaleString()}

@@ -1,5 +1,6 @@
 import type { BookingFinancial } from "@/lib/services/finance-service";
 import { format } from "date-fns";
+import Link from "next/link";
 
 interface PayoutBookingListProps {
   bookings: BookingFinancial[];
@@ -11,21 +12,11 @@ export function PayoutBookingList({ bookings }: PayoutBookingListProps) {
     0
   );
 
-  const totalCommission = bookings.reduce(
-    (sum, b) => sum + Number(b.platformFee),
-    0
-  );
-
-  const totalAmount = bookings.reduce(
-    (sum, b) => sum + Number(b.finalPrice),
-    0
-  );
-
   if (bookings.length === 0) {
     return (
       <div className="p-6 bg-white border rounded-lg shadow-sm border-slate-200">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          Booking Breakdown
+          Included Bookings
         </h2>
         <p className="text-sm text-slate-500">
           No bookings found for this payout.
@@ -37,7 +28,7 @@ export function PayoutBookingList({ bookings }: PayoutBookingListProps) {
   return (
     <div className="p-6 bg-white border rounded-lg shadow-sm border-slate-200">
       <h2 className="mb-4 text-lg font-semibold text-slate-900">
-        Booking Breakdown
+        Included Bookings
       </h2>
       <p className="mb-4 text-sm text-slate-600">
         {bookings.length} {bookings.length === 1 ? "booking" : "bookings"}{" "}
@@ -49,79 +40,62 @@ export function PayoutBookingList({ bookings }: PayoutBookingListProps) {
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-500 uppercase">
-                Booking ID
-              </th>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-500 uppercase">
-                Angler
-              </th>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-500 uppercase">
+              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left uppercase text-slate-500">
                 Charter
               </th>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-500 uppercase">
+              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left uppercase text-slate-500">
+                Trip
+              </th>
+              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left uppercase text-slate-500">
+                Angler
+              </th>
+              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left uppercase text-slate-500">
                 Trip Date
               </th>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-slate-500 uppercase">
-                Amount
+              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left uppercase text-slate-500">
+                Booked On
               </th>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-slate-500 uppercase">
-                Fee
-              </th>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-slate-500 uppercase">
-                Earnings
+              <th className="px-4 py-3 text-xs font-medium tracking-wider text-right uppercase text-slate-500">
+                Your Earnings
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-            {bookings.map((booking) => {
-              const commissionRate =
-                booking.finalPrice > 0
-                  ? (booking.platformFee / booking.finalPrice) * 100
-                  : 0;
-
-              return (
-                <tr key={booking.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm text-slate-900">
-                    <p className="font-medium">{booking.id.substring(0, 8)}</p>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-900">
-                    <p className="font-medium">{booking.anglerName}</p>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-900">
-                    <p className="font-medium">{booking.charterName}</p>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-900">
-                    {format(new Date(booking.tripDate), "MMM d, yyyy")}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-right text-slate-900">
-                    RM {Number(booking.finalPrice).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right text-red-600">
-                    -RM {Number(booking.platformFee).toLocaleString()}
-                    <span className="block text-xs text-slate-500">
-                      ({commissionRate.toFixed(0)}%)
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-right text-green-600">
-                    RM {Number(booking.captainEarnings).toLocaleString()}
-                  </td>
-                </tr>
-              );
-            })}
+            {bookings.map((booking) => (
+              <tr key={booking.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3 text-sm text-slate-900">
+                  <Link
+                    href={`/captain/bookings/${booking.id}`}
+                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {booking.charterName}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  {booking.tripName}
+                </td>
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  {booking.anglerName}
+                </td>
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  {format(new Date(booking.tripDate), "MMM d, yyyy")}
+                </td>
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  {format(new Date(booking.createdAt), "MMM d, yyyy")}
+                </td>
+                <td className="px-4 py-3 text-sm font-medium text-right text-green-600">
+                  RM {Number(booking.captainEarnings).toLocaleString()}
+                </td>
+              </tr>
+            ))}
           </tbody>
           <tfoot className="bg-slate-50">
             <tr>
               <td
-                colSpan={4}
+                colSpan={5}
                 className="px-4 py-3 text-sm font-semibold text-right text-slate-900"
               >
                 Total:
-              </td>
-              <td className="px-4 py-3 text-sm font-semibold text-right text-slate-900">
-                RM {totalAmount.toLocaleString()}
-              </td>
-              <td className="px-4 py-3 text-sm font-semibold text-right text-red-600">
-                -RM {totalCommission.toLocaleString()}
               </td>
               <td className="px-4 py-3 text-sm font-semibold text-right text-green-600">
                 RM {totalEarnings.toLocaleString()}
@@ -133,65 +107,39 @@ export function PayoutBookingList({ bookings }: PayoutBookingListProps) {
 
       {/* Mobile Cards */}
       <div className="space-y-3 md:hidden">
-        {bookings.map((booking) => {
-          const commissionRate =
-            booking.finalPrice > 0
-              ? (booking.platformFee / booking.finalPrice) * 100
-              : 0;
-
-          return (
-            <div
-              key={booking.id}
-              className="p-4 border rounded-lg border-slate-200"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">
-                    {booking.id.substring(0, 8)}
-                  </p>
-                  <p className="text-xs text-slate-500">{booking.anglerName}</p>
-                </div>
-                <p className="text-sm font-semibold text-green-600">
-                  RM {Number(booking.captainEarnings).toLocaleString()}
+        {bookings.map((booking) => (
+          <Link
+            key={booking.id}
+            href={`/captain/bookings/${booking.id}`}
+            className="block p-4 transition-colors border rounded-lg border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <p className="text-sm font-medium text-blue-600">
+                  {booking.charterName}
                 </p>
+                <p className="text-xs text-slate-500">{booking.tripName}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs text-slate-600">
-                  <span className="font-medium">{booking.charterName}</span>
-                </p>
-                <p className="text-xs text-slate-500">
-                  {format(new Date(booking.tripDate), "MMM d, yyyy")}
-                </p>
-                <div className="flex justify-between pt-2 mt-2 text-xs border-t border-slate-200">
-                  <span className="text-slate-600">
-                    Total: RM {Number(booking.finalPrice).toLocaleString()}
-                  </span>
-                  <span className="text-red-600">
-                    Fee: -RM {Number(booking.platformFee).toLocaleString()} (
-                    {commissionRate.toFixed(0)}%)
-                  </span>
-                </div>
-              </div>
+              <p className="text-sm font-semibold text-green-600">
+                RM {Number(booking.captainEarnings).toLocaleString()}
+              </p>
             </div>
-          );
-        })}
+            <div className="space-y-1">
+              <p className="text-xs text-slate-600">{booking.anglerName}</p>
+              <p className="text-xs text-slate-500">
+                Trip: {format(new Date(booking.tripDate), "MMM d, yyyy")} •
+                Booked: {format(new Date(booking.createdAt), "MMM d, yyyy")}
+              </p>
+            </div>
+          </Link>
+        ))}
 
         {/* Mobile Total */}
         <div className="p-4 border-2 rounded-lg border-slate-300 bg-slate-50">
-          <div className="flex justify-between mb-2 text-sm">
-            <span className="font-semibold text-slate-900">Total Amount:</span>
+          <div className="flex justify-between text-sm">
             <span className="font-semibold text-slate-900">
-              RM {totalAmount.toLocaleString()}
+              Total Earnings:
             </span>
-          </div>
-          <div className="flex justify-between mb-2 text-sm">
-            <span className="text-slate-600">Total Commission:</span>
-            <span className="text-red-600">
-              -RM {totalCommission.toLocaleString()}
-            </span>
-          </div>
-          <div className="flex justify-between pt-2 text-sm border-t border-slate-300">
-            <span className="font-semibold text-slate-900">Your Earnings:</span>
             <span className="font-semibold text-green-600">
               RM {totalEarnings.toLocaleString()}
             </span>

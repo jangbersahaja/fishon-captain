@@ -1,5 +1,6 @@
 import { authOptions } from "@/lib/auth";
 import {
+  type BookingDateField,
   getDailyRevenue,
   getRevenueComparison,
 } from "@/lib/services/finance-service";
@@ -15,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Query params:
  * - startDate: ISO date string for period start
  * - endDate: ISO date string for period end
+ * - dateField: Which date field to filter by (paidAt, date, createdAt) - default: paidAt
  */
 export async function GET(request: NextRequest) {
   try {
@@ -35,6 +37,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
+    const dateFieldParam = searchParams.get(
+      "dateField"
+    ) as BookingDateField | null;
+    const dateField: BookingDateField = dateFieldParam || "paidAt";
 
     if (!startDateParam || !endDateParam) {
       return NextResponse.json(
@@ -53,11 +59,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch comparison statistics
-    const comparison = await getRevenueComparison(startDate, endDate);
+    // Fetch comparison statistics with date field
+    const comparison = await getRevenueComparison(
+      startDate,
+      endDate,
+      dateField
+    );
 
-    // Fetch daily revenue for chart
-    const dailyRevenue = await getDailyRevenue(startDate, endDate);
+    // Fetch daily revenue for chart with date field
+    const dailyRevenue = await getDailyRevenue(startDate, endDate, dateField);
 
     return NextResponse.json({
       comparison,
@@ -66,6 +76,7 @@ export async function GET(request: NextRequest) {
         start: startDate.toISOString(),
         end: endDate.toISOString(),
       },
+      dateField,
     });
   } catch (error) {
     console.error("Error fetching finance stats:", error);

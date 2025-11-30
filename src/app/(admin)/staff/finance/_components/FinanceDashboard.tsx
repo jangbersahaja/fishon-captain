@@ -4,15 +4,20 @@ import { getPresetDateRange } from "@/lib/utils/date-range-utils";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DateRangeFilter } from "./DateRangeFilter";
+import { FinanceNav } from "./FinanceNav";
 import { MetricCard } from "./MetricCard";
 import { RevenueChart } from "./RevenueChart";
+
+type BookingDateField = "paidAt" | "date" | "createdAt";
 
 interface RevenueStats {
   totalRevenue: number;
   platformRevenue: number;
+  tripIncome: number;
+  serviceIncome: number;
   captainRevenue: number;
   totalDiscount: number;
-  totalServiceFee: number;
+  paymentGatewayFee: number;
   totalTax: number;
   bookingCount: number;
   avgBookingValue: number;
@@ -33,6 +38,8 @@ interface DailyRevenue {
   date: string;
   totalRevenue: number;
   platformRevenue: number;
+  tripIncome: number;
+  serviceIncome: number;
   bookingCount: number;
 }
 
@@ -49,6 +56,7 @@ export default function FinanceDashboard() {
   const defaultRange = getPresetDateRange("30d");
   const [startDate, setStartDate] = useState<Date>(defaultRange.from);
   const [endDate, setEndDate] = useState<Date>(defaultRange.to);
+  const [dateField, setDateField] = useState<BookingDateField>("paidAt");
   const [data, setData] = useState<FinanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +64,7 @@ export default function FinanceDashboard() {
   useEffect(() => {
     fetchFinanceData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate]);
+  }, [startDate, endDate, dateField]);
 
   const fetchFinanceData = async () => {
     setLoading(true);
@@ -66,6 +74,7 @@ export default function FinanceDashboard() {
       const params = new URLSearchParams({
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
+        dateField,
       });
 
       const response = await fetch(`/api/admin/finance/stats?${params}`);
@@ -111,6 +120,12 @@ export default function FinanceDashboard() {
   const { comparison, dailyRevenue } = data;
   const { current, previous, changes } = comparison;
 
+  const dateFieldLabels: Record<BookingDateField, string> = {
+    paidAt: "Payment Date",
+    date: "Trip Date",
+    createdAt: "Booking Date",
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -118,16 +133,38 @@ export default function FinanceDashboard() {
         <h1 className="text-2xl font-bold text-slate-900">Finance Dashboard</h1>
         <p className="text-sm text-slate-600 mt-1">
           Comprehensive financial analytics and performance metrics
+          <span className="ml-2 px-2 py-0.5 text-xs bg-slate-100 rounded-full">
+            by {dateFieldLabels[dateField]}
+          </span>
         </p>
       </div>
 
-      {/* Date range filter */}
+      {/* Navigation */}
+      <FinanceNav />
+
+      {/* Date range filter and Date field selector */}
       <div className="bg-white border border-slate-200 rounded-xl p-4">
-        <DateRangeFilter
-          startDate={startDate}
-          endDate={endDate}
-          onDateRangeChange={handleDateRangeChange}
-        />
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <DateRangeFilter
+            startDate={startDate}
+            endDate={endDate}
+            onDateRangeChange={handleDateRangeChange}
+          />
+
+          {/* Date Field Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-600">Filter by:</span>
+            <select
+              value={dateField}
+              onChange={(e) => setDateField(e.target.value as BookingDateField)}
+              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="paidAt">Payment Date</option>
+              <option value="date">Trip Date</option>
+              <option value="createdAt">Booking Date</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Main metrics grid */}
@@ -147,7 +184,7 @@ export default function FinanceDashboard() {
           value={current.platformRevenue}
           previousValue={previous.platformRevenue}
           change={changes.platformRevenue}
-          description="Platform fee - discount"
+          description="Trip income + Service income - Discount"
           color="emerald"
           format="currency"
         />
@@ -172,6 +209,45 @@ export default function FinanceDashboard() {
         />
       </div>
 
+      {/* Fishon Revenue Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Trip Income"
+          value={current.tripIncome}
+          previousValue={previous.tripIncome}
+          description="10% commission from trip price"
+          color="emerald"
+          format="currency"
+        />
+
+        <MetricCard
+          title="Service Income"
+          value={current.serviceIncome}
+          previousValue={previous.serviceIncome}
+          description="0.5% Fishon service fee"
+          color="emerald"
+          format="currency"
+        />
+
+        <MetricCard
+          title="Total Discount"
+          value={current.totalDiscount}
+          previousValue={previous.totalDiscount}
+          description="Absorbed from trip income"
+          color="amber"
+          format="currency"
+        />
+
+        <MetricCard
+          title="Payment Gateway"
+          value={current.paymentGatewayFee}
+          previousValue={previous.paymentGatewayFee}
+          description="1.5% SenangPay fee"
+          color="slate"
+          format="currency"
+        />
+      </div>
+
       {/* Secondary metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
@@ -181,24 +257,6 @@ export default function FinanceDashboard() {
           change={changes.avgBookingValue}
           description="Per booking"
           color="blue"
-          format="currency"
-        />
-
-        <MetricCard
-          title="Total Discount"
-          value={current.totalDiscount}
-          previousValue={previous.totalDiscount}
-          description="Absorbed by Fishon"
-          color="amber"
-          format="currency"
-        />
-
-        <MetricCard
-          title="Service Fee"
-          value={current.totalServiceFee}
-          previousValue={previous.totalServiceFee}
-          description="SenangPay 1.5%"
-          color="amber"
           format="currency"
         />
 
@@ -249,10 +307,28 @@ export default function FinanceDashboard() {
               RM {current.platformRevenue.toFixed(2)}
             </span>
           </div>
+          <div className="flex items-center justify-between py-2 pl-8 text-xs">
+            <span className="text-slate-500">↳ Trip Income (10%)</span>
+            <span className="text-emerald-500">
+              RM {current.tripIncome.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between py-2 pl-8 text-xs">
+            <span className="text-slate-500">↳ Service Income (0.5%)</span>
+            <span className="text-emerald-500">
+              RM {current.serviceIncome.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between py-2 pl-8 text-xs">
+            <span className="text-slate-500">↳ Discount Applied</span>
+            <span className="text-amber-500">
+              - RM {current.totalDiscount.toFixed(2)}
+            </span>
+          </div>
           <div className="flex items-center justify-between py-2 pl-4">
-            <span className="text-sm text-slate-600">+ Service Fee</span>
+            <span className="text-sm text-slate-600">+ Payment Gateway</span>
             <span className="text-sm text-amber-600">
-              RM {current.totalServiceFee.toFixed(2)}
+              RM {current.paymentGatewayFee.toFixed(2)}
             </span>
           </div>
           <div className="flex items-center justify-between py-2 pl-4">
@@ -276,7 +352,7 @@ export default function FinanceDashboard() {
               {(
                 current.captainRevenue +
                 current.platformRevenue +
-                current.totalServiceFee +
+                current.paymentGatewayFee +
                 current.totalTax +
                 current.totalDiscount
               ).toFixed(2)}
@@ -286,7 +362,7 @@ export default function FinanceDashboard() {
             current.totalRevenue -
               (current.captainRevenue +
                 current.platformRevenue +
-                current.totalServiceFee +
+                current.paymentGatewayFee +
                 current.totalTax +
                 current.totalDiscount)
           ) < 0.01 ? (

@@ -6,10 +6,7 @@ interface PendingEarningsCardProps {
   nextPayoutDate: Date | null;
 }
 
-export function PendingEarningsCard({
-  amount,
-  nextPayoutDate,
-}: PendingEarningsCardProps) {
+export function PendingEarningsCard({ amount }: PendingEarningsCardProps) {
   return (
     <div className="flex items-start gap-3 p-4 border rounded-lg border-amber-200 bg-amber-50">
       <AlertCircle className="w-5 h-5 mt-0.5 text-amber-600 flex-shrink-0" />
@@ -18,17 +15,15 @@ export function PendingEarningsCard({
           RM {amount.toLocaleString()} pending settlement
         </h3>
         <p className="mt-1 text-sm text-amber-700">
-          {nextPayoutDate
-            ? `Your earnings will be processed on ${nextPayoutDate.toLocaleDateString("en-MY", { month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Kuala_Lumpur" })}. `
-            : "Your earnings are awaiting payment processing. "}
+          Payouts are processed 3-5 business days after your trip is completed.
           Make sure your{" "}
           <Link
             href="/captain/documents"
             className="font-medium underline hover:text-amber-800"
           >
             bank details are up to date
-          </Link>
-          .
+          </Link>{" "}
+          to avoid delays.
         </p>
         <div className="flex gap-2 mt-3">
           <Link
