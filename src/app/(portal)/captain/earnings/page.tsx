@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { BankInfoCard } from "./_components/BankInfoCard";
+import { EarningsNav } from "./_components/EarningsNav";
 import { EarningsOverview } from "./_components/EarningsOverview";
 import { PayoutHistoryList } from "./_components/PayoutHistoryList";
 import { PendingEarningsCard } from "./_components/PendingEarningsCard";
@@ -65,6 +66,9 @@ export default async function CaptainEarningsPage({ searchParams }: PageProps) {
           <PeriodSelector />
         </Suspense>
       </div>
+
+      {/* Navigation */}
+      <EarningsNav />
 
       {/* Earnings Overview */}
       <EarningsOverview summary={earningsSummary} period={period} />

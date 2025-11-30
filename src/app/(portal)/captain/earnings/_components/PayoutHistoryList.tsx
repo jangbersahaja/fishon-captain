@@ -4,9 +4,13 @@ import Link from "next/link";
 
 interface PayoutHistoryListProps {
   payouts: Payout[];
+  showAll?: boolean;
 }
 
-export function PayoutHistoryList({ payouts }: PayoutHistoryListProps) {
+export function PayoutHistoryList({
+  payouts,
+  showAll = false,
+}: PayoutHistoryListProps) {
   if (payouts.length === 0) {
     return (
       <div className="p-6 text-center bg-white border rounded-lg border-slate-200">
@@ -21,13 +25,25 @@ export function PayoutHistoryList({ payouts }: PayoutHistoryListProps) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">
-          Payment Batches
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Completed payout batches transferred to your bank account
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {showAll ? "All Payment Batches" : "Recent Payment Batches"}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {showAll
+              ? "Complete history of payouts transferred to your bank account"
+              : "Completed payout batches transferred to your bank account"}
+          </p>
+        </div>
+        {!showAll && payouts.length > 0 && (
+          <Link
+            href="/captain/earnings/history"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            View All →
+          </Link>
+        )}
       </div>
       <div className="overflow-hidden bg-white border rounded-lg border-slate-200">
         <div className="overflow-x-auto">

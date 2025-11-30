@@ -3,6 +3,7 @@ import { getCaptainBookings } from "@/lib/services/finance-service";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { EarningsNav } from "../_components/EarningsNav";
 import { PendingBookingsTable } from "../_components/PendingBookingsTable";
 
 export const dynamic = "force-dynamic";
@@ -28,19 +29,14 @@ export default async function PendingBookingsPage() {
     <div className="p-4 space-y-6 md:p-6">
       {/* Header */}
       <div>
-        <Link
-          href="/captain/earnings"
-          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700"
-        >
-          ← Back to Earnings
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900">
-          Pending Earnings
-        </h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Earnings</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Bookings awaiting payout processing
+          Track your earnings from bookings and view payment history
         </p>
       </div>
+
+      {/* Navigation */}
+      <EarningsNav />
 
       {/* Summary Card */}
       <div className="p-6 border rounded-lg bg-amber-50 border-amber-200">
@@ -59,10 +55,11 @@ export default async function PendingBookingsPage() {
           </div>
           <div className="text-sm text-amber-800">
             <p>
-              <strong>Next payment:</strong> Estimated 1st of next month
+              <strong>Payout timeline:</strong> 3-5 business days after trip
+              completion
             </p>
             <p className="mt-1">
-              Payouts are typically processed within 7-14 business days.
+              Payouts are processed weekly after your trips are completed.
             </p>
           </div>
         </div>
@@ -79,10 +76,10 @@ export default async function PendingBookingsPage() {
           </h3>
           <ul className="mt-2 space-y-1 text-sm list-disc list-inside text-slate-600">
             <li>
-              Earnings from completed and paid bookings are held until the next
-              payment cycle
+              Earnings become eligible for payout 3 business days after your
+              trip is completed
             </li>
-            <li>Payments are typically processed within 7-14 business days.</li>
+            <li>Payouts are processed weekly by our team</li>
             <li>
               Make sure your{" "}
               <Link
@@ -95,7 +92,7 @@ export default async function PendingBookingsPage() {
             </li>
             <li>
               You&apos;ll receive an email notification when your payment is
-              approved and completed
+              processed
             </li>
           </ul>
         </div>

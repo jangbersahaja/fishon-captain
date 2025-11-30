@@ -39,8 +39,10 @@ Fishon Captain is the **management dashboard** for captains and charter operator
 
 ### Captain Payouts (`docs/config/CAPTAIN_PAYOUT_SYSTEM.md`)
 
-- **Commission Tiers**: Starter (10%), Standard (8%), Premium (5%).
-- **Schedule**: Bi-weekly (1st & 15th) or Monthly (1st).
+- **Commission Tiers**: BASIC (10%), SILVER (8%), GOLD (5%) based on pricing plan.
+- **Trigger**: Trip completion (booking status = COMPLETED).
+- **Eligibility**: 3 business days after trip completion.
+- **Processing**: Manual weekly batches by admin (startup phase).
 - **Dashboard**: Earnings overview, pending payouts, transaction history.
 
 ### Charter Registration (`docs/config/CHARTER_REGISTRATION_SYSTEM.md`)

@@ -1,6 +1,9 @@
 import authOptions from "@/lib/auth";
 import { rateLimit } from "@/lib/rateLimiter";
-import { getBookingsFinancial } from "@/lib/services/finance-service";
+import {
+  type BookingDateField,
+  getBookingsFinancial,
+} from "@/lib/services/finance-service";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 // Types from fishon-market
@@ -53,6 +56,8 @@ export async function GET(req: NextRequest) {
 
     // Parse filters from query params
     const { searchParams } = new URL(req.url);
+    const dateField =
+      (searchParams.get("dateField") as BookingDateField) || "paidAt";
     const filters = {
       bookingStatus: searchParams.get("bookingStatus") as
         | BookingStatus
@@ -60,6 +65,7 @@ export async function GET(req: NextRequest) {
       payoutStatus: searchParams.get("payoutStatus") as
         | PayoutStatus
         | undefined,
+      dateField,
       startDate: searchParams.get("startDate")
         ? new Date(searchParams.get("startDate")!)
         : undefined,
@@ -78,9 +84,13 @@ export async function GET(req: NextRequest) {
       "Owner",
       "Angler",
       "Trip Date",
-      "Revenue (RM)",
-      "Commission (RM)",
+      "Total Sales (RM)",
+      "Trip Income (RM)",
+      "Service Income (RM)",
+      "Payment Gateway (RM)",
+      "Discount (RM)",
       "Captain Earnings (RM)",
+      "Status",
       "Payout Status",
       "Payment Method",
       "Transaction ID",
@@ -99,8 +109,12 @@ export async function GET(req: NextRequest) {
         timeZone: "Asia/Kuala_Lumpur",
       }),
       booking.finalPrice?.toFixed(2) || "0.00",
-      booking.platformFee?.toFixed(2) || "0.00",
+      booking.tripIncome?.toFixed(2) || "0.00",
+      booking.serviceIncome?.toFixed(2) || "0.00",
+      booking.paymentGatewayFee?.toFixed(2) || "0.00",
+      booking.discountAmount?.toFixed(2) || "0.00",
       booking.captainEarnings?.toFixed(2) || "0.00",
+      booking.status || "N/A",
       booking.payoutStatus || "N/A",
       booking.paymentMethod || "N/A",
       booking.paymentTransactionId || "N/A",

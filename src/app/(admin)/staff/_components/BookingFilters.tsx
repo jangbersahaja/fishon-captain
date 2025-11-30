@@ -8,6 +8,7 @@ export function BookingFilters() {
 
   const currentStatus = searchParams.get("status") || "";
   const currentPayoutStatus = searchParams.get("payoutStatus") || "";
+  const currentDateField = searchParams.get("dateField") || "paidAt";
   const currentStartDate = searchParams.get("startDate") || "";
   const currentEndDate = searchParams.get("endDate") || "";
 
@@ -30,7 +31,11 @@ export function BookingFilters() {
   };
 
   const hasFilters =
-    currentStatus || currentPayoutStatus || currentStartDate || currentEndDate;
+    currentStatus ||
+    currentPayoutStatus ||
+    currentDateField !== "paidAt" ||
+    currentStartDate ||
+    currentEndDate;
 
   return (
     <div className="p-4 space-y-4 border border-slate-200 rounded-lg bg-slate-50">
@@ -46,7 +51,7 @@ export function BookingFilters() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
         {/* Booking Status Filter */}
         <div>
           <label
@@ -93,6 +98,26 @@ export function BookingFilters() {
             <option value="COMPLETED">Completed</option>
             <option value="FAILED">Failed</option>
             <option value="ON_HOLD">On Hold</option>
+          </select>
+        </div>
+
+        {/* Date Field Selector */}
+        <div>
+          <label
+            htmlFor="dateField"
+            className="block text-xs font-medium text-slate-700"
+          >
+            Filter By Date
+          </label>
+          <select
+            id="dateField"
+            value={currentDateField}
+            onChange={(e) => updateFilters({ dateField: e.target.value })}
+            className="block w-full px-3 py-2 mt-1 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="paidAt">Payment Date</option>
+            <option value="date">Trip Date</option>
+            <option value="createdAt">Booking Date</option>
           </select>
         </div>
 

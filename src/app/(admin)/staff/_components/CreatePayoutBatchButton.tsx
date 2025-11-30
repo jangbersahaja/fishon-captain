@@ -7,9 +7,11 @@ interface PayoutCalculation {
   ownerId: string;
   ownerName: string;
   ownerEmail: string;
-  totalEarnings: number;
-  bookingCount: number;
-  bookingIds: string[];
+  // Eligible amounts (past 3-day buffer)
+  eligibleEarnings: number;
+  eligibleBookingCount: number;
+  eligibleBookingIds: string[];
+  // Bank details
   bankName: string | null;
   accountNumber: string | null;
   accountHolder: string | null;
@@ -26,16 +28,20 @@ export function CreatePayoutBatchButton({
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const totalAmount = calculations.reduce((sum, c) => sum + c.totalEarnings, 0);
+  // Only count eligible amounts (past 3-day buffer)
+  const totalAmount = calculations.reduce(
+    (sum, c) => sum + c.eligibleEarnings,
+    0
+  );
   const totalBookings = calculations.reduce(
-    (sum, c) => sum + c.bookingCount,
+    (sum, c) => sum + c.eligibleBookingCount,
     0
   );
 
   const handleCreateBatch = async () => {
     if (
       !confirm(
-        `Create payout batch for ${calculations.length} captain(s)?\n\nTotal: RM ${totalAmount.toLocaleString()}\nBookings: ${totalBookings}`
+        `Create payout batch for ${calculations.length} captain(s)?\n\nTotal Eligible: RM ${totalAmount.toLocaleString()}\nEligible Bookings: ${totalBookings}`
       )
     ) {
       return;
@@ -45,10 +51,23 @@ export function CreatePayoutBatchButton({
     setError(null);
 
     try {
+      // Transform to only send eligible bookings
+      const batchCalculations = calculations.map((c) => ({
+        ownerId: c.ownerId,
+        ownerName: c.ownerName,
+        ownerEmail: c.ownerEmail,
+        totalEarnings: c.eligibleEarnings,
+        bookingCount: c.eligibleBookingCount,
+        bookingIds: c.eligibleBookingIds,
+        bankName: c.bankName,
+        accountNumber: c.accountNumber,
+        accountHolder: c.accountHolder,
+      }));
+
       const response = await fetch("/api/admin/finance/payouts/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ calculations }),
+        body: JSON.stringify({ calculations: batchCalculations }),
       });
 
       const data = await response.json();
@@ -70,9 +89,14 @@ export function CreatePayoutBatchButton({
     return null;
   }
 
-  // Check for missing bank details
+  // Check for missing bank details (should be pre-filtered, but double-check)
   const missingBankDetails = calculations.filter(
     (c) => !c.bankName || !c.accountNumber || !c.accountHolder
+  );
+
+  // Check for zero eligible earnings
+  const noEligibleEarnings = calculations.filter(
+    (c) => c.eligibleEarnings <= 0
   );
 
   return (
@@ -82,6 +106,15 @@ export function CreatePayoutBatchButton({
           <p className="text-sm text-amber-800">
             ⚠️ {missingBankDetails.length} captain(s) missing bank details. They
             will be excluded from the batch.
+          </p>
+        </div>
+      )}
+
+      {noEligibleEarnings.length > 0 && (
+        <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+          <p className="text-sm text-blue-800">
+            ℹ️ {noEligibleEarnings.length} captain(s) have no eligible earnings
+            yet (still within 3-day buffer).
           </p>
         </div>
       )}
@@ -101,9 +134,9 @@ export function CreatePayoutBatchButton({
       </button>
 
       <div className="text-sm text-slate-600">
-        <p>Total: RM {totalAmount.toLocaleString()}</p>
+        <p>Eligible Amount: RM {totalAmount.toLocaleString()}</p>
         <p>Captains: {calculations.length}</p>
-        <p>Bookings: {totalBookings}</p>
+        <p>Eligible Bookings: {totalBookings}</p>
       </div>
     </div>
   );

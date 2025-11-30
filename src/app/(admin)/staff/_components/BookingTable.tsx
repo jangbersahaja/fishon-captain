@@ -35,10 +35,16 @@ export function BookingTable({ bookings }: BookingTableProps) {
                 Trip Date
               </th>
               <th className="px-4 py-3 text-xs font-medium text-right text-slate-600">
-                Revenue
+                Total Sales
               </th>
               <th className="px-4 py-3 text-xs font-medium text-right text-slate-600">
-                Commission
+                Trip Income
+              </th>
+              <th className="px-4 py-3 text-xs font-medium text-right text-slate-600">
+                Service
+              </th>
+              <th className="px-4 py-3 text-xs font-medium text-right text-slate-600">
+                Gateway
               </th>
               <th className="px-4 py-3 text-xs font-medium text-right text-slate-600">
                 Captain
@@ -69,13 +75,19 @@ export function BookingTable({ bookings }: BookingTableProps) {
                 <td className="px-4 py-3 text-sm text-slate-600">
                   {new Date(booking.tripDate).toLocaleDateString()}
                 </td>
-                <td className="px-4 py-3 text-sm font-medium text-right text-slate-900">
+                <td className="px-4 py-3 text-sm font-medium text-right text-blue-600">
                   RM {booking.finalPrice.toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-sm text-right text-slate-600">
-                  RM {booking.platformFee.toLocaleString()}
+                <td className="px-4 py-3 text-sm text-right text-emerald-600">
+                  RM {booking.tripIncome.toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-sm text-right text-slate-600">
+                <td className="px-4 py-3 text-sm text-right text-emerald-500">
+                  RM {booking.serviceIncome.toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-sm text-right text-slate-500">
+                  RM {booking.paymentGatewayFee.toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-sm text-right text-purple-600">
                   RM {booking.captainEarnings.toLocaleString()}
                 </td>
                 <td className="px-4 py-3 text-center">

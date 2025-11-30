@@ -1,4 +1,5 @@
 import authOptions from "@/lib/auth";
+import { decrypt } from "@/lib/encryption";
 import {
   getBookingsFinancial,
   getPayoutById,
@@ -74,6 +75,16 @@ export default async function PayoutDetailPage({ params }: PageProps) {
     redirect("/captain/earnings");
   }
 
+  // Decrypt bank account number (stored encrypted in Payout snapshot)
+  let decryptedAccountNumber = payout.accountNumber;
+  try {
+    if (payout.accountNumber) {
+      decryptedAccountNumber = decrypt(payout.accountNumber);
+    }
+  } catch (error) {
+    console.error("Failed to decrypt account number:", error);
+  }
+
   // Fetch bookings included in this payout
   const bookings = await getBookingsFinancial({
     ownerId: session.user.id,
@@ -142,7 +153,7 @@ export default async function PayoutDetailPage({ params }: PageProps) {
           <div>
             <p className="text-xs text-slate-600">Account</p>
             <p className="mt-1 text-sm font-medium text-slate-900">
-              {maskAccountNumber(payout.accountNumber)}
+              {maskAccountNumber(decryptedAccountNumber)}
             </p>
           </div>
         </div>

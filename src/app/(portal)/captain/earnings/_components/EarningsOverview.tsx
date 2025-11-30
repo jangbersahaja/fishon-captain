@@ -76,9 +76,7 @@ export function EarningsOverview({ summary, period }: EarningsOverviewProps) {
             </div>
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            {summary.nextPayoutDate
-              ? `Next payment: ${summary.nextPayoutDate.toLocaleDateString("en-MY", { month: "short", day: "numeric", timeZone: "Asia/Kuala_Lumpur" })}`
-              : "No pending earnings"}
+            Processed 3-5 days after trip completion
           </p>
         </div>
 

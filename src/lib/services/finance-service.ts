@@ -1,3 +1,4 @@
+import { decrypt } from "@/lib/encryption";
 import { prisma } from "@/lib/prisma";
 import { prismaMarket } from "@/lib/prisma-market";
 
@@ -24,10 +25,12 @@ export interface EarningsSummary {
 
 export interface RevenueStats {
   totalRevenue: number; // Sum of finalPrice (PAID bookings) - Total sales
-  platformRevenue: number; // Fishon's net revenue: platformFee - discount
+  platformRevenue: number; // Fishon's net revenue: tripIncome + serviceIncome - discount
+  tripIncome: number; // 10% commission from trip price (platformFee)
+  serviceIncome: number; // 0.5% of amount (Fishon's portion of 2% service fee)
   captainRevenue: number; // Sum of captainEarnings
   totalDiscount: number; // Total discount given (absorbed by Fishon)
-  totalServiceFee: number; // Total service fee (payment gateway charges)
+  paymentGatewayFee: number; // 1.5% payment gateway fee (SenangPay)
   totalTax: number; // Total tax collected (held for government)
   bookingCount: number; // Count of PAID bookings
   avgBookingValue: number; // Average finalPrice
@@ -49,7 +52,9 @@ export interface RevenueComparison {
 export interface DailyRevenue {
   date: string; // YYYY-MM-DD format
   totalRevenue: number;
-  platformRevenue: number;
+  platformRevenue: number; // tripIncome + serviceIncome - discount
+  tripIncome: number; // 10% commission (platformFee)
+  serviceIncome: number; // 0.5% service (Fishon's portion)
   bookingCount: number;
 }
 
@@ -57,12 +62,21 @@ export interface BookingFinancial {
   id: string;
   charterId: string;
   charterName: string;
+  tripId: string;
+  tripName: string;
   ownerId: string;
   ownerName: string;
   anglerName: string;
   tripDate: Date;
   finalPrice: number;
-  platformFee: number;
+  // Financial breakdown
+  platformFee: number; // 10% commission (tripIncome)
+  serviceFee: number; // 2% total service fee
+  tripIncome: number; // Same as platformFee (10% commission)
+  serviceIncome: number; // 0.5% Fishon's portion of service fee
+  paymentGatewayFee: number; // 1.5% SenangPay fee
+  discountAmount: number; // Discount amount (absorbed by Fishon)
+  taxAmount: number; // Tax amount (held for govt)
   captainEarnings: number;
   paymentMethod: string | null;
   paymentTransactionId: string | null;
@@ -75,20 +89,25 @@ export interface BookingFinancial {
 
 /**
  * Get revenue statistics for a specific date range
+ * @param dateField - Which date field to filter by (default: paidAt for finance reports)
  */
 export async function getRevenueStatsByDateRange(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  dateField: BookingDateField = "paidAt"
 ): Promise<RevenueStats> {
+  // Build where clause with dynamic date field
+  const where: Record<string, unknown> = {
+    status: "PAID",
+  };
+  where[dateField] = {
+    gte: startDate,
+    lte: endDate,
+  };
+
   // Fetch all PAID bookings with financial fields for the period
   const bookings = await prismaMarket.booking.findMany({
-    where: {
-      status: "PAID",
-      createdAt: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
+    where,
     select: {
       finalPrice: true,
       platformFee: true,
@@ -134,9 +153,21 @@ export async function getRevenueStatsByDateRange(
     return sum;
   }, 0);
 
-  // Calculate total service fee (payment gateway charges)
+  // Calculate total service fee (2% total)
   const totalServiceFee = bookings.reduce(
     (sum: number, b: BookingFinancial) => sum + Number(b.serviceFee || 0),
+    0
+  );
+
+  // Calculate Fishon's service income (0.5% = 25% of 2% service fee)
+  const serviceIncome = Math.round(totalServiceFee * 0.25 * 100) / 100;
+
+  // Calculate payment gateway fee (1.5% = 75% of 2% service fee)
+  const paymentGatewayFee = Math.round(totalServiceFee * 0.75 * 100) / 100;
+
+  // Calculate trip income (sum of platformFee before discount)
+  const tripIncome = bookings.reduce(
+    (sum: number, b: BookingFinancial) => sum + Number(b.platformFee || 0),
     0
   );
 
@@ -169,10 +200,12 @@ export async function getRevenueStatsByDateRange(
 
   return {
     totalRevenue,
-    platformRevenue, // Net Fishon revenue (after discounts)
+    platformRevenue: tripIncome + serviceIncome - totalDiscount, // Net Fishon revenue
+    tripIncome, // 10% commission (before discount)
+    serviceIncome, // 0.5% service fee (Fishon's portion)
     captainRevenue,
     totalDiscount,
-    totalServiceFee,
+    paymentGatewayFee, // 1.5% SenangPay fee
     totalTax,
     bookingCount,
     avgBookingValue,
@@ -193,20 +226,30 @@ export async function getRevenueStats(
 
 /**
  * Get revenue stats with comparison to previous period
+ * @param dateField - Which date field to filter by (default: paidAt for finance reports)
  */
 export async function getRevenueComparison(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  dateField: BookingDateField = "paidAt"
 ): Promise<RevenueComparison> {
   // Calculate current period stats
-  const current = await getRevenueStatsByDateRange(startDate, endDate);
+  const current = await getRevenueStatsByDateRange(
+    startDate,
+    endDate,
+    dateField
+  );
 
   // Calculate previous period (same duration before startDate)
   const periodDuration = endDate.getTime() - startDate.getTime();
   const previousEnd = new Date(startDate.getTime() - 1);
   const previousStart = new Date(previousEnd.getTime() - periodDuration);
 
-  const previous = await getRevenueStatsByDateRange(previousStart, previousEnd);
+  const previous = await getRevenueStatsByDateRange(
+    previousStart,
+    previousEnd,
+    dateField
+  );
 
   // Calculate percentage changes
   const calculateChange = (current: number, previous: number): number => {
@@ -240,38 +283,52 @@ export async function getRevenueComparison(
 
 /**
  * Get daily revenue breakdown for chart visualization
+ * @param dateField - Which date field to filter by (default: paidAt for finance reports)
  */
 export async function getDailyRevenue(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  dateField: BookingDateField = "paidAt"
 ): Promise<DailyRevenue[]> {
+  // Build where clause with dynamic date field
+  const where: Record<string, unknown> = {
+    status: "PAID",
+  };
+  where[dateField] = {
+    gte: startDate,
+    lte: endDate,
+  };
+
   const bookings = await prismaMarket.booking.findMany({
-    where: {
-      status: "PAID",
-      createdAt: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
+    where,
     select: {
       finalPrice: true,
       platformFee: true,
+      serviceFee: true,
       discount: true,
+      paidAt: true,
+      date: true,
       createdAt: true,
     },
   });
 
-  // Group bookings by date
+  // Group bookings by the selected date field
   const dailyMap = new Map<string, DailyRevenue>();
 
   for (const booking of bookings) {
-    const dateKey = booking.createdAt.toISOString().split("T")[0]; // YYYY-MM-DD
+    // Get the date value based on the selected field
+    const dateValue = booking[dateField];
+    if (!dateValue) continue; // Skip if date field is null
+
+    const dateKey = new Date(dateValue).toISOString().split("T")[0]; // YYYY-MM-DD
 
     if (!dailyMap.has(dateKey)) {
       dailyMap.set(dateKey, {
         date: dateKey,
         totalRevenue: 0,
         platformRevenue: 0,
+        tripIncome: 0,
+        serviceIncome: 0,
         bookingCount: 0,
       });
     }
@@ -280,13 +337,22 @@ export async function getDailyRevenue(
     day.totalRevenue += Number(booking.finalPrice);
     day.bookingCount += 1;
 
-    // Calculate platform revenue (platformFee - discount)
+    // Calculate trip income (10% commission = platformFee)
     const platformFee = Number(booking.platformFee || 0);
+    day.tripIncome += platformFee;
+
+    // Calculate service income (0.5% = 25% of 2% serviceFee)
+    const serviceFee = Number(booking.serviceFee || 0);
+    day.serviceIncome += serviceFee * 0.25;
+
+    // Calculate discount
     const discountAmount =
       booking.discount && typeof booking.discount === "object"
         ? (booking.discount as { amount?: number }).amount || 0
         : 0;
-    day.platformRevenue += platformFee - discountAmount;
+
+    // Platform revenue = tripIncome + serviceIncome - discount
+    day.platformRevenue += platformFee + serviceFee * 0.25 - discountAmount;
   }
 
   // Fill in missing dates with zero values
@@ -300,6 +366,8 @@ export async function getDailyRevenue(
         date: dateKey,
         totalRevenue: 0,
         platformRevenue: 0,
+        tripIncome: 0,
+        serviceIncome: 0,
         bookingCount: 0,
       }
     );
@@ -310,6 +378,14 @@ export async function getDailyRevenue(
 }
 
 /**
+ * Date field options for filtering bookings
+ * - paidAt: When payment was received (best for finance reports)
+ * - date: When the trip is scheduled (best for operations)
+ * - createdAt: When booking was created (best for activity analysis)
+ */
+export type BookingDateField = "paidAt" | "date" | "createdAt";
+
+/**
  * Get bookings with financial data for admin dashboard
  */
 export async function getBookingsFinancial(filters?: {
@@ -318,6 +394,7 @@ export async function getBookingsFinancial(filters?: {
   ownerId?: string;
   startDate?: Date;
   endDate?: Date;
+  dateField?: BookingDateField;
   search?: string;
   limit?: number;
 }): Promise<BookingFinancial[]> {
@@ -334,10 +411,12 @@ export async function getBookingsFinancial(filters?: {
     where.payoutStatus = filters.payoutStatus as string;
   }
 
+  // Use specified date field or default to paidAt for finance reports
+  const dateField = filters?.dateField || "paidAt";
   if (filters?.startDate || filters?.endDate) {
-    where.date = {};
-    if (filters.startDate) where.date.gte = filters.startDate;
-    if (filters.endDate) where.date.lte = filters.endDate;
+    where[dateField] = {};
+    if (filters.startDate) where[dateField].gte = filters.startDate;
+    if (filters.endDate) where[dateField].lte = filters.endDate;
   }
 
   // Fetch bookings from market DB
@@ -347,9 +426,12 @@ export async function getBookingsFinancial(filters?: {
     take: filters?.limit || 100,
   });
 
-  // Extract unique charterIds and userIds
+  // Extract unique charterIds, tripIds, and userIds
   const charterIds = [
     ...new Set((bookings as BookingRaw[]).map((b: BookingRaw) => b.charterId)),
+  ] as string[];
+  const tripIds = [
+    ...new Set((bookings as BookingRaw[]).map((b: BookingRaw) => b.tripId)),
   ] as string[];
   const userIds = [
     ...new Set(
@@ -374,6 +456,12 @@ export async function getBookingsFinancial(filters?: {
     },
   });
 
+  // Fetch trip data from captain DB
+  const tripsRaw = await prisma.trip.findMany({
+    where: { id: { in: tripIds } },
+    select: { id: true, name: true },
+  });
+
   // Map to CharterInfo with ownerId as string
   const charters = chartersRaw.map((c) => ({
     id: c.id,
@@ -390,6 +478,7 @@ export async function getBookingsFinancial(filters?: {
 
   // Build lookup maps
   const charterMap = new Map(charters.map((c) => [c.id, c]));
+  const tripMap = new Map(tripsRaw.map((t) => [t.id, t]));
   const anglerMap = new Map(
     anglers.map((a: { id: string; name: string; email: string }) => [a.id, a])
   );
@@ -416,12 +505,16 @@ export async function getBookingsFinancial(filters?: {
   interface BookingRaw {
     id: string;
     charterId: string;
+    tripId: string;
     userId?: string | null;
     guestFirstName?: string | null;
     guestLastName?: string | null;
     date: Date;
     finalPrice: number;
     platformFee?: number | null;
+    serviceFee?: number | null;
+    discount?: { amount?: number; code?: string; percentage?: string } | null;
+    tax?: { amount?: number; name?: string; percentage?: string } | null;
     captainEarnings?: number | null;
     paymentMethod?: string | null;
     paymentTransactionId?: string | null;
@@ -437,14 +530,37 @@ export async function getBookingsFinancial(filters?: {
       const charter: CharterInfo | undefined = charterMap.get(
         booking.charterId
       );
+      const trip = tripMap.get(booking.tripId);
       const angler: AnglerInfo | undefined = booking.userId
         ? (anglerMap.get(booking.userId) as AnglerInfo | undefined)
         : undefined;
+
+      // Extract financial values
+      const platformFee = Number(booking.platformFee || 0);
+      const serviceFee = Number(booking.serviceFee || 0);
+      const discountAmount =
+        booking.discount && typeof booking.discount === "object"
+          ? Number(booking.discount.amount || 0)
+          : 0;
+      const taxAmount =
+        booking.tax && typeof booking.tax === "object"
+          ? Number(booking.tax.amount || 0)
+          : 0;
+
+      // Calculate income breakdown (per FINANCIAL_CALCULATION_SYSTEM.md)
+      // tripIncome = platformFee (10% commission)
+      // serviceIncome = 0.5% (25% of 2% service fee)
+      // paymentGatewayFee = 1.5% (75% of 2% service fee)
+      const tripIncome = platformFee;
+      const serviceIncome = Math.round(serviceFee * 0.25 * 100) / 100;
+      const paymentGatewayFee = Math.round(serviceFee * 0.75 * 100) / 100;
 
       return {
         id: booking.id,
         charterId: booking.charterId,
         charterName: charter?.name || "Unknown Charter",
+        tripId: booking.tripId,
+        tripName: trip?.name || "Unknown Trip",
         ownerId: charter?.ownerId || "",
         ownerName: charter?.captain?.user?.name || "Unknown Owner",
         anglerName:
@@ -454,7 +570,14 @@ export async function getBookingsFinancial(filters?: {
             : "Guest"),
         tripDate: booking.date,
         finalPrice: Number(booking.finalPrice),
-        platformFee: Number(booking.platformFee || 0),
+        // Financial breakdown
+        platformFee,
+        serviceFee,
+        tripIncome,
+        serviceIncome,
+        paymentGatewayFee,
+        discountAmount,
+        taxAmount,
         captainEarnings: Number(booking.captainEarnings || 0),
         paymentMethod: booking.paymentMethod ?? null,
         paymentTransactionId: booking.paymentTransactionId ?? null,
@@ -548,16 +671,56 @@ export interface PayoutCalculation {
   bankName: string | null;
   accountNumber: string | null;
   accountHolder: string | null;
+  // New fields for eligibility tracking
+  eligibleEarnings: number; // Earnings from bookings past eligibility window
+  eligibleBookingCount: number;
+  eligibleBookingIds: string[];
+  oldestTripDate: Date | null; // Earliest trip date in pending bookings
+  newestEligibleDate: Date | null; // Most recent eligible booking date
 }
 
 /**
- * Calculate pending payouts for all captains with PAID bookings
+ * Calculate payout eligibility date (3 business days after trip)
+ * @param tripDate - The date the trip was completed
+ * @returns Date when payout becomes eligible
+ */
+export function getPayoutEligibleDate(tripDate: Date): Date {
+  const date = new Date(tripDate);
+  let businessDays = 0;
+  while (businessDays < 3) {
+    date.setDate(date.getDate() + 1);
+    // Skip weekends (0 = Sunday, 6 = Saturday)
+    if (date.getDay() !== 0 && date.getDay() !== 6) {
+      businessDays++;
+    }
+  }
+  return date;
+}
+
+/**
+ * Check if a booking is eligible for payout
+ * @param tripDate - The date the trip was completed
+ * @returns true if 3+ business days have passed since trip
+ */
+export function isPayoutEligible(tripDate: Date): boolean {
+  const eligibleDate = getPayoutEligibleDate(tripDate);
+  return new Date() >= eligibleDate;
+}
+
+/**
+ * Calculate pending payouts for all captains with COMPLETED bookings
+ *
+ * Startup Phase Policy:
+ * - Only COMPLETED bookings are eligible (trip finished)
+ * - Payout eligibility: 3 business days after trip date
+ * - Manual weekly processing by admin
  */
 export async function calculatePendingPayouts(): Promise<PayoutCalculation[]> {
-  // Fetch all PAID bookings with PENDING payout status
+  // Fetch all COMPLETED bookings with PENDING payout status
+  // Changed from PAID to COMPLETED - payout only after trip is done
   const bookings = await prismaMarket.booking.findMany({
     where: {
-      status: "PAID",
+      status: "COMPLETED",
       payoutStatus: "PENDING",
       captainEarnings: { not: null },
     },
@@ -565,6 +728,7 @@ export async function calculatePendingPayouts(): Promise<PayoutCalculation[]> {
       id: true,
       charterId: true,
       captainEarnings: true,
+      date: true, // Trip date for eligibility calculation
     },
   });
 
@@ -614,17 +778,55 @@ export async function calculatePendingPayouts(): Promise<PayoutCalculation[]> {
     ownerBookings.get(owner.id)!.push(booking);
   }
 
-  // Calculate payouts
+  // Calculate payouts with eligibility tracking
   const payouts: PayoutCalculation[] = [];
 
   for (const [ownerId, ownerBookingList] of ownerBookings) {
     const owner = charters.find((c) => c.owner?.id === ownerId)?.owner;
     if (!owner) continue;
 
+    // Separate eligible vs all bookings
+    const eligibleBookings = ownerBookingList.filter((b: PendingBooking) =>
+      isPayoutEligible(b.date)
+    );
+
     const totalEarnings = ownerBookingList.reduce(
       (sum: number, b: PendingBooking) => sum + Number(b.captainEarnings || 0),
       0
     );
+
+    const eligibleEarnings = eligibleBookings.reduce(
+      (sum: number, b: PendingBooking) => sum + Number(b.captainEarnings || 0),
+      0
+    );
+
+    // Find date range
+    const sortedByDate = [...ownerBookingList].sort(
+      (a, b) => a.date.getTime() - b.date.getTime()
+    );
+    const oldestTripDate = sortedByDate[0]?.date || null;
+
+    const eligibleSortedByDate = [...eligibleBookings].sort(
+      (a, b) => b.date.getTime() - a.date.getTime()
+    );
+    const newestEligibleDate = eligibleSortedByDate[0]?.date || null;
+
+    // Decrypt bank details for display
+    let accountNumber: string | null = null;
+    let accountHolder: string | null = null;
+    try {
+      if (owner.verification?.bankAccountNumber) {
+        accountNumber = decrypt(owner.verification.bankAccountNumber);
+      }
+      if (owner.verification?.bankAccountHolder) {
+        accountHolder = decrypt(owner.verification.bankAccountHolder);
+      }
+    } catch (error) {
+      console.error(
+        `Failed to decrypt bank details for owner ${ownerId}:`,
+        error
+      );
+    }
 
     payouts.push({
       ownerId,
@@ -634,13 +836,24 @@ export async function calculatePendingPayouts(): Promise<PayoutCalculation[]> {
       bookingCount: ownerBookingList.length,
       bookingIds: ownerBookingList.map((b: PendingBooking) => b.id),
       bankName: owner.verification?.bankName || null,
-      accountNumber: owner.verification?.bankAccountNumber || null,
-      accountHolder: owner.verification?.bankAccountHolder || null,
+      accountNumber,
+      accountHolder,
+      // Eligibility tracking
+      eligibleEarnings,
+      eligibleBookingCount: eligibleBookings.length,
+      eligibleBookingIds: eligibleBookings.map((b: PendingBooking) => b.id),
+      oldestTripDate,
+      newestEligibleDate,
     });
   }
 
-  // Sort by total earnings (highest first)
-  return payouts.sort((a, b) => b.totalEarnings - a.totalEarnings);
+  // Sort by eligible earnings (highest first), then total earnings
+  return payouts.sort((a, b) => {
+    if (b.eligibleEarnings !== a.eligibleEarnings) {
+      return b.eligibleEarnings - a.eligibleEarnings;
+    }
+    return b.totalEarnings - a.totalEarnings;
+  });
 }
 
 /**

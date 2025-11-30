@@ -1,18 +1,9 @@
+import type { BookingFinancial } from "@/lib/services/finance-service";
 import { format } from "date-fns";
-
-interface Booking {
-  id: string;
-  charterName: string;
-  anglerName: string;
-  tripDate: Date;
-  finalPrice: number;
-  captainEarnings: number;
-  platformFee: number;
-  createdAt: Date;
-}
+import Link from "next/link";
 
 interface PendingBookingsTableProps {
-  bookings: Booking[];
+  bookings: BookingFinancial[];
 }
 
 export function PendingBookingsTable({ bookings }: PendingBookingsTableProps) {
@@ -50,19 +41,16 @@ export function PendingBookingsTable({ bookings }: PendingBookingsTableProps) {
                 Charter
               </th>
               <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
+                Trip
+              </th>
+              <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
                 Angler
               </th>
               <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
                 Trip Date
               </th>
               <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-slate-600">
-                Paid On
-              </th>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-slate-600">
-                Booking Total
-              </th>
-              <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-slate-600">
-                Platform Fee
+                Booked On
               </th>
               <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-slate-600">
                 Your Earnings
@@ -72,23 +60,25 @@ export function PendingBookingsTable({ bookings }: PendingBookingsTableProps) {
           <tbody className="bg-white divide-y divide-slate-200">
             {bookings.map((booking) => (
               <tr key={booking.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                  {booking.charterName}
-                </td>
                 <td className="px-4 py-3 text-sm text-slate-900">
+                  <Link
+                    href={`/captain/bookings/${booking.id}`}
+                    className="font-medium hover:text-blue-600 hover:underline"
+                  >
+                    {booking.charterName}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  {booking.tripName}
+                </td>
+                <td className="px-4 py-3 text-sm text-slate-600">
                   {booking.anglerName}
                 </td>
-                <td className="px-4 py-3 text-sm text-slate-900">
+                <td className="px-4 py-3 text-sm text-slate-600">
                   {format(new Date(booking.tripDate), "MMM d, yyyy")}
                 </td>
                 <td className="px-4 py-3 text-sm text-slate-500">
                   {format(new Date(booking.createdAt), "MMM d, yyyy")}
-                </td>
-                <td className="px-4 py-3 text-sm text-right text-slate-900">
-                  RM {Number(booking.finalPrice).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-sm text-right text-red-600">
-                  -RM {Number(booking.platformFee).toLocaleString()}
                 </td>
                 <td className="px-4 py-3 text-sm font-medium text-right text-green-600">
                   RM {Number(booking.captainEarnings).toLocaleString()}
@@ -99,7 +89,7 @@ export function PendingBookingsTable({ bookings }: PendingBookingsTableProps) {
           <tfoot className="bg-slate-50">
             <tr>
               <td
-                colSpan={6}
+                colSpan={5}
                 className="px-4 py-3 text-sm font-semibold text-right text-slate-900"
               >
                 Total Pending:
@@ -118,15 +108,17 @@ export function PendingBookingsTable({ bookings }: PendingBookingsTableProps) {
       {/* Mobile Cards */}
       <div className="p-4 space-y-3 md:hidden">
         {bookings.map((booking) => (
-          <div
+          <Link
             key={booking.id}
-            className="p-4 border rounded-lg border-slate-200"
+            href={`/captain/bookings/${booking.id}`}
+            className="block p-4 border rounded-lg border-slate-200 hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="flex items-start justify-between mb-2">
               <div>
                 <p className="text-sm font-medium text-slate-900">
                   {booking.charterName}
                 </p>
+                <p className="text-xs text-slate-600">{booking.tripName}</p>
                 <p className="text-xs text-slate-500">{booking.anglerName}</p>
               </div>
               <p className="text-sm font-semibold text-green-600">
@@ -139,19 +131,11 @@ export function PendingBookingsTable({ bookings }: PendingBookingsTableProps) {
                 {format(new Date(booking.tripDate), "MMM d, yyyy")}
               </p>
               <p className="text-xs text-slate-600">
-                <span className="font-medium">Paid:</span>{" "}
+                <span className="font-medium">Booked:</span>{" "}
                 {format(new Date(booking.createdAt), "MMM d, yyyy")}
               </p>
-              <div className="flex justify-between pt-2 mt-2 text-xs border-t border-slate-200">
-                <span className="text-slate-600">
-                  Total: RM {Number(booking.finalPrice).toLocaleString()}
-                </span>
-                <span className="text-red-600">
-                  Fee: -RM {Number(booking.platformFee).toLocaleString()}
-                </span>
-              </div>
             </div>
-          </div>
+          </Link>
         ))}
 
         {/* Mobile Total */}
