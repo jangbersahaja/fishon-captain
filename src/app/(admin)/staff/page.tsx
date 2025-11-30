@@ -1,5 +1,7 @@
 import authOptions from "@/lib/auth";
+import { getMarketUserStats } from "@/lib/market-user-service";
 import { prisma } from "@/lib/prisma";
+import { isMarketDbConfigured } from "@/lib/prisma-market";
 import { getServerSession } from "next-auth";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -51,6 +53,11 @@ export default async function StaffHomePage() {
     Array.isArray(activeRows) && activeRows[0] ? activeRows[0].count : 0;
   const inactiveCharters =
     Array.isArray(inactiveRows) && inactiveRows[0] ? inactiveRows[0].count : 0;
+
+  // Fetch market user stats if configured
+  const marketUserStats = isMarketDbConfigured()
+    ? await getMarketUserStats()
+    : null;
 
   return (
     <div className="p-6 space-y-6">
@@ -142,6 +149,25 @@ export default async function StaffHomePage() {
             </div>
           </div>
           <span className="text-slate-400 group-hover:text-slate-600">→</span>
+        </Link>
+        <Link
+          href="/staff/market-users"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
+        >
+          <div>
+            <div className="font-medium text-slate-800">Market Users</div>
+            <div className="text-sm text-slate-600">
+              View anglers and guests from fishon.my
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {marketUserStats ? (
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                {marketUserStats.totalUsers} users
+              </span>
+            ) : null}
+            <span className="text-slate-400 group-hover:text-slate-600">→</span>
+          </div>
         </Link>
         <Link
           href="/staff/users"
