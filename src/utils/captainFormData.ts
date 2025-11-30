@@ -502,11 +502,23 @@ export const MALAYSIA_LOCATIONS: MalaysiaStateOption[] = [
 ];
 
 export const CHARTER_TYPES = [
-  { value: "lake", label: "Lake / Dam" },
-  { value: "stream", label: "Stream" },
-  { value: "inshore", label: "Inshore / Island" },
-  { value: "offshore", label: "Offshore / Deepsea" },
-  { value: "jungle", label: "Jungle / Waterfall" },
+  { value: "lake", label: "Lake / Dam", labelMy: "Tasik" },
+  { value: "stream", label: "Stream", labelMy: "Sungai" },
+  {
+    value: "inshore",
+    label: "Inshore / Island",
+    labelMy: "Persisir",
+  },
+  {
+    value: "offshore",
+    label: "Offshore / Deepsea",
+    labelMy: "Laut Dalam",
+  },
+  {
+    value: "jungle",
+    label: "Jungle / Waterfall",
+    labelMy: "Hutan",
+  },
 ];
 
 export const TECHNIQUE_OPTIONS = [
