@@ -270,10 +270,7 @@ export function PromoCodeForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Discount Type *</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue />
@@ -402,10 +399,7 @@ export function PromoCodeForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Scope *</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue />
@@ -638,10 +632,7 @@ export function PromoCodeForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Status *</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue />
