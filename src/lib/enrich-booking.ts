@@ -40,6 +40,10 @@ export type EnrichedMarketBooking = MarketBooking & {
   allParticipants: BookingParticipant[]; // All participants from guests.participants
   formattedTimeSlots?: string[]; // Human-readable time slot strings
   originalTripId?: string | null; // For blocked bookings to store the actual trip ID
+  // Blocked date fields (only for tripId === "blocked")
+  isAllDay?: boolean;
+  blockStartTime?: string | null; // Format: HH:MM
+  blockEndTime?: string | null; // Format: HH:MM
 };
 
 /**

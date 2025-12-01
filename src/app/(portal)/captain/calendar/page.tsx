@@ -110,6 +110,10 @@ export default async function NewCalendarPage({
       charterId: u.charterId,
       tripId: "blocked",
       originalTripId: u.tripId,
+      // Blocked date time fields
+      isAllDay: u.isAllDay,
+      blockStartTime: u.startTime,
+      blockEndTime: u.endTime,
       guests: { adults: 0, children: 0 },
       tripPrice: 0,
       startTime: u.startDate.toISOString(),
