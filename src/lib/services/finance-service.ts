@@ -97,12 +97,12 @@ export async function getRevenueStatsByDateRange(
   dateField: BookingDateField = "paidAt"
 ): Promise<RevenueStats> {
   // Build where clause with dynamic date field
+  // Include both PAID and COMPLETED bookings (COMPLETED = trip finished but still a paid booking)
+  // For payment date filtering, also check paymentCapturedAt (AUTO DIRECT flow)
+  const dateFilter = buildDateFilter(dateField, startDate, endDate);
   const where: Record<string, unknown> = {
-    status: "PAID",
-  };
-  where[dateField] = {
-    gte: startDate,
-    lte: endDate,
+    status: { in: ["PAID", "COMPLETED"] },
+    ...dateFilter,
   };
 
   // Fetch all PAID bookings with financial fields for the period
@@ -291,12 +291,12 @@ export async function getDailyRevenue(
   dateField: BookingDateField = "paidAt"
 ): Promise<DailyRevenue[]> {
   // Build where clause with dynamic date field
+  // Include both PAID and COMPLETED bookings (COMPLETED = trip finished but still a paid booking)
+  // For payment date filtering, also check paymentCapturedAt (AUTO DIRECT flow)
+  const dateFilter = buildDateFilter(dateField, startDate, endDate);
   const where: Record<string, unknown> = {
-    status: "PAID",
-  };
-  where[dateField] = {
-    gte: startDate,
-    lte: endDate,
+    status: { in: ["PAID", "COMPLETED"] },
+    ...dateFilter,
   };
 
   const bookings = await prismaMarket.booking.findMany({
@@ -307,6 +307,7 @@ export async function getDailyRevenue(
       serviceFee: true,
       discount: true,
       paidAt: true,
+      paymentAuthorizedAt: true, // Include for AUTO flow
       date: true,
       createdAt: true,
     },
@@ -317,7 +318,13 @@ export async function getDailyRevenue(
 
   for (const booking of bookings) {
     // Get the date value based on the selected field
-    const dateValue = booking[dateField];
+    // For "paidAt" field, also check paymentAuthorizedAt (AUTO flow)
+    let dateValue: Date | null = null;
+    if (dateField === "paidAt") {
+      dateValue = booking.paidAt || booking.paymentAuthorizedAt || null;
+    } else {
+      dateValue = booking[dateField] as Date | null;
+    }
     if (!dateValue) continue; // Skip if date field is null
 
     const dateKey = new Date(dateValue).toISOString().split("T")[0]; // YYYY-MM-DD
@@ -386,6 +393,34 @@ export async function getDailyRevenue(
 export type BookingDateField = "paidAt" | "date" | "createdAt";
 
 /**
+ * Build date filter for Prisma where clause
+ * When filtering by payment date ("paidAt"), we need to check both:
+ * - paidAt: Used by MANUAL booking flow (captain approves → angler pays via /api/bookings/pay)
+ * - paymentAuthorizedAt: Used by AUTO flow (instant booking via /api/payment/senangpay-callback)
+ *
+ * This ensures we capture all paid bookings regardless of which booking flow was used.
+ */
+function buildDateFilter(
+  dateField: BookingDateField,
+  startDate: Date,
+  endDate: Date
+): Record<string, unknown> {
+  if (dateField === "paidAt") {
+    // For payment date filtering, check both paidAt (MANUAL) and paymentAuthorizedAt (AUTO)
+    return {
+      OR: [
+        { paidAt: { gte: startDate, lte: endDate } },
+        { paymentAuthorizedAt: { gte: startDate, lte: endDate } },
+      ],
+    };
+  }
+  // For other date fields (date, createdAt), use direct field filter
+  return {
+    [dateField]: { gte: startDate, lte: endDate },
+  };
+}
+
+/**
  * Get bookings with financial data for admin dashboard
  */
 export async function getBookingsFinancial(filters?: {
@@ -412,11 +447,38 @@ export async function getBookingsFinancial(filters?: {
   }
 
   // Use specified date field or default to paidAt for finance reports
+  // For payment date filtering, also check paymentCapturedAt (AUTO DIRECT flow)
   const dateField = filters?.dateField || "paidAt";
-  if (filters?.startDate || filters?.endDate) {
-    where[dateField] = {};
-    if (filters.startDate) where[dateField].gte = filters.startDate;
-    if (filters.endDate) where[dateField].lte = filters.endDate;
+  if (filters?.startDate && filters?.endDate) {
+    const dateFilter = buildDateFilter(
+      dateField,
+      filters.startDate,
+      filters.endDate
+    );
+    Object.assign(where, dateFilter);
+  } else if (filters?.startDate || filters?.endDate) {
+    // Handle partial date filters (only start or only end)
+    if (dateField === "paidAt") {
+      // For payment date, use OR condition with both fields (paidAt for MANUAL, paymentAuthorizedAt for AUTO)
+      const orConditions = [];
+      const paidAtFilter: Record<string, Date> = {};
+      const authorizedAtFilter: Record<string, Date> = {};
+      if (filters?.startDate) {
+        paidAtFilter.gte = filters.startDate;
+        authorizedAtFilter.gte = filters.startDate;
+      }
+      if (filters?.endDate) {
+        paidAtFilter.lte = filters.endDate;
+        authorizedAtFilter.lte = filters.endDate;
+      }
+      orConditions.push({ paidAt: paidAtFilter });
+      orConditions.push({ paymentAuthorizedAt: authorizedAtFilter });
+      where.OR = orConditions;
+    } else {
+      where[dateField] = {};
+      if (filters?.startDate) where[dateField].gte = filters.startDate;
+      if (filters?.endDate) where[dateField].lte = filters.endDate;
+    }
   }
 
   // Fetch bookings from market DB

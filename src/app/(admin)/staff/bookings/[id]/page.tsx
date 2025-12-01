@@ -12,6 +12,7 @@ import {
   Clock,
   DollarSign,
   FileText,
+  Mail,
   MapPin,
   Phone,
   Ship,
@@ -91,8 +92,19 @@ export default async function StaffBookingDetailPage({
     notFound();
   }
 
+  // Fetch angler info (only for authenticated bookings)
+  const { prismaMarket } = await import("@/lib/prisma-market");
+  const angler = booking.userId
+    ? await prismaMarket.marketUser.findUnique({
+        where: { id: booking.userId },
+        select: { id: true, name: true, email: true, image: true, phone: true },
+      })
+    : null;
+
   const StatusIcon = getStatusIcon(booking.status);
-  const guestName = booking.primaryBooker?.name || "Guest";
+  const guestName = angler?.name || booking.primaryBooker?.name || "Guest";
+  const customerEmail = angler?.email || null;
+  const customerPhone = angler?.phone || booking.primaryBooker?.phone || null;
   const isGuest = !booking.userId;
 
   return (
@@ -586,24 +598,42 @@ export default async function StaffBookingDetailPage({
                 </div>
               </div>
 
-              {booking.primaryBooker?.phone && (
+              {/* Show email for registered users */}
+              {!isGuest && customerEmail && (
                 <div className="flex items-start gap-2">
-                  <Phone className="w-4 h-4 mt-1 text-slate-400" />
+                  <Mail className="w-4 h-4 mt-1 text-slate-400" />
                   <div>
-                    <p className="text-sm font-medium text-slate-700">Phone</p>
+                    <p className="text-sm font-medium text-slate-700">Email</p>
                     <a
-                      href={`tel:${booking.primaryBooker.phone}`}
+                      href={`mailto:${customerEmail}`}
                       className="text-sm text-blue-600 hover:text-blue-700"
                     >
-                      {booking.primaryBooker.phone}
+                      {customerEmail}
                     </a>
                   </div>
                 </div>
               )}
 
-              {!isGuest && (
+              {/* Show phone - from user account or booking participants */}
+              {customerPhone && (
+                <div className="flex items-start gap-2">
+                  <Phone className="w-4 h-4 mt-1 text-slate-400" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Phone</p>
+                    <a
+                      href={`tel:${customerPhone}`}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      {customerPhone}
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Show message for guest bookings without contact details */}
+              {isGuest && !customerPhone && (
                 <div className="p-3 text-xs rounded-lg bg-slate-50 text-slate-600">
-                  Full contact details available for registered users only
+                  Contact details not available for guest bookings
                 </div>
               )}
             </CardContent>
