@@ -2,6 +2,7 @@
 
 import {
   Anchor,
+  BarChart3,
   Building,
   Calendar,
   DollarSign,
@@ -33,7 +34,10 @@ interface NavGroup {
 const navGroups: NavGroup[] = [
   {
     title: "Overview",
-    links: [{ href: "/staff", label: "Dashboard", Icon: LayoutDashboard }],
+    links: [
+      { href: "/staff", label: "Dashboard", Icon: LayoutDashboard },
+      { href: "/staff/analytics", label: "Analytics", Icon: BarChart3 },
+    ],
   },
   {
     title: "Users",

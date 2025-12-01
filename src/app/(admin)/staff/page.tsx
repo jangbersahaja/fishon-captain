@@ -84,6 +84,18 @@ export default async function StaffHomePage() {
       </div>
       <div className="grid gap-3">
         <Link
+          href="/staff/analytics"
+          className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
+        >
+          <div>
+            <div className="font-medium text-slate-800">Platform Analytics</div>
+            <div className="text-sm text-slate-600">
+              Monitor events and performance across all charters
+            </div>
+          </div>
+          <span className="text-slate-400 group-hover:text-slate-600">→</span>
+        </Link>
+        <Link
           href="/staff/verification"
           className="flex items-center justify-between p-4 bg-white border group rounded-xl border-slate-200 hover:shadow-md"
         >
