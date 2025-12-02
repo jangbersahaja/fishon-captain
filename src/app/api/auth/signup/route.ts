@@ -191,7 +191,7 @@ export async function POST(req: Request) {
   await sendWelcomeEmail({
     to: user.email,
     captainName: displayName,
-    loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://fishon-captain.vercel.app"}/captain/login`,
+    loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://captain.fishon.my"}/captain/login`,
   });
 
   // Generate and send OTP

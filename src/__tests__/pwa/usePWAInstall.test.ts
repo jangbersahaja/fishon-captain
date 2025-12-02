@@ -70,7 +70,7 @@ describe("usePWAInstall Hook", () => {
       writable: true,
       value: {
         protocol: "https:",
-        hostname: "fishon-captain.vercel.app",
+        hostname: "captain.fishon.my",
       },
     });
 

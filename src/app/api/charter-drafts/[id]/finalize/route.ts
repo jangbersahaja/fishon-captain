@@ -503,7 +503,7 @@ export async function POST(
 
   // Send charter registration email (async, non-blocking)
   if (captainEmail && charterName && captainName) {
-    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://fishon-captain.vercel.app"}/captain/charters/${charterId}`;
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://captain.fishon.my"}/captain/charters/${charterId}`;
     sendCharterRegistration({
       to: captainEmail,
       captainName,
