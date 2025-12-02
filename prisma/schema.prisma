@@ -52,6 +52,13 @@ model User {
   payouts                  Payout[]                 @relation("OwnerPayouts")
   dismissedMessages        MessageDismissal[]
   googleCalendarSettings   GoogleCalendarSettings?
+  
+  // Affiliate Programme
+  referralCode             ReferralCode?            @relation("ReferralCodeOwner")
+  referralsGiven           Referral[]               @relation("InvitorReferrals")
+  referralReceived         Referral?                @relation("InviteeReferral")
+  referralEarnings         ReferralEarning[]        @relation("ReferralEarnings")
+  referredById             String?                  // Quick lookup: who referred this user
 }
 
 /// Google Calendar integration settings for a user
@@ -777,4 +784,151 @@ model MessageDismissal {
   @@index([userId, dismissedAt])
   @@index([userId])
   @@map("message_dismissals")
+}
+
+// ============================================
+// AFFILIATE/REFERRAL PROGRAMME MODELS
+// ============================================
+
+/// Referral codes for captain affiliate programme
+/// Each captain gets a personalized code based on their display name
+model ReferralCode {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g., "AHMAD7K2X" (personalized from captain name)
+
+  // Owner (the captain who owns this referral code)
+  ownerId     String   @unique
+  owner       User     @relation("ReferralCodeOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Statistics (denormalized for quick access)
+  clickCount  Int      @default(0)
+  signupCount Int      @default(0)
+
+  // Status
+  isActive    Boolean  @default(true)
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  referrals   Referral[]
+
+  @@index([ownerId])
+  @@index([code])
+  @@map("referral_codes")
+}
+
+/// Tracks individual referrals from invitor to invitee
+model Referral {
+  id              String         @id @default(cuid())
+
+  // Referral code used
+  referralCodeId  String
+  referralCode    ReferralCode   @relation(fields: [referralCodeId], references: [id], onDelete: Cascade)
+
+  // Invitor (captain who referred)
+  invitorId       String
+  invitor         User           @relation("InvitorReferrals", fields: [invitorId], references: [id], onDelete: Cascade)
+
+  // Invitee (new captain who was referred)
+  // Nullable until they complete registration
+  inviteeId       String?        @unique
+  invitee         User?          @relation("InviteeReferral", fields: [inviteeId], references: [id], onDelete: SetNull)
+
+  // Tracking
+  inviteeEmail    String?        // Email captured on click (if available)
+  clickedAt       DateTime       @default(now())
+  registeredAt    DateTime?      // When invitee completed registration
+  firstCharterId  String?        // Invitee's first charter ID
+  firstCharterAt  DateTime?      // When first charter was created
+  firstBookingId  String?        // First completed booking ID (from fishon-market)
+  completedAt     DateTime?      // When first trip was completed
+
+  // Status
+  status          ReferralStatus @default(PENDING)
+
+  // Source tracking
+  sourceIp        String?        // Hashed IP for fraud prevention
+  sourceUserAgent String?        // Browser info
+  utmSource       String?        // UTM tracking
+  utmMedium       String?
+  utmCampaign     String?
+
+  // Fraud prevention
+  flagReason      String?        // Why this referral was flagged/invalidated
+  flaggedAt       DateTime?      // When it was flagged
+  flaggedBy       String?        // Admin who flagged it
+
+  // Expiry
+  expiresAt       DateTime       // 30 days for registration, extended to 90 days after registration
+
+  // Timestamps
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  earning         ReferralEarning?
+
+  @@index([invitorId, status])
+  @@index([inviteeEmail])
+  @@index([status, expiresAt])
+  @@index([referralCodeId])
+  @@index([sourceIp])
+  @@map("referrals")
+}
+
+/// Tracks commission earnings from referrals
+model ReferralEarning {
+  id               String                @id @default(cuid())
+
+  // Referral this earning is from
+  referralId       String                @unique
+  referral         Referral              @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  // Captain who earns (invitor)
+  earnerId         String
+  earner           User                  @relation("ReferralEarnings", fields: [earnerId], references: [id], onDelete: Cascade)
+
+  // Booking details (from fishon-market)
+  bookingId        String                // First completed booking ID
+  tripEarnings     Decimal               @db.Decimal(10, 2) // Captain's earnings from trip
+  commissionRate   Decimal               @db.Decimal(5, 4)  // 0.1000 = 10%
+  commissionAmount Decimal               @db.Decimal(10, 2) // Actual commission earned (after cap)
+  commissionCap    Decimal               @db.Decimal(10, 2) // Cap applied (RM 100)
+
+  // Status
+  status           ReferralEarningStatus @default(PENDING)
+
+  // Payout tracking
+  payoutBatchId    String?               // When included in payout
+  paidAt           DateTime?
+
+  // Timestamps
+  earnedAt         DateTime              @default(now()) // When trip completed
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([earnerId, status])
+  @@index([status, earnedAt])
+  @@index([bookingId])
+  @@map("referral_earnings")
+}
+
+enum ReferralStatus {
+  PENDING           // Link clicked, awaiting registration
+  REGISTERED        // Invitee registered
+  CHARTER_CREATED   // Invitee created first charter
+  FIRST_BOOKING     // Invitee received first booking
+  COMPLETED         // First trip completed, commission calculated
+  PAID              // Commission paid to invitor
+  EXPIRED           // Time limit exceeded
+  INVALID           // Fraud detected or rules violated
+}
+
+enum ReferralEarningStatus {
+  PENDING           // Calculated, awaiting payout cycle
+  SCHEDULED         // Included in payout batch
+  PAID              // Transferred to captain
+  REVERSED          // Clawed back (e.g., refund)
 }

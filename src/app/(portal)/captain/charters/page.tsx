@@ -2,6 +2,7 @@ import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { getEnhancedChartersList } from "@/lib/charter-service";
 import { prisma } from "@/lib/prisma";
+import { Ship } from "lucide-react";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -52,7 +53,7 @@ export default async function ChartersListPage({
   const charters = await getEnhancedChartersList(effectiveUserId);
 
   return (
-    <div className="px-6 py-8 space-y-8">
+    <div className="px-6 py-8 space-y-6">
       {targetUserInfo && (
         <div className="rounded-lg border-2 border-orange-200 bg-orange-50 p-4">
           <div className="flex items-center justify-between">
@@ -76,13 +77,19 @@ export default async function ChartersListPage({
         </div>
       )}
 
-      <div className="space-y-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+      {/* Page Header */}
+      <div className="flex items-start gap-4 pb-4 border-b border-slate-200">
+        <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600">
+          <Ship className="w-6 h-6 text-white" />
+        </div>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Charter Management
           </h1>
-          <p className="text-sm text-slate-500">
-            Manage your charter listings, configurations, and booking settings
+          <p className="mt-1 text-sm text-slate-500">
+            Manage your charter listings, configure booking settings, and track
+            performance. Your charters are displayed on the Fishon marketplace
+            for anglers to discover and book.
           </p>
         </div>
       </div>

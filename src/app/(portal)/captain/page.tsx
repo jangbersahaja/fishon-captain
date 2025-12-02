@@ -1,5 +1,5 @@
 import { DashboardMetricsGrid } from "@/components/captain/DashboardMetricsGrid";
-import { QuickLinksSection } from "@/components/captain/QuickLinksSection";
+import { ReferralDashboardSection } from "@/components/captain/ReferralDashboardSection";
 import { SystemMessagesAlert } from "@/components/captain/SystemMessagesAlert";
 import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
@@ -273,8 +273,12 @@ export default async function CaptainDashboardPage({
           </div>
         )}
 
-        {/* Phase 3: Quick Links Section */}
-        <QuickLinksSection adminUserId={adminUserId} />
+        {/* Referral Programme Section */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div>
+            <ReferralDashboardSection adminUserId={adminUserId} />
+          </div>
+        </div>
       </div>
     </div>
   );

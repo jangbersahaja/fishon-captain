@@ -43,8 +43,14 @@ export async function GET(req: NextRequest) {
     const dateField =
       (searchParams.get("dateField") as BookingDateField) || "paidAt";
 
+    // Handle comma-separated status values for group filtering
+    const statusParam = searchParams.get("status");
+    const statusFilter = statusParam?.includes(",")
+      ? statusParam.split(",")
+      : statusParam || undefined;
+
     const filters = {
-      status: searchParams.get("status") || undefined,
+      status: statusFilter,
       payoutStatus: searchParams.get("payoutStatus") || undefined,
       dateField,
       startDate: searchParams.get("startDate")

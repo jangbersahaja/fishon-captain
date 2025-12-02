@@ -23,6 +23,10 @@ export type EnrichedMarketBooking = MarketBooking & {
   durationHour: number;
   conversationId: string | null;
   conversationStatus: string | null; // ACTIVE, LOCKED, CLOSED
+  // Captain information
+  captainName: string | null;
+  captainPhone: string | null;
+  captainEmail: string | null;
   // Additional trip/charter data for enhanced display
   trip?: {
     id: string;
@@ -122,6 +126,17 @@ export async function enrichBooking(
             city: true,
             state: true,
             startingPoint: true,
+            captain: {
+              select: {
+                displayName: true,
+                phone: true,
+                user: {
+                  select: {
+                    email: true,
+                  },
+                },
+              },
+            },
           },
         },
         startTimes: {
@@ -184,6 +199,9 @@ export async function enrichBooking(
         durationHour: 0,
         conversationId,
         conversationStatus,
+        captainName: null,
+        captainPhone: null,
+        captainEmail: null,
         allParticipants,
         primaryBooker,
         formattedTimeSlots:
@@ -241,6 +259,9 @@ export async function enrichBooking(
       durationHour: trip.durationHours,
       conversationId,
       conversationStatus,
+      captainName: trip.charter.captain?.displayName || null,
+      captainPhone: trip.charter.captain?.phone || null,
+      captainEmail: trip.charter.captain?.user?.email || null,
       allParticipants,
       primaryBooker,
       formattedTimeSlots:
@@ -277,6 +298,9 @@ export async function enrichBooking(
       durationHour: 0,
       conversationId: null,
       conversationStatus: null,
+      captainName: null,
+      captainPhone: null,
+      captainEmail: null,
       allParticipants,
       primaryBooker,
       formattedTimeSlots:

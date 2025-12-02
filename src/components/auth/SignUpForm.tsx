@@ -105,9 +105,11 @@ const baseButtonClass =
 export default function SignUpForm({
   next,
   oauthProviders,
+  referralCode,
 }: {
   next: string;
   oauthProviders: OAuthProviderInfo[];
+  referralCode?: string;
 }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -168,6 +170,7 @@ export default function SignUpForm({
           firstName,
           lastName,
           displayName: displayName || `${firstName} ${lastName}`.trim(),
+          referralCode, // Include referral code if present
         }),
       });
       const data = await res.json().catch(() => ({}));

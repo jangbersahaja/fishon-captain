@@ -59,14 +59,16 @@ export function RevenueChart({ data, height = 300 }: RevenueChartProps) {
                 </p>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-xs text-slate-600">Total Sales:</span>
+                    <span className="text-xs text-slate-600">
+                      Total Sales (Gross):
+                    </span>
                     <span className="text-xs font-semibold text-blue-600">
                       RM {data.totalRevenue.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-xs text-slate-600">
-                      Fishon Revenue:
+                      Fishon Revenue (Net):
                     </span>
                     <span className="text-xs font-semibold text-emerald-600">
                       RM {data.platformRevenue.toFixed(2)}
@@ -101,8 +103,8 @@ export function RevenueChart({ data, height = 300 }: RevenueChartProps) {
           wrapperStyle={{ fontSize: "12px" }}
           iconType="line"
           formatter={(value) => {
-            if (value === "totalRevenue") return "Total Sales";
-            if (value === "platformRevenue") return "Fishon Revenue";
+            if (value === "totalRevenue") return "Total Sales (Gross)";
+            if (value === "platformRevenue") return "Fishon Revenue (Net)";
             if (value === "tripIncome") return "Trip Income";
             if (value === "serviceIncome") return "Service Income";
             return value;

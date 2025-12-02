@@ -21,7 +21,7 @@ self.addEventListener("push", function (event) {
 self.addEventListener("notificationclick", function (event) {
   console.log("Notification click received.");
   event.notification.close();
-  event.waitUntil(clients.openWindow("https://fishon-captain.vercel.app"));
+  event.waitUntil(clients.openWindow("https://captain.fishon.my"));
 });
 
 // Install event - cache essential assets

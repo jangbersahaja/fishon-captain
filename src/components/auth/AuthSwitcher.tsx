@@ -14,18 +14,33 @@ type OAuthProviderInfo = {
   configured: boolean;
 };
 
-type Props = { next: string; oauthProviders: OAuthProviderInfo[] };
+type Props = {
+  next: string;
+  oauthProviders: OAuthProviderInfo[];
+  defaultMode?: "signin" | "signup";
+  referralCode?: string;
+};
 
-export default function AuthSwitcher({ next, oauthProviders }: Props) {
+export default function AuthSwitcher({
+  next,
+  oauthProviders,
+  defaultMode,
+  referralCode,
+}: Props) {
   const sp = useSearchParams();
   const modeParam = sp.get("mode");
   const [mode, setMode] = useState<"signin" | "signup">(
-    modeParam === "signup" ? "signup" : "signin"
+    defaultMode || (modeParam === "signup" ? "signup" : "signin")
   );
   useEffect(() => {
-    if (modeParam === "signup") setMode("signup");
-    else setMode("signin");
-  }, [modeParam]);
+    if (defaultMode) {
+      setMode(defaultMode);
+    } else if (modeParam === "signup") {
+      setMode("signup");
+    } else {
+      setMode("signin");
+    }
+  }, [modeParam, defaultMode]);
   interface MinimalSession {
     user?: { name?: string; email?: string | null; id?: string };
   }
@@ -77,7 +92,11 @@ export default function AuthSwitcher({ next, oauthProviders }: Props) {
       {mode === "signin" ? (
         <SignInForm next={next} oauthProviders={oauthProviders} />
       ) : (
-        <SignUpForm next={next} oauthProviders={oauthProviders} />
+        <SignUpForm
+          next={next}
+          oauthProviders={oauthProviders}
+          referralCode={referralCode}
+        />
       )}
       <p className="text-xs text-neutral-500">
         By continuing, you agree to our{" "}

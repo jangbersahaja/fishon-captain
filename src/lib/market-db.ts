@@ -27,6 +27,20 @@ export type BookingTimeSlot = {
   endDateTime: string;
 };
 
+// Discount JSON structure from Market DB
+export type BookingDiscount = {
+  code?: string;
+  percentage?: string;
+  amount?: number;
+} | null;
+
+// Tax JSON structure from Market DB (future use)
+export type BookingTax = {
+  name?: string;
+  percentage?: string;
+  amount?: number;
+} | null;
+
 // Raw Prisma booking type (with Decimal fields)
 type PrismaMarketBooking = {
   id: string;
@@ -38,6 +52,8 @@ type PrismaMarketBooking = {
   startTime: string | null;
   date: Date;
   days: number;
+  discount: unknown;
+  tax: unknown;
   finalPrice: { toNumber: () => number } | number;
   status:
     | "PENDING"
@@ -92,6 +108,8 @@ export type MarketBooking = {
   startTime: string | null;
   date: Date;
   days: number;
+  discount: BookingDiscount;
+  tax: BookingTax;
   finalPrice: number;
   status:
     | "PENDING"
@@ -168,6 +186,8 @@ export async function fetchBookingsByCharters(
       tripPrice: Number(b.tripPrice),
       finalPrice: Number(b.finalPrice),
       guests: b.guests as { adults: number; children: number } | null,
+      discount: b.discount as BookingDiscount,
+      tax: b.tax as BookingTax,
     })) as MarketBooking[];
   } catch (error) {
     console.error("Error fetching bookings from Market DB:", error);
@@ -213,6 +233,8 @@ export async function fetchBookingById(
       refundAmount: booking.refundAmount ? Number(booking.refundAmount) : null,
       guests: booking.guests as MarketBooking["guests"],
       timeSlots: booking.timeSlots as BookingTimeSlot[] | null,
+      discount: booking.discount as BookingDiscount,
+      tax: booking.tax as BookingTax,
     } as MarketBooking;
   } catch (error) {
     console.error(`Error fetching booking ${bookingId} from Market DB:`, error);
@@ -266,6 +288,8 @@ export async function fetchBookingsByStatus(
       refundAmount: b.refundAmount ? Number(b.refundAmount) : null,
       guests: b.guests as MarketBooking["guests"],
       timeSlots: b.timeSlots as BookingTimeSlot[] | null,
+      discount: b.discount as BookingDiscount,
+      tax: b.tax as BookingTax,
     })) as MarketBooking[];
   } catch (error) {
     console.error(`Error fetching ${status} bookings from Market DB:`, error);

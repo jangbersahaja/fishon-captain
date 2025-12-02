@@ -207,52 +207,100 @@ export async function getEnhancedCharterConfig(
       take: 5,
       select: {
         id: true,
-        primaryBooker: true,
-        finalPrice: true,
-        date: true,
-        time: true,
-        status: true,
-        adults: true,
-        children: true,
-        trip: {
+        user: {
           select: {
             name: true,
-            type: true,
           },
         },
+        guests: true,
+        tripId: true,
+        finalPrice: true,
+        date: true,
+        startTime: true,
+        status: true,
         createdAt: true,
       },
     });
 
+    // Fetch trip info from captain DB for all tripIds
+    const tripIds: string[] = recentBookingsData
+      .map((b: (typeof recentBookingsData)[0]) => b.tripId)
+      .filter((id: string | null): id is string => !!id);
+    const uniqueTripIds = [...new Set(tripIds)];
+    const tripsData =
+      uniqueTripIds.length > 0
+        ? await prisma.trip.findMany({
+            where: { id: { in: uniqueTripIds } },
+            select: { id: true, name: true, tripType: true },
+          })
+        : [];
+    const tripMap = new Map(tripsData.map((t) => [t.id, t]));
+
+    // Helper to extract guest name from booking
+    const getGuestName = (booking: (typeof recentBookingsData)[0]): string => {
+      // Try user name first
+      if (booking.user?.name) return booking.user.name;
+      // Try participants array in guests JSON
+      const guests = booking.guests as {
+        adults?: number;
+        children?: number;
+        participants?: Array<{ name?: string; isBooker?: boolean }>;
+      } | null;
+      const booker = guests?.participants?.find((p) => p.isBooker);
+      if (booker?.name) return booker.name;
+      // Fallback
+      return "Guest";
+    };
+
+    // Helper to get guest counts from JSON
+    const getGuestCounts = (
+      booking: (typeof recentBookingsData)[0]
+    ): { adults: number; children: number } => {
+      const guests = booking.guests as {
+        adults?: number;
+        children?: number;
+      } | null;
+      return {
+        adults: guests?.adults ?? 0,
+        children: guests?.children ?? 0,
+      };
+    };
+
     recentBookings = recentBookingsData.map(
-      (booking: (typeof recentBookingsData)[0]) => ({
-        id: booking.id,
-        guestName: booking.primaryBooker?.name || "Guest",
-        totalPrice: Number(booking.finalPrice),
-        tripDate: new Date(booking.date),
-        tripTime: booking.time,
-        status: booking.status,
-        adults: booking.adults,
-        children: booking.children,
-        tripName: booking.trip?.name || "Trip",
-        createdAt: booking.createdAt,
-      })
+      (booking: (typeof recentBookingsData)[0]) => {
+        const guestCounts = getGuestCounts(booking);
+        const trip = tripMap.get(booking.tripId);
+        return {
+          id: booking.id,
+          guestName: getGuestName(booking),
+          totalPrice: Number(booking.finalPrice),
+          tripDate: new Date(booking.date),
+          tripTime: booking.startTime || "",
+          status: booking.status,
+          adults: guestCounts.adults,
+          children: guestCounts.children,
+          tripName: trip?.name || "Trip",
+          createdAt: booking.createdAt,
+        };
+      }
     );
 
     // Set last booking as the first one
     if (recentBookingsData.length > 0) {
       const lastBookingData = recentBookingsData[0];
+      const guestCounts = getGuestCounts(lastBookingData);
+      const trip = tripMap.get(lastBookingData.tripId);
       lastBooking = {
         id: lastBookingData.id,
-        guestName: lastBookingData.primaryBooker?.name || "Guest",
+        guestName: getGuestName(lastBookingData),
         totalPrice: Number(lastBookingData.finalPrice),
         tripDate: new Date(lastBookingData.date),
-        tripTime: lastBookingData.time,
+        tripTime: lastBookingData.startTime || "",
         status: lastBookingData.status,
-        adults: lastBookingData.adults,
-        children: lastBookingData.children,
-        tripName: lastBookingData.trip?.name || "Trip",
-        tripType: lastBookingData.trip?.type || "Unknown",
+        adults: guestCounts.adults,
+        children: guestCounts.children,
+        tripName: trip?.name || "Trip",
+        tripType: trip?.tripType || "Unknown",
         createdAt: lastBookingData.createdAt,
       };
     }

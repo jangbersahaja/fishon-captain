@@ -24,7 +24,7 @@ export interface EarningsSummary {
 }
 
 export interface RevenueStats {
-  totalRevenue: number; // Sum of finalPrice (PAID bookings) - Total sales
+  totalRevenue: number; // Gross sales before discount (finalPrice + discountAmount)
   platformRevenue: number; // Fishon's net revenue: tripIncome + serviceIncome - discount
   tripIncome: number; // 10% commission from trip price (platformFee)
   serviceIncome: number; // 0.5% of amount (Fishon's portion of 2% service fee)
@@ -123,10 +123,16 @@ export async function getRevenueStatsByDateRange(
   type BookingFinancial = (typeof bookings)[0];
 
   // Calculate revenue metrics
-  const totalRevenue = bookings.reduce(
-    (sum: number, b: BookingFinancial) => sum + Number(b.finalPrice || 0),
-    0
-  );
+  // Total revenue = gross sales (finalPrice + discount amount)
+  // This represents what anglers would pay without any discounts
+  const totalRevenue = bookings.reduce((sum: number, b: BookingFinancial) => {
+    const finalPrice = Number(b.finalPrice || 0);
+    const discountAmount =
+      b.discount && typeof b.discount === "object"
+        ? (b.discount as { amount?: number }).amount || 0
+        : 0;
+    return sum + finalPrice + discountAmount;
+  }, 0);
   const bookingCount = bookings.length;
   const avgBookingValue = bookingCount > 0 ? totalRevenue / bookingCount : 0;
 
@@ -341,7 +347,6 @@ export async function getDailyRevenue(
     }
 
     const day = dailyMap.get(dateKey)!;
-    day.totalRevenue += Number(booking.finalPrice);
     day.bookingCount += 1;
 
     // Calculate trip income (10% commission = platformFee)
@@ -357,6 +362,9 @@ export async function getDailyRevenue(
       booking.discount && typeof booking.discount === "object"
         ? (booking.discount as { amount?: number }).amount || 0
         : 0;
+
+    // Total revenue = gross sales (finalPrice + discount)
+    day.totalRevenue += Number(booking.finalPrice) + discountAmount;
 
     // Platform revenue = tripIncome + serviceIncome - discount
     day.platformRevenue += platformFee + serviceFee * 0.25 - discountAmount;
@@ -424,7 +432,7 @@ function buildDateFilter(
  * Get bookings with financial data for admin dashboard
  */
 export async function getBookingsFinancial(filters?: {
-  status?: string;
+  status?: string | string[];
   payoutStatus?: string;
   ownerId?: string;
   startDate?: Date;
@@ -439,7 +447,12 @@ export async function getBookingsFinancial(filters?: {
   const where: any = {};
 
   if (filters?.status) {
-    where.status = filters.status as string;
+    // Support both single status string and array of statuses
+    if (Array.isArray(filters.status)) {
+      where.status = { in: filters.status };
+    } else {
+      where.status = filters.status as string;
+    }
   }
 
   if (filters?.payoutStatus) {

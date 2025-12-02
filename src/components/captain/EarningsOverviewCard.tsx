@@ -5,7 +5,6 @@ import {
   Calendar,
   Clock,
   DollarSign,
-  Percent,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -77,7 +76,7 @@ export function EarningsOverviewCard({
         <div className="rounded-lg bg-emerald-50 p-2.5">
           <DollarSign className="w-5 h-5 text-emerald-600" aria-hidden="true" />
         </div>
-        <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+        <h3 className="text-xs font-semibold tracking-wide uppercase text-slate-600">
           Earnings
         </h3>
       </div>
@@ -113,17 +112,6 @@ export function EarningsOverviewCard({
           </div>
           <span className="font-semibold text-slate-900">
             RM {earningsData.pending.toLocaleString()}
-          </span>
-        </div>
-
-        {/* Commission Rate */}
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2 text-slate-600">
-            <Percent className="w-4 h-4 text-slate-400" aria-hidden="true" />
-            <span>Commission rate</span>
-          </div>
-          <span className="font-semibold text-slate-900">
-            {earningsData.commissionRate}%
           </span>
         </div>
 

@@ -13,6 +13,9 @@ import {
   renderBookingReceivedCaptainEmail,
   renderCharterRegistrationEmail,
   renderPasswordChangedEmail,
+  renderReferralCommissionEarnedEmail,
+  renderReferralCommissionPaidEmail,
+  renderReferralSignupEmail,
   renderVerificationCodeEmail,
   renderWelcomeEmail,
 } from "@fishon/email";
@@ -293,6 +296,108 @@ export async function sendPasswordChangedEmail(
   return sendEmail({
     to: params.to,
     subject,
+    html,
+  });
+}
+
+// ============================================================================
+// REFERRAL PROGRAMME EMAILS
+// ============================================================================
+
+interface SendReferralSignupParams {
+  to: string;
+  invitorName: string;
+  inviteeName: string;
+  registeredAt: string;
+  totalReferrals: number;
+}
+
+export async function sendReferralSignupEmail(
+  params: SendReferralSignupParams
+) {
+  const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://captain.fishon.my"}/captain/referrals`;
+
+  const html = await renderReferralSignupEmail({
+    invitorName: params.invitorName,
+    inviteeName: params.inviteeName,
+    registeredAt: params.registeredAt,
+    dashboardUrl,
+    totalReferrals: params.totalReferrals,
+  });
+
+  return sendEmail({
+    to: params.to,
+    subject: `🎉 Your referral ${params.inviteeName} just signed up!`,
+    html,
+  });
+}
+
+interface SendReferralCommissionEarnedParams {
+  to: string;
+  invitorName: string;
+  inviteeName: string;
+  tripName: string;
+  tripEarnings: string;
+  commissionAmount: string;
+  totalReferralEarnings: string;
+  pendingEarnings: string;
+  earnedAt: string;
+}
+
+export async function sendReferralCommissionEarnedEmail(
+  params: SendReferralCommissionEarnedParams
+) {
+  const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://captain.fishon.my"}/captain/referrals`;
+
+  const html = await renderReferralCommissionEarnedEmail({
+    invitorName: params.invitorName,
+    inviteeName: params.inviteeName,
+    tripName: params.tripName,
+    tripEarnings: params.tripEarnings,
+    commissionAmount: params.commissionAmount,
+    totalReferralEarnings: params.totalReferralEarnings,
+    pendingEarnings: params.pendingEarnings,
+    dashboardUrl,
+    earnedAt: params.earnedAt,
+  });
+
+  return sendEmail({
+    to: params.to,
+    subject: `💰 You earned ${params.commissionAmount} from your referral!`,
+    html,
+  });
+}
+
+interface SendReferralCommissionPaidParams {
+  to: string;
+  invitorName: string;
+  commissionAmount: string;
+  bankAccountLast4: string;
+  bankName: string;
+  payoutDate: string;
+  payoutReference: string;
+  totalPaidToDate: string;
+}
+
+export async function sendReferralCommissionPaidEmail(
+  params: SendReferralCommissionPaidParams
+) {
+  const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://captain.fishon.my"}/captain/referrals`;
+
+  const html = await renderReferralCommissionPaidEmail({
+    invitorName: params.invitorName,
+    commissionAmount: params.commissionAmount,
+    bankAccountLast4: params.bankAccountLast4,
+    bankName: params.bankName,
+    payoutDate: params.payoutDate,
+    payoutReference: params.payoutReference,
+    totalPaidToDate: params.totalPaidToDate,
+    dashboardUrl,
+  });
+
+  return sendEmail({
+    to: params.to,
+    subject: `💵 Referral commission paid - ${params.commissionAmount}`,
     html,
   });
 }

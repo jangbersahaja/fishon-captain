@@ -14,6 +14,7 @@ import {
   Shield,
   Tag,
   UserCircle,
+  UserPlus,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -60,6 +61,7 @@ const navGroups: NavGroup[] = [
     title: "Bookings & Sales",
     links: [
       { href: "/staff/bookings", label: "Bookings", Icon: Calendar },
+      { href: "/staff/referrals", label: "Referrals", Icon: UserPlus },
       { href: "/staff/promo-codes", label: "Promo Codes", Icon: Tag },
       { href: "/staff/campaigns", label: "Campaigns", Icon: Megaphone },
     ],
