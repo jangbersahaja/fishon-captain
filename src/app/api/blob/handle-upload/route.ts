@@ -8,7 +8,9 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request): Promise<NextResponse> {
   // Authenticate user before issuing token
   const session = await getServerSession(authOptions);
+
   if (!session || !session.user?.id) {
+    console.warn("[blob/handle-upload] unauthorized - no valid session");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -26,7 +28,6 @@ export async function POST(request: Request): Promise<NextResponse> {
       request,
       onBeforeGenerateToken: async () => {
         // Authorize uploads by the authenticated user.
-        // Optionally, validate clientPayload (e.g., docType/charterId) here.
         return {
           // Allow videos and images
           allowedContentTypes: [
@@ -49,18 +50,10 @@ export async function POST(request: Request): Promise<NextResponse> {
           addRandomSuffix: false, // we control the key/pathname from the client
           tokenPayload: JSON.stringify({
             userId: session.user.id,
-            // Pass-thru fields can be added if you want them echoed in onUploadCompleted
           }),
         };
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        // Optional: observe completed uploads. The pipeline continues via /api/blob/finish.
-        console.log("[blob] client upload completed", {
-          url: blob.url,
-          pathname: blob.pathname,
-          tokenPayload,
-        });
-      },
+      // Note: onUploadCompleted removed - we use /api/blob/finish for post-upload processing
     });
 
     return NextResponse.json(jsonResponse);

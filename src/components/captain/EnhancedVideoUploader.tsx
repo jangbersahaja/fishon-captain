@@ -219,7 +219,11 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
     startSec: number,
     duration: number,
     probe: { width: number; height: number; codec: string; size: number },
-    meta: { didFallback: boolean; fallbackReason?: string | null }
+    meta: {
+      didFallback: boolean;
+      fallbackReason?: string | null;
+      originalDurationSec?: number;
+    }
   ) => {
     if (trimTargetId && trimFile) {
       // Create new file from trimmed blob
@@ -237,7 +241,7 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
             endSec: startSec + duration,
             width: probe.width,
             height: probe.height,
-            originalDurationSec: duration, // NOTE: currently passing trimmed selection; may replace with source duration if exposed
+            originalDurationSec: meta.originalDurationSec ?? duration, // Use original duration from meta, fallback to trimmed duration
             didFallback: meta.didFallback,
             fallbackReason: meta.fallbackReason,
           },
@@ -253,7 +257,7 @@ export const EnhancedVideoUploader: React.FC<EnhancedVideoUploaderProps> = ({
             endSec: startSec + duration,
             width: probe.width,
             height: probe.height,
-            originalDurationSec: duration,
+            originalDurationSec: meta.originalDurationSec ?? duration,
             didFallback: meta.didFallback,
             fallbackReason: meta.fallbackReason,
           },
