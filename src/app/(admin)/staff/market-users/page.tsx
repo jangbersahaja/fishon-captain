@@ -415,27 +415,30 @@ export default async function MarketUsersPage({
                       </p>
                       {/* Role Badge */}
                       {user.role === "ANGLER" && (
-                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700">
                           ANGLER
                         </span>
                       )}
                       {user.role === "GUEST" && (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                        <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-700">
                           GUEST
                         </span>
                       )}
                       {user.role === "ADMIN" && (
-                        <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                        <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-50 text-purple-700">
                           ADMIN
                         </span>
                       )}
-                      {/* Email Verified Badge */}
-                      {user.emailVerified ? (
-                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                      {/* Email Verified Badge - OAuth users are considered verified */}
+                      {user.emailVerified || user.isOAuthUser ? (
+                        <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700">
                           ✓ Verified
+                          {user.isOAuthUser && !user.emailVerified
+                            ? " (Google)"
+                            : ""}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 text-amber-700">
                           Unverified
                         </span>
                       )}

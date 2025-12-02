@@ -171,16 +171,27 @@ export const authOptions: NextAuthOptions = {
             nameObjectLast ||
             (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "User");
 
+          // Try to get phone from OAuth profile (Google may provide it if enabled)
+          const phoneNumber =
+            getString(profileRecord?.["phone_number"]) ||
+            getString(profileRecord?.["phoneNumber"]) ||
+            getString(profileRecord?.["phone"]);
+
           try {
             await prisma.user.update({
               where: { id: user.id },
-              data: { firstName: givenName, lastName: familyName },
+              data: {
+                firstName: givenName,
+                lastName: familyName,
+                ...(phoneNumber && { phone: phoneNumber }),
+              },
             });
             console.info("[auth] user.update success", {
               ...context,
               action: "userUpdate",
               firstName: givenName,
               lastName: familyName,
+              phone: phoneNumber ? "[redacted]" : undefined,
               ms: Date.now() - start,
             });
           } catch (e) {

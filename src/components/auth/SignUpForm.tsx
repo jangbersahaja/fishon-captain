@@ -115,6 +115,8 @@ export default function SignUpForm({
   const [lastName, setLastName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
+  const [countryCode, setCountryCode] = useState("+60");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -170,6 +172,7 @@ export default function SignUpForm({
           firstName,
           lastName,
           displayName: displayName || `${firstName} ${lastName}`.trim(),
+          phone: phone ? `${countryCode}${phone}` : undefined,
           referralCode, // Include referral code if present
         }),
       });
@@ -347,6 +350,35 @@ export default function SignUpForm({
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-inner focus:border-[#ec2227] focus:outline-none"
             required
           />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-slate-600">
+            Phone Number <span className="text-slate-400">(optional)</span>
+          </label>
+          <div className="flex gap-2">
+            <select
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value)}
+              className="w-24 rounded-lg border border-slate-200 px-2 py-2 text-sm shadow-inner focus:border-[#ec2227] focus:outline-none"
+            >
+              <option value="+60">🇲🇾 +60</option>
+              <option value="+65">🇸🇬 +65</option>
+              <option value="+62">🇮🇩 +62</option>
+              <option value="+66">🇹🇭 +66</option>
+              <option value="+1">🇺🇸 +1</option>
+              <option value="+44">🇬🇧 +44</option>
+            </select>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "");
+                setPhone(val);
+              }}
+              placeholder="123456789"
+              className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-inner focus:border-[#ec2227] focus:outline-none"
+            />
+          </div>
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium text-slate-600">Password</label>
