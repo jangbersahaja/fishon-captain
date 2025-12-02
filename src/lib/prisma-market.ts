@@ -44,6 +44,7 @@ const PrismaClient = loadPrismaMarketClient();
 interface PrismaClientInstance {
   booking: any;
   marketUser: any;
+  marketAccount: any;
   review: any;
   analyticsEvent: any;
   conversation: any;

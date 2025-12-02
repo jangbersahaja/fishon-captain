@@ -13,6 +13,7 @@ model User {
   name                     String?
   firstName                String?                  @map("firstName")
   lastName                 String?                  @map("lastName")
+  phone                    String?                  // Phone number with country code
   image                    String?
   passwordHash             String?
   emailVerified            DateTime?

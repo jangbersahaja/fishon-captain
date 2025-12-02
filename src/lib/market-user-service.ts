@@ -20,6 +20,7 @@ export interface MarketUserWithCounts {
   phone: string | null;
   image: string | null;
   emailVerified: Date | null;
+  isOAuthUser: boolean; // User has Google OAuth linked
   role: "ANGLER" | "GUEST" | "ADMIN";
   city: string | null;
   state: string | null;
@@ -160,10 +161,17 @@ export async function getMarketUsers(
     where.role = filters.role;
   }
 
+  // Email verification filter - OAuth users (Google) are considered verified
   if (filters.emailVerified === "verified") {
-    where.emailVerified = { not: null };
+    where.OR = [
+      { emailVerified: { not: null } },
+      { accounts: { some: { provider: "google" } } },
+    ];
   } else if (filters.emailVerified === "unverified") {
-    where.emailVerified = null;
+    where.AND = [
+      { emailVerified: null },
+      { accounts: { none: { provider: "google" } } },
+    ];
   }
 
   if (filters.hasBookings === true) {
@@ -196,6 +204,11 @@ export async function getMarketUsers(
         country: true,
         createdAt: true,
         updatedAt: true,
+        accounts: {
+          select: {
+            provider: true,
+          },
+        },
         _count: {
           select: {
             bookings: true,
@@ -213,8 +226,31 @@ export async function getMarketUsers(
 
   const totalPages = Math.ceil(totalCount / limit);
 
+  // Transform users to include isOAuthUser flag
+  const transformedUsers: MarketUserWithCounts[] = users.map((user: any) => ({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    image: user.image,
+    emailVerified: user.emailVerified,
+    isOAuthUser:
+      user.accounts?.some(
+        (acc: { provider: string }) => acc.provider === "google"
+      ) ?? false,
+    role: user.role,
+    city: user.city,
+    state: user.state,
+    country: user.country,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    _count: user._count,
+  }));
+
   return {
-    users: users as MarketUserWithCounts[],
+    users: transformedUsers,
     pagination: {
       currentPage: page,
       totalPages,
@@ -245,6 +281,7 @@ export async function getMarketUserStats(): Promise<MarketUserStats> {
     totalAnglers,
     totalGuests,
     verifiedUsers,
+    oauthUsers,
     usersWithBookings,
     usersWithReviews,
   ] = await Promise.all([
@@ -252,6 +289,13 @@ export async function getMarketUserStats(): Promise<MarketUserStats> {
     prismaMarket.marketUser.count({ where: { role: "ANGLER" } }),
     prismaMarket.marketUser.count({ where: { role: "GUEST" } }),
     prismaMarket.marketUser.count({ where: { emailVerified: { not: null } } }),
+    // Count users with Google OAuth accounts (they are considered verified even without emailVerified)
+    prismaMarket.marketUser.count({
+      where: {
+        emailVerified: null, // Only count OAuth users without emailVerified to avoid double counting
+        accounts: { some: { provider: "google" } },
+      },
+    }),
     prismaMarket.marketUser.count({ where: { bookings: { some: {} } } }),
     prismaMarket.marketUser.count({ where: { reviews: { some: {} } } }),
   ]);
@@ -260,7 +304,7 @@ export async function getMarketUserStats(): Promise<MarketUserStats> {
     totalUsers,
     totalAnglers,
     totalGuests,
-    verifiedUsers,
+    verifiedUsers: verifiedUsers + oauthUsers, // Include OAuth users in verified count
     usersWithBookings,
     usersWithReviews,
   };

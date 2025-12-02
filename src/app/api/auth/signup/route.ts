@@ -20,6 +20,7 @@ interface SignupBody {
   firstName?: string;
   lastName?: string;
   displayName?: string;
+  phone?: string;
   referralCode?: string;
 }
 
@@ -32,13 +33,14 @@ export async function POST(req: Request) {
       NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
     );
   }
-  const { email, password, firstName, lastName } = body;
+  const { email, password, firstName, lastName, phone } = body;
 
   // Trim and validate fields
   const trimmedEmail = email?.trim();
   const trimmedPassword = password?.trim();
   const trimmedFirstName = firstName?.trim();
   const trimmedLastName = lastName?.trim();
+  const trimmedPhone = phone?.trim() || undefined;
 
   if (
     !trimmedEmail ||
@@ -91,6 +93,7 @@ export async function POST(req: Request) {
     name: compositeName,
     firstName: trimmedFirstName,
     lastName: trimmedLastName,
+    phone: trimmedPhone,
     role: "CAPTAIN", // default
     // emailVerified is null by default (unverified), set to DateTime after OTP verification
   };
@@ -111,7 +114,7 @@ export async function POST(req: Request) {
       firstName: trimmedFirstName,
       lastName: trimmedLastName,
       displayName,
-      phone: "", // can be updated later
+      phone: trimmedPhone || "", // from registration or updated later
       bio: "",
       experienceYrs: 0,
       avatarUrl: null,
