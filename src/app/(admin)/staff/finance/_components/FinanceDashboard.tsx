@@ -108,7 +108,7 @@ export default function FinanceDashboard() {
   if (error) {
     return (
       <div className="p-6">
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="p-4 border border-red-200 rounded-lg bg-red-50">
           <p className="text-sm text-red-800">{error}</p>
         </div>
       </div>
@@ -131,7 +131,7 @@ export default function FinanceDashboard() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Finance Dashboard</h1>
-        <p className="text-sm text-slate-600 mt-1">
+        <p className="mt-1 text-sm text-slate-600">
           Comprehensive financial analytics and performance metrics
           <span className="ml-2 px-2 py-0.5 text-xs bg-slate-100 rounded-full">
             by {dateFieldLabels[dateField]}
@@ -143,7 +143,7 @@ export default function FinanceDashboard() {
       <FinanceNav />
 
       {/* Date range filter and Date field selector */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="p-4 bg-white border border-slate-200 rounded-xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <DateRangeFilter
             startDate={startDate}
@@ -168,15 +168,25 @@ export default function FinanceDashboard() {
       </div>
 
       {/* Main metrics grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total Sales"
           value={current.totalRevenue}
           previousValue={previous.totalRevenue}
           change={changes.totalRevenue}
-          description="Revenue from anglers"
+          description="Gross sales (before discount)"
           color="blue"
           format="currency"
+        />
+
+        <MetricCard
+          title="Bookings"
+          value={current.bookingCount}
+          previousValue={previous.bookingCount}
+          change={changes.bookingCount}
+          description="PAID + COMPLETED"
+          color="slate"
+          format="number"
         />
 
         <MetricCard
@@ -197,26 +207,24 @@ export default function FinanceDashboard() {
           color="purple"
           format="currency"
         />
-
-        <MetricCard
-          title="Bookings"
-          value={current.bookingCount}
-          previousValue={previous.bookingCount}
-          change={changes.bookingCount}
-          description="PAID + COMPLETED"
-          color="slate"
-          format="number"
-        />
       </div>
 
       {/* Fishon Revenue Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
         <MetricCard
           title="Trip Income"
           value={current.tripIncome}
           previousValue={previous.tripIncome}
           description="10% commission from trip price"
           color="emerald"
+          format="currency"
+        />
+        <MetricCard
+          title="Total Discount"
+          value={current.totalDiscount}
+          previousValue={previous.totalDiscount}
+          description="Absorbed from trip income"
+          color="amber"
           format="currency"
         />
 
@@ -230,15 +238,6 @@ export default function FinanceDashboard() {
         />
 
         <MetricCard
-          title="Total Discount"
-          value={current.totalDiscount}
-          previousValue={previous.totalDiscount}
-          description="Absorbed from trip income"
-          color="amber"
-          format="currency"
-        />
-
-        <MetricCard
           title="Payment Gateway"
           value={current.paymentGatewayFee}
           previousValue={previous.paymentGatewayFee}
@@ -246,20 +245,6 @@ export default function FinanceDashboard() {
           color="slate"
           format="currency"
         />
-      </div>
-
-      {/* Secondary metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title="Avg Booking Value"
-          value={current.avgBookingValue}
-          previousValue={previous.avgBookingValue}
-          change={changes.avgBookingValue}
-          description="Per booking"
-          color="blue"
-          format="currency"
-        />
-
         <MetricCard
           title="Tax Collected"
           value={current.totalTax}
@@ -270,8 +255,21 @@ export default function FinanceDashboard() {
         />
       </div>
 
+      {/* Secondary metrics */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Avg Booking Value"
+          value={current.avgBookingValue}
+          previousValue={previous.avgBookingValue}
+          change={changes.avgBookingValue}
+          description="Per booking"
+          color="blue"
+          format="currency"
+        />
+      </div>
+
       {/* Revenue trend chart */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
+      <div className="p-6 bg-white border border-slate-200 rounded-xl">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-slate-900">
             Revenue Trend
@@ -284,13 +282,13 @@ export default function FinanceDashboard() {
       </div>
 
       {/* Balance verification section */}
-      <div className="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+      <div className="p-6 border bg-gradient-to-br from-slate-50 to-white border-slate-200 rounded-xl">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">
           Financial Balance
         </h2>
         <div className="space-y-3">
           <div className="flex items-center justify-between py-2 border-b border-slate-200">
-            <span className="text-sm text-slate-600">Total Sales</span>
+            <span className="text-sm text-slate-600">Total Sales (Gross)</span>
             <span className="text-sm font-semibold text-slate-900">
               RM {current.totalRevenue.toFixed(2)}
             </span>
@@ -302,7 +300,9 @@ export default function FinanceDashboard() {
             </span>
           </div>
           <div className="flex items-center justify-between py-2 pl-4">
-            <span className="text-sm text-slate-600">+ Fishon Revenue</span>
+            <span className="text-sm text-slate-600">
+              + Fishon Revenue (Net)
+            </span>
             <span className="text-sm text-emerald-600">
               RM {current.platformRevenue.toFixed(2)}
             </span>
@@ -320,7 +320,7 @@ export default function FinanceDashboard() {
             </span>
           </div>
           <div className="flex items-center justify-between py-2 pl-8 text-xs">
-            <span className="text-slate-500">↳ Discount Applied</span>
+            <span className="text-slate-500">↳ Discount Absorbed</span>
             <span className="text-amber-500">
               - RM {current.totalDiscount.toFixed(2)}
             </span>
@@ -337,13 +337,7 @@ export default function FinanceDashboard() {
               RM {current.totalTax.toFixed(2)}
             </span>
           </div>
-          <div className="flex items-center justify-between py-2 pl-4 border-b border-slate-200">
-            <span className="text-sm text-slate-600">+ Discount Given</span>
-            <span className="text-sm text-amber-600">
-              RM {current.totalDiscount.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between py-2 bg-slate-50 rounded-lg px-4">
+          <div className="flex items-center justify-between px-4 py-2 rounded-lg bg-slate-50">
             <span className="text-sm font-semibold text-slate-900">
               Calculated Total
             </span>
@@ -366,7 +360,7 @@ export default function FinanceDashboard() {
                 current.totalTax +
                 current.totalDiscount)
           ) < 0.01 ? (
-            <div className="flex items-center gap-2 text-emerald-600 text-sm">
+            <div className="flex items-center gap-2 text-sm text-emerald-600">
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -383,7 +377,7 @@ export default function FinanceDashboard() {
               <span>Balance verified</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-red-600 text-sm">
+            <div className="flex items-center gap-2 text-sm text-red-600">
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -404,13 +398,13 @@ export default function FinanceDashboard() {
       </div>
 
       {/* Comparison summary */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+      <div className="p-6 bg-white border border-slate-200 rounded-xl">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">
           Period Comparison
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
-            <h3 className="text-sm font-medium text-slate-700 mb-2">
+            <h3 className="mb-2 text-sm font-medium text-slate-700">
               Current Period
             </h3>
             <div className="space-y-2">
@@ -433,7 +427,7 @@ export default function FinanceDashboard() {
             </div>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-slate-700 mb-2">
+            <h3 className="mb-2 text-sm font-medium text-slate-700">
               Previous Period
             </h3>
             <div className="space-y-2">

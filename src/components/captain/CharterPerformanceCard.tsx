@@ -1,7 +1,7 @@
 "use client";
 
 import type { CharterPerformance } from "@/lib/charter-service";
-import { AlertCircle, Calendar, Check, Image, Star } from "lucide-react";
+import { AlertCircle, Calendar, Check, Star } from "lucide-react";
 
 /**
  * Props for CharterPerformanceCard
@@ -61,12 +61,12 @@ export function CharterPerformanceCard({
           <div className="rounded-lg bg-indigo-50 p-2.5">
             <Star className="w-5 h-5 text-indigo-600" aria-hidden="true" />
           </div>
-          <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+          <h3 className="text-xs font-semibold tracking-wide uppercase text-slate-600">
             Performance
           </h3>
         </div>
         <div className="py-6 text-center">
-          <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
           <p className="text-sm text-slate-500">No charters available</p>
         </div>
       </div>
@@ -87,7 +87,7 @@ export function CharterPerformanceCard({
         <div className="rounded-lg bg-indigo-50 p-2.5">
           <Star className="w-5 h-5 text-indigo-600" aria-hidden="true" />
         </div>
-        <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+        <h3 className="text-xs font-semibold tracking-wide uppercase text-slate-600">
           Performance
         </h3>
       </div>
@@ -97,7 +97,7 @@ export function CharterPerformanceCard({
         <div className="space-y-3">
           {/* Charter Name with Status */}
           <div className="flex items-center justify-between">
-            <p className="font-semibold text-slate-900 truncate">
+            <p className="font-semibold truncate text-slate-900">
               {charter.name}
             </p>
             {charter.isActive ? (
@@ -113,7 +113,7 @@ export function CharterPerformanceCard({
           </div>
 
           {/* Rating */}
-          <div className="flex items-center justify-between text-sm pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-between pt-3 text-sm border-t border-slate-100">
             <div className="flex items-center gap-2 text-slate-600">
               <Star
                 className="w-4 h-4 text-amber-500 fill-amber-500"
@@ -136,17 +136,6 @@ export function CharterPerformanceCard({
               {charter.bookingCount}
             </span>
           </div>
-
-          {/* Media Count */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-slate-600">
-              <Image className="w-4 h-4 text-purple-600" aria-hidden="true" />
-              <span>Media files</span>
-            </div>
-            <span className="font-bold text-slate-900">
-              {charter.mediaCount}
-            </span>
-          </div>
         </div>
       ) : (
         // Multiple charters: Compact list format
@@ -157,7 +146,7 @@ export function CharterPerformanceCard({
               className="p-3 rounded-lg hover:bg-slate-50 transition-colors duration-200 focus-within:ring-2 focus-within:ring-[#ec2227]"
             >
               <div className="flex items-center justify-between mb-2">
-                <p className="font-semibold text-slate-900 truncate text-sm">
+                <p className="text-sm font-semibold truncate text-slate-900">
                   {c.name}
                 </p>
                 {c.isActive ? (
@@ -188,16 +177,12 @@ export function CharterPerformanceCard({
                   <Calendar className="w-4 h-4" aria-hidden="true" />
                   <span className="font-semibold">{c.bookingCount}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Image className="w-4 h-4" aria-hidden="true" />
-                  <span className="font-semibold">{c.mediaCount}</span>
-                </div>
               </div>
             </div>
           ))}
 
           {charterPerformance.length > 3 && (
-            <p className="text-xs text-slate-500 text-center pt-2 font-medium">
+            <p className="pt-2 text-xs font-medium text-center text-slate-500">
               +{charterPerformance.length - 3} more
             </p>
           )}

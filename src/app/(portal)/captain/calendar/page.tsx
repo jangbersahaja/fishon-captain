@@ -28,6 +28,8 @@ export default async function NewCalendarPage({
     where: { userId: session.user.id },
     select: {
       id: true,
+      displayName: true,
+      phone: true,
       charters: {
         where: { isActive: true },
         select: {
@@ -148,6 +150,8 @@ export default async function NewCalendarPage({
       platformFee: null,
       serviceFee: null,
       captainEarnings: null,
+      discount: null,
+      tax: null,
       refundStatus: null,
       refundAmount: null,
       refundedAt: null,
@@ -173,6 +177,9 @@ export default async function NewCalendarPage({
       conversationId: null,
       conversationStatus: null,
       allParticipants: [],
+      captainName: captain.displayName,
+      captainPhone: captain.phone,
+      captainEmail: session.user.email || null,
     }));
 
   const allBookings = [...bookings, ...blockedBookings];

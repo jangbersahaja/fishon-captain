@@ -6,6 +6,7 @@ import {
   BookCheck,
   Calendar,
   DollarSign,
+  Gift,
   IdCard,
   Image as ImageIcon,
   LayoutDashboard,
@@ -69,6 +70,7 @@ const navSections: NavSection[] = [
     label: "Business",
     links: [
       { href: "/captain/earnings", label: "Earnings", Icon: DollarSign },
+      { href: "/captain/referrals", label: "Referrals", Icon: Gift },
       { href: "/captain/reviews", label: "Reviews", Icon: Star },
       { href: "/captain/analytics", label: "Analytics", Icon: BarChart3 },
     ],

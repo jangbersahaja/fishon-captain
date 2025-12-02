@@ -9,7 +9,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import type { EnrichedMarketBooking } from "@/lib/enrich-booking";
-import { Calendar, CreditCard, User } from "lucide-react";
+import { Anchor, Calendar, CreditCard, User } from "lucide-react";
 import Link from "next/link";
 import { QuickActions } from "./QuickActions";
 
@@ -69,6 +69,10 @@ export function BookingCard({ booking }: BookingCardProps) {
                 Guest
               </Badge>
             )}
+          </div>
+          <div className="flex items-center gap-2 text-slate-700">
+            <Anchor className="w-4 h-4 text-slate-400" />
+            <span>{booking.captainName || "Unknown Captain"}</span>
           </div>
           <div className="flex items-center gap-2 text-slate-700">
             <Calendar className="w-4 h-4 text-slate-400" />

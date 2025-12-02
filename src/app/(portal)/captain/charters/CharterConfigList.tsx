@@ -2,9 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import type { EnhancedCharterConfig } from "@/lib/charter-service";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Plus, Ship } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { CharterConfigCard } from "./CharterConfigCard";
+import { CharterManagementCard } from "./components/CharterManagementCard";
 
 type CharterConfigListProps = {
   charters: EnhancedCharterConfig[];
@@ -33,21 +33,59 @@ export function CharterConfigList({
     }
   };
 
+  // Summary stats across all charters
+  const totalBookings = charters.reduce(
+    (sum, c) => sum + c.bookingStats.total,
+    0
+  );
+  const thisMonthBookings = charters.reduce(
+    (sum, c) => sum + c.bookingStats.thisMonth,
+    0
+  );
+  const activeCharters = charters.filter((c) => c.isActive).length;
+
   return (
     <div className="space-y-6">
+      {/* Summary Stats (if multiple charters) */}
+      {charters.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 ">
+          <div className="p-4 bg-white border rounded-xl border-slate-200">
+            <div className="flex items-center gap-2 mb-1">
+              <Ship className="w-4 h-4 text-blue-500" />
+              <span className="text-xs font-medium text-slate-500">
+                Total Charters
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">
+              {charters.length}
+            </p>
+          </div>
+          <div className="p-4 bg-white border rounded-xl border-slate-200">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full" />
+              <span className="text-xs font-medium text-slate-500">Active</span>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">
+              {activeCharters}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header with Add Charter Button */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">
-            Your Charters
+            {charters.length === 0 ? "Get Started" : "Your Charters"}
           </h2>
           <p className="text-sm text-slate-500">
             {charters.length === 0
               ? "Create your first charter listing"
-              : `Managing ${charters.length} charter${charters.length !== 1 ? "s" : ""}`}
+              : `Manage your charter listings, configurations, and booking settings`}
           </p>
         </div>
 
+        {/* Hidden for now - Coming Soon */}
         <div className="flex-col items-center hidden gap-1 p-5 px-5 py-3 border-2 border-blue-200 shadow-sm rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50">
           <Button
             onClick={handleAddCharter}
@@ -83,9 +121,9 @@ export function CharterConfigList({
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-6">
           {charters.map((charter) => (
-            <CharterConfigCard
+            <CharterManagementCard
               key={charter.id}
               charter={charter}
               adminUserId={adminUserId}

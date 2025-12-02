@@ -6,6 +6,10 @@ import {
   sendVerificationCode,
   sendWelcomeEmail,
 } from "@/lib/services/email-service";
+import {
+  onInviteeRegistered,
+  validateReferralCode,
+} from "@/lib/services/referral-service";
 import type { Prisma } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -16,6 +20,7 @@ interface SignupBody {
   firstName?: string;
   lastName?: string;
   displayName?: string;
+  referralCode?: string;
 }
 
 export async function POST(req: Request) {
@@ -112,6 +117,76 @@ export async function POST(req: Request) {
       avatarUrl: null,
     },
   });
+
+  // Process referral attribution if referral code provided
+  if (body.referralCode) {
+    try {
+      const validation = await validateReferralCode(
+        body.referralCode,
+        normalizedEmail,
+        user.id
+      );
+      if (validation.valid && validation.referralCodeId) {
+        // Find the pending referral for this code (created on click)
+        const pendingReferral = await prisma.referral.findFirst({
+          where: {
+            referralCodeId: validation.referralCodeId,
+            status: "PENDING",
+            inviteeId: null,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (pendingReferral) {
+          // Update existing referral
+          await onInviteeRegistered({
+            referralId: pendingReferral.id,
+            inviteeId: user.id,
+            inviteeEmail: normalizedEmail,
+          });
+          console.log(
+            `[signup] Referral attributed: ${body.referralCode} -> ${user.id}`
+          );
+        } else {
+          // No pending referral from click, create direct attribution
+          // This handles case where user manually enters code without clicking link
+          const referralCode = await prisma.referralCode.findUnique({
+            where: { code: body.referralCode.toUpperCase() },
+          });
+          if (referralCode) {
+            const newReferral = await prisma.referral.create({
+              data: {
+                referralCodeId: referralCode.id,
+                invitorId: referralCode.ownerId,
+                inviteeId: user.id,
+                inviteeEmail: normalizedEmail,
+                status: "REGISTERED",
+                registeredAt: new Date(),
+                expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+              },
+            });
+            // Update user's referredById
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { referredById: referralCode.ownerId },
+            });
+            // Increment signup count
+            await prisma.referralCode.update({
+              where: { id: referralCode.id },
+              data: { signupCount: { increment: 1 } },
+            });
+            console.log(
+              `[signup] Direct referral created: ${body.referralCode} -> ${user.id}, referral: ${newReferral.id}`
+            );
+          }
+        }
+      }
+    } catch (referralError) {
+      // Log but don't fail signup if referral processing fails
+      console.error("[signup] Referral processing error:", referralError);
+    }
+  }
+
   // Send welcome email to captain
   await sendWelcomeEmail({
     to: user.email,

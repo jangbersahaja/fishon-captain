@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, CreditCard, FileText } from "lucide-react";
+import { BarChart3, CreditCard, FileText, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -20,6 +20,11 @@ const navItems: NavItem[] = [
     href: "/staff/finance/bookings",
     label: "Bookings",
     icon: FileText,
+  },
+  {
+    href: "/staff/finance/payments",
+    label: "Payments",
+    icon: Wallet,
   },
   {
     href: "/staff/finance/payouts",

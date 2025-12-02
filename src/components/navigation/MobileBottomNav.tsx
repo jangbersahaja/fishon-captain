@@ -2,10 +2,10 @@
 
 import {
   BookCheck,
+  Calendar,
   Inbox,
   LayoutDashboard,
   MoreHorizontal,
-  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -59,14 +59,14 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
       icon: <LayoutDashboard className="w-6 h-6" />,
     },
     {
-      href: "/captain/earnings",
-      label: "Earnings",
-      icon: <Wallet className="w-6 h-6" />,
-    },
-    {
       href: "/captain/bookings",
       label: "Bookings",
       icon: <BookCheck className="w-6 h-6" />,
+    },
+    {
+      href: "/captain/calendar",
+      label: "Earnings",
+      icon: <Calendar className="w-6 h-6" />,
     },
     {
       href: "/captain/messages",
