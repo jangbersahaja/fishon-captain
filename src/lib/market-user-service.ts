@@ -227,7 +227,30 @@ export async function getMarketUsers(
   const totalPages = Math.ceil(totalCount / limit);
 
   // Transform users to include isOAuthUser flag
-  const transformedUsers: MarketUserWithCounts[] = users.map((user: any) => ({
+  type UserSelectType = {
+    id: string;
+    email: string;
+    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    image: string | null;
+    emailVerified: Date | null;
+    role: "ANGLER" | "GUEST" | "ADMIN";
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    accounts?: { provider: string }[];
+    _count: {
+      bookings: number;
+      reviews: number;
+      promoCodeAssignments: number;
+    };
+  };
+
+  const transformedUsers: MarketUserWithCounts[] = users.map((user: UserSelectType) => ({
     id: user.id,
     email: user.email,
     name: user.name,
