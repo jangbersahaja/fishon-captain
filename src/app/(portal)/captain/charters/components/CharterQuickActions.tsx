@@ -2,15 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import type { EnhancedCharterConfig } from "@/lib/charter-service";
-import {
-  Calendar,
-  Copy,
-  Edit2,
-  ExternalLink,
-  ImageIcon,
-  List,
-  Ship,
-} from "lucide-react";
+import { Calendar, Copy, Edit2, ImageIcon, List, Ship } from "lucide-react";
 import Link from "next/link";
 
 interface CharterQuickActionsProps {
@@ -35,16 +27,6 @@ export function CharterQuickActions({
       >
         <Edit2 className="w-4 h-4" />
         Edit Charter
-      </Link>
-
-      <Link
-        href={marketplaceUrl}
-        target="_blank"
-        rel="noopener"
-        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors bg-white border rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50"
-      >
-        <ExternalLink className="w-4 h-4" />
-        View Live
       </Link>
 
       <Link

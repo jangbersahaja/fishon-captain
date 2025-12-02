@@ -166,10 +166,11 @@ export async function POST(req: NextRequest) {
     selectionDuration !== undefined && selectionDuration <= 60.05; // small epsilon
   // Resolution check: treat any video whose intrinsic dimensions are already <= target (1280x720) as compliant.
   // This includes smaller resolutions like 640x360 (should bypass) and also portrait (e.g., 720x1280 will NOT bypass because height >720).
-  // If metadata is partially missing we default to 0 which passes, but duration guard still required.
+  // CRITICAL: If dimensions are unknown (0,0), we MUST normalize - don't allow bypass with missing metadata.
   const w = parsed.data.width || probedWidth || 0;
   const h = parsed.data.height || probedHeight || 0;
-  const withinResolution = w <= 1280 && h <= 720;
+  const hasDimensions = w > 0 && h > 0;
+  const withinResolution = hasDimensions && w <= 1280 && h <= 720;
   const canBypassViaMetadata = withinDuration && withinResolution;
   const shouldNormalize = !canBypassViaMetadata && hasExternalWorker;
 
@@ -178,6 +179,9 @@ export async function POST(req: NextRequest) {
     hasExternalWorker,
     selectionDuration,
     withinDuration,
+    width: w,
+    height: h,
+    hasDimensions,
     withinResolution,
     canBypassViaMetadata,
     shouldNormalize,
