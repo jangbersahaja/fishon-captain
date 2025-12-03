@@ -11,7 +11,7 @@
 "use client";
 
 import { useNotifications } from "@/hooks/useNotifications";
-import { createContext, useContext } from "react";
+import { createContext, Suspense, useContext } from "react";
 
 // Re-export the Notification type from the hook
 import type { Notification } from "@/hooks/useNotifications";
@@ -33,11 +33,24 @@ interface NotificationContextValue {
   refresh: () => void;
 }
 
-const NotificationContext = createContext<NotificationContextValue | null>(
-  null
-);
+// Default context value for when Suspense is loading
+const defaultContextValue: NotificationContextValue = {
+  notifications: [],
+  unreadCount: 0,
+  isLoading: true,
+  error: null,
+  hasMore: false,
+  markAsRead: async () => {},
+  markAllAsRead: async () => {},
+  deleteNotification: async () => {},
+  fetchMore: () => {},
+  refresh: () => {},
+};
 
-export function NotificationProvider({
+const NotificationContext =
+  createContext<NotificationContextValue>(defaultContextValue);
+
+function NotificationProviderInner({
   children,
 }: {
   children: React.ReactNode;
@@ -64,12 +77,25 @@ export function NotificationProvider({
   );
 }
 
+export function NotificationProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <NotificationContext.Provider value={defaultContextValue}>
+          {children}
+        </NotificationContext.Provider>
+      }
+    >
+      <NotificationProviderInner>{children}</NotificationProviderInner>
+    </Suspense>
+  );
+}
+
 export function useNotificationContext() {
   const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error(
-      "useNotificationContext must be used within NotificationProvider"
-    );
-  }
   return context;
 }
