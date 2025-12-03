@@ -41,7 +41,7 @@ export function EditCampaignClient({
   };
 
   return (
-    <div className="px-6 py-8 mx-auto max-w-5xl">
+    <div className="px-6 py-8 mx-auto">
       <div className="mb-8">
         <Link href="/staff/campaigns">
           <Button variant="outline" className="mb-4">

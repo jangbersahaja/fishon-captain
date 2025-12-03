@@ -3,7 +3,12 @@
 import { BookingActions } from "@/app/(portal)/captain/bookings/BookingActions";
 import { CaptainCancelDialog } from "@/app/(portal)/captain/bookings/CaptainCancelDialog";
 import type { EnrichedMarketBooking } from "@/lib/enrich-booking";
-import { CircleDollarSign, Clock, Users } from "lucide-react";
+import {
+  CircleDollarSign,
+  Clock,
+  MessageSquareText,
+  Users,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -173,13 +178,18 @@ export function EnhancedBookingCard({
               </div>
             </div>
 
-            {/* Note */}
+            {/* Guest Note - Prominent Display */}
             {booking.note && (
-              <div className="p-2.5 border border-slate-200 rounded-lg bg-slate-50">
-                <div className="mb-1 text-xs font-semibold text-slate-700">
-                  Angler&apos;s Note:
+              <div className="p-3 border-2 rounded-lg border-amber-300 bg-amber-50">
+                <div className="flex items-start gap-2">
+                  <MessageSquareText className="w-4 h-4 mt-0.5 text-amber-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="mb-1 text-xs font-semibold text-amber-800">
+                      Message from Angler
+                    </div>
+                    <div className="text-sm text-amber-900">{booking.note}</div>
+                  </div>
                 </div>
-                <div className="text-sm text-slate-700">{booking.note}</div>
               </div>
             )}
 
@@ -322,13 +332,18 @@ export function EnhancedBookingCard({
           </div>
         </div>
 
-        {/* Note */}
+        {/* Guest Note - Prominent Display */}
         {booking.note && (
-          <div className="p-2.5 border border-slate-200 rounded-lg bg-slate-50">
-            <div className="mb-1 text-xs font-semibold text-slate-700">
-              Angler&apos;s Note:
+          <div className="p-3 border-2 rounded-lg border-amber-300 bg-amber-50">
+            <div className="flex items-start gap-2">
+              <MessageSquareText className="w-4 h-4 mt-0.5 text-amber-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="mb-1 text-xs font-semibold text-amber-800">
+                  Message from Angler
+                </div>
+                <div className="text-sm text-amber-900">{booking.note}</div>
+              </div>
             </div>
-            <div className="text-sm text-slate-700">{booking.note}</div>
           </div>
         )}
 
