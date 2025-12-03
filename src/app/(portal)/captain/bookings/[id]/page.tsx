@@ -1,5 +1,6 @@
 import { BookingStatusBadge } from "@/components/captain/BookingStatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculatePricing } from "@/lib/services/pricing-service";
@@ -14,6 +15,7 @@ import {
   FileText,
   Mail,
   MessageCircle,
+  MessageSquareText,
   Phone,
   Ship,
   User,
@@ -52,19 +54,33 @@ function getStatusIcon(status: string) {
 
 export default async function BookingDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ [k: string]: string | undefined }>;
 }): Promise<React.JSX.Element> {
   const session = await getServerSession(authOptions);
   const { id } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const adminUserId = resolvedSearchParams?.adminUserId;
 
   if (!session?.user?.id) {
     redirect("/auth?mode=signin");
   }
 
+  // Use effective user ID for admin bypass
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/auth?mode=signin");
+  }
+
   // Ensure captain profile exists
   const captain = await prisma.captainProfile.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: effectiveUserId },
     select: { id: true },
   });
 
@@ -128,7 +144,7 @@ export default async function BookingDetailsPage({
     <div className="px-6 py-8 space-y-6" key={booking.id}>
       {/* Back Link */}
       <Link
-        href="/captain/bookings"
+        href={`/captain/bookings${adminUserId ? `?adminUserId=${adminUserId}` : ""}`}
         className="inline-flex items-center gap-2 text-sm transition-colors text-slate-600 hover:text-slate-900"
         prefetch={false}
       >
@@ -274,6 +290,25 @@ export default async function BookingDetailsPage({
               </div>
             </div>
           </div>
+
+          {/* Customer Note - Prominent Display */}
+          {booking.note && (
+            <div className="p-5 border-2 border-amber-300 rounded-2xl bg-amber-50">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-amber-100">
+                  <MessageSquareText className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-base font-semibold text-amber-900">
+                    Message from Angler
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-amber-800">
+                    {booking.note}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Booking Details */}
           <div className="p-6 bg-white border rounded-2xl border-slate-200">

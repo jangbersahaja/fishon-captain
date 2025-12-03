@@ -3,46 +3,61 @@ import { BookingCalendar } from "@/components/captain/BookingCalendar";
 import { BookingStatsCards } from "@/components/captain/BookingStatsCards";
 import { BookingTabs } from "@/components/captain/BookingTabs";
 import { PriorityBookings } from "@/components/captain/PriorityBookings";
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { getPriorityBookings } from "@/lib/booking-priority";
 import { getCaptainBookings } from "@/lib/booking-service";
 import { prisma } from "@/lib/prisma";
 import { Calendar } from "lucide-react";
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function CaptainBookingsPage() {
+export default async function CaptainBookingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [k: string]: string | undefined }>;
+}) {
   const session = await getServerSession(authOptions);
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const adminUserId = resolvedSearchParams?.adminUserId;
 
   if (!session?.user?.id) {
-    return (
-      <div className="px-6 py-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          Bookings
-        </h1>
-        <p className="mt-4 text-slate-600">
-          You must be signed in to view bookings.
-        </p>
-      </div>
-    );
+    redirect("/auth?mode=signin");
+  }
+
+  // Use effective user ID for admin bypass
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/auth?mode=signin");
   }
 
   // Ensure captain profile exists
   const captain = await prisma.captainProfile.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: effectiveUserId },
     select: { id: true },
   });
 
   if (!captain) {
-    return (
-      <div className="px-6 py-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          Bookings
-        </h1>
-        <p className="mt-4 text-slate-600">Captain profile not found.</p>
-      </div>
-    );
+    // If admin is viewing and captain doesn't exist, show helpful message
+    if (adminUserId) {
+      return (
+        <div className="px-6 py-8">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Bookings
+          </h1>
+          <p className="mt-4 text-slate-600">
+            This user does not have a captain profile.
+          </p>
+        </div>
+      );
+    }
+    redirect("/captain/form");
   }
 
   // Captain's active charters

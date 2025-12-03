@@ -96,6 +96,14 @@ export const navSections: NavSection[] = [
   },
 ];
 
+// Helper to build href with adminUserId preserved
+function buildHref(baseHref: string, adminUserId: string | null): string {
+  if (adminUserId) {
+    return `${baseHref}?adminUserId=${adminUserId}`;
+  }
+  return baseHref;
+}
+
 export function DashboardNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -103,6 +111,10 @@ export function DashboardNav() {
   const active = useMemo(() => pathname?.replace(/\/$/, "") || "", [pathname]);
   const isNewCharterRegistration =
     active === "/captain/form" && !searchParams?.get("editCharterId");
+
+  // Get adminUserId from search params to preserve across navigation
+  const adminUserId = searchParams?.get("adminUserId") || null;
+  const isAdminMode = !!adminUserId;
 
   const user = session?.user;
 
@@ -168,6 +180,13 @@ export function DashboardNav() {
 
   return (
     <nav className="flex flex-col h-full text-sm">
+      {/* Admin Mode Banner */}
+      {isAdminMode && (
+        <div className="px-4 py-2 text-xs font-medium text-center text-orange-800 bg-orange-100 border-b border-orange-200">
+          🛡️ Admin Mode
+        </div>
+      )}
+
       {/* Profile Section */}
       <div className="px-5 pt-6 pb-2">
         <div className="flex items-center gap-3 mb-2">
@@ -202,10 +221,11 @@ export function DashboardNav() {
             <div className="flex flex-col gap-1">
               {section.links.map(({ href, label, Icon }) => {
                 const isActive = active === href;
+                const finalHref = buildHref(href, adminUserId);
                 return (
                   <Link
                     key={href}
-                    href={href}
+                    href={finalHref}
                     className={
                       "rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 " +
                       (isActive
@@ -228,21 +248,33 @@ export function DashboardNav() {
       {/* Footer Actions */}
       <div className="px-5 py-4 mt-auto border-t border-slate-200">
         <div className="flex flex-col gap-1">
-          <Link
-            href="https://www.fishon.my"
-            target="_blank"
-            className="rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 text-slate-600 hover:bg-slate-100"
-          >
-            <Store className="w-4 h-4" />
-            Marketplace
-          </Link>
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 text-red-600 hover:bg-red-50 w-full text-left"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
+          {isAdminMode ? (
+            <Link
+              href="/staff"
+              className="rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 text-orange-600 hover:bg-orange-50"
+            >
+              <LogOut className="w-4 h-4" />
+              Exit Admin Mode
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="https://www.fishon.my"
+                target="_blank"
+                className="rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 text-slate-600 hover:bg-slate-100"
+              >
+                <Store className="w-4 h-4" />
+                Marketplace
+              </Link>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="rounded-full px-4 py-1.5 font-medium transition whitespace-nowrap inline-flex items-center gap-2 text-red-600 hover:bg-red-50 w-full text-left"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            </>
+          )}
         </div>
       </div>
     </nav>
