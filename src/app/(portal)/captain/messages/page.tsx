@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { getCaptainConversationsEnriched } from "@/lib/message-service";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
 export default async function CaptainMessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ selected?: string }>;
+  searchParams: Promise<{ selected?: string; adminUserId?: string }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -28,10 +29,21 @@ export default async function CaptainMessagesPage({
 
   // Await searchParams (Next.js 15 requirement)
   const params = await searchParams;
+  const adminUserId = params.adminUserId;
+
+  // Use effective user ID for admin bypass
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/login");
+  }
 
   // Get all charters owned by this captain
   const charters = await prisma.charter.findMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId: effectiveUserId },
     select: { id: true },
   });
 
@@ -68,7 +80,7 @@ export default async function CaptainMessagesPage({
       conversations={serializedConversations}
       selectedId={selectedId}
       selectedConversation={selectedConversation}
-      userId={session.user.id}
+      userId={effectiveUserId}
     />
   );
 }

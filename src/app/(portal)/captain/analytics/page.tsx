@@ -7,6 +7,7 @@ import {
   type AnalyticsPeriod,
 } from "@/components/captain/analytics";
 import { AnalyticsPeriodSelector } from "@/components/captain/analytics/AnalyticsPeriodSelector";
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { getOwnerAnalytics } from "@/lib/analytics-service";
 import { authOptions } from "@/lib/auth";
 import { BarChart3 } from "lucide-react";
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
 interface AnalyticsPageProps {
   searchParams: Promise<{
     period?: string;
+    adminUserId?: string;
   }>;
 }
 
@@ -34,6 +36,15 @@ export default async function AnalyticsPage({
   // Get period from search params (default to 30d)
   const params = await searchParams;
   const period = (params.period as AnalyticsPeriod) || "30d";
+  const adminUserId = params.adminUserId;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/login");
+  }
 
   // Validate period
   const validPeriods = ["7d", "30d", "90d", "1y"];
@@ -60,7 +71,7 @@ export default async function AnalyticsPage({
 
       {/* Analytics Content */}
       <Suspense fallback={<div>Loading...</div>}>
-        <AnalyticsContent userId={session.user.id} period={period} />
+        <AnalyticsContent userId={effectiveUserId} period={period} />
       </Suspense>
     </div>
   );

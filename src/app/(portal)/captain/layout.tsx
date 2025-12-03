@@ -5,7 +5,7 @@ import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
 import { NavigationDrawer } from "@/components/navigation/NavigationDrawer";
 import { ToastProvider } from "@/components/toast/ToastContext";
 import { zIndexClasses } from "@/config/zIndex";
-import { useSession } from "next-auth/react";
+import { useEffectiveUser } from "@/hooks/useEffectiveUser";
 import React, { Suspense, useState } from "react";
 import { DashboardNav, navSections } from "./nav";
 
@@ -14,10 +14,8 @@ export default function CaptainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session } = useSession();
+  const { user, isAdminMode, adminUserId } = useEffectiveUser();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  const user = session?.user;
 
   return (
     <ToastProvider>
@@ -35,6 +33,8 @@ export default function CaptainLayout({
             captainName={user?.name || "Captain"}
             captainEmail={user?.email || ""}
             captainImage={user?.image || undefined}
+            isAdminMode={isAdminMode}
+            adminUserId={adminUserId}
           />
         </Suspense>
 

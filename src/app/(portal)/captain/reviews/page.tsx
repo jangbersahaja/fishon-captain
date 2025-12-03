@@ -1,4 +1,5 @@
 import ReviewsList from "@/components/charter/ReviewsList";
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { MarketReview } from "@/lib/review-service";
@@ -48,7 +49,11 @@ function convertToBookingReview(review: MarketReview) {
   };
 }
 
-export default async function CaptainReviewsPage() {
+interface PageProps {
+  searchParams: Promise<{ adminUserId?: string }>;
+}
+
+export default async function CaptainReviewsPage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
@@ -64,9 +69,28 @@ export default async function CaptainReviewsPage() {
     );
   }
 
+  const { adminUserId } = await searchParams;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    return (
+      <div className="px-6 py-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Reviews
+        </h1>
+        <p className="mt-4 text-slate-600">
+          Unable to determine user. Please sign in again.
+        </p>
+      </div>
+    );
+  }
+
   // Get captain's charters
   const captain = await prisma.captainProfile.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: effectiveUserId },
     include: {
       charters: {
         where: { isActive: true },

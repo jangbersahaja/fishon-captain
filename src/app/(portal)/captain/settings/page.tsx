@@ -10,11 +10,19 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function CaptainSettingsPage() {
+interface PageProps {
+  searchParams: Promise<{ adminUserId?: string }>;
+}
+
+export default async function CaptainSettingsPage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/auth?mode=signin");
 
-  // Fetch user's password status
+  const { adminUserId } = await searchParams;
+  const isAdminMode = !!adminUserId;
+
+  // Fetch user's password status - always use session.user.id for password management
+  // (admin viewing captain's dashboard shouldn't change their password)
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -32,6 +40,16 @@ export default async function CaptainSettingsPage() {
           Manage your account and notification preferences
         </p>
       </div>
+
+      {/* Admin Mode Warning */}
+      {isAdminMode && (
+        <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
+          <p className="text-sm font-medium text-orange-800">
+            🛡️ Admin Mode: Settings shown are for your own account, not the
+            captain you are viewing.
+          </p>
+        </div>
+      )}
 
       <Separator />
 

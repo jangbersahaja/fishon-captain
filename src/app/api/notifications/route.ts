@@ -1,8 +1,10 @@
 /**
  * GET /api/notifications
  * List user's notifications with pagination
+ * Supports admin bypass via adminUserId query param
  */
 
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { getUserNotifications } from "@/lib/services/notification-service";
 import { getServerSession } from "next-auth";
@@ -17,11 +19,22 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const adminUserId = searchParams.get("adminUserId") || undefined;
     const unreadOnly = searchParams.get("unreadOnly") === "true";
     const limit = parseInt(searchParams.get("limit") || "20");
     const cursor = searchParams.get("cursor") || undefined;
 
-    const result = await getUserNotifications(session.user.id, {
+    // Use admin bypass to get effective user ID
+    const effectiveUserId = getEffectiveUserId({
+      session,
+      query: { adminUserId },
+    });
+
+    if (!effectiveUserId) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const result = await getUserNotifications(effectiveUserId, {
       unreadOnly,
       limit,
       cursor,

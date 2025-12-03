@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import {
   getCaptainBookings,
@@ -25,7 +26,7 @@ export const metadata = {
 };
 
 interface PageProps {
-  searchParams?: Promise<{ period?: string }>;
+  searchParams?: Promise<{ period?: string; adminUserId?: string }>;
 }
 
 export default async function CaptainEarningsPage({ searchParams }: PageProps) {
@@ -37,7 +38,17 @@ export default async function CaptainEarningsPage({ searchParams }: PageProps) {
 
   const params = await searchParams;
   const period = (params?.period as TimePeriod) || "30d";
-  const userId = session.user.id;
+  const adminUserId = params?.adminUserId;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/auth?mode=signin&next=/captain/earnings");
+  }
+
+  const userId = effectiveUserId;
 
   // Fetch earnings summary with period
   const earningsSummary = await getCaptainEarningsSummary(userId, period);

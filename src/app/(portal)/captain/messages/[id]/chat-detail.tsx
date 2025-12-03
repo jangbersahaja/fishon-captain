@@ -9,7 +9,7 @@ import {
 } from "@/components/captain/chat";
 import type { Message as HookMessage } from "@/hooks/useConversation";
 import { useConversation } from "@/hooks/useConversation";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 
 interface ConversationData {
@@ -53,6 +53,8 @@ export function ChatDetail({
   showBackButton = false,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const adminUserId = searchParams?.get("adminUserId") || null;
 
   const [conversation, setConversation] =
     useState<ConversationData>(initialConversation);
@@ -110,7 +112,12 @@ export function ChatDetail({
           anglerAvatar={conversation.angler.avatar || ""}
           isOnline={isConnected}
           onBack={
-            showBackButton ? () => router.push("/captain/messages") : undefined
+            showBackButton
+              ? () =>
+                  router.push(
+                    `/captain/messages${adminUserId ? `?adminUserId=${adminUserId}` : ""}`
+                  )
+              : undefined
           }
           booking={
             conversation.booking
@@ -200,7 +207,7 @@ export function ChatDetail({
 
       {/* Chat status notice - Show when locked */}
       {isChatLocked ? (
-        <div className="fixed left-0 right-0 px-4 py-3 border-t bottom-15 bg-gray-50">
+        <div className="fixed left-0 right-0 px-4 py-3 border-t bottom-15 bg-gray-50 md:relative md:bottom-auto md:left-auto md:right-auto">
           <ChatStatusNotice
             status={
               conversation.status === "CLOSED"
@@ -220,7 +227,7 @@ export function ChatDetail({
           />
         </div>
       ) : (
-        <div className="fixed left-0 right-0 px-4 py-3 bg-white border-t bottom-15 md:relative md:bottom-auto md:left-auto md:right-auto md:border-t-0">
+        <div className="fixed left-0 right-0 px-4 py-3 bg-white border-t bottom-15 md:relative md:bottom-auto md:left-auto md:right-auto">
           <ChatInput
             onSendMessage={handleSendMessage}
             isDisabled={!isConnected}

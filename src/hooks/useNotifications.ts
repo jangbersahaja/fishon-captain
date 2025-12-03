@@ -3,6 +3,7 @@
  *
  * Manages notification state and real-time updates via Pusher.
  * Provides notification list, unread count, and actions (mark read, fetch more, etc.)
+ * Supports admin bypass via adminUserId query param.
  *
  * Usage:
  * ```tsx
@@ -15,6 +16,7 @@ import {
   playNotificationSound,
 } from "@/lib/notification-sound";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Pusher from "pusher-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -62,7 +64,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     reconnectOnVisibility = true,
   } = options;
   const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const searchParams = useSearchParams();
+  const adminUserId = searchParams?.get("adminUserId") || null;
+  const isAdminMode = !!adminUserId;
+
+  // In admin mode, use adminUserId; otherwise use session user
+  const userId = isAdminMode ? adminUserId : session?.user?.id;
 
   // Only log in development with debug flag
   if (
@@ -73,6 +80,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       userId,
       autoConnect,
       hasSession: !!session,
+      isAdminMode,
+      adminUserId,
     });
   }
 
@@ -99,6 +108,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           limit: limit.toString(),
           ...(unreadOnly && { unreadOnly: "true" }),
           ...(cursor && { cursor }),
+          ...(adminUserId && { adminUserId }),
         });
 
         const response = await fetch(`/api/notifications?${params}`);
@@ -124,7 +134,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         setIsLoading(false);
       }
     },
-    [userId, limit, unreadOnly]
+    [userId, limit, unreadOnly, adminUserId]
   );
 
   /**
@@ -134,7 +144,13 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     if (!userId) return;
 
     try {
-      const response = await fetch("/api/notifications/unread-count");
+      const params = new URLSearchParams({
+        ...(adminUserId && { adminUserId }),
+      });
+      const url = adminUserId
+        ? `/api/notifications/unread-count?${params}`
+        : "/api/notifications/unread-count";
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch unread count");
 
       const data = await response.json();
@@ -142,42 +158,57 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     } catch (err) {
       console.error("Failed to fetch unread count:", err);
     }
-  }, [userId]);
+  }, [userId, adminUserId]);
 
   /**
    * Mark a notification as read
    */
-  const markAsRead = useCallback(async (notificationId: string) => {
-    try {
-      const response = await fetch(`/api/notifications/${notificationId}`, {
-        method: "PATCH",
-      });
-      if (!response.ok) throw new Error("Failed to mark as read");
+  const markAsRead = useCallback(
+    async (notificationId: string) => {
+      try {
+        const params = new URLSearchParams({
+          ...(adminUserId && { adminUserId }),
+        });
+        const url = adminUserId
+          ? `/api/notifications/${notificationId}?${params}`
+          : `/api/notifications/${notificationId}`;
+        const response = await fetch(url, {
+          method: "PATCH",
+        });
+        if (!response.ok) throw new Error("Failed to mark as read");
 
-      // Optimistically update local state
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notificationId
-            ? {
-                ...n,
-                status: "READ" as const,
-                readAt: new Date().toISOString(),
-              }
-            : n
-        )
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error("Failed to mark notification as read:", err);
-    }
-  }, []);
+        // Optimistically update local state
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notificationId
+              ? {
+                  ...n,
+                  status: "READ" as const,
+                  readAt: new Date().toISOString(),
+                }
+              : n
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
+      }
+    },
+    [adminUserId]
+  );
 
   /**
    * Mark all notifications as read
    */
   const markAllAsRead = useCallback(async () => {
     try {
-      const response = await fetch("/api/notifications/read-all", {
+      const params = new URLSearchParams({
+        ...(adminUserId && { adminUserId }),
+      });
+      const url = adminUserId
+        ? `/api/notifications/read-all?${params}`
+        : "/api/notifications/read-all";
+      const response = await fetch(url, {
         method: "PATCH",
       });
       if (!response.ok) throw new Error("Failed to mark all as read");
@@ -194,33 +225,42 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     } catch (err) {
       console.error("Failed to mark all as read:", err);
     }
-  }, []);
+  }, [adminUserId]);
 
   /**
    * Delete a notification
    */
-  const deleteNotification = useCallback(async (notificationId: string) => {
-    try {
-      const response = await fetch(`/api/notifications/${notificationId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete");
+  const deleteNotification = useCallback(
+    async (notificationId: string) => {
+      try {
+        const params = new URLSearchParams({
+          ...(adminUserId && { adminUserId }),
+        });
+        const url = adminUserId
+          ? `/api/notifications/${notificationId}?${params}`
+          : `/api/notifications/${notificationId}`;
+        const response = await fetch(url, {
+          method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete");
 
-      // Remove from local state
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+        // Remove from local state
+        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
 
-      // Update unread count if it was unread
-      setNotifications((prev) => {
-        const notification = prev.find((n) => n.id === notificationId);
-        if (notification && notification.status === "UNREAD") {
-          setUnreadCount((count) => Math.max(0, count - 1));
-        }
-        return prev.filter((n) => n.id !== notificationId);
-      });
-    } catch (err) {
-      console.error("Failed to delete notification:", err);
-    }
-  }, []);
+        // Update unread count if it was unread
+        setNotifications((prev) => {
+          const notification = prev.find((n) => n.id === notificationId);
+          if (notification && notification.status === "UNREAD") {
+            setUnreadCount((count) => Math.max(0, count - 1));
+          }
+          return prev.filter((n) => n.id !== notificationId);
+        });
+      } catch (err) {
+        console.error("Failed to delete notification:", err);
+      }
+    },
+    [adminUserId]
+  );
 
   /**
    * Fetch more notifications (pagination)

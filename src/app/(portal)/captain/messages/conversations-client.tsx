@@ -5,7 +5,7 @@ import type { Message } from "@/hooks/useConversation";
 import { getPusherClient } from "@/lib/pusher/client";
 import { MessageCircle, MessageSquare, User } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChatDetail } from "./[id]/chat-detail";
 
@@ -68,6 +68,8 @@ export default function ConversationsClient({
   userId,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const adminUserId = searchParams?.get("adminUserId") || null;
   const [isMobile, setIsMobile] = useState(false);
   const [localConversations, setLocalConversations] =
     useState<SerializedConversation[]>(conversations);
@@ -162,12 +164,15 @@ export default function ConversationsClient({
   }, []);
 
   const handleConversationClick = (id: string) => {
+    const adminParam = adminUserId ? `&adminUserId=${adminUserId}` : "";
     if (isMobile) {
       // Mobile: navigate to dedicated page
-      router.push(`/captain/messages/${id}`);
+      router.push(
+        `/captain/messages/${id}${adminUserId ? `?adminUserId=${adminUserId}` : ""}`
+      );
     } else {
       // Desktop: update URL with selected param
-      router.push(`/captain/messages?selected=${id}`);
+      router.push(`/captain/messages?selected=${id}${adminParam}`);
     }
   };
 
@@ -273,9 +278,12 @@ export default function ConversationsClient({
                       {/* Time */}
                       {lastMessage && (
                         <time className="flex-shrink-0 text-xs text-gray-500">
-                          {new Date(lastMessage.createdAt).toLocaleDateString("en-MY", {
-                            timeZone: "Asia/Kuala_Lumpur",
-                          })}
+                          {new Date(lastMessage.createdAt).toLocaleDateString(
+                            "en-MY",
+                            {
+                              timeZone: "Asia/Kuala_Lumpur",
+                            }
+                          )}
                         </time>
                       )}
                     </div>

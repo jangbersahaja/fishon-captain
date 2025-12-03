@@ -650,7 +650,7 @@ export default async function BookingDetailsPage({
                 booking.conversationId &&
                 booking.conversationStatus === "ACTIVE" && (
                   <Link
-                    href={`/captain/messages/${booking.conversationId}`}
+                    href={`/captain/messages/${booking.conversationId}${adminUserId ? `?adminUserId=${adminUserId}` : ""}`}
                     className="inline-flex items-center justify-center flex-1 w-full px-4 py-2 text-sm font-medium text-white transition-colors border rounded-lg bg-slate-900 border-slate-900 hover:bg-slate-800 hover:border-slate-800"
                   >
                     <MessageCircle className="w-4 h-4" />
