@@ -1,4 +1,5 @@
 "use client";
+import { useEffectiveUser } from "@/hooks/useEffectiveUser";
 import {
   BarChart3,
   Bell,
@@ -20,7 +21,7 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -107,16 +108,10 @@ function buildHref(baseHref: string, adminUserId: string | null): string {
 export function DashboardNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data: session } = useSession();
+  const { user, isAdminMode, adminUserId } = useEffectiveUser();
   const active = useMemo(() => pathname?.replace(/\/$/, "") || "", [pathname]);
   const isNewCharterRegistration =
     active === "/captain/form" && !searchParams?.get("editCharterId");
-
-  // Get adminUserId from search params to preserve across navigation
-  const adminUserId = searchParams?.get("adminUserId") || null;
-  const isAdminMode = !!adminUserId;
-
-  const user = session?.user;
 
   // Show minimal navigation during new charter registration
   if (isNewCharterRegistration) {

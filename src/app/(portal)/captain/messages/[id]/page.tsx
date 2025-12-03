@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { getConversationEnriched } from "@/lib/message-service";
 import { prisma } from "@/lib/prisma";
@@ -14,19 +15,33 @@ export const dynamic = "force-dynamic";
 
 export default async function CaptainChatPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ adminUserId?: string }>;
 }) {
   const session = await getServerSession(authOptions);
   const { id } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const adminUserId = resolvedSearchParams?.adminUserId;
 
   if (!session?.user?.id) {
     redirect("/login");
   }
 
+  // Use effective user ID for admin bypass
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/login");
+  }
+
   // Get captain's charters to verify ownership
   const charters = await prisma.charter.findMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId: effectiveUserId },
     select: { id: true },
   });
 
@@ -53,7 +68,7 @@ export default async function CaptainChatPage({
       <ChatDetail
         conversationId={id}
         initialConversation={conversation}
-        userId={session.user.id}
+        userId={effectiveUserId}
         showBackButton={true}
       />
     </div>

@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { getCaptainPayoutHistory } from "@/lib/services/finance-service";
 import { getServerSession } from "next-auth";
@@ -12,15 +13,29 @@ export const metadata = {
   description: "View your completed payout history",
 };
 
-export default async function PayoutHistoryPage() {
+interface PageProps {
+  searchParams: Promise<{ adminUserId?: string }>;
+}
+
+export default async function PayoutHistoryPage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     redirect("/auth?mode=signin&next=/captain/earnings/history");
   }
 
+  const { adminUserId } = await searchParams;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/auth?mode=signin&next=/captain/earnings/history");
+  }
+
   // Fetch all payout history
-  const payoutHistory = await getCaptainPayoutHistory(session.user.id);
+  const payoutHistory = await getCaptainPayoutHistory(effectiveUserId);
 
   const totalPaidOut = payoutHistory.reduce(
     (sum, p) => sum + Number(p.netPayout),

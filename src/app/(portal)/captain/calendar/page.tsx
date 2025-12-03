@@ -1,5 +1,6 @@
 import { CalendarShell } from "@/components/captain/calendar/CalendarShell";
 import { Button } from "@/components/ui/button";
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import { getCaptainBookings } from "@/lib/booking-service";
 import { EnrichedMarketBooking } from "@/lib/enrich-booking";
@@ -18,14 +19,26 @@ export default async function NewCalendarPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const session = await getServerSession(authOptions);
+  const params = await searchParams;
+  const adminUserId = params.adminUserId as string | undefined;
 
   if (!session?.user?.id) {
     redirect("/login");
   }
 
+  // Use effective user ID for admin bypass
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/login");
+  }
+
   // Get captain profile
   const captain = await prisma.captainProfile.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: effectiveUserId },
     select: {
       id: true,
       displayName: true,
@@ -95,7 +108,6 @@ export default async function NewCalendarPage({
     );
   }
 
-  const params = await searchParams;
   // Determine selected charter from URL or default to first
   const charterId = (params.charterId as string) || captain.charters[0].id;
   const selectedCharter =

@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { decrypt } from "@/lib/encryption";
 import {
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ adminUserId?: string }>;
 }
 
 function maskAccountNumber(accountNumber: string): string {
@@ -55,11 +57,24 @@ function PayoutStatusBadge({ status }: { status: string }) {
   );
 }
 
-export default async function PayoutDetailPage({ params }: PageProps) {
+export default async function PayoutDetailPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
+    redirect(`/auth?mode=signin&next=/captain/earnings/${id}`);
+  }
+
+  const { adminUserId } = await searchParams;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
     redirect(`/auth?mode=signin&next=/captain/earnings/${id}`);
   }
 
@@ -71,7 +86,7 @@ export default async function PayoutDetailPage({ params }: PageProps) {
   }
 
   // Verify ownership
-  if (payout.ownerId !== session.user.id) {
+  if (payout.ownerId !== effectiveUserId) {
     redirect("/captain/earnings");
   }
 
@@ -87,19 +102,23 @@ export default async function PayoutDetailPage({ params }: PageProps) {
 
   // Fetch bookings included in this payout
   const bookings = await getBookingsFinancial({
-    ownerId: session.user.id,
+    ownerId: effectiveUserId,
   });
 
   const payoutBookings = bookings.filter((b) =>
     payout.bookingIds.includes(b.id)
   );
 
+  const backHref = adminUserId
+    ? `/captain/earnings?adminUserId=${adminUserId}`
+    : "/captain/earnings";
+
   return (
     <div className="p-4 space-y-6 md:p-6">
       {/* Header */}
       <div>
         <Link
-          href="/captain/earnings"
+          href={backHref}
           className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700"
         >
           ← Back to Earnings

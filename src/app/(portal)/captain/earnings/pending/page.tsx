@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { getCaptainBookings } from "@/lib/services/finance-service";
 import { getServerSession } from "next-auth";
@@ -8,15 +9,29 @@ import { PendingBookingsTable } from "../_components/PendingBookingsTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function PendingBookingsPage() {
+interface PageProps {
+  searchParams: Promise<{ adminUserId?: string }>;
+}
+
+export default async function PendingBookingsPage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     redirect("/auth?mode=signin&next=/captain/earnings/pending");
   }
 
+  const { adminUserId } = await searchParams;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) {
+    redirect("/auth?mode=signin&next=/captain/earnings/pending");
+  }
+
   // Fetch pending bookings
-  const bookings = await getCaptainBookings(session.user.id, {
+  const bookings = await getCaptainBookings(effectiveUserId, {
     payoutStatus: "PENDING",
   });
 

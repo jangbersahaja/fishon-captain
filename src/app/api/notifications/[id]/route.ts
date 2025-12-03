@@ -4,8 +4,11 @@
  *
  * DELETE /api/notifications/[id]
  * Delete a specific notification
+ *
+ * Supports admin bypass via adminUserId query param
  */
 
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import { authOptions } from "@/lib/auth";
 import {
   deleteNotification,
@@ -28,10 +31,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const adminUserId = searchParams.get("adminUserId") || undefined;
+
+    // Use admin bypass to get effective user ID
+    const effectiveUserId = getEffectiveUserId({
+      session,
+      query: { adminUserId },
+    });
+
+    if (!effectiveUserId) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const resolvedParams = await params;
     const notificationId = resolvedParams.id;
 
-    await markNotificationRead(notificationId, session.user.id);
+    await markNotificationRead(notificationId, effectiveUserId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -51,10 +67,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const adminUserId = searchParams.get("adminUserId") || undefined;
+
+    // Use admin bypass to get effective user ID
+    const effectiveUserId = getEffectiveUserId({
+      session,
+      query: { adminUserId },
+    });
+
+    if (!effectiveUserId) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const resolvedParams = await params;
     const notificationId = resolvedParams.id;
 
-    await deleteNotification(notificationId, session.user.id);
+    await deleteNotification(notificationId, effectiveUserId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

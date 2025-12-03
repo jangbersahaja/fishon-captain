@@ -1,3 +1,4 @@
+import { getEffectiveUserId } from "@/lib/adminBypass";
 import authOptions from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PenLineIcon } from "lucide-react";
@@ -47,24 +48,61 @@ export default async function MediaManagementPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id?: string } | undefined)?.id;
-  if (!userId) redirect("/auth?mode=signin");
-  const mediaContext = await getMediaContext(userId);
+  if (!session?.user?.id) redirect("/auth?mode=signin");
+
+  const sp = searchParams ? await searchParams : {};
+  const adminUserId =
+    typeof sp?.adminUserId === "string" ? sp.adminUserId : undefined;
+  const effectiveUserId = getEffectiveUserId({
+    session,
+    query: { adminUserId },
+  });
+
+  if (!effectiveUserId) redirect("/auth?mode=signin");
+
+  const mediaContext = await getMediaContext(effectiveUserId);
   if (!mediaContext) redirect("/auth?next=/captain/form");
   const { charter, videos: captainVideos } = mediaContext;
-  const sp = searchParams ? await searchParams : {};
   const page = Number(sp?.page ?? 1) || 1;
   const pageSize = 24;
   // All charter.media are photos now - no need to filter
-  const photosAll = charter.media.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const photosAll = charter.media.sort(
+    (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
+  );
   const videosAll = captainVideos;
   const photos = paginate(photosAll, page, pageSize);
   const videosPage = paginate(videosAll, page, pageSize);
   const photoPages = Math.max(1, Math.ceil(photosAll.length / pageSize));
   const videoPages = Math.max(1, Math.ceil(videosAll.length / pageSize));
 
+  const editHref = adminUserId
+    ? `/captain/form?editCharterId=${charter.id}&adminUserId=${adminUserId}#media`
+    : `/captain/form?editCharterId=${charter.id}#media`;
+
   return (
     <div className="px-6 py-8 space-y-8 ">
+      {/* Admin Mode Banner */}
+      {adminUserId && (
+        <div className="p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-orange-800">
+                🛡️ Admin Mode Active
+              </h2>
+              <p className="text-xs text-orange-700">
+                Viewing media for another captain
+              </p>
+            </div>
+            <Link
+              href="/staff"
+              className="px-3 py-1 text-xs font-semibold text-white bg-orange-600 rounded-full hover:bg-orange-700"
+            >
+              Exit Admin Mode
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start justify-between flex-col sm:flex-row gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">
@@ -76,7 +114,7 @@ export default async function MediaManagementPage({
           </p>
         </div>
         <Link
-          href={`/captain/form?editCharterId=${charter.id}#media`}
+          href={editHref}
           prefetch={false}
           className="flex gap-2 items-center rounded-full bg-[#ec2227] px-5 py-2 text-sm font-semibold text-white shadow hover:bg-[#d81e23]"
         >
