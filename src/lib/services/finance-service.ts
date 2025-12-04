@@ -746,12 +746,7 @@ export interface PayoutCalculation {
   bankName: string | null;
   accountNumber: string | null;
   accountHolder: string | null;
-  // New fields for eligibility tracking
-  eligibleEarnings: number; // Earnings from bookings past eligibility window
-  eligibleBookingCount: number;
-  eligibleBookingIds: string[];
   oldestTripDate: Date | null; // Earliest trip date in pending bookings
-  newestEligibleDate: Date | null; // Most recent eligible booking date
 }
 
 /**
@@ -783,19 +778,20 @@ export function isPayoutEligible(tripDate: Date): boolean {
 }
 
 /**
- * Calculate pending payouts for all captains with COMPLETED bookings
+ * Calculate pending payouts for all captains with PAID/COMPLETED bookings
  *
- * Startup Phase Policy:
- * - Only COMPLETED bookings are eligible (trip finished)
- * - Payout eligibility: 3 business days after trip date
+ * Updated Policy:
+ * - Show ALL PAID and COMPLETED bookings in admin view
+ * - Eligibility tracking: trips past 3 business days are "eligible"
+ * - Admin can see upcoming earnings before trip completion
  * - Manual weekly processing by admin
  */
 export async function calculatePendingPayouts(): Promise<PayoutCalculation[]> {
-  // Fetch all COMPLETED bookings with PENDING payout status
-  // Changed from PAID to COMPLETED - payout only after trip is done
+  // Fetch all PAID and COMPLETED bookings with PENDING payout status
+  // Show both so admin can see full pipeline (not just completed trips)
   const bookings = await prismaMarket.booking.findMany({
     where: {
-      status: "COMPLETED",
+      status: { in: ["PAID", "COMPLETED"] },
       payoutStatus: "PENDING",
       captainEarnings: { not: null },
     },
@@ -853,38 +849,23 @@ export async function calculatePendingPayouts(): Promise<PayoutCalculation[]> {
     ownerBookings.get(owner.id)!.push(booking);
   }
 
-  // Calculate payouts with eligibility tracking
+  // Calculate payouts - show all pending bookings to admin
   const payouts: PayoutCalculation[] = [];
 
   for (const [ownerId, ownerBookingList] of ownerBookings) {
     const owner = charters.find((c) => c.owner?.id === ownerId)?.owner;
     if (!owner) continue;
 
-    // Separate eligible vs all bookings
-    const eligibleBookings = ownerBookingList.filter((b: PendingBooking) =>
-      isPayoutEligible(b.date)
-    );
-
     const totalEarnings = ownerBookingList.reduce(
       (sum: number, b: PendingBooking) => sum + Number(b.captainEarnings || 0),
       0
     );
 
-    const eligibleEarnings = eligibleBookings.reduce(
-      (sum: number, b: PendingBooking) => sum + Number(b.captainEarnings || 0),
-      0
-    );
-
-    // Find date range
+    // Find oldest trip date
     const sortedByDate = [...ownerBookingList].sort(
       (a, b) => a.date.getTime() - b.date.getTime()
     );
     const oldestTripDate = sortedByDate[0]?.date || null;
-
-    const eligibleSortedByDate = [...eligibleBookings].sort(
-      (a, b) => b.date.getTime() - a.date.getTime()
-    );
-    const newestEligibleDate = eligibleSortedByDate[0]?.date || null;
 
     // Decrypt bank details for display
     let accountNumber: string | null = null;
@@ -913,22 +894,12 @@ export async function calculatePendingPayouts(): Promise<PayoutCalculation[]> {
       bankName: owner.verification?.bankName || null,
       accountNumber,
       accountHolder,
-      // Eligibility tracking
-      eligibleEarnings,
-      eligibleBookingCount: eligibleBookings.length,
-      eligibleBookingIds: eligibleBookings.map((b: PendingBooking) => b.id),
       oldestTripDate,
-      newestEligibleDate,
     });
   }
 
-  // Sort by eligible earnings (highest first), then total earnings
-  return payouts.sort((a, b) => {
-    if (b.eligibleEarnings !== a.eligibleEarnings) {
-      return b.eligibleEarnings - a.eligibleEarnings;
-    }
-    return b.totalEarnings - a.totalEarnings;
-  });
+  // Sort by total earnings (highest first)
+  return payouts.sort((a, b) => b.totalEarnings - a.totalEarnings);
 }
 
 /**
@@ -942,6 +913,8 @@ export async function createPayoutBatch(
 ): Promise<{ batchId: string; payouts: Payout[] }> {
   const batchId = generateBatchId(periodStart);
   const payouts: Payout[] = [];
+  // Generate a short unique suffix for this batch (handles re-creation after cancellation)
+  const batchSuffix = Date.now().toString(36).slice(-4);
 
   for (const calc of calculations) {
     // Validate bank details
@@ -949,10 +922,11 @@ export async function createPayoutBatch(
       throw new Error(`Missing bank details for owner ${calc.ownerId}`);
     }
 
-    // Create payout record
+    // Create payout record with unique batchId
+    // Format: {year}-W{week}-{ownerIdPrefix}-{uniqueSuffix}
     const payout = await prisma.payout.create({
       data: {
-        batchId: `${batchId}-${calc.ownerId.substring(0, 8)}`,
+        batchId: `${batchId}-${calc.ownerId.substring(0, 8)}-${batchSuffix}`,
         ownerId: calc.ownerId,
         periodStart,
         periodEnd,
@@ -1091,6 +1065,63 @@ export async function markPayoutCompleted(
 }
 
 /**
+ * Cancel payout (Staff/Admin)
+ * Resets associated bookings back to PENDING payout status
+ */
+export async function cancelPayout(
+  payoutId: string,
+  cancelledBy: string,
+  reason?: string
+) {
+  const payout = await prisma.payout.findUnique({
+    where: { id: payoutId },
+  });
+
+  if (!payout) {
+    throw new Error("Payout not found");
+  }
+
+  // Only PENDING or APPROVED payouts can be cancelled
+  if (payout.status !== "PENDING" && payout.status !== "APPROVED") {
+    throw new Error(
+      `Cannot cancel payout with status ${payout.status}. Only PENDING or APPROVED payouts can be cancelled.`
+    );
+  }
+
+  // Update payout status to CANCELLED
+  const updated = await prisma.payout.update({
+    where: { id: payoutId },
+    data: {
+      status: "CANCELLED",
+      failureReason: reason || "Cancelled by staff",
+    },
+  });
+
+  // Reset bookings back to PENDING payout status
+  // This allows them to be included in a future payout batch
+  await prismaMarket.booking.updateMany({
+    where: { id: { in: payout.bookingIds } },
+    data: {
+      payoutStatus: "PENDING",
+      payoutBatchId: null,
+    },
+  });
+
+  // Audit log
+  const { writeAuditLog } = await import("@/server/audit");
+  await writeAuditLog({
+    actorUserId: cancelledBy,
+    entityType: "payout",
+    entityId: payoutId,
+    action: "payout_cancelled",
+    before: payout,
+    after: updated,
+  });
+
+  return updated;
+}
+
+/**
  * Get all payouts with filters
  */
 export async function getPayouts(filters?: {
@@ -1207,9 +1238,10 @@ export async function getCaptainEarningsSummary(
       : 0.1; // BASIC
 
   // Fetch all bookings for this owner's charters
+  // Include both PAID and COMPLETED to show full earnings picture
   const bookings = await getBookingsFinancial({
     ownerId,
-    status: "PAID",
+    status: ["PAID", "COMPLETED"],
   });
 
   // Calculate date boundaries based on selected period
@@ -1331,7 +1363,7 @@ export async function getCaptainBookings(
 ) {
   return await getBookingsFinancial({
     ownerId,
-    status: "PAID",
+    status: ["PAID", "COMPLETED"], // Include both PAID and COMPLETED bookings
     ...filters,
   });
 }

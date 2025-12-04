@@ -6,7 +6,6 @@ import {
 } from "@/lib/services/finance-service";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { CreatePayoutBatchButton } from "../../_components/CreatePayoutBatchButton";
 import { PayoutTable } from "../../_components/PayoutTable";
 import { PendingPayoutsTable } from "../../_components/PendingPayoutsTable";
 import { FinanceNav } from "../_components/FinanceNav";
@@ -32,54 +31,38 @@ export default async function PayoutsQueuePage() {
   if (!session?.user) redirect("/auth?mode=signin&next=/staff/finance/payouts");
   if (role !== "STAFF" && role !== "ADMIN") redirect("/captain");
 
-  // Fetch pending payout calculations (now includes eligibility tracking)
+  // Fetch pending payout calculations
   const pendingCalculations = await calculatePendingPayouts();
 
   // Fetch recent payouts (last 20)
   const recentPayouts = await getPayouts({ limit: 20 });
 
-  // Calculate totals - now tracking eligible vs pending
-  const totalEligible = pendingCalculations.reduce(
-    (sum, c) => sum + c.eligibleEarnings,
-    0
-  );
+  // Calculate totals
   const totalPending = pendingCalculations.reduce(
     (sum, c) => sum + c.totalEarnings,
     0
   );
-  const totalCaptains = pendingCalculations.length;
   const totalBookings = pendingCalculations.reduce(
     (sum, c) => sum + c.bookingCount,
     0
   );
-  const eligibleBookings = pendingCalculations.reduce(
-    (sum, c) => sum + c.eligibleBookingCount,
-    0
-  );
 
-  // Filter calculations for captains with complete bank details AND eligible earnings
-  const readyForPayout = pendingCalculations.filter(
-    (c) =>
-      c.bankName && c.accountNumber && c.accountHolder && c.eligibleEarnings > 0
-  );
-
-  // Captains with eligible earnings but missing bank details
-  const missingBankDetails = pendingCalculations.filter(
-    (c) =>
-      (!c.bankName || !c.accountNumber || !c.accountHolder) &&
-      c.eligibleEarnings > 0
-  );
+  // Count captains by bank status
+  const captainsWithBank = pendingCalculations.filter(
+    (c) => c.bankName && c.accountNumber && c.accountHolder
+  ).length;
+  const captainsMissingBank = pendingCalculations.length - captainsWithBank;
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">
-          Finance Dashboard
+          Payout Management
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Process captain earnings after trip completion (3-5 business day
-          buffer)
+          Process captain earnings from paid bookings. Select captains and click
+          &quot;Process Payout Now&quot; to create a payout batch.
         </p>
       </div>
 
@@ -88,61 +71,51 @@ export default async function PayoutsQueuePage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="p-4 bg-white border rounded-lg border-slate-200">
-          <p className="text-sm text-slate-600">Eligible for Payout</p>
-          <p className="mt-1 text-2xl font-semibold text-green-600">
-            RM {totalEligible.toLocaleString()}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {eligibleBookings} booking(s) past 3-day buffer
-          </p>
-        </div>
-
-        <div className="p-4 bg-white border rounded-lg border-slate-200">
-          <p className="text-sm text-slate-600">Total Pending</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">
+        <div className="p-4 border rounded-lg border-blue-200 bg-blue-50">
+          <p className="text-sm text-blue-700">Total Pending</p>
+          <p className="mt-1 text-2xl font-semibold text-blue-600">
             RM {totalPending.toLocaleString()}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {totalCaptains} captain(s), {totalBookings} booking(s)
+          <p className="mt-1 text-xs text-blue-600">
+            {totalBookings} booking(s)
           </p>
         </div>
 
         <div className="p-4 bg-white border rounded-lg border-slate-200">
-          <p className="text-sm text-slate-600">Ready for Payout</p>
+          <p className="text-sm text-slate-600">Captains</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">
+            {pendingCalculations.length}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">with pending earnings</p>
+        </div>
+
+        <div className="p-4 border rounded-lg border-green-200 bg-green-50">
+          <p className="text-sm text-green-700">Ready to Process</p>
           <p className="mt-1 text-2xl font-semibold text-green-600">
-            {readyForPayout.length}
+            {captainsWithBank}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Eligible + bank details complete
-          </p>
+          <p className="mt-1 text-xs text-green-600">bank details complete</p>
         </div>
 
-        <div className="p-4 bg-white border rounded-lg border-slate-200">
-          <p className="text-sm text-slate-600">Action Required</p>
+        <div className="p-4 border rounded-lg border-amber-200 bg-amber-50">
+          <p className="text-sm text-amber-700">Needs Bank Info</p>
           <p className="mt-1 text-2xl font-semibold text-amber-600">
-            {missingBankDetails.length}
+            {captainsMissingBank}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Eligible but missing bank info
-          </p>
+          <p className="mt-1 text-xs text-amber-600">missing bank details</p>
         </div>
       </div>
 
       {/* Pending Payouts Section */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              Pending Payouts
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              COMPLETED trips awaiting payout processing
-            </p>
-          </div>
-          {role === "ADMIN" && readyForPayout.length > 0 && (
-            <CreatePayoutBatchButton calculations={readyForPayout} />
-          )}
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Pending Payouts
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Select captains to process payout. Captains see a 3-5 day buffer
+            message for payment gateway delays and verification.
+          </p>
         </div>
 
         <PendingPayoutsTable calculations={pendingCalculations} />
@@ -186,31 +159,32 @@ export default async function PayoutsQueuePage() {
       )}
 
       {/* Help Text */}
-      {role === "ADMIN" && (
-        <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
-          <h3 className="font-medium text-blue-900">
-            Payout Policy (Startup Phase)
-          </h3>
-          <ul className="mt-2 space-y-1 text-sm text-blue-800">
-            <li>
-              • <strong>Eligibility:</strong> Bookings become eligible 3
-              business days after trip completion
-            </li>
-            <li>
-              • <strong>Processing:</strong> Weekly manual batch processing
-              (every Monday recommended)
-            </li>
-            <li>
-              • <strong>Ready status:</strong> Captain must have eligible
-              earnings + complete bank details
-            </li>
-            <li>
-              • <strong>Disputes:</strong> Hold payout if complaint filed within
-              72h of trip
-            </li>
-          </ul>
-        </div>
-      )}
+      <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+        <h3 className="font-medium text-blue-900">Payout Processing Guide</h3>
+        <ul className="mt-2 space-y-1 text-sm text-blue-800">
+          <li>
+            • <strong>Step 1:</strong> Select captains using checkboxes (only
+            those with bank details can be selected)
+          </li>
+          <li>
+            • <strong>Step 2:</strong> Click &quot;Process Payout Now&quot; to
+            create a payout batch
+          </li>
+          <li>
+            • <strong>Step 3:</strong> Review the payout detail page to adjust
+            deductions if needed
+          </li>
+          <li>
+            • <strong>Step 4:</strong> Approve the payout and complete the bank
+            transfer
+          </li>
+        </ul>
+        <p className="mt-3 text-xs text-blue-700">
+          💡 <strong>Why 3-5 day buffer for captains?</strong> Payment gateway
+          delays (money in transit), missing bank details verification, and
+          fraud prevention checks.
+        </p>
+      </div>
     </div>
   );
 }

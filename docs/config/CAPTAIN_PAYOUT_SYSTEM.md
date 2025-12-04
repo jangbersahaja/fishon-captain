@@ -1,6 +1,6 @@
 # Captain Payout System - Complete Guide
 
-**Last Updated**: November 30, 2025  
+**Last Updated**: December 4, 2025  
 **Status**: ✅ Production Ready  
 **Applies To**: fishon-captain
 
@@ -8,14 +8,15 @@
 
 ## System Overview
 
-The Captain Payout System manages earnings distribution to captains, including commission calculation, eligibility tracking, and manual payout processing.
+The Captain Payout System manages earnings distribution to captains, including commission calculation and manual payout processing.
 
 ### Key Features
 
 - ✅ **Earnings dashboard**: View total earnings and pending payouts
 - ✅ **Commission tiers**: 5%, 8%, or 10% based on pricing plan (GOLD/SILVER/BASIC)
-- ✅ **Payout eligibility**: 3-5 business days after trip completion
-- ✅ **Manual processing**: Weekly admin batch payouts (startup phase)
+- ✅ **Immediate visibility**: Admin sees all paid bookings immediately
+- ✅ **Custom selection**: Admin can select specific captains for payout
+- ✅ **Manual processing**: Admin creates payout batches with optional deductions
 - ✅ **Transaction history**: Detailed payout records with bank transfer references
 
 ---
@@ -28,25 +29,33 @@ As a startup with limited capital, we use a **conservative payout policy**:
 
 1. **Cash flow buffer** - Ensures SenangPay funds have cleared (T+1 to T+3)
 2. **Dispute protection** - Allows time for angler complaints/refunds before payout
-3. **Operational safety** - Trip must actually complete before captain receives payment
-4. **Industry standard** - Similar to Grab, Airbnb (24h-7 days post-service)
+3. **Verification** - Ensures captain bank details are valid before transfer
+4. **Fraud prevention** - Manual review catches suspicious patterns
 
-### Payout Timeline
+### Admin vs Captain View
 
-| Step               | Timeline | Description                                  |
-| ------------------ | -------- | -------------------------------------------- |
-| Trip Completed     | Day 0    | Captain marks trip as COMPLETED              |
-| Eligibility Buffer | Day 1-3  | Wait for payment settlement + dispute window |
-| Payout Eligible    | Day 3-5  | Admin can include in payout batch            |
-| Bank Transfer      | Day 5-7  | Manual transfer to captain's bank            |
-| Payout Complete    | Day 7-10 | Captain receives funds                       |
+| Perspective | What They See                                                            |
+| ----------- | ------------------------------------------------------------------------ |
+| **Admin**   | All paid bookings immediately (no filtering)                             |
+| **Captain** | "Payment processed within 3-5 business days after trip" (buffer message) |
 
-### Eligibility Rules
+**Why the difference?**
 
-- **Trigger**: Booking status = `COMPLETED` (trip finished)
-- **Buffer**: 3 business days after trip completion
-- **Disputes**: Payout held if complaint filed within 72h of trip
-- **Minimum**: RM 50 per payout
+- **Payment gateway delay**: Money takes 1-3 days to settle from SenangPay to Fishon account
+- **Missing bank details**: Some captains haven't provided bank info yet
+- **Fraud prevention**: Buffer allows time to detect scams or fake bookings
+- **Dispute window**: Anglers can report issues within 72h of trip
+
+### Payout Timeline (Internal)
+
+| Step            | Timeline | Description                                  |
+| --------------- | -------- | -------------------------------------------- |
+| Booking Paid    | Day 0    | Payment received, visible in admin dashboard |
+| Admin Review    | Day 0+   | Admin can process payout anytime             |
+| Bank Transfer   | Day 1-3  | Manual transfer to captain's bank            |
+| Payout Complete | Day 2-5  | Captain receives funds                       |
+
+**Captain sees**: "3-5 business days after trip" as a safe buffer for all the above steps.
 
 ---
 
@@ -100,7 +109,7 @@ model Booking {
 }
 
 enum PayoutStatus {
-  PENDING      // Trip completed, awaiting eligibility
+  PENDING      // Booking paid, awaiting payout
   SCHEDULED    // Included in payout batch
   PROCESSING   // Bank transfer initiated
   COMPLETED    // Funds transferred
@@ -136,28 +145,32 @@ const captainEarnings = 500 - 40; // RM 460
 
 ## Admin Workflow
 
-### Weekly Payout Process (Every Monday)
+### Payout Process
 
 ```
-1. Review eligible bookings
-   └─ Status: COMPLETED
-   └─ Trip date: 7+ days ago (includes 3-5 day buffer)
-   └─ Payout status: PENDING
-   └─ No active disputes
+1. View pending payouts
+   └─ All PAID/COMPLETED bookings with payoutStatus = PENDING
+   └─ No eligibility filtering - admin sees everything immediately
 
-2. Create payout batch
+2. Select captains
+   └─ Checkbox selection for one or more captains
+   └─ Only captains with bank details can be selected
+
+3. Click "Process Payout Now"
    └─ POST /api/admin/finance/payouts/batch
+   └─ Creates payout records
    └─ Updates bookings: payoutStatus = SCHEDULED
 
-3. Review and approve
-   └─ POST /api/admin/finance/payouts/[id]/approve
-   └─ Payout status: PENDING → APPROVED
+4. Review and adjust (optional)
+   └─ Go to payout detail page
+   └─ Adjust deductions if needed
+   └─ Approve the payout
 
-4. Manual bank transfer
+5. Manual bank transfer
    └─ Transfer via online banking
    └─ Record transaction reference
 
-5. Mark completed
+6. Mark completed
    └─ POST /api/admin/finance/payouts/[id]/complete
    └─ Payout status: APPROVED → COMPLETED
    └─ Updates bookings: payoutStatus = COMPLETED
@@ -165,7 +178,7 @@ const captainEarnings = 500 - 40; // RM 460
 
 ### Dispute Handling
 
-If angler files complaint within 72h of trip:
+If angler files complaint:
 
 1. Set `payoutStatus: ON_HOLD` on booking
 2. Resolve dispute with captain/angler
@@ -199,7 +212,7 @@ If angler files complaint within 72h of trip:
 
 - Total earnings (all time, by period)
 - Pending settlement amount
-- Payout eligibility info
+- Message: "Payouts processed within 3-5 business days after trip"
 - Recent bookings with earnings
 - Bank account status
 - Payout history
@@ -208,10 +221,10 @@ If angler files complaint within 72h of trip:
 
 **Location**: `/staff/finance/payouts`
 
-- Pending payout calculations
-- Captains ready for payout (with bank details)
+- All pending payouts (no eligibility filtering)
+- Captains with/without bank details
+- Select and process payouts
 - Recent payout batches
-- Eligibility status per booking
 
 ---
 
@@ -219,17 +232,22 @@ If angler files complaint within 72h of trip:
 
 ### Messaging Guidelines
 
-**Instead of**: "Your payout will be processed on [specific date]"
+**Standard message**: "Payouts are processed within 3-5 business days after your trip completes"
 
-**Use**: "Payouts are processed 3-5 business days after trip completion"
+This buffer covers:
+
+- Payment gateway settlement (1-3 days)
+- Bank details verification
+- Manual processing time
+- Weekends/holidays
 
 ### Email/Notification Triggers
 
-| Event            | Notification                                                  |
-| ---------------- | ------------------------------------------------------------- |
-| Trip completed   | "Trip marked complete. Payout eligible in 3-5 business days." |
-| Payout approved  | "Your payout of RM X has been approved for processing."       |
-| Payout completed | "RM X has been transferred to your bank account. Ref: XXX"    |
+| Event            | Notification                                                       |
+| ---------------- | ------------------------------------------------------------------ |
+| Trip completed   | "Trip marked complete. Payout processed within 3-5 business days." |
+| Payout approved  | "Your payout of RM X has been approved for processing."            |
+| Payout completed | "RM X has been transferred to your bank account. Ref: XXX"         |
 
 ---
 
@@ -241,15 +259,12 @@ If angler files complaint within 72h of trip:
 - [ ] Test multi-day trip calculations
 - [ ] Confirm captainEarnings = subtotal - platformFee
 
-### Payout Eligibility
-
-- [ ] Only COMPLETED bookings appear in admin queue
-- [ ] Trips < 3 days old excluded from eligible list
-- [ ] ON_HOLD bookings excluded
-
 ### Payout Processing
 
-- [ ] Batch creation groups by captain
+- [ ] All PAID bookings appear in admin queue immediately
+- [ ] Select/deselect captains with checkboxes
+- [ ] Captains without bank details cannot be selected
+- [ ] "Process Payout Now" creates payout batch
 - [ ] Approve updates status correctly
 - [ ] Complete updates booking payoutStatus
 - [ ] Audit logs created for all actions
@@ -257,6 +272,7 @@ If angler files complaint within 72h of trip:
 ### Bank Details
 
 - [ ] Missing bank info shows warning
+- [ ] Admin can add bank info via dialog
 - [ ] Captain can update via /captain/documents
 - [ ] Snapshot captured at payout creation
 
@@ -266,11 +282,11 @@ If angler files complaint within 72h of trip:
 
 When capital reserves allow:
 
-1. **Reduce buffer to 24-48h** for trusted captains
-2. **Automated weekly batches** via cron job
-3. **Instant payouts** for GOLD plan captains
-4. **Email notifications** via @fishon/email package
-5. **Captain-facing payout API** endpoints
+1. **Automated payouts** for trusted captains
+2. **Instant payouts** for GOLD plan captains
+3. **Email notifications** via @fishon/email package
+4. **Captain-facing payout API** endpoints
+5. **Bulk deduction management**
 
 ---
 
@@ -283,4 +299,4 @@ When capital reserves allow:
 ---
 
 **Document Maintained By**: Development Team  
-**Last Review**: November 30, 2025
+**Last Review**: December 4, 2025

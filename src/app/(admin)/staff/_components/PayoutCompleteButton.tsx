@@ -66,32 +66,26 @@ export function PayoutCompleteButton({
   return (
     <div className="space-y-3">
       {error && (
-        <div className="p-4 border border-red-200 rounded-lg bg-red-50">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="p-3 text-sm border border-red-200 rounded-lg bg-red-50 text-red-800">
+          {error}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
-          Bank Transfer Reference
-        </label>
         <input
           type="text"
           value={transferReference}
           onChange={(e) => setTransferReference(e.target.value)}
-          placeholder="e.g., TXN20251111123456"
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="e.g., TXN20251204123456"
+          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
           disabled={isCompleting}
         />
-        <p className="mt-1 text-xs text-slate-500">
-          Enter the bank transaction/reference number for this transfer
-        </p>
       </div>
 
       <button
         onClick={handleComplete}
         disabled={isCompleting || !transferReference.trim()}
-        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isCompleting ? "Processing..." : "Mark as Completed"}
       </button>
