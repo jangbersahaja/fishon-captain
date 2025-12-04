@@ -444,8 +444,9 @@ model PromoCode {
   maxDiscount Decimal? @db.Decimal(10, 2) // Maximum discount cap
   newUsersOnly Boolean @default(false) // Only for users with no completed bookings
   
-  // Targeting (future - Phase 2)
+  // Targeting
   specificCharters String[] // Charter IDs (empty = all charters)
+  specificTrips    String[] // Trip IDs (empty = all trips) - for trip-specific promos
   
   // Status
   status      PromoCodeStatus @default(ACTIVE)

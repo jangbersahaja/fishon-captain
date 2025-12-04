@@ -31,6 +31,7 @@ const createPromoCodeSchema = z
     maxDiscount: z.coerce.number().positive().optional().nullable(),
     newUsersOnly: z.boolean().default(false),
     specificCharters: z.array(z.string()).default([]),
+    specificTrips: z.array(z.string()).default([]),
     status: z.enum(["ACTIVE", "INACTIVE", "EXPIRED"]).default("ACTIVE"),
   })
   .refine(
@@ -193,6 +194,7 @@ export async function POST(req: Request) {
         maxDiscount: validated.maxDiscount,
         newUsersOnly: validated.newUsersOnly,
         specificCharters: validated.specificCharters,
+        specificTrips: validated.specificTrips,
         status: validated.status,
         createdBy: session.user.id,
       },
