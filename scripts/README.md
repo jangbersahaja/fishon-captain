@@ -61,6 +61,46 @@ Runs migrations with automatic backup and verification.
 6. ✅ Verifies success
 7. ✅ Regenerates Prisma client
 
+### 4. `backfill-captain-earnings.ts` - Backfill Missing Financial Data
+
+Finds PAID/COMPLETED bookings missing `captainEarnings` and calculates/updates them.
+
+```bash
+# Dry run (show what would be updated)
+npx tsx scripts/backfill-captain-earnings.ts --dry-run
+
+# Apply changes
+npx tsx scripts/backfill-captain-earnings.ts
+```
+
+**Features:**
+
+- Calculates platformFee, serviceFee, captainEarnings
+- Uses correct commission rate based on charter pricing plan (GOLD: 5%, SILVER: 8%, BASIC: 10%)
+- Sets payoutStatus to PENDING for eligible bookings
+
+### 5. `create-missing-payouts.ts` - Create Payout Batches
+
+Creates payout records for all eligible bookings that haven't been included in any payout batch.
+
+```bash
+# Dry run (show what would be created)
+npx tsx scripts/create-missing-payouts.ts --dry-run
+
+# Create payouts for eligible bookings only (past 3-day buffer)
+npx tsx scripts/create-missing-payouts.ts
+
+# Include ALL pending bookings (even future trips)
+npx tsx scripts/create-missing-payouts.ts --include-all
+```
+
+**Features:**
+
+- Groups bookings by captain
+- Only includes captains with complete bank details
+- Creates payout batch with PENDING status
+- Updates booking payoutStatus to SCHEDULED
+
 ## 🚀 Usage Examples
 
 ### Before Making Schema Changes

@@ -114,7 +114,10 @@ export function decrypt(encryptedData: string): string {
 
     return decrypted;
   } catch (error) {
-    console.error("Decryption error:", error);
+    // Only log in development to reduce noise (safeDecrypt handles gracefully)
+    if (process.env.NODE_ENV === "development") {
+      console.error("Decryption error:", error);
+    }
     throw new Error("Failed to decrypt data");
   }
 }
