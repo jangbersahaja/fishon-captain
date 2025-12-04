@@ -173,6 +173,7 @@ export async function GET(
         id: promoCode.id,
         code: promoCode.code,
         name: promoCode.name,
+        description: promoCode.description,
         type: promoCode.type,
         percentage: promoCode.percentage,
         fixedAmount: promoCode.fixedAmount,
@@ -183,6 +184,10 @@ export async function GET(
         maxUses: promoCode.maxUses,
         usesCount: promoCode.usesCount,
         maxUsesPerUser: promoCode.maxUsesPerUser,
+        minPurchase: promoCode.minPurchase,
+        maxDiscount: promoCode.maxDiscount,
+        newUsersOnly: promoCode.newUsersOnly,
+        specificCharters: promoCode.specificCharters,
       },
       statistics: {
         totalBookings,
@@ -202,36 +207,42 @@ export async function GET(
               ) / 100
             : 0,
       },
-      recentBookings: promoCode.bookings.slice(0, 10).map((booking: {
-        id: string;
-        status: string;
-        finalPrice: number | string;
-        discount: unknown;
-        createdAt: Date;
-        user: { name: string; email: string };
-      }) => ({
-        id: booking.id,
-        status: booking.status,
-        finalPrice: Number(booking.finalPrice),
-        discount: booking.discount,
-        createdAt: booking.createdAt,
-        userName: booking.user.name,
-        userEmail: booking.user.email,
-      })),
+      recentBookings: promoCode.bookings
+        .slice(0, 10)
+        .map(
+          (booking: {
+            id: string;
+            status: string;
+            finalPrice: number | string;
+            discount: unknown;
+            createdAt: Date;
+            user: { name: string; email: string };
+          }) => ({
+            id: booking.id,
+            status: booking.status,
+            finalPrice: Number(booking.finalPrice),
+            discount: booking.discount,
+            createdAt: booking.createdAt,
+            userName: booking.user.name,
+            userEmail: booking.user.email,
+          })
+        ),
       recentAssignments: promoCode.assignments
         .slice(0, 10)
-        .map((assignment: {
-          id: string;
-          assignedAt: Date;
-          usedAt: Date | null;
-          user: { name: string; email: string };
-        }) => ({
-          id: assignment.id,
-          assignedAt: assignment.assignedAt,
-          usedAt: assignment.usedAt,
-          userName: assignment.user.name,
-          userEmail: assignment.user.email,
-        })),
+        .map(
+          (assignment: {
+            id: string;
+            assignedAt: Date;
+            usedAt: Date | null;
+            user: { name: string; email: string };
+          }) => ({
+            id: assignment.id,
+            assignedAt: assignment.assignedAt,
+            usedAt: assignment.usedAt,
+            userName: assignment.user.name,
+            userEmail: assignment.user.email,
+          })
+        ),
     });
   } catch (error) {
     console.error("[PromoCodeStatsAPI] GET error:", error);
