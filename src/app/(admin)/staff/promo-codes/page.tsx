@@ -28,6 +28,7 @@ interface PromoCode {
   usesCount: number;
   maxUsesPerUser: number;
   newUsersOnly: boolean;
+  specificCharters: string[];
   bookingsCount: number;
   assignmentsCount: number;
   createdAt: string;
@@ -235,6 +236,16 @@ export default async function PromoCodesPage({
                               {promo.description}
                             </div>
                           )}
+                          {promo.specificCharters &&
+                            promo.specificCharters.length > 0 && (
+                              <div className="text-xs text-amber-600 mt-0.5">
+                                ⚠️ {promo.specificCharters.length} charter
+                                {promo.specificCharters.length > 1
+                                  ? "s"
+                                  : ""}{" "}
+                                only
+                              </div>
+                            )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <PromoCodeTypeBadge

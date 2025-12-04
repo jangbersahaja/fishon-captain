@@ -339,6 +339,30 @@ export default async function PromoCodeDetailPage({
                   )}
                 </div>
               </div>
+
+              {promoCode.specificCharters &&
+                promoCode.specificCharters.length > 0 && (
+                  <div>
+                    <div className="text-xs uppercase text-slate-500">
+                      Charter Restrictions
+                    </div>
+                    <div className="mt-1 text-sm text-amber-700">
+                      Limited to {promoCode.specificCharters.length} specific
+                      charter{promoCode.specificCharters.length > 1 ? "s" : ""}
+                    </div>
+                    <div className="mt-1 space-y-1">
+                      {promoCode.specificCharters.map((charterId) => (
+                        <div
+                          key={charterId}
+                          className="font-mono text-xs text-slate-500 truncate"
+                          title={charterId}
+                        >
+                          {charterId}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
 
             {/* Recent Bookings */}
