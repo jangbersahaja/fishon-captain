@@ -187,7 +187,10 @@ export function CalendarSidebar({
 
       {/* Google Calendar Integration */}
       <div className="pt-4 border-t">
-        <GoogleCalendarSection />
+        <GoogleCalendarSection
+          selectedCharterId={selectedCharterId}
+          selectedCharterName={selectedCharter?.name}
+        />
       </div>
 
       {/* Operational Schedule Editor Modal */}

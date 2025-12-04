@@ -8,12 +8,12 @@
  * - Updates sync preferences
  */
 
-import { getServerSession } from "next-auth";
-import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { getCalendarSettings, listCalendars } from "@/lib/google-calendar";
-import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 // Validation schema for settings update
@@ -33,6 +33,30 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if user is a test user (allowed to use Google Calendar)
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { googleCalendarTestUser: true },
+    });
+
+    const isTestUser = user?.googleCalendarTestUser ?? false;
+
+    // If not a test user, return early with minimal data
+    if (!isTestUser) {
+      return NextResponse.json({
+        isTestUser: false,
+        settings: {
+          isConnected: false,
+          syncBookingsToGoogle: true,
+          syncBlockedToGoogle: true,
+          importFromGoogle: false,
+          autoImportAllDay: true,
+          autoImportKeywords: [],
+        },
+        calendars: [],
+      });
+    }
+
     const settings = await getCalendarSettings(session.user.id);
 
     // If connected, also fetch available calendars
@@ -48,12 +72,15 @@ export async function GET() {
             primary: c.primary || false,
           }));
       } catch (e) {
-        logger.warn("[google-calendar/settings] Failed to fetch calendars", { error: e });
+        logger.warn("[google-calendar/settings] Failed to fetch calendars", {
+          error: e,
+        });
         // Non-fatal, return settings without calendars
       }
     }
 
     return NextResponse.json({
+      isTestUser: true,
       settings: settings || {
         isConnected: false,
         syncBookingsToGoogle: true,
@@ -108,10 +135,15 @@ export async function PATCH(request: NextRequest) {
 
     // If changing calendar, fetch the new calendar name
     let selectedCalendarName = existing.selectedCalendarName;
-    if (data.selectedCalendarId && data.selectedCalendarId !== existing.selectedCalendarId) {
+    if (
+      data.selectedCalendarId &&
+      data.selectedCalendarId !== existing.selectedCalendarId
+    ) {
       try {
         const calendars = await listCalendars(userId);
-        const selected = calendars.find((c) => c.id === data.selectedCalendarId);
+        const selected = calendars.find(
+          (c) => c.id === data.selectedCalendarId
+        );
         if (selected) {
           selectedCalendarName = selected.summary;
         }
@@ -142,7 +174,10 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    logger.info("[google-calendar/settings] Updated settings", { userId, changes: data });
+    logger.info("[google-calendar/settings] Updated settings", {
+      userId,
+      changes: data,
+    });
 
     return NextResponse.json({ settings: updated });
   } catch (error) {

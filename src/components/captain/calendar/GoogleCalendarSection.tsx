@@ -33,9 +33,6 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-// Only enable Google Calendar in development
-const IS_GOOGLE_CALENDAR_ENABLED = process.env.NODE_ENV === "development";
-
 interface GoogleCalendarSettings {
   isConnected: boolean;
   connectedAt?: string;
@@ -58,12 +55,19 @@ interface GoogleCalendar {
 
 interface GoogleCalendarSectionProps {
   className?: string;
+  /** If provided, sync will be scoped to this charter only */
+  selectedCharterId?: string;
+  /** Charter name for display */
+  selectedCharterName?: string;
 }
 
 export function GoogleCalendarSection({
   className,
+  selectedCharterId,
+  selectedCharterName,
 }: GoogleCalendarSectionProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isTestUser, setIsTestUser] = useState(false);
   const [settings, setSettings] = useState<GoogleCalendarSettings | null>(null);
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -71,12 +75,13 @@ export function GoogleCalendarSection({
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
-  // Fetch settings
+  // Fetch settings (also checks if user is a test user)
   const fetchSettings = useCallback(async () => {
     try {
       const res = await fetch("/api/calendar/google/settings");
       if (res.ok) {
         const data = await res.json();
+        setIsTestUser(data.isTestUser ?? false);
         setSettings(data.settings);
         setCalendars(data.calendars || []);
       }
@@ -88,16 +93,11 @@ export function GoogleCalendarSection({
   }, []);
 
   useEffect(() => {
-    // Skip fetching if feature is disabled
-    if (!IS_GOOGLE_CALENDAR_ENABLED) {
-      setIsLoading(false);
-      return;
-    }
     fetchSettings();
   }, [fetchSettings]);
 
-  // Show "Coming Soon" in production
-  if (!IS_GOOGLE_CALENDAR_ENABLED) {
+  // Show "Coming Soon" if not a test user
+  if (!isLoading && !isTestUser) {
     return (
       <div className={cn("space-y-3", className)}>
         <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -192,13 +192,20 @@ export function GoogleCalendarSection({
       const res = await fetch("/api/calendar/google/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "full" }),
+        body: JSON.stringify({
+          action: "full",
+          // If a charter is selected, only sync that charter
+          ...(selectedCharterId && { charterId: selectedCharterId }),
+        }),
       });
 
       if (res.ok) {
         const data = await res.json();
+        const scopeLabel = selectedCharterName
+          ? ` for ${selectedCharterName}`
+          : "";
         toast.success(
-          `Synced: ${data.stats.created} created, ${data.stats.updated} updated`
+          `Synced${scopeLabel}: ${data.stats.created} created, ${data.stats.updated} updated`
         );
         fetchSettings(); // Refresh to update lastSyncAt
       } else {
@@ -311,20 +318,33 @@ export function GoogleCalendarSection({
           )}
 
           {/* Quick Sync Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full gap-2"
-            onClick={handleSync}
-            disabled={isSyncing}
-          >
-            {isSyncing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
+          <div className="space-y-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={handleSync}
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              {isSyncing ? "Syncing..." : "Sync Now"}
+            </Button>
+            {selectedCharterName && (
+              <p className="text-xs text-muted-foreground text-center">
+                Syncing:{" "}
+                <span className="font-medium">{selectedCharterName}</span>
+              </p>
             )}
-            {isSyncing ? "Syncing..." : "Sync Now"}
-          </Button>
+            {!selectedCharterId && (
+              <p className="text-xs text-muted-foreground text-center">
+                Syncing: All charters
+              </p>
+            )}
+          </div>
 
           {settings.lastSyncAt && (
             <p className="text-xs text-muted-foreground text-center">
