@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { CharterSearchCombobox } from "./CharterSearchCombobox";
 
 const promoCodeSchema = z
   .object({
@@ -125,23 +126,7 @@ export function PromoCodeForm({
   });
 
   const discountType = form.watch("type");
-  const [charterInput, setCharterInput] = useState("");
   const specificCharters = form.watch("specificCharters") ?? [];
-
-  const addCharter = () => {
-    const trimmed = charterInput.trim();
-    if (trimmed && !specificCharters.includes(trimmed)) {
-      form.setValue("specificCharters", [...specificCharters, trimmed]);
-      setCharterInput("");
-    }
-  };
-
-  const removeCharter = (charterId: string) => {
-    form.setValue(
-      "specificCharters",
-      specificCharters.filter((id) => id !== charterId)
-    );
-  };
 
   async function onSubmit(data: PromoCodeFormData) {
     setIsSubmitting(true);
@@ -483,52 +468,17 @@ export function PromoCodeForm({
           <div className="space-y-3">
             <FormLabel>Restrict to Specific Charters</FormLabel>
             <FormDescription className="!mt-0">
-              Leave empty to allow all charters. Add charter IDs to restrict
-              this promo code.
+              Leave empty to allow all charters. Search and select charters to
+              restrict this promo code.
             </FormDescription>
 
-            <div className="flex gap-2">
-              <Input
-                value={charterInput}
-                onChange={(e) => setCharterInput(e.target.value)}
-                placeholder="Enter charter ID (e.g., clxyz123...)"
-                className="flex-1 font-mono text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addCharter();
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addCharter}
-                disabled={!charterInput.trim()}
-              >
-                Add
-              </Button>
-            </div>
-
-            {specificCharters.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {specificCharters.map((charterId) => (
-                  <div
-                    key={charterId}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-mono bg-slate-100 border border-slate-200 rounded-md"
-                  >
-                    <span className="max-w-[200px] truncate">{charterId}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeCharter(charterId)}
-                      className="p-0.5 hover:bg-slate-200 rounded"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <CharterSearchCombobox
+              selectedCharters={specificCharters}
+              onSelect={(charterIds) =>
+                form.setValue("specificCharters", charterIds)
+              }
+              placeholder="Search charters by name or location..."
+            />
 
             {specificCharters.length > 0 && (
               <p className="text-xs text-amber-600">
