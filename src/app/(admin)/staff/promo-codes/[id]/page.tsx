@@ -33,6 +33,7 @@ interface PromoCodeStats {
     minPurchase: number | null;
     maxDiscount: number | null;
     specificCharters: string[];
+    specificTrips: string[];
   };
   statistics: {
     totalBookings: number;
@@ -430,6 +431,7 @@ export default async function PromoCodeDetailPage({
                   : null,
                 newUsersOnly: promoCode.newUsersOnly,
                 specificCharters: promoCode.specificCharters || [],
+                specificTrips: promoCode.specificTrips || [],
                 status: promoCode.status,
               }}
             />

@@ -47,6 +47,8 @@ export async function GET(req: Request) {
 
     if (query) {
       where.OR = [
+        // Support exact ID lookup for loading selected items
+        { id: query },
         { name: { contains: query, mode: "insensitive" } },
         { city: { contains: query, mode: "insensitive" } },
         { state: { contains: query, mode: "insensitive" } },

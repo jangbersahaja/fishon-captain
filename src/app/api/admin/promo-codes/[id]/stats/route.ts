@@ -188,6 +188,7 @@ export async function GET(
         maxDiscount: promoCode.maxDiscount,
         newUsersOnly: promoCode.newUsersOnly,
         specificCharters: promoCode.specificCharters,
+        specificTrips: promoCode.specificTrips,
       },
       statistics: {
         totalBookings,

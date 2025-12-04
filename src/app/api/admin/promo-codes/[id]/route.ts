@@ -27,6 +27,7 @@ const updatePromoCodeSchema = z.object({
   maxDiscount: z.coerce.number().positive().optional().nullable(),
   newUsersOnly: z.boolean().optional(),
   specificCharters: z.array(z.string()).optional(),
+  specificTrips: z.array(z.string()).optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "EXPIRED"]).optional(),
 });
 

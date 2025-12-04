@@ -33,6 +33,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CharterSearchCombobox } from "./CharterSearchCombobox";
+import { TripSearchCombobox } from "./TripSearchCombobox";
 
 const promoCodeSchema = z
   .object({
@@ -61,6 +62,7 @@ const promoCodeSchema = z
     maxDiscount: z.coerce.number().positive().optional().nullable(),
     newUsersOnly: z.boolean().default(false),
     specificCharters: z.array(z.string()).default([]),
+    specificTrips: z.array(z.string()).default([]),
     status: z.enum(["ACTIVE", "INACTIVE", "EXPIRED"]).default("ACTIVE"),
   })
   .refine(
@@ -121,12 +123,14 @@ export function PromoCodeForm({
       maxDiscount: initialData?.maxDiscount || null,
       newUsersOnly: initialData?.newUsersOnly || false,
       specificCharters: initialData?.specificCharters || [],
+      specificTrips: initialData?.specificTrips || [],
       status: initialData?.status || "ACTIVE",
     },
   });
 
   const discountType = form.watch("type");
   const specificCharters = form.watch("specificCharters") ?? [];
+  const specificTrips = form.watch("specificTrips") ?? [];
 
   async function onSubmit(data: PromoCodeFormData) {
     setIsSubmitting(true);
@@ -484,6 +488,28 @@ export function PromoCodeForm({
               <p className="text-xs text-amber-600">
                 ⚠️ This promo code will only work for {specificCharters.length}{" "}
                 selected charter{specificCharters.length > 1 ? "s" : ""}.
+              </p>
+            )}
+          </div>
+
+          {/* Trip-Specific Restriction */}
+          <div className="space-y-3">
+            <FormLabel>Restrict to Specific Trips</FormLabel>
+            <FormDescription className="!mt-0">
+              Leave empty to allow all trips. Search and select specific trips
+              to restrict this promo code (e.g., boat rental only).
+            </FormDescription>
+
+            <TripSearchCombobox
+              selectedTrips={specificTrips}
+              onSelect={(tripIds) => form.setValue("specificTrips", tripIds)}
+              placeholder="Search trips by name, type, or charter..."
+            />
+
+            {specificTrips.length > 0 && (
+              <p className="text-xs text-amber-600">
+                ⚠️ This promo code will only work for {specificTrips.length}{" "}
+                selected trip{specificTrips.length > 1 ? "s" : ""}.
               </p>
             )}
           </div>
