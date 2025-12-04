@@ -403,6 +403,7 @@ export default async function PromoCodeDetailPage({
           {/* Edit Form */}
           <div className="lg:col-span-2">
             <PromoCodeForm
+              key={promoCode.id}
               mode="edit"
               promoId={promoCode.id}
               initialData={{
