@@ -5,7 +5,7 @@
 Fishon Captain is the **management dashboard** for captains and charter operators, built with Next.js 15 (App Router) + Prisma + NextAuth. This is one of three interconnected Fishon applications:
 
 - **Fishon Captain (this app)**: Internal dashboard for captains/admins; data feeds Fishon.my's public marketplace
-- **Fishon.my**: Customer-facing marketplace where anglers discover and book charters
+- **Fishon.my**: Customer-facing marketplace where anglers discover and book charters (Next.js 16)
 - **Fishon Video Worker**: External video normalization service
 
 ## System Configuration
