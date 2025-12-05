@@ -1,3 +1,4 @@
+import { CITY_ALIASES } from "@/utils/captainFormData";
 import { charterFormOptions } from "@features/charter-onboarding/charterForm.defaults";
 import type { GoogleAddressComponent } from "@features/charter-onboarding/hooks/usePlaceDetails";
 
@@ -17,6 +18,17 @@ function norm(str: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
     .trim();
+}
+
+/**
+ * Resolve a city name to its canonical form using aliases.
+ * First checks if there's an alias, then returns the normalized name.
+ */
+function resolveCity(cityName: string): string {
+  const normalized = norm(cityName);
+  // Check if there's an alias for this city name
+  const alias = CITY_ALIASES[normalized];
+  return alias || cityName;
 }
 
 export function parseAddressComponents(
@@ -55,8 +67,18 @@ export function parseAddressComponents(
       (s) => s.state === matchedState
     );
     if (stateObj) {
-      const normCity = norm(cityCandidate);
-      matchedCity = stateObj.city.find((c) => norm(c) === normCity);
+      // First, try to resolve the city using aliases
+      const resolvedCity = resolveCity(cityCandidate);
+      const normResolved = norm(resolvedCity);
+
+      // Check if the resolved city matches any city in the state
+      matchedCity = stateObj.city.find((c) => norm(c) === normResolved);
+
+      // If alias resolution didn't work, try direct matching
+      if (!matchedCity) {
+        const normCity = norm(cityCandidate);
+        matchedCity = stateObj.city.find((c) => norm(c) === normCity);
+      }
     }
   }
 

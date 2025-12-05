@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -11,8 +15,10 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
-    "types": ["google.maps"],
+    "jsx": "react-jsx",
+    "types": [
+      "google.maps"
+    ],
     "incremental": true,
     "plugins": [
       {
@@ -20,14 +26,30 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@features/*": ["./src/features/*"],
-      "@fishon/ui": ["./packages/ui/src"],
-      "@fishon/ui/*": ["./packages/ui/src/*"],
-      "@fishon/ui/charter": ["./packages/ui/src/components/charter/index.ts"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@features/*": [
+        "./src/features/*"
+      ],
+      "@fishon/ui": [
+        "./packages/ui/src"
+      ],
+      "@fishon/ui/*": [
+        "./packages/ui/src/*"
+      ],
+      "@fishon/ui/charter": [
+        "./packages/ui/src/components/charter/index.ts"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
     ".trash/**",
