@@ -2,10 +2,10 @@
 
 ## Platform Snapshot
 
-Fishon Captain is the **management dashboard** for captains and charter operators, built with Next.js 15 (App Router) + Prisma + NextAuth. This is one of three interconnected Fishon applications:
+Fishon Captain is the **management dashboard** for captains and charter operators, built with Next.js 16 (App Router) + Prisma + NextAuth. This is one of three interconnected Fishon applications:
 
-- **Fishon Captain (this app)**: Internal dashboard for captains/admins; data feeds Fishon.my's public marketplace
-- **Fishon.my**: Customer-facing marketplace where anglers discover and book charters
+- **Fishon Captain (this app)**: Internal dashboard for captains/admins; data feeds Fishon.my's public marketplace (Next.js 16)
+- **Fishon.my**: Customer-facing marketplace where anglers discover and book charters (Next.js 16)
 - **Fishon Video Worker**: External video normalization service
 
 ## System Configuration
@@ -81,11 +81,41 @@ Fishon Captain is the **management dashboard** for captains and charter operator
 
 - Domain logic lives in feature modules (e.g. `src/features/charter-onboarding`) that bundle `schema.ts`, `server/`, `components/`, `hooks/`, `__tests__/`, and README guidance
 - Import via barrels like `@features/charter-onboarding`
-- Middleware (`src/middleware.ts`) gates `/captain/*` and `/staff/*` routes; staff pages require STAFF or ADMIN roles
+- Proxy (`src/proxy.ts`) gates `/captain/*` and `/staff/*` routes; staff pages require STAFF or ADMIN roles
 - PostgreSQL view `v_public_charters` exposes charter data to fishon-market (primary data source)
 - Public v1 API at `/api/public/v1/charters` serves as fallback data source for fishon-market
 - v1 API endpoints: `/api/public/v1/charters` (list), `/api/public/v1/charters/:id` (detail), `/api/public/v1/charters/:id/availability` (availability)
 - All legacy `/api/public/charters/*` endpoints have been removed and replaced with v1
+
+### Next.js 16 Migration Notes
+
+**Completed Changes:**
+
+- Upgraded from Next.js 15 → 16.0.7
+- Upgraded React 19.1.0 → 19.2.1
+- Renamed `middleware.ts` → `proxy.ts` (Next.js 16 convention)
+- Removed `eslint` config from `next.config.ts` (use `eslint.config.mjs` instead)
+- Build system: Turbopack (default in Next.js 16)
+
+**Key Patterns for Next.js 16:**
+
+```typescript
+// ✅ Async params pattern (required for dynamic routes)
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  // ...
+}
+
+// ✅ Suspense wrapper for useSearchParams
+import { Suspense } from "react";
+<Suspense fallback={<Loading />}>
+  <ComponentUsingSearchParams />
+</Suspense>;
+```
 
 ## Core Workflows
 
@@ -344,12 +374,13 @@ Worker gracefully handles `cancelled` videos
 
 ## Key Files for Onboarding
 
-- `src/middleware.ts` — auth gates
+- `src/proxy.ts` — auth gates (renamed from middleware.ts in Next.js 16)
 - `src/lib/auth.ts` — NextAuth config with Google OAuth, custom JWT callbacks
 - `src/features/charter-onboarding/README.md` — feature module overview
 - `docs/API_VIDEO_ROUTES.md` — video API reference
 - `src/app/api/README.md` — API cleanup plan, route inventory
 - `prisma/schema.prisma` — data model source of truth
+- `.npmrc` — npm configuration with legacy-peer-deps for deployment
 
 ## External Integrations
 

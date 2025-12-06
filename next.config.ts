@@ -16,10 +16,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  eslint: {
-    ignoreDuringBuilds: false,
-    dirs: ["src"],
-  },
+  // Note: eslint config removed in Next.js 16 - use eslint.config.mjs instead
 
   images: {
     remotePatterns: [

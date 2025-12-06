@@ -5,6 +5,60 @@ export type MalaysiaStateOption = {
 };
 
 /**
+ * City name aliases for matching Google Places API responses to our city list.
+ *
+ * Google Places API returns various city/town names that may differ from our
+ * canonical city names. This mapping helps auto-fill the correct city when
+ * a captain selects a location from the address autocomplete.
+ *
+ * Example: Google returns "Pelabuhan Klang" but our list has "Port Klang"
+ *
+ * Format: "google_name (lowercase)": "our_canonical_name"
+ */
+export const CITY_ALIASES: Record<string, string> = {
+  // Selangor - Klang District
+  "pelabuhan klang": "Port Klang",
+  "bandaraya klang": "Klang",
+  "bandar klang": "Klang",
+  // Selangor - Petaling District
+  "bandaraya petaling jaya": "Petaling Jaya",
+  "bandar petaling jaya": "Petaling Jaya",
+  // Selangor - Kuala Selangor District
+  "tanjong karang": "Tanjung Karang",
+  // Selangor - Kuala Langat District
+  "teluk panglima garang": "Jenjarom", // TPG is near Jenjarom
+  // Johor
+  "johor baharu": "Johor Bahru",
+  "bandaraya johor bahru": "Johor Bahru",
+  "pasir gudang": "Pasir Gudang", // normalize spacing
+  // Penang
+  georgetown: "George Town",
+  "pulau pinang": "George Town",
+  // Perak
+  "bandaraya ipoh": "Ipoh",
+  // Sabah
+  "bandaraya kota kinabalu": "Kota Kinabalu",
+  // Sarawak
+  "bandaraya kuching": "Kuching",
+  // Terengganu
+  "bandaraya kuala terengganu": "Kuala Terengganu",
+  // Kelantan
+  "bandaraya kota bharu": "Kota Bharu",
+  "kota bahru": "Kota Bharu",
+  // Melaka
+  "bandaraya melaka": "Melaka",
+  malacca: "Melaka",
+  "malacca city": "Melaka",
+  // Negeri Sembilan
+  "bandaraya seremban": "Seremban",
+  // Pahang
+  "bandaraya kuantan": "Kuantan",
+  // Kedah
+  "alor star": "Alor Setar",
+  "bandaraya alor setar": "Alor Setar",
+};
+
+/**
  * Malaysian state and city/town options for charter registration.
  *
  * Cities are organized at the town level (not district level) for granular
