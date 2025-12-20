@@ -126,7 +126,7 @@ export default async function BookingDetailsPage({
   const StatusIcon = getStatusIcon(booking.status);
 
   // Calculate pricing breakdown
-  const pricing = calculatePricing({
+  const pricing = await calculatePricing({
     tripPrice: booking.unitPrice,
     days: booking.days,
   });

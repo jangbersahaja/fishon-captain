@@ -13,7 +13,7 @@ The Captain Payout System manages earnings distribution to captains, including c
 ### Key Features
 
 - ✅ **Earnings dashboard**: View total earnings and pending payouts
-- ✅ **Commission tiers**: 5%, 8%, or 10% based on pricing plan (GOLD/SILVER/BASIC)
+- ✅ **Commission tiers**: 10% based only
 - ✅ **Immediate visibility**: Admin sees all paid bookings immediately
 - ✅ **Custom selection**: Admin can select specific captains for payout
 - ✅ **Manual processing**: Admin creates payout batches with optional deductions

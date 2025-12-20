@@ -1,13 +1,50 @@
 # Captain Promo Price System
 
-**Status**: Proposed Enhancement  
+**Status**: Proposed Enhancement ⚠️ **See Alternative Implementation Below**  
 **Created**: 3 December 2025  
 **Author**: Fishon Development Team  
 **Applies To**: fishon-captain (admin dashboard), fishon-market (booking system)
 
 ---
 
-## Executive Summary
+## ⚠️ Important Update: Alternative Implementation (20 Dec 2025)
+
+**An alternative approach has been implemented**: Instead of using `Trip.promoPrice` to adjust captain earnings, we implemented a **Configurable Promo Split System** that allows admin to adjust the discount sharing percentage between captains and platform.
+
+### Implemented Solution (Configurable Promo Split)
+
+✅ **Status**: Complete and Production Ready  
+📄 **Documentation**: See `CONFIGURABLE_PROMO_SPLIT_IMPLEMENTATION.md`  
+⏱️ **Implementation Time**: 16 hours (completed 20 Dec 2025)
+
+**Key Features**:
+
+- Admin adjusts captain/platform split via slider UI at `/staff/pricing`
+- Default: 50% Captain / 50% Platform
+- Presets: 0/100, 30/70, 50/50, 70/30
+- Automatic reflection in captain earnings and emails
+- No captain communication needed (earnings stored in `Booking.captainEarnings`)
+
+**Benefits Over This Proposal**:
+
+- ✅ More flexible (adjust split without changing trip prices)
+- ✅ Simpler for captains (no need to set promo prices)
+- ✅ Transparent (clear percentage split)
+- ✅ Automatic (earnings calculated and stored during booking creation)
+- ✅ Production ready with tests (14/14 integration tests passing)
+
+### This Document's Relevance
+
+This document remains as an **alternative approach** that could be implemented in the future if needed. The key difference:
+
+- **This proposal**: Captain sets minimum promo price → used when promo applied
+- **Implemented solution**: Admin sets discount split percentage → applied to all promos
+
+Both achieve the same goal (fair discount sharing) but the configurable split is more flexible and easier to manage.
+
+---
+
+## Executive Summary (Original Proposal)
 
 ### Background
 
