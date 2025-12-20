@@ -5,19 +5,24 @@
  * - Platform fees (commission)
  * - Service fees (payment gateway + Fishon)
  * - Discounts/promo codes
- * - Captain earnings
+ * - Captain earnings (with configurable promo split)
  *
  * NOTE: This must stay in sync with fishon-market's pricing-service.ts
  * Keep both files aligned for consistent calculations across apps
  *
- * PRICING MODEL (Updated Nov 2025):
+ * PRICING MODEL (Updated Dec 2025):
  * - Commission: 10% of captain's base price, CAPPED at RM100
  * - Commission is HIDDEN from anglers (baked into displayed trip price)
  * - Service Fee: 2% of amount before service fee
  *   - 1.5% goes to SenangPay (payment gateway)
  *   - 0.5% goes to Fishon (service revenue)
- * - Captain Earnings = base price × days (unchanged regardless of commission)
+ * - Promo Split: Configurable via SystemSettings (default 50/50)
+ *   - Captain contribution = promoDiscount × captainPercent / 100
+ *   - Platform contribution = promoDiscount × platformPercent / 100
+ * - Captain Earnings = subtotal - captain promo contribution
  */
+
+import { getPromoSplitConfig } from "./settings-service";
 
 export interface PricingBreakdown {
   tripPrice: number; // Base price per day (captain's base)
@@ -28,8 +33,10 @@ export interface PricingBreakdown {
   serviceFee: number; // 2% of (subtotal + platformFee - discount)
   sst: number; // Future: SST tax (currently 0)
   finalPrice: number; // What angler pays
-  captainEarnings: number; // What captain receives (subtotal, unchanged)
+  captainEarnings: number; // What captain receives (subtotal - captain promo contribution)
   displayPrice: number; // Trip price shown to angler (tripPrice + platformFee per day)
+  captainPromoContribution?: number; // Captain's share of promo discount
+  platformPromoContribution?: number; // Platform's share of promo discount
 }
 
 export interface PricingInput {
@@ -74,9 +81,16 @@ export interface PricingInput {
  * - Display Price (UI): RM2100
  * - Service Fee (2%): RM42
  * - Final Price: RM2142
- * - Captain Earnings: RM2000
+ * - Captain Earnings: RM2000 (if no promo)
+ *
+ * With Promo (50/50 split, RM100 discount):
+ * - Captain Promo Contribution: RM50
+ * - Platform Promo Contribution: RM50
+ * - Captain Earnings: RM1950 (RM2000 - RM50)
  */
-export function calculatePricing(input: PricingInput): PricingBreakdown {
+export async function calculatePricing(
+  input: PricingInput
+): Promise<PricingBreakdown> {
   const { tripPrice, days, promoDiscount, promoCode } = input;
 
   // Step 1: Subtotal (captain's base price * days)
@@ -110,10 +124,23 @@ export function calculatePricing(input: PricingInput): PricingBreakdown {
   const finalPrice =
     Math.round((amountBeforeServiceFee + serviceFee + sst) * 100) / 100;
 
-  // Step 8: Captain Earnings (what captain receives: subtotal, unchanged)
-  const captainEarnings = subtotal;
+  // Step 8: Promo Split (if discount applied)
+  let captainPromoContribution = 0;
+  let platformPromoContribution = 0;
 
-  // Step 9: Display Price (trip price shown to angler per day: base + commission per day)
+  if (discount > 0) {
+    const splitConfig = await getPromoSplitConfig();
+    captainPromoContribution =
+      Math.round(discount * (splitConfig.captainPercent / 100) * 100) / 100;
+    platformPromoContribution =
+      Math.round(discount * (splitConfig.platformPercent / 100) * 100) / 100;
+  }
+
+  // Step 9: Captain Earnings (subtotal minus captain's promo contribution)
+  const captainEarnings =
+    Math.round((subtotal - captainPromoContribution) * 100) / 100;
+
+  // Step 10: Display Price (trip price shown to angler per day: base + commission per day)
   const displayPrice = Math.round((tripPrice + platformFee / days) * 100) / 100;
 
   return {
@@ -127,6 +154,8 @@ export function calculatePricing(input: PricingInput): PricingBreakdown {
     finalPrice,
     captainEarnings,
     displayPrice,
+    captainPromoContribution,
+    platformPromoContribution,
   };
 }
 

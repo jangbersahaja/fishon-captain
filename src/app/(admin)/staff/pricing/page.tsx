@@ -14,6 +14,7 @@ import authOptions from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { PricingDashboard } from "./_components/PricingDashboard";
+import { PromoSplitConfig } from "./_components/PromoSplitConfig";
 
 export const metadata = {
   title: "Pricing Management | Fishon Captain",
@@ -47,7 +48,13 @@ export default async function PricingPage() {
       </div>
 
       {/* Main Content */}
-      <div className="px-4 py-8 mx-auto sm:px-6 lg:px-8">
+      <div className="px-4 py-8 mx-auto space-y-8 sm:px-6 lg:px-8">
+        {/* Promo Split Configuration */}
+        <div className="max-w-2xl">
+          <PromoSplitConfig />
+        </div>
+
+        {/* Pricing Dashboard */}
         <PricingDashboard />
       </div>
     </div>

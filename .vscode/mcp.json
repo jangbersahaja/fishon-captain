@@ -3,6 +3,10 @@
     "console-ninja": {
       "command": "npx",
       "args": ["-y", "-c", "node ~/.console-ninja/mcp/"]
+    },
+    "next-devtools": {
+      "command": "npx",
+      "args": ["-y", "next-devtools-mcp@latest"]
     }
   }
 }
