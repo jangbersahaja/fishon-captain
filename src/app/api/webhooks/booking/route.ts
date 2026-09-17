@@ -226,6 +226,29 @@ export async function POST(request: NextRequest) {
             );
             break;
 
+          case "booking.rescheduled":
+            await createNotification({
+              type: "BOOKING_CONFIRMED",
+              userId: captainUserId,
+              title: "Booking Rescheduled ✅",
+              message: `Booking for ${
+                booking.charterName || "your charter"
+              } has been rescheduled to ${
+                booking.date
+                  ? new Date(booking.date).toLocaleDateString("en-MY", {
+                      timeZone: "Asia/Kuala_Lumpur",
+                    })
+                  : "a new date"
+              }.`,
+              actionUrl: `/captain/bookings/${booking.id}`,
+              actionLabel: "View Booking",
+              metadata: { bookingId: booking.id, date: booking.date },
+            });
+            console.log(
+              `✅ BOOKING_RESCHEDULED notification sent to captain ${captainUserId}`
+            );
+            break;
+
           default:
             console.warn(`⚠️ Unknown webhook type for notification: ${type}`);
         }
