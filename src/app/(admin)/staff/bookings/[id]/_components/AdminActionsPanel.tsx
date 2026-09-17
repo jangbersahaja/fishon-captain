@@ -19,6 +19,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { ActionDialog } from "../../_components/ActionDialog";
+import { RescheduleDialog } from "./RescheduleDialog";
 import { StatusOverrideDialog } from "./StatusOverrideDialog";
 
 type BookingStatus =
@@ -38,6 +39,8 @@ interface AdminActionsPanelProps {
   hasPayment: boolean;
   userRole: "STAFF" | "ADMIN";
   finalPrice: number;
+  currentDate: Date;
+  charterName?: string;
 }
 
 export function AdminActionsPanel({
@@ -46,6 +49,8 @@ export function AdminActionsPanel({
   hasPayment,
   userRole,
   finalPrice,
+  currentDate,
+  charterName,
 }: AdminActionsPanelProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -58,6 +63,7 @@ export function AdminActionsPanel({
   ].includes(status);
   const canInitiateRefund =
     hasPayment && !["COMPLETED", "REFUNDED"].includes(status);
+  const canReschedule = status === "PAID";
   const canMarkCompleted = status === "PAID";
   const canOverrideStatus = userRole === "ADMIN";
 
@@ -250,6 +256,15 @@ export function AdminActionsPanel({
               </Button>
             }
             requireReason
+          />
+        )}
+
+        {/* Reschedule */}
+        {canReschedule && (
+          <RescheduleDialog
+            bookingId={bookingId}
+            currentDate={currentDate}
+            charterName={charterName}
           />
         )}
 

@@ -780,6 +780,8 @@ export default async function StaffBookingDetailPage({
             }
             userRole={role as "STAFF" | "ADMIN"}
             finalPrice={Number(booking.finalPrice)}
+            currentDate={new Date(booking.date)}
+            charterName={booking.charterName}
           />
 
           {/* Admin Notes */}
