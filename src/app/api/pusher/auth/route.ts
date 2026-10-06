@@ -4,6 +4,8 @@
  */
 
 import authOptions from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { prismaMarket } from "@/lib/prisma-market";
 import { getPusherServer } from "@/lib/pusher/server";
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
@@ -55,6 +57,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // For conversation channels, verify the captain actually owns the charter
+    // in that conversation (previously any authenticated captain could
+    // subscribe to any conversation). Mirrors the ownership check used by the
+    // message send/read routes.
+    if (isConversationChannel) {
+      const conversationId = channelName.slice("private-conversation.".length);
+      const allowed = await captainOwnsConversation(conversationId, userId);
+      if (!allowed) {
+        console.warn(
+          "⚠️ [Pusher Auth] Forbidden - not a conversation participant:",
+          { conversationId, userId }
+        );
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     // Authenticate the user for this channel
     const pusher = getPusherServer();
     if (!pusher) {
@@ -75,5 +93,31 @@ export async function POST(req: NextRequest) {
       { error: "Internal Server Error" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * True if the authenticated captain owns the charter in the given conversation.
+ * The conversation lives in the market DB; charter ownership in the captain DB.
+ */
+async function captainOwnsConversation(
+  conversationId: string,
+  userId: string
+): Promise<boolean> {
+  try {
+    const conversation = await prismaMarket.conversation.findUnique({
+      where: { id: conversationId },
+      select: { charterId: true },
+    });
+    if (!conversation?.charterId) return false;
+
+    const charter = await prisma.charter.findUnique({
+      where: { id: conversation.charterId },
+      select: { ownerId: true },
+    });
+    return !!charter && charter.ownerId === userId;
+  } catch (error) {
+    console.error("[Pusher Auth] ownership check failed:", error);
+    return false;
   }
 }

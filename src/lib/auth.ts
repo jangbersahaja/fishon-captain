@@ -105,13 +105,31 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if ((token as { id?: string }).id) {
-        (session.user as { id?: string }).id = (token as { id: string }).id;
+      const userId = (token as { id?: string }).id;
+      if (userId) {
+        (session.user as { id?: string }).id = userId;
       }
       if ((token as { role?: string }).role) {
         (session.user as { role?: string }).role = (
           token as { role: string }
         ).role;
+      }
+      // Expose avatarUrl + phone for the mobile profile screen. These live on
+      // CaptainProfile (not User), so a lightweight join is required here.
+      if (userId) {
+        try {
+          const profile = await prisma.captainProfile.findUnique({
+            where: { userId },
+            select: { avatarUrl: true, phone: true },
+          });
+          (session.user as { avatarUrl?: string | null }).avatarUrl =
+            profile?.avatarUrl ?? null;
+          (session.user as { phone?: string | null }).phone =
+            profile?.phone ?? null;
+        } catch {
+          (session.user as { avatarUrl?: string | null }).avatarUrl = null;
+          (session.user as { phone?: string | null }).phone = null;
+        }
       }
       return session;
     },
